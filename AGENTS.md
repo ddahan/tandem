@@ -52,6 +52,8 @@ different data folders. **Never point the dev servers or tests at the owner's da
   can't parse: put them in a function.
 - **UI**: Nuxt UI components first, Tailwind utilities, Lucide icons written literally
   (`i-lucide-name`): icons are bundled at build time from what the source mentions.
+  Everything clickable shows a pointer: a base rule in `main.css` covers buttons, links and
+  ARIA roles; give a custom clickable element one of those (or `cursor-pointer`).
 - **Comments** explain why (rules, trade-offs, limitations); each module starts with what it
   is responsible for.
 - **French formats** for dates and numbers (`formatDate`, `formatDateTime`, `formatNumber`,

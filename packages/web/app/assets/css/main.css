@@ -27,6 +27,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* A pointer on everything clickable (Tailwind's reset gives buttons the arrow). In the base
+   layer: utilities (cursor-grab, cursor-not-allowed on disabled controls…) still win. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='link'],
+  [role='menuitem']:not([data-disabled]),
+  [role='menuitemcheckbox']:not([data-disabled]),
+  [role='menuitemradio']:not([data-disabled]),
+  [role='option']:not([data-disabled]),
+  [role='tab']:not([data-disabled]),
+  [role='treeitem'],
+  [role='switch'],
+  [role='checkbox'],
+  [role='radio'],
+  summary,
+  label[for],
+  select:not(:disabled),
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='color'],
+  input[type='file']::file-selector-button {
+    cursor: pointer;
+  }
+}
+
 /* --- Background tones (Settings) ------------------------------------------------------------
    Replace Nuxt UI's background and border colors, in light and dark mode. "white" keeps Nuxt
    UI's own colors. */

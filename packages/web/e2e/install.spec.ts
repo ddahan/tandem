@@ -25,6 +25,7 @@ test('offers to install the app when the browser can, with its icon', async ({ p
   await offerInstall(page)
   await expect(banner).toBeVisible()
   await expect(banner.locator('svg')).toBeVisible()
+  await expect(banner.getByRole('button', { name: 'Install' })).toHaveCSS('cursor', 'pointer')
   await banner.getByRole('button', { name: 'Install' }).click()
   expect(await page.evaluate(() => (window as Window & { prompted?: boolean }).prompted)).toBe(true)
   // The prompt is used: nothing left to offer.

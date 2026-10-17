@@ -647,3 +647,20 @@ test('manages pages from the tree with the keyboard', async ({ page, request }) 
   await row('Key renamed').getByRole('button', { name: 'Actions' }).click()
   await expect(page.getByRole('menuitem', { name: /Move to trash/ }).locator('kbd')).toHaveCount(2)
 })
+
+test('shows a pointer on everything clickable', async ({ page, request }) => {
+  await createNote(request, 'Pointer note')
+  await page.goto('/')
+  for (const clickable of [
+    page.getByRole('button', { name: 'Light' }),
+    page.getByRole('button', { name: 'New page', exact: true }).first(),
+    page.getByTestId('tree-Pointer note'),
+    page.getByRole('link', { name: 'Trash' }),
+  ])
+    await expect(clickable).toHaveCSS('cursor', 'pointer')
+
+  await page.keyboard.press('ControlOrMeta+Shift+F')
+  await expect(page.getByRole('option').first()).toHaveCSS('cursor', 'pointer')
+  // Text fields keep the text cursor.
+  await expect(page.getByPlaceholder(/Search notes/)).not.toHaveCSS('cursor', 'pointer')
+})
