@@ -138,8 +138,12 @@ typically inside OneDrive so that it is backed up and synced.
   Myfluence by default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
-- Installable as an app (web app manifest): its own window and Dock icon, via Safari's
-  "File → Add to Dock" or Chrome's "Install".
+- Installable as an app (web app manifest): its own window and Dock icon. In a browser tab
+  that can install it, the sidebar offers to (the logo, "Install Myfluence"): Chrome and Edge
+  show their install dialog; Safari, which has none, gets the steps (File › Add to Dock…, or
+  Share › Add to Home Screen on iOS). Closing the offer hides it for good; Settings › App still
+  offers to install, or says it's installed. Hidden in the installed app and in browsers that
+  can't install.
 - English interface; French formats for dates, times and numbers (`17/10/2026 14:32`).
 - Must feel instant: local-first interactions, optimistic updates, no full-page loads.
 

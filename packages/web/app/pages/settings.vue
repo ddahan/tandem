@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { DEFAULT_SETTINGS, type Settings } from '@myfluence/shared'
 import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
+import { accentShade, logoSvg } from '~/utils/logo'
 
 const { settings, update } = useSettings()
 const colorMode = useColorMode()
@@ -59,6 +60,9 @@ const modes = [
   { value: 'dark', label: 'Dark', icon: 'i-lucide-moon' },
   { value: 'system', label: 'System', icon: 'i-lucide-monitor' },
 ]
+
+const install = useInstallApp()
+const installLogo = logoSvg(accentShade, 'install-settings-logo')
 
 const workspaceName = ref(settings.value.workspaceName)
 const displayName = ref(settings.value.displayName)
@@ -257,6 +261,45 @@ async function set(patch: Partial<Settings>) {
               />
             </div>
           </UFormField>
+        </section>
+
+        <USeparator />
+
+        <section>
+          <h2 class="font-semibold text-highlighted">App</h2>
+          <p class="mb-4 text-sm text-muted">
+            Install Myfluence to open it from your Dock, in its own window.
+          </p>
+          <div class="flex items-start gap-4" data-testid="install-settings">
+            <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
+            <span
+              class="size-12 shrink-0 overflow-hidden rounded-[22%] shadow-sm [&_svg]:size-full"
+              v-html="installLogo"
+            />
+            <p
+              v-if="install.installed.value"
+              class="flex items-center gap-1.5 pt-3 text-sm text-default"
+            >
+              <UIcon name="i-lucide-circle-check" class="size-4 text-primary" /> Installed: you're
+              using the app.
+            </p>
+            <UButton
+              v-else-if="install.method.value === 'prompt'"
+              label="Install Myfluence"
+              icon="i-lucide-download"
+              class="mt-2"
+              @click="install.install()"
+            />
+            <InstallSteps
+              v-else-if="install.method.value"
+              :platform="install.method.value"
+              class="pt-1"
+            />
+            <p v-else class="pt-1 text-sm text-muted">
+              Your browser isn't offering to install Myfluence (it may be installed already).
+              Chrome, Edge and Safari can install it.
+            </p>
+          </div>
         </section>
 
         <USeparator />

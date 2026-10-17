@@ -67,13 +67,15 @@ defineShortcuts({
           </UTooltip>
         </div>
 
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="navigation"
-          orientation="vertical"
-          tooltip
-          class="mt-auto"
-        />
+        <div class="mt-auto flex flex-col gap-3">
+          <InstallAppBanner v-if="!collapsed" />
+          <UNavigationMenu
+            :collapsed="collapsed"
+            :items="navigation"
+            orientation="vertical"
+            tooltip
+          />
+        </div>
       </template>
 
       <template #footer="{ collapsed }">

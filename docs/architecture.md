@@ -191,6 +191,10 @@ folders and the versions.
   `nuxt generate`.
 - Icons are bundled at build time (no icon API at runtime): use literal `i-lucide-*` names in
   the source so the build finds them.
+- Install offer (`useInstallApp`, `InstallAppBanner`, Settings › App): an inline script in
+  the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
+  app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the
+  user agent (it has no install API); `display-mode: standalone` means installed.
 - Landing page (`pages/landing.vue`, `layout: false`, demos in `components/landing/`): CSS
   animations (classes prefixed `landing-`), `v-reveal` (`utils/reveal.ts`) for scroll reveals,
   and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,
