@@ -4,7 +4,14 @@ import type { TabsItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
-defineProps<{ noteId: string; notePath: string; headings: Heading[]; content: string }>()
+defineProps<{
+  noteId: string
+  notePath: string
+  headings: Heading[]
+  /** Index in `headings` of the heading the reader is in (-1: none). */
+  activeHeading: number
+  content: string
+}>()
 defineEmits<{
   goToHeading: [pos: number]
   restored: [content: string]
@@ -59,6 +66,7 @@ const tabs: TabsItem[] = [
       <SideOutline
         v-if="tab === 'outline'"
         :headings="headings"
+        :active="activeHeading"
         @go="(pos) => $emit('goToHeading', pos)"
       />
       <SideBacklinks v-else-if="tab === 'links'" :note-id="noteId" :content="content" />

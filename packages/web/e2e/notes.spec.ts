@@ -847,3 +847,44 @@ test('copies the Markdown from a button shown on hover in the Markdown view', as
     '# Copy me\n\nSome **text**.\n',
   )
 })
+
+test('highlights the heading being read in the outline', async ({ page, request }) => {
+  const long = Array.from({ length: 30 }, (_, i) => `Paragraph ${i} of a long section.`).join(
+    '\n\n',
+  )
+  const note = await createNote(
+    request,
+    'Outline note',
+    `# Alpha\n\n${long}\n\n## Beta\n\n${long}\n\n## Gamma\n\nShort.\n\n## Delta\n\nShort.\n`,
+  )
+  await openNote(page, note.id)
+  const outline = page.getByRole('navigation', { name: 'Outline' })
+  const current = outline.locator('[aria-current="location"]')
+  const indicator = page.getByTestId('outline-indicator')
+  const heading = (name: string) => page.locator('.ProseMirror').getByRole('heading', { name })
+
+  // Reading Beta: it reaches the top of the note.
+  await heading('Beta').evaluate((element) => element.scrollIntoView({ block: 'start' }))
+  await expect(current).toHaveText('Beta')
+  await expect
+    .poll(async () => (await indicator.boundingBox())?.y)
+    .toBeCloseTo((await current.boundingBox())!.y, 0)
+
+  // At the end, the last section counts, though it can't scroll to the top.
+  await page.mouse.move(500, 400)
+  await page.mouse.wheel(0, 10_000)
+  await expect(current).toHaveText('Delta')
+
+  // A heading picked in the outline stays current, until the reader scrolls.
+  await outline.getByRole('button', { name: 'Gamma' }).click()
+  await expect(current).toHaveText('Gamma')
+  await page.waitForTimeout(800)
+  await expect(current).toHaveText('Gamma')
+  await page.mouse.move(500, 400)
+  await page.mouse.wheel(0, -2000)
+  await expect(current).not.toHaveText('Gamma')
+
+  // Back at the top: Alpha.
+  await page.mouse.wheel(0, -10_000)
+  await expect(current).toHaveText('Alpha')
+})

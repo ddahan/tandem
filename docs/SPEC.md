@@ -147,6 +147,8 @@ inside OneDrive so that it is backed up and synced.
 - Nuxt UI Dashboard layout: sidebar (search, tree; Trash, Settings and Shortcuts at the
   bottom; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
   collapsible right panel (outline, backlinks, history, attachments). Full-width toggle.
+  The outline highlights the heading being read; one picked in it stays highlighted until the
+  note is scrolled.
   Keyboard shortcuts throughout.
 - VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),
   delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a

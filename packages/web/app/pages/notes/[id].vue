@@ -80,6 +80,8 @@ function closeFind() {
 }
 watch(mode, closeFind)
 const headings = ref<Heading[]>([])
+/** The heading the reader is in (an index in `headings`), highlighted in the outline. */
+const activeHeading = ref(-1)
 
 function resetEditor(markdown: string) {
   content.value = markdown
@@ -479,6 +481,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           :note-path="notePath"
           @change="onEditorChange"
           @headings="headings = $event"
+          @active-heading="activeHeading = $event"
         />
 
         <div v-else-if="mode === 'source'" class="group/source relative">
@@ -522,6 +525,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     :note-id="id"
     :note-path="notePath"
     :headings="headings"
+    :active-heading="activeHeading"
     :content="content"
     @go-to-heading="(pos) => editor?.scrollTo(pos)"
     @restored="(restored) => resetEditor(restored)"

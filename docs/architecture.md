@@ -167,7 +167,8 @@ folders and the versions.
 - Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree`, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (outline, links,
-  history, files).
+  history, files). The editor reports the heading being read (`currentHeading`: measured on
+  scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at
   runtime; remembers the last settings in the browser and applies them before the first paint,
   so a reload never flashes the default theme: plugin `remembered-settings.client.ts`, and a

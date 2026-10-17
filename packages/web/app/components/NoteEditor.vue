@@ -14,6 +14,7 @@ import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { createExtensions, starterKitOptions } from '~/editor/extensions'
 import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
+import { currentHeading, scrollParent } from '~/utils/current-heading'
 import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
 
 const props = defineProps<{
@@ -26,6 +27,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   change: [markdown: string]
   headings: [headings: Heading[]]
+  /** The heading the reader is in, as an index in `headings` (-1 before the first one). */
+  activeHeading: [index: number]
 }>()
 
 export interface Heading {
@@ -449,8 +452,107 @@ function collectHeadings(editor: Editor) {
       headings.push({ level: node.attrs.level as number, text: node.textContent, pos })
     return node.type.name !== 'heading'
   })
+  // A heading added or removed shifts the others: the pinned one may not be the same anymore.
+  if (headings.length !== headingPositions.length) pinned = -1
+  headingPositions = headings.map((heading) => heading.pos)
   emit('headings', headings)
+  scheduleActiveHeading()
 }
+
+// --- Current heading (the outline's highlight) -------------------------------------------------
+
+let headingPositions: number[] = []
+/** The note's scrolling area (the page panel's body), found on mount. */
+let scroller: HTMLElement | null = null
+/** The heading chosen in the outline: it stays current until the reader scrolls. */
+let pinned = -1
+/** While the outline's jump scrolls (smoothly), its scroll events don't unpin. */
+let jumping: ReturnType<typeof setTimeout> | undefined
+let reportedActive = -2
+let frame = 0
+
+function reportActiveHeading(index: number) {
+  if (index === reportedActive) return
+  reportedActive = index
+  emit('activeHeading', index)
+}
+
+function measureActiveHeading() {
+  frame = 0
+  const editor = editorRef.value?.editor
+  if (!editor || editor.isDestroyed || !scroller) return
+  if (pinned >= 0) {
+    reportActiveHeading(pinned)
+    return
+  }
+  // A heading that isn't laid out (none should be) takes the previous one's place.
+  let previous = Number.NEGATIVE_INFINITY
+  const tops = headingPositions.map((pos) => {
+    const dom = editor.view.nodeDOM(pos)
+    if (dom instanceof HTMLElement && dom.getClientRects().length)
+      previous = Math.max(previous, dom.getBoundingClientRect().top)
+    return previous
+  })
+  reportActiveHeading(
+    currentHeading(tops, {
+      top: scroller.getBoundingClientRect().top,
+      height: scroller.clientHeight,
+      scrollTop: scroller.scrollTop,
+      scrollHeight: scroller.scrollHeight,
+    }),
+  )
+}
+
+function scheduleActiveHeading() {
+  if (!frame) frame = requestAnimationFrame(measureActiveHeading)
+}
+
+function endJump() {
+  jumping = undefined
+}
+
+function onScroll() {
+  if (jumping) {
+    clearTimeout(jumping)
+    jumping = setTimeout(endJump, 150)
+    return
+  }
+  pinned = -1
+  scheduleActiveHeading()
+}
+
+/** Pins a heading chosen in the outline (see `pinned`). */
+function pinHeading(pos: number) {
+  const index = headingPositions.indexOf(pos)
+  if (index < 0) return
+  pinned = index
+  reportActiveHeading(index)
+  clearTimeout(jumping)
+  jumping = setTimeout(endJump, 300)
+}
+
+// Content that changes height (images loading, a resized window) moves the headings.
+let resizes: ResizeObserver | undefined
+
+// From this component's root: TipTap puts its view in the page only after the next tick.
+const root = useTemplateRef<HTMLElement>('root')
+onMounted(() => {
+  scroller = root.value ? scrollParent(root.value) : null
+  if (!root.value || !scroller) return
+  scroller.addEventListener('scroll', onScroll, { passive: true })
+  resizes = new ResizeObserver(scheduleActiveHeading)
+  resizes.observe(scroller)
+  resizes.observe(root.value)
+})
+
+onBeforeUnmount(() => {
+  scroller?.removeEventListener('scroll', onScroll)
+  resizes?.disconnect()
+  cancelAnimationFrame(frame)
+  clearTimeout(jumping)
+  // Other modes (Markdown, authorship) don't follow the reading position.
+  emit('activeHeading', -1)
+})
 
 /**
  * The Markdown last reported (or loaded), tidied. The editor normalizes some Markdown when it
@@ -535,6 +637,7 @@ defineExpose({
   scrollTo(pos: number) {
     const editor = editorRef.value?.editor
     if (!editor) return
+    pinHeading(pos)
     const dom = editor.view.nodeDOM(pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
     editor
@@ -550,7 +653,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="note-editor">
+  <div ref="root" class="note-editor">
     <UEditor
       ref="editorRef"
       v-slot="{ editor }"
