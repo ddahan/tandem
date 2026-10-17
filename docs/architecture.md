@@ -144,7 +144,8 @@ folders and the versions.
 
 - Nuxt 4 with `ssr: false`, built with `nuxt generate`, served by the server. In development,
   Nitro's dev proxy forwards `/api`, `/files` and `/mcp` to the dev server.
-- Layout: `UDashboardGroup` with a sidebar (search button, navigation, `NoteTree`, color mode)
+- Layout: `UDashboardGroup` with a sidebar (search button, navigation, `NoteTree`, color mode),
+  the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (outline, links,
   history, files).
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at

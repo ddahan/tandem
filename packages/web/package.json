@@ -6,7 +6,7 @@
     "build": "nuxt generate",
     "dev": "nuxt dev --no-fork",
     "postinstall": "nuxt prepare",
-    "typecheck": "vue-tsc --build && tsc -p tsconfig.tests.json",
+    "typecheck": "nuxt prepare && vue-tsc --build && tsc -p tsconfig.tests.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "icons": "node scripts/icons.ts",

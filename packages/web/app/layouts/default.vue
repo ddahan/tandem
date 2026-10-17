@@ -6,7 +6,6 @@ const colorMode = useColorMode()
 
 const navigation = computed<NavigationMenuItem[]>(() => [
   { label: 'Home', icon: 'i-lucide-house', to: '/' },
-  { label: 'Search', icon: 'i-lucide-search', to: '/search' },
   { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
 ])

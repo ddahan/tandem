@@ -70,6 +70,21 @@ test('searches from the palette, forgiving typos', async ({ page, request }) => 
   await expect(page).toHaveURL(new RegExp(`/notes/${note.id}`))
 })
 
+test('opens the search palette filtered on a tag, with syntax tips', async ({ page, request }) => {
+  const note = await createNote(request, 'Tagged note', 'Some text.')
+  await api(request, 'PUT', `/notes/${note.id}/tags`, { tags: ['palette-tag'] })
+  await page.goto('/')
+  await page.getByRole('button', { name: /palette-tag/ }).click()
+  const input = page.getByPlaceholder(/Search notes/)
+  await expect(input).toHaveValue('tag:palette-tag ')
+  await expect(page.getByRole('option', { name: /Tagged note/ })).toBeVisible()
+
+  // An empty query shows the syntax; picking a tip puts it in the field.
+  await input.fill('')
+  await page.getByRole('option', { name: /in:Projects/ }).click()
+  await expect(input).toHaveValue('in:Projects ')
+})
+
 test('renames a note from its title, keeping links working', async ({ page, request }) => {
   const note = await createNote(request, 'Old title', 'Content')
   await createNote(request, 'Linker', 'Points to [[Old title]].')

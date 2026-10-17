@@ -1,5 +1,7 @@
 <script setup lang="ts">
-// The Cmd+K palette: full-text search on the server as you type, plus a few actions.
+// The search palette (⌘K), the app's only search: full-text search on the server as you type,
+// syntax tips while the query is empty, and a few actions. Opened from anywhere with
+// useSearchPalette().
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
 import type { SearchResponse } from '@myfluence/shared'
@@ -8,7 +10,7 @@ const api = useApi()
 const tree = useTree()
 const colorMode = useColorMode()
 
-const searchTerm = ref('')
+const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
 const response = ref<SearchResponse | null>(null)
 const loading = ref(false)
@@ -28,6 +30,13 @@ watch(
   },
   { immediate: true },
 )
+
+const TIPS: [string, string][] = [
+  ['"exact phrase"', 'an exact phrase'],
+  ['-draft', 'without a word'],
+  ['tag:work', 'notes with a tag'],
+  ['in:Projects', 'notes in a folder'],
+]
 
 const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
   const results = response.value?.results ?? []
@@ -58,6 +67,24 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         }
       }),
     },
+    ...(searchTerm.value.trim()
+      ? []
+      : [
+          {
+            id: 'tips',
+            label: 'Search tips',
+            items: TIPS.map(([example, description]) => ({
+              label: example,
+              suffix: description,
+              icon: 'i-lucide-lightbulb',
+              // Selecting a tip puts it in the search field.
+              onSelect: (event: Event) => {
+                event.preventDefault()
+                searchTerm.value = `${example} `
+              },
+            })),
+          },
+        ]),
     {
       id: 'actions',
       label: 'Actions',
@@ -67,11 +94,6 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           icon: 'i-lucide-file-plus',
           kbds: ['meta', 'alt', 'n'],
           onSelect: () => void tree.createPage(),
-        },
-        {
-          label: 'Full search',
-          icon: 'i-lucide-search',
-          to: { path: '/search', query: { q: searchTerm.value } },
         },
         { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
         { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
@@ -88,6 +110,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
 
 <template>
   <UDashboardSearch
+    v-model:open="open"
     v-model:search-term="searchTerm"
     :groups="groups"
     :loading="loading"

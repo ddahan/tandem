@@ -77,7 +77,9 @@ typically inside OneDrive so that it is backed up and synced.
 
 ## Search
 
-- `Cmd+K` palette (and a search page) over note titles, note text and attachment file names.
+- One search: the `Cmd+K` palette (also the sidebar's search button, the Home page's Search
+  button, and tags, which open it filtered on the tag), over note titles, note text and
+  attachment file names. With an empty query it lists recent notes and the search syntax.
 - Prefix matching while typing, accent-insensitive (`ete` finds `été`), typo-tolerant (a
   word without matches is replaced by the closest known word, with "Showing results for…"),
   quoted phrases, and filters: `tag:<tag>`, `in:<folder>`, `-word` to exclude.

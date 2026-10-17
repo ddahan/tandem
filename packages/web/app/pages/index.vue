@@ -4,6 +4,7 @@ import { formatRelative, type SearchResult, type TagCount } from '@myfluence/sha
 const api = useApi()
 const tree = useTree()
 const { settings } = useSettings()
+const { openSearch } = useSearchPalette()
 
 const recent = ref<SearchResult[]>([])
 const tags = ref<TagCount[]>([])
@@ -34,7 +35,7 @@ useHead({ title: 'Myfluence' })
 
 const actions: { label: string; icon: string; to?: string; onClick?: () => void }[] = [
   { label: 'New page', icon: 'i-lucide-file-plus', onClick: () => void tree.createPage() },
-  { label: 'Search', icon: 'i-lucide-search', to: '/search' },
+  { label: 'Search', icon: 'i-lucide-search', onClick: () => openSearch() },
   { label: 'Settings', icon: 'i-lucide-palette', to: '/settings' },
 ]
 </script>
@@ -124,7 +125,7 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
             <UButton
               v-for="tag in tags"
               :key="tag.tag"
-              :to="{ path: '/search', query: { q: `tag:${tag.tag}` } }"
+              @click="openSearch(`tag:${tag.tag} `)"
               :label="tag.tag"
               icon="i-lucide-tag"
               size="sm"
