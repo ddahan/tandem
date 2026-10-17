@@ -115,6 +115,40 @@ describe('saving', () => {
   })
 })
 
+/** One author per line of the note. */
+async function authors(vault: Awaited<ReturnType<typeof createTestVault>>['vault'], id: string) {
+  return (await vault.blame(id)).flatMap((r) => Array.from({ length: r.count }, () => r.author))
+}
+
+describe('authorship of moved lines', () => {
+  it('keeps the author of a block moved up or down (drag handle)', async () => {
+    const { vault } = await createTestVault()
+    const page = await vault.createPage({ title: 'N', content: 'Mine.\n', author: OWNER })
+    await vault.saveContent(page.id, 'Mine.\n\nTheirs.\n', { author: 'claude' })
+    await vault.saveContent(page.id, 'Theirs.\n\nMine.\n', { author: OWNER })
+    // Line 1 is the blank line between them: its author doesn't matter.
+    const textLines = async () => (await authors(vault, page.id)).filter((_, i) => i !== 1)
+    expect(await textLines()).toEqual(['claude', OWNER])
+    await vault.saveContent(page.id, 'Mine.\n\nTheirs.\n', { author: OWNER })
+    expect(await textLines()).toEqual([OWNER, 'claude'])
+  })
+
+  it('keeps the authors of a numbered list when its items move (renumbering)', async () => {
+    const { vault } = await createTestVault()
+    const page = await vault.createPage({ title: 'N', content: '1. a\n2. b\n', author: OWNER })
+    await vault.saveContent(page.id, '1. a\n2. b\n3. c\n', { author: 'claude' })
+    await vault.saveContent(page.id, '1. c\n2. a\n3. b\n', { author: OWNER })
+    expect(await authors(vault, page.id)).toEqual(['claude', OWNER, OWNER])
+  })
+
+  it('still gives new lines to their writer', async () => {
+    const { vault } = await createTestVault()
+    const page = await vault.createPage({ title: 'N', content: 'a\n', author: 'claude' })
+    await vault.saveContent(page.id, 'b\na\n', { author: OWNER })
+    expect(await authors(vault, page.id)).toEqual([OWNER, 'claude'])
+  })
+})
+
 describe('authorship normalization', () => {
   it('ignores table padding and bullet style changes', async () => {
     const { normalizeLine } = await import('../src/vault/blame.ts')
@@ -123,6 +157,8 @@ describe('authorship normalization', () => {
     expect(normalizeLine('* item')).toBe(normalizeLine('- item'))
     expect(normalizeLine('snake\\_case')).toBe(normalizeLine('snake_case'))
     expect(normalizeLine('(&lt;/&gt; button)')).toBe(normalizeLine('(</> button)'))
+    expect(normalizeLine('10. item')).toBe(normalizeLine('2. item'))
+    expect(normalizeLine('  3) item')).toBe(normalizeLine('  1. item'))
   })
 })
 

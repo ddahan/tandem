@@ -5,7 +5,9 @@
 // The editor re-serializes the whole note on each save, which can rewrite lines it didn't
 // really change (`*` bullets become `-`, escaping changes…). Lines are therefore compared after
 // a normalization that ignores those formatting-only differences, so that editing one line in
-// the app doesn't take the authorship of the whole note.
+// the app doesn't take the authorship of the whole note. Numbered items are compared without
+// their number (moving one renumbers the others), and a line moved elsewhere in the same save
+// (a block dragged with its handle) keeps its author.
 import { diffArrays } from 'diff'
 import type { BlameRange } from '@tandem/shared'
 
@@ -28,7 +30,8 @@ export function normalizeLine(line: string): string {
     line
       .replace(/\s+$/, '')
       .replace(/^(\s*)[*+](\s)/, '$1-$2')
-      .replace(/^(\s*)(\d+)\)(\s)/, '$1$2.$3')
+      // Numbered items: the number is the list's, not the line's (it changes when items move).
+      .replace(/^(\s*)\d+[.)](\s)/, '$11.$2')
       .replace(/\\([\\`*_{}[\]()#+\-.!|~<>])/g, '$1')
       .replace(/__(.+?)__/g, '**$1**')
       .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1_$2_')
@@ -87,15 +90,33 @@ export function updateBlame(
     oldAuthors = oldLines.map(() => ({ author, at }))
   }
 
-  const result: LineAuthor[] = []
+  const oldNormalized = oldLines.map(normalizeLine)
+  const changes = diffArrays(oldNormalized, newLines.map(normalizeLine))
+
+  // Removed lines, by content: an added line equal to one of them was moved, not written.
+  const moved = new Map<string, LineAuthor[]>()
   let oldIndex = 0
-  const changes = diffArrays(oldLines.map(normalizeLine), newLines.map(normalizeLine))
+  for (const change of changes) {
+    const count = change.count ?? change.value.length
+    if (change.added) continue
+    if (change.removed) {
+      for (let i = 0; i < count; i++) {
+        const line = oldNormalized[oldIndex + i]!
+        if (line.trim() === '') continue
+        moved.set(line, [...(moved.get(line) ?? []), oldAuthors[oldIndex + i] ?? { author, at }])
+      }
+    }
+    oldIndex += count
+  }
+
+  const result: LineAuthor[] = []
+  oldIndex = 0
   for (const change of changes) {
     const count = change.count ?? change.value.length
     if (change.removed) {
       oldIndex += count
     } else if (change.added) {
-      for (let i = 0; i < count; i++) result.push({ author, at })
+      for (const line of change.value) result.push(moved.get(line)?.shift() ?? { author, at })
     } else {
       for (let i = 0; i < count; i++) result.push(oldAuthors[oldIndex + i] ?? { author, at })
       oldIndex += count

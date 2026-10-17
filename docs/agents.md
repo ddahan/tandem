@@ -33,7 +33,8 @@ precisely. Prefer MCP or the CLI.
 - Name yourself (`X-Tandem-Author` header or `TANDEM_AUTHOR`): every line keeps the
   author who last changed it, and the history shows who wrote each version.
 - Prefer small edits (`append_to_note`, `replace_in_note`) to rewriting a note: rewriting
-  re-attributes every changed line to you.
+  re-attributes every changed line to you. Moving lines unchanged (reordering) keeps their
+  authors.
 - Reference notes by id, path (`Projects/Roadmap`, without `.md`) or title.
 - Never delete notes unless the owner asked; deleted notes go to the trash.
 - Dates in notes are French-formatted (`17/10/2026`), the interface is in English.
