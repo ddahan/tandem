@@ -319,6 +319,7 @@ function rowClass(item: TreeItem) {
               v-model="renameValue"
               size="xs"
               autofocus
+              aria-label="New title"
               class="min-w-0 flex-1"
               @click.stop
               @keydown.enter.prevent="commitRename"

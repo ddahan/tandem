@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The search palette (⌘K), the app's only search: full-text search on the server as you type,
+// The search palette (⌘⇧F), the app's only search: full-text search on the server as you type,
 // syntax tips while the query is empty, and a few actions. Opened from anywhere with
 // useSearchPalette().
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
@@ -122,6 +122,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
     :groups="groups"
     :loading="loading"
     :color-mode="false"
+    shortcut=""
     placeholder='Search notes… (tag:x, in:Folder, -word, "phrase")'
     :fuse="{ resultLimit: 20 }"
   >

@@ -27,14 +27,10 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     icon: 'i-lucide-app-window',
     shortcuts: [
       {
-        keys: [['meta', 'k']],
-        label: 'Search',
-        description: 'Notes, text and attachment names, and actions.',
-      },
-      {
         keys: [['meta', 'shift', 'f']],
         label: 'Search in all notes',
-        description: 'The same search, starting from the selected text.',
+        description:
+          'Notes, text and attachment names, and actions; starts from the selected text, if any.',
       },
       { keys: [['meta', 'alt', 'n']], label: 'New page' },
       { keys: [['meta', '/']], label: 'Keyboard shortcuts', description: 'This page.' },

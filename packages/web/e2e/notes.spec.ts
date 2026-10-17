@@ -548,6 +548,8 @@ test('finds and replaces in the note (⌘F), and searches all notes (⌘⇧F)', 
   await page
     .locator('.ProseMirror p', { hasText: 'Red apple' })
     .dblclick({ position: { x: 50, y: 8 } })
+  // The editor reads the browser's selection asynchronously (selectionchange).
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('apple')
   await page.keyboard.press('ControlOrMeta+F')
   const bar = page.getByTestId('find-bar')
   await expect(bar.getByLabel('Find in the note')).toHaveValue('apple')
@@ -567,6 +569,10 @@ test('finds and replaces in the note (⌘F), and searches all notes (⌘⇧F)', 
   await page.keyboard.press('Escape')
   await expect(bar).toHaveCount(0)
   await expect(page.locator('.ProseMirror .find-match')).toHaveCount(0)
+
+  // ⌘K isn't a shortcut: ⌘⇧F is the only one for the search palette.
+  await page.keyboard.press('ControlOrMeta+K')
+  await expect(page.getByPlaceholder(/Search notes/)).toHaveCount(0)
 
   // ⌘⇧F: the search palette, with the selected text.
   await page
@@ -601,6 +607,8 @@ test('manages pages from the tree with the keyboard', async ({ page, request }) 
   // F2 renames.
   await row('Key second').focus()
   await page.keyboard.press('F2')
+  // The field focuses itself once mounted.
+  await expect(page.getByLabel('New title')).toBeFocused()
   await page.keyboard.press('ControlOrMeta+A')
   await page.keyboard.type('Key renamed')
   await page.keyboard.press('Enter')

@@ -84,7 +84,7 @@ typically inside OneDrive so that it is backed up and synced.
 
 ## Search
 
-- One search: the `Cmd+K` palette (also the sidebar's search button, the Home page's Search
+- One search: the `Cmd+Shift+F` palette (also the sidebar's search button, the Home page's Search
   button, and tags, which open it filtered on the tag), over note titles, note text and
   attachment file names. With an empty query it lists recent notes and the search syntax.
 - Prefix matching while typing, accent-insensitive (`ete` finds `été`), typo-tolerant (a
@@ -124,7 +124,7 @@ typically inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
-- A Keyboard shortcuts page (sidebar, ⌘K palette, ⌘/) lists every shortcut and typing rule;
+- A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
   the tree's menu shows the shortcuts of its actions.
 - Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
   sepia or cool, each with a light and a dark variant), primary and neutral colors,

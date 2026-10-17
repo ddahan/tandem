@@ -19,7 +19,7 @@ MCP server or a CLI, and every line remembers who wrote it.
   icons (an emoji or an image) for any page or folder.
 - **Files**: drop or paste a file anywhere in a note; it is copied next to the note
   (`Note.assets/`) and shown as an image or a file chip.
-- **Search** (`⌘K`): prefixes, accents ignored, typos corrected, `"phrases"`, `-word`,
+- **Search** (`⌘⇧F`): prefixes, accents ignored, typos corrected, `"phrases"`, `-word`,
   `tag:x`, `in:Folder`, attachment names.
 - **History** of every note (a version per editing session and per author), with diffs and
   restore; **authorship** of each line (you, an agent, or an external edit).

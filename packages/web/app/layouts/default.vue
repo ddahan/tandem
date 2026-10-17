@@ -49,7 +49,11 @@ defineShortcuts({
       </template>
 
       <template #default="{ collapsed }">
-        <UDashboardSearchButton :collapsed="collapsed" class="bg-transparent ring-default" />
+        <UDashboardSearchButton
+          :collapsed="collapsed"
+          :kbds="['meta', 'shift', 'f']"
+          class="bg-transparent ring-default"
+        />
 
         <UNavigationMenu
           :collapsed="collapsed"
