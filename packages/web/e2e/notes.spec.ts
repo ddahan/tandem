@@ -334,7 +334,7 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
     .locator('.ProseMirror .file-chip')
     .evaluate((chip) => getComputedStyle(chip, '::before').backgroundImage)
   expect(chipIcon).toContain('data:image/svg+xml')
-  // A button: pointer cursor, no link underline, and a click downloads the file.
+  // A button: pointer cursor, no link underline, and a click opens the file in a new tab.
   const chip = page.locator('.ProseMirror .file-chip')
   await chip.hover()
   expect(await chip.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer')
@@ -345,8 +345,15 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   })
   expect(edges[0]).toBe(edges[1])
   expect(edges[2]).toBe('none')
-  const [download] = await Promise.all([page.waitForEvent('download'), chip.click()])
-  expect(download.suggestedFilename()).toBe('report.pdf')
+  const [opened, fileRequest] = await Promise.all([
+    page.context().waitForEvent('page'),
+    page
+      .context()
+      .waitForEvent('request', (r) => r.url().endsWith('/files/Drop%20note.assets/report.pdf')),
+    chip.click(),
+  ])
+  expect(fileRequest.frame().page()).toBe(opened)
+  await opened.close()
   await page.getByRole('tab', { name: 'Files' }).click()
   await expect(page.getByTestId('file-icon').locator('svg')).toHaveCount(1)
   // Hovering the file doesn't move its name, nor underline it (as the chips).
