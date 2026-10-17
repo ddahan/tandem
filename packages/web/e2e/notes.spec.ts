@@ -463,3 +463,36 @@ test('opening a note never saves it (nor takes its authorship)', async ({ page, 
   expect(new Set(blame.map((range) => range.author))).toEqual(new Set(['claude']))
   await expect(page.getByTestId('save-status')).toHaveCount(0)
 })
+
+test('shows diagrams alone in read mode, with their code in edit mode', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(
+    request,
+    'Diagram note',
+    'Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n',
+  )
+  await openNote(page, note.id)
+  const source = page.getByTestId('code-block-source')
+  const diagram = page.locator('.ProseMirror svg[id^="mermaid"]')
+  await expect(diagram).toBeVisible()
+  await expect(source).toBeHidden()
+
+  // Toggle from the block's toolbar.
+  await diagram.hover()
+  await page.getByRole('button', { name: 'Edit the diagram' }).click()
+  await expect(source).toBeVisible()
+  await expect(source).toContainText('A --> B')
+  await expect(diagram).toBeVisible()
+  await page.getByRole('button', { name: 'Show the diagram only' }).click()
+  await expect(source).toBeHidden()
+
+  // Or double-click the diagram.
+  await diagram.dblclick()
+  await expect(source).toBeVisible()
+  // Nothing changed in the note.
+  expect(await noteContent(request, note.id)).toBe(
+    'Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n',
+  )
+})

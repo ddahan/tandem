@@ -39,7 +39,8 @@ typically inside OneDrive so that it is backed up and synced.
 - **Autosave** in the background, about half a second after typing stops; a discreet status
   shows "Saving… / Saved". Nothing to click.
 - Formatting: headings, bold/italic/strike/inline code, links, lists, task lists, quotes,
-  code blocks with syntax highlighting and a copy button, Mermaid diagrams, callouts
+  code blocks with syntax highlighting and a copy button, Mermaid diagrams (read mode shows
+  the diagram only; edit mode, toggled per diagram, adds its code above it), callouts
   (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`…), collapsible sections (`<details>`), horizontal
   rules, emojis (`:shortcode:` and a picker), tables (GFM: no merged cells, inline content
   only), a `/` slash menu and a floating toolbar.
