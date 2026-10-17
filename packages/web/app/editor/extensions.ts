@@ -8,10 +8,12 @@ import { TableKit } from '@tiptap/extension-table'
 import type { AnyExtension, Editor } from '@tiptap/core'
 import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
+import { BlockKeys } from './block-keys'
 import { Callout } from './callout'
 import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips } from './file-chips'
 import { JoinLists } from './join-lists'
+import { Occurrences } from './occurrences'
 import { ResizableImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
 
@@ -36,6 +38,8 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     WikiLink.configure({ onOpen: options.onOpenWikiLink ?? (() => {}) }),
     FileChips,
     JoinLists,
+    BlockKeys,
+    Occurrences,
     FileHandler.configure({
       onDrop: (editor, files, pos) => options.onFiles?.(editor, files, pos),
       onPaste: (editor, files, htmlContent) => {

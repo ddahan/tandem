@@ -99,6 +99,12 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
         { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
         {
+          label: 'Keyboard shortcuts',
+          icon: 'i-lucide-keyboard',
+          kbds: ['meta', '/'],
+          to: '/shortcuts',
+        },
+        {
           label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
           icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',
           onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),

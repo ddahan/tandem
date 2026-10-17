@@ -496,3 +496,44 @@ test('shows diagrams alone in read mode, with their code in edit mode', async ({
     'Intro.\n\n```mermaid\nflowchart LR\n  A --> B\n```\n',
   )
 })
+
+test('edits with VS Code shortcuts, listed on the Shortcuts page', async ({ page, request }) => {
+  const note = await createNote(request, 'Keys note', 'One\n\nTwo\n\nThree\n')
+  await openNote(page, note.id)
+  const paragraph = (text: string) => page.locator('.ProseMirror p', { hasText: text })
+
+  // ⌥↓ moves the block, ⇧⌥↓ duplicates it, ⌘⇧K deletes it.
+  await paragraph('One').click()
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect.poll(() => noteContent(request, note.id)).toBe('Two\n\nOne\n\nThree\n')
+  await page.keyboard.press('Shift+Alt+ArrowDown')
+  await expect.poll(() => noteContent(request, note.id)).toBe('Two\n\nOne\n\nOne\n\nThree\n')
+  await page.keyboard.press('ControlOrMeta+Shift+K')
+  await expect.poll(() => noteContent(request, note.id)).toBe('Two\n\nOne\n\nThree\n')
+
+  // ⌘D twice selects two occurrences; typing replaces both.
+  await api(request, 'PUT', `/notes/${note.id}/content`, { content: 'cat and cat\n' }, 'claude')
+  await expect(paragraph('cat and cat')).toBeVisible()
+  await paragraph('cat and cat').click({ position: { x: 5, y: 5 } })
+  await page.keyboard.press('ControlOrMeta+D')
+  await page.keyboard.press('ControlOrMeta+D')
+  await page.keyboard.type('dog')
+  await expect.poll(() => noteContent(request, note.id)).toBe('dog and dog\n')
+
+  // ⌘/ opens the page listing them.
+  await page.keyboard.press('ControlOrMeta+/')
+  await expect(page).toHaveURL(/\/shortcuts$/)
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toBeVisible()
+  await expect(
+    page.getByTestId('shortcut').filter({ hasText: 'Select all occurrences' }),
+  ).toBeVisible()
+  // Every icon is bundled (none missing: icons named in .ts files too).
+  const missing = await page
+    .locator('.iconify')
+    .evaluateAll((icons) =>
+      icons
+        .filter((icon) => getComputedStyle(icon).maskImage === 'none')
+        .map((icon) => icon.className),
+    )
+  expect(missing).toEqual([])
+})

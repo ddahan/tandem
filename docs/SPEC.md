@@ -114,6 +114,11 @@ typically inside OneDrive so that it is backed up and synced.
 - Nuxt UI Dashboard layout: sidebar (tree, search, settings), note header (breadcrumb, tags,
   save status, actions), editor, collapsible right panel (outline, backlinks, history,
   attachments). Full-width toggle. Keyboard shortcuts throughout.
+- VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),
+  delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a
+  word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once (Esc goes back to one
+  selection; pasting into several isn't supported).
+- A Keyboard shortcuts page (sidebar, ⌘K palette, ⌘/) lists every shortcut and typing rule.
 - Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
   sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the owner's display name.

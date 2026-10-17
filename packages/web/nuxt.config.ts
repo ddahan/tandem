@@ -41,7 +41,11 @@ export default defineNuxtConfig({
   icon: {
     provider: 'none',
     fallbackToApi: false,
-    clientBundle: { scan: true, sizeLimitKb: 512 },
+    clientBundle: {
+      // .ts files too (the default only scans .vue…): icons named in utils and composables.
+      scan: { globInclude: ['app/**/*.{vue,ts}'] },
+      sizeLimitKb: 512,
+    },
   },
 
   nitro: {

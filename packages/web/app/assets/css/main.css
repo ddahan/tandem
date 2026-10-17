@@ -237,6 +237,27 @@ html.dark[data-tone='cool'] {
   text-decoration: line-through;
 }
 
+/* Extra selections (⌘D, ⌘⇧L): drawn like the selection, with blinking cursors */
+.note-editor .occurrence-selection {
+  background: color-mix(in oklab, var(--ui-primary) 28%, transparent);
+  border-radius: 2px;
+}
+.note-editor .occurrence-caret {
+  display: inline-block;
+  width: 0;
+  height: 1.2em;
+  margin-inline: -1px;
+  vertical-align: text-bottom;
+  border-left: 2px solid var(--ui-text-highlighted);
+  animation: occurrence-blink 1s steps(1) infinite;
+  pointer-events: none;
+}
+@keyframes occurrence-blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
 /* Tables */
 .note-editor .tableWrapper {
   overflow-x: auto;

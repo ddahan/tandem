@@ -247,8 +247,12 @@ defineShortcuts({
     usingInput: true,
     handler: () => void doc.flush(),
   },
-  meta_shift_e: () => (mode.value = mode.value === 'source' ? 'edit' : 'source'),
-  meta_backslash: () => (panelOpen.value = !panelOpen.value),
+  // usingInput: these work while typing in the note too.
+  meta_shift_e: {
+    usingInput: true,
+    handler: () => (mode.value = mode.value === 'source' ? 'edit' : 'source'),
+  },
+  meta_backslash: { usingInput: true, handler: () => (panelOpen.value = !panelOpen.value) },
 })
 
 const created = computed(() => (node.value ? formatDateTime(node.value.createdAt) : ''))

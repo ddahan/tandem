@@ -8,6 +8,7 @@ const navigation = computed<NavigationMenuItem[]>(() => [
   { label: 'Home', icon: 'i-lucide-house', to: '/' },
   { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
+  { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },
 ])
 
 const colorModes = [
@@ -17,7 +18,9 @@ const colorModes = [
 ]
 
 defineShortcuts({
-  meta_alt_n: () => void tree.createPage(),
+  meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
+  // From the editor too (usingInput): the editor doesn't use ⌘/.
+  'meta_/': { usingInput: true, handler: () => void navigateTo('/shortcuts') },
 })
 </script>
 

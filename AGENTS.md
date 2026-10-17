@@ -64,6 +64,8 @@ different data folders. **Never point the dev servers or tests at the owner's da
 - **Markdown**: anything the editor writes must survive a round-trip (add a case to
   `packages/web/test/markdown.test.ts`), and new syntax must be documented in
   [docs/agents.md](docs/agents.md).
+- **Shortcuts**: a new or changed keyboard shortcut or typing rule goes in
+  `packages/web/app/utils/shortcuts.ts` too: the Shortcuts page shows that list.
 - **Security**: the app has no authentication and binds to 127.0.0.1; notes can be written by
   anyone, so rendered HTML is sanitized and `/files` never serves hidden files.
 
