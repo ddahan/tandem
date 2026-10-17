@@ -83,7 +83,8 @@ the web app, agents and the watcher never interleave. Internal methods (`saveInt
 2. **Authorship** is updated: line diff (`blame.ts`) between the previous and new content;
    unchanged lines keep their author. Lines are compared after `normalizeLine`, which ignores
    formatting-only changes made by the editor's serializer (bullet style, escaping, table
-   padding…).
+   padding…) and list numbers. A removed line found again among the added ones (same save)
+   was moved: it keeps its author.
 3. The file is written (unless the change came from the file itself), the row updated, the page
    reindexed (search, links) and a `note` event emitted.
 
@@ -178,6 +179,10 @@ folders and the versions.
 - Attachment paths: notes use paths relative to themselves; the editor gets `/files/…` URLs
   (`utils/markdown-paths.ts`), converted back on save, and `normalizeMarkdown` tidies blank
   lines the serializer adds.
+- Block handle (`UEditorDragHandle`, nested: list items move one by one): its distance from
+  the block is computed in Floating UI's `offset` (`handleOptions` in `NoteEditor.vue`), which
+  adds the marker margin of bullet and numbered items. TipTap's Vue handle ignores a custom
+  reference element, so the offset is the only way in.
 - Authorship view: the content split into blocks with marked (`utils/authorship.ts`), each
   block given the latest author of its lines, rendered with `utils/render-markdown.ts`
   (sanitized).

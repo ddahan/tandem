@@ -454,6 +454,41 @@ function onUpdate(value: unknown) {
   emit('change', markdown)
 }
 
+// The block under the drag handle (its `hover` event comes just before it is positioned).
+let handlePos = -1
+function onHandleHover({ pos }: { pos: number }) {
+  handlePos = pos
+}
+
+/**
+ * How far left of its block the drag handle goes: 8px, plus, for bullet and numbered items, the
+ * margin where their marker is drawn (outside the item), so that the handle doesn't cover it.
+ * Task items keep the plain distance: their checkbox is inside the item. (TipTap's Vue handle
+ * doesn't pass a custom reference element through, but Floating UI's offset does.)
+ */
+function markerGutter(): number {
+  const editor = editorRef.value?.editor
+  if (!editor || handlePos < 0) return 0
+  if (editor.state.doc.nodeAt(handlePos)?.type.name !== 'listItem') return 0
+  const item = editor.view.nodeDOM(handlePos)
+  const list = item instanceof HTMLElement ? item.parentElement : null
+  if (!(item instanceof HTMLElement) || !list) return 0
+  return Math.max(0, item.getBoundingClientRect().left - list.getBoundingClientRect().left)
+}
+
+const handleOptions = {
+  offset: ({
+    rects,
+  }: {
+    rects: { reference: { height: number }; floating: { height: number } }
+  }) => ({
+    mainAxis: 8 + markerGutter(),
+    // As Nuxt UI does: centered on a one-line block, at the top of a taller one.
+    alignmentAxis:
+      rects.reference.height > 40 ? 0 : (rects.reference.height - rects.floating.height) / 2,
+  }),
+}
+
 // The `:` menu's list (about 800 KB) loads after the note shows, not with it.
 const emojis = shallowRef<EmojiItem[]>([])
 onMounted(() => {
@@ -593,7 +628,12 @@ defineExpose({
       <!-- Nested: list items get their own handle (one item moves, not the whole list). No edge
            detection: it would pick the whole list as the pointer crosses the item's left edge,
            on its way to the handle. -->
-      <UEditorDragHandle :editor="editor" :nested="{ edgeDetection: 'none' }" />
+      <UEditorDragHandle
+        :editor="editor"
+        :nested="{ edgeDetection: 'none' }"
+        :options="handleOptions"
+        @hover="onHandleHover"
+      />
     </UEditor>
 
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFilesPicked" />

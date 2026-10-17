@@ -44,6 +44,10 @@ typically inside OneDrive so that it is backed up and synced.
   (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`…), collapsible sections (`<details>`), horizontal
   rules, emojis (`:shortcode:` and a picker), tables (GFM: no merged cells, inline content
   only), a `/` slash menu and a floating toolbar.
+- **Moving blocks**: a handle (⋮⋮) left of the block under the pointer drags it anywhere in the
+  note: paragraphs, headings, tables, code, callouts, and list items one by one (with their
+  nested items; into another list, they take its kind). For bullet and numbered items the
+  handle sits left of the marker, never over it. Moving keeps each line's author.
 - **Images** display inline and can be resized (saved as `<img src="…" width="…">`).
 - **Files**: drop or paste a file anywhere in a note: it is copied into the note's `.assets/`
   folder and inserted at the drop point, as an image or as a file chip (a link, with the
@@ -67,7 +71,8 @@ typically inside OneDrive so that it is backed up and synced.
 - **Line authorship**: every save records its author: the owner (from the UI), an agent
   (named by the CLI `--author` or `TANDEM_AUTHOR`, or by the MCP connection), or
   `external` (a direct file edit). Lines keep the author who last changed them, like
-  `git blame`. An "Authorship" view shows each block with its author's color, author and
+  `git blame`; moving lines (a dragged block, renumbered list items) isn't changing them.
+  An "Authorship" view shows each block with its author's color, author and
   date. A paragraph edited by two authors belongs to the last one.
 
 ## Organization

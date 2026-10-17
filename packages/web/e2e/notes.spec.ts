@@ -453,6 +453,49 @@ test('moves one list item with the block handle, reached with the mouse', async 
     .toBe('Intro.\n\n- [ ] TODO\n- [ ] Hey\n\nEnd.\n')
 })
 
+test('places the handle left of list markers, and a moved item keeps its author', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Numbered note', '1. Mine\n')
+  await api(
+    request,
+    'PUT',
+    `/notes/${note.id}/content`,
+    { content: '1. Mine\n2. Theirs\n' },
+    'claude',
+  )
+  await openNote(page, note.id)
+  const item = page.locator('.ProseMirror li', { hasText: 'Theirs' })
+  const box = (await item.boundingBox())!
+  const y = box.y + box.height / 2
+  await page.mouse.move(box.x + 60, y)
+  await page.mouse.move(box.x - 40, y, { steps: 12 })
+  const handle = page.locator('button[data-slot="handle"]')
+  await expect(handle).toBeVisible()
+  // Left of the "2." marker, which is drawn in the list's margin.
+  const list = (await page.locator('.ProseMirror ol').boundingBox())!
+  const grip = (await handle.boundingBox())!
+  expect(grip.x + grip.width).toBeLessThanOrEqual(list.x + 1)
+
+  // Claude's item moves above mine: both keep their author (no renumbering takeover).
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2, { steps: 4 })
+  const target = (await page.locator('.ProseMirror li', { hasText: 'Mine' }).boundingBox())!
+  await page.mouse.down()
+  await page.mouse.move(target.x + 4, target.y + 3, { steps: 16 })
+  await page.mouse.up()
+  await expect.poll(() => noteContent(request, note.id)).toBe('1. Theirs\n2. Mine\n')
+  const blame = await api<{ count: number; author: string }[]>(
+    request,
+    'GET',
+    `/notes/${note.id}/blame`,
+  )
+  expect(blame.flatMap((r) => Array.from({ length: r.count }, () => r.author))).toEqual([
+    'claude',
+    'owner',
+  ])
+})
+
 test('inserts an emoji from the : menu (its list loads after the note)', async ({
   page,
   request,
