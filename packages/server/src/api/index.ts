@@ -47,6 +47,7 @@ const settingsPatch = z
     editorFont: z.enum(['sans', 'serif', 'mono', 'system']),
     editorWidth: z.enum(['narrow', 'medium', 'wide', 'full']),
     editorFontSize: z.enum(['small', 'medium', 'large', 'xlarge']),
+    backgroundTone: z.enum(['white', 'paper', 'sepia', 'cool']),
   })
   .partial()
 

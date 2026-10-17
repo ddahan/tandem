@@ -100,6 +100,8 @@ export interface Settings {
   editorWidth: 'narrow' | 'medium' | 'wide' | 'full'
   /** Text size in notes only (not in the interface). */
   editorFontSize: 'small' | 'medium' | 'large' | 'xlarge'
+  /** Tint of the backgrounds and borders, in light and dark mode. */
+  backgroundTone: 'white' | 'paper' | 'sepia' | 'cool'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -110,6 +112,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorFont: 'sans',
   editorWidth: 'medium',
   editorFontSize: 'medium',
+  backgroundTone: 'white',
 }
 
 /** Server-sent events, on `/api/events`. */

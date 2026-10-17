@@ -41,6 +41,13 @@ const widths: { value: Settings['editorWidth']; label: string }[] = [
   { value: 'wide', label: 'Wide' },
   { value: 'full', label: 'Full' },
 ]
+// Previews of the background tones (the real colors are in main.css): light and dark.
+const tones: { value: Settings['backgroundTone']; label: string; light: string; dark: string }[] = [
+  { value: 'white', label: 'White', light: '#ffffff', dark: 'var(--color-neutral-900)' },
+  { value: 'paper', label: 'Paper', light: '#fbf8f1', dark: '#1e1c19' },
+  { value: 'sepia', label: 'Sepia', light: '#f5edda', dark: '#221d16' },
+  { value: 'cool', label: 'Cool', light: '#f7f9fc', dark: '#161b22' },
+]
 const sizes: { value: Settings['editorFontSize']; label: string }[] = [
   { value: 'small', label: 'Small' },
   { value: 'medium', label: 'Medium' },
@@ -104,6 +111,31 @@ async function set(patch: Partial<Settings>) {
                 :variant="colorMode.preference === mode.value ? 'soft' : 'outline'"
                 @click="colorMode.preference = mode.value"
               />
+            </div>
+          </UFormField>
+
+          <UFormField
+            label="Background"
+            description="A tint for the whole window, in light and dark mode."
+          >
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <button
+                v-for="tone in tones"
+                :key="tone.value"
+                type="button"
+                class="rounded-lg border border-default p-1.5 text-start transition-colors hover:bg-elevated"
+                :class="
+                  settings.backgroundTone === tone.value && 'border-primary ring-1 ring-primary'
+                "
+                :aria-label="`Background: ${tone.label}`"
+                @click="set({ backgroundTone: tone.value })"
+              >
+                <span class="flex h-12 overflow-hidden rounded-md border border-default">
+                  <span class="flex-1" :style="{ background: tone.light }" />
+                  <span class="flex-1" :style="{ background: tone.dark }" />
+                </span>
+                <span class="mt-1.5 block px-0.5 text-xs text-muted">{{ tone.label }}</span>
+              </button>
             </div>
           </UFormField>
 

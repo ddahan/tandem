@@ -27,6 +27,67 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* --- Background tones (Settings) ------------------------------------------------------------
+   Replace Nuxt UI's background and border colors, in light and dark mode. "white" keeps Nuxt
+   UI's own colors. */
+
+html[data-tone='paper'] {
+  --ui-bg: #fbf8f1;
+  --ui-bg-muted: #f5f0e5;
+  --ui-bg-elevated: #efe8da;
+  --ui-bg-accented: #e5dccb;
+  --ui-border: #e6dece;
+  --ui-border-muted: #ece5d7;
+  --ui-border-accented: #d6cbb5;
+}
+html.dark[data-tone='paper'] {
+  --ui-bg: #1e1c19;
+  --ui-bg-muted: #26231f;
+  --ui-bg-elevated: #2c2924;
+  --ui-bg-accented: #3a362f;
+  --ui-border: #34302a;
+  --ui-border-muted: #3d3831;
+  --ui-border-accented: #4a443b;
+}
+
+html[data-tone='sepia'] {
+  --ui-bg: #f5edda;
+  --ui-bg-muted: #eee4cd;
+  --ui-bg-elevated: #e7dbc0;
+  --ui-bg-accented: #ddcfae;
+  --ui-border: #dfd2b4;
+  --ui-border-muted: #e6dbc2;
+  --ui-border-accented: #cbbb97;
+}
+html.dark[data-tone='sepia'] {
+  --ui-bg: #221d16;
+  --ui-bg-muted: #2a241b;
+  --ui-bg-elevated: #312a20;
+  --ui-bg-accented: #40372a;
+  --ui-border: #3a3226;
+  --ui-border-muted: #43392c;
+  --ui-border-accented: #54483a;
+}
+
+html[data-tone='cool'] {
+  --ui-bg: #f7f9fc;
+  --ui-bg-muted: #eff3f8;
+  --ui-bg-elevated: #e7edf4;
+  --ui-bg-accented: #dbe3ed;
+  --ui-border: #dfe6ee;
+  --ui-border-muted: #e7ecf2;
+  --ui-border-accented: #c9d3df;
+}
+html.dark[data-tone='cool'] {
+  --ui-bg: #161b22;
+  --ui-bg-muted: #1c222b;
+  --ui-bg-elevated: #222a35;
+  --ui-bg-accented: #2d3744;
+  --ui-border: #29313d;
+  --ui-border-muted: #313a47;
+  --ui-border-accented: #3d4857;
+}
+
 /* --- Editor content ---------------------------------------------------------------------- */
 
 .note-editor .ProseMirror {

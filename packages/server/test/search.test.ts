@@ -100,6 +100,13 @@ describe('search', () => {
     expect(result?.attachments).toEqual(['budget-2026.xlsx'])
   })
 
+  it('lists notes matching only filters', async () => {
+    const { vault, ids } = await seeded()
+    expect((await vault.searchNotes('tag:work')).results.map((r) => r.id)).toEqual([ids.project])
+    expect((await vault.searchNotes('in:Projects')).results.map((r) => r.id)).toEqual([ids.project])
+    expect((await vault.searchNotes('tag:nothing')).results).toEqual([])
+  })
+
   it('lists recent notes for an empty query', async () => {
     const { vault } = await seeded()
     const { results } = await vault.searchNotes('')

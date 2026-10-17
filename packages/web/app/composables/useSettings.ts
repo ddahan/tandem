@@ -36,6 +36,8 @@ export function useSettings() {
     root.setProperty('--editor-width', EDITOR_WIDTHS[value.editorWidth])
     root.setProperty('--editor-font-size', EDITOR_FONT_SIZES[value.editorFontSize])
     root.setProperty('--editor-font', EDITOR_FONTS[value.editorFont])
+    // Background tones are defined in main.css, per tone and color mode.
+    document.documentElement.dataset.tone = value.backgroundTone
   }
 
   async function load() {

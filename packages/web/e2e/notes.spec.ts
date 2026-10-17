@@ -287,3 +287,21 @@ test('changes the text size of notes only', async ({ page, request }) => {
   expect(await fontSize('[data-testid="tree-Text size note"]')).toBe('14px')
   await api(request, 'PATCH', '/settings', { editorFontSize: 'medium' })
 })
+
+test('tints the background, in light and dark mode', async ({ page, request }) => {
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Light', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Background: Paper' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-tone', 'paper')
+  const background = () =>
+    page.evaluate(() =>
+      getComputedStyle(document.documentElement).getPropertyValue('--ui-bg').trim(),
+    )
+  await expect.poll(background).toBe('#fbf8f1')
+  await page.getByRole('button', { name: 'Dark', exact: true }).first().click()
+  await expect.poll(background).toBe('#1e1c19')
+  expect((await api<{ backgroundTone: string }>(request, 'GET', '/settings')).backgroundTone).toBe(
+    'paper',
+  )
+  await api(request, 'PATCH', '/settings', { backgroundTone: 'white' })
+})

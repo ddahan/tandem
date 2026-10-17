@@ -51,7 +51,7 @@ import {
   uniqueName,
 } from './files.ts'
 import { Lock } from './lock.ts'
-import { SearchIndex, type Candidate } from './search.ts'
+import { SearchIndex, matchesFilters, parseQuery, type Candidate } from './search.ts'
 import { markdownToText } from './text.ts'
 
 export type NodeRow = typeof nodes.$inferSelect
@@ -200,24 +200,35 @@ export class Vault {
     const pages = new Map(rows.filter((row) => row.kind === 'page').map((row) => [row.id, row]))
     const owners = ownersByDir(rows)
 
-    if (!query.trim()) {
-      const recent = [...pages.values()]
-        .toSorted((a, b) => b.updatedAt - a.updatedAt)
-        .slice(0, limit)
-      return {
-        correctedQuery: null,
-        results: await Promise.all(
-          recent.map(async (row) =>
-            searchResult(toTreeNode(row, owners), '', [], await this.tagsOf(row.id)),
-          ),
-        ),
-      }
-    }
-
     const tagRows = await this.db.select().from(tags)
     const tagsById = new Map<string, string[]>()
     for (const { nodeId, tag } of tagRows)
       tagsById.set(nodeId, [...(tagsById.get(nodeId) ?? []), tag])
+
+    // No words to search (empty, or only `tag:` / `in:` filters): recent notes, filtered.
+    const parsed = parseQuery(query)
+    if (!parsed.words.length && !parsed.phrases.length) {
+      const recent = [...pages.values()]
+        .filter((row) =>
+          matchesFilters(
+            {
+              path: row.path,
+              tags: tagsById.get(row.id) ?? [],
+              attachments: [],
+              updatedAt: row.updatedAt,
+            },
+            parsed,
+          ),
+        )
+        .toSorted((a, b) => b.updatedAt - a.updatedAt)
+        .slice(0, limit)
+      return {
+        correctedQuery: null,
+        results: recent.map((row) =>
+          searchResult(toTreeNode(row, owners), '', [], tagsById.get(row.id) ?? []),
+        ),
+      }
+    }
 
     const response = this.search.search(query, {
       limit,

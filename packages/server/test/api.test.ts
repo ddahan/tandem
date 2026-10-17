@@ -115,6 +115,10 @@ describe('API', () => {
     expect(
       (await client.settings.$patch({ json: { editorFontSize: 'huge' as 'large' } })).status,
     ).toBe(400)
+    expect(
+      (await (await client.settings.$patch({ json: { backgroundTone: 'paper' } })).json())
+        .backgroundTone,
+    ).toBe('paper')
     expect(settings.primaryColor).toBe('emerald')
     expect((await client.settings.$patch({ json: { primaryColor: 'Not a color!' } })).status).toBe(
       400,

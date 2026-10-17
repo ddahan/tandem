@@ -285,7 +285,7 @@ export interface Candidate {
   updatedAt: number
 }
 
-function matchesFilters(candidate: Candidate, parsed: ParsedQuery): boolean {
+export function matchesFilters(candidate: Candidate, parsed: ParsedQuery): boolean {
   const tags = new Set(candidate.tags.map(foldText))
   if (!parsed.tags.every((tag) => tags.has(foldText(tag)))) return false
   const path = foldText(candidate.path)

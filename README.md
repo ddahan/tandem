@@ -24,7 +24,7 @@ MCP server or a CLI, and every line remembers who wrote it.
   restore; **authorship** of each line (you, an agent, or an external edit).
 - **Trash** with restore and permanent delete.
 - **For agents**: an MCP server and a CLI with the same operations.
-- Light, dark or system theme; accent color, gray tone, corner radius, editor font, width and text size.
+- Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.
 - Installable as an app with its own window and Dock icon.
 
 ## Requirements

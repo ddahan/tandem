@@ -107,7 +107,8 @@ typically inside OneDrive so that it is backed up and synced.
 - Nuxt UI Dashboard layout: sidebar (tree, search, settings), note header (breadcrumb, tags,
   save status, actions), editor, collapsible right panel (outline, backlinks, history,
   attachments). Full-width toggle. Keyboard shortcuts throughout.
-- Light, dark or system color mode. Settings page: color mode, primary and neutral colors,
+- Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
+  sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the owner's display name.
 - Installable as an app (web app manifest): its own window and Dock icon, via Safari's
   "File → Add to Dock" or Chrome's "Install".
