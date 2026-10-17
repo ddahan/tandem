@@ -376,7 +376,10 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
         :style="{ maxWidth: fullWidth ? '100%' : 'calc(var(--editor-width) + 6rem)' }"
       >
         <!-- Find bar: pinned to the top right of the note while it scrolls. -->
-        <div v-if="findOpen && editor?.editor" class="sticky top-2 z-30 flex h-0 justify-end">
+        <div
+          v-if="findOpen && editor?.editor"
+          class="sticky top-2 z-30 flex h-0 items-start justify-end"
+        >
           <FindBar
             ref="findBar"
             v-model:replacing="findReplacing"

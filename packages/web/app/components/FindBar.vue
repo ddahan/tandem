@@ -59,7 +59,7 @@ onMounted(() => focus())
 
 <template>
   <div
-    class="flex w-96 flex-col gap-1.5 rounded-lg border border-default bg-default p-1.5 shadow-lg"
+    class="flex w-96 flex-col gap-1.5 rounded-lg border border-default bg-default p-1.5 shadow-sm"
     role="search"
     data-testid="find-bar"
     @keydown.esc.prevent="close"
