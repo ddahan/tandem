@@ -187,41 +187,15 @@ html.dark[data-tone='cool'] {
   display: none;
 }
 .note-editor .file-chip {
-  position: relative;
+  cursor: pointer;
+  transition: background-color 120ms;
 }
-/* No link underline on chips (Nuxt UI underlines links on hover): a tooltip says how to open
-   the file instead. */
+.note-editor .file-chip:hover {
+  background: var(--ui-bg-accented);
+}
+/* A chip is a button, not a link: no link underline (Nuxt UI underlines links on hover). */
 .note-editor a:has(.file-chip) {
   border-bottom-color: transparent !important;
-}
-.note-editor .file-chip[data-hint]::after {
-  content: attr(data-hint);
-  position: absolute;
-  bottom: calc(100% + 0.4rem);
-  left: 50%;
-  z-index: 20;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius);
-  background: var(--ui-bg);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
-  color: var(--ui-text-highlighted);
-  font-family: var(--font-sans);
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-50%, 2px);
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease;
-}
-.note-editor .file-chip[data-hint]:hover::after {
-  opacity: 1;
-  transform: translate(-50%, 0);
-  transition-delay: 250ms;
 }
 
 /* Task lists */

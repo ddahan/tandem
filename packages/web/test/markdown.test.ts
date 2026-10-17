@@ -188,11 +188,6 @@ describe('file icons', () => {
       ...dom.querySelectorAll<HTMLElement>('.file-chip:not(.file-chip--continued)'),
     ].map((chip) => decodeURIComponent(chip.style.getPropertyValue('--file-icon')))
     expect(icons).toHaveLength(2)
-    // A hint on how to open the file, on the first part of each chip only.
-    expect(dom.querySelectorAll('.file-chip[data-hint]')).toHaveLength(2)
-    expect(dom.querySelector('.file-chip')?.getAttribute('data-hint')).toMatch(
-      /(⌘|Ctrl) \+ click to open/,
-    )
     expect(dom.querySelectorAll('.file-chip--continued')).toHaveLength(1)
   })
 })

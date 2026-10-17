@@ -253,18 +253,15 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
     .locator('.ProseMirror .file-chip')
     .evaluate((chip) => getComputedStyle(chip, '::before').backgroundImage)
   expect(chipIcon).toContain('data:image/svg+xml')
-  // Hovering shows how to open it, without the link underline.
+  // A button: pointer cursor, no link underline, and a click downloads the file.
   const chip = page.locator('.ProseMirror .file-chip')
   await chip.hover()
-  await expect
-    .poll(() => chip.evaluate((element) => getComputedStyle(element, '::after').opacity))
-    .toBe('1')
-  expect(await chip.evaluate((element) => getComputedStyle(element, '::after').content)).toMatch(
-    /click to open/,
-  )
+  expect(await chip.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer')
   expect(
     await chip.evaluate((element) => getComputedStyle(element.closest('a')!).borderBottomColor),
   ).toBe('rgba(0, 0, 0, 0)')
+  const [download] = await Promise.all([page.waitForEvent('download'), chip.click()])
+  expect(download.suggestedFilename()).toBe('report.pdf')
   await page.getByRole('tab', { name: 'Files' }).click()
   await expect(page.getByTestId('file-icon').locator('svg')).toHaveCount(1)
   await expect

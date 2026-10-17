@@ -46,8 +46,8 @@ typically inside OneDrive so that it is backed up and synced.
 - **Images** display inline and can be resized (saved as `<img src="…" width="…">`).
 - **Files**: drop or paste a file anywhere in a note: it is copied into the note's `.assets/`
   folder and inserted at the drop point, as an image or as a file chip (a link, with the
-  icon of its file type, or a generic one). Hovering a chip shows how to open the file
-  (⌘/Ctrl + click; a plain click places the cursor). Files over
+  icon of its file type, or a generic one). A chip is a button: clicking it downloads the
+  file. Files over
   10 MB ask for confirmation first. No maximum size.
 - **Links between notes**: `[[Note title]]` (or `[[Folder/Note title]]` when titles are
   ambiguous), with autocomplete when typing `[[`, a backlinks panel, and automatic link

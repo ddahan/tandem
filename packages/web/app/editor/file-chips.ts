@@ -1,19 +1,25 @@
 // Links to attachments (`Note.assets/…`) are shown as file chips: the file type's icon, the
-// file name, a pill. The Markdown stays a plain link; only the display changes (decorations).
+// file name, a pill, and a click downloads the file. The Markdown stays a plain link; only the
+// display changes (decorations).
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { fileIconCssUrl } from '../utils/file-icons'
 
-/** How to open a file from its chip (a plain click places the cursor, to edit the link). */
-const OPEN_HINT =
-  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
-    ? '⌘ + click to open'
-    : 'Ctrl + click to open'
-
 export function isAttachmentHref(href: string): boolean {
   return /\.assets\/[^/]+$/.test(href)
+}
+
+/** Downloads a file of the data folder (same origin, so the `download` attribute applies). */
+export function downloadFile(href: string): void {
+  const name = decodeURIComponent(href.split(/[?#]/)[0]?.split('/').pop() ?? '')
+  const link = document.createElement('a')
+  link.href = href
+  link.download = name
+  document.body.append(link)
+  link.click()
+  link.remove()
 }
 
 function decorations(doc: ProseMirrorNode): DecorationSet {
@@ -35,11 +41,7 @@ function decorations(doc: ProseMirrorNode): DecorationSet {
         pos + node.nodeSize,
         continued
           ? { class: 'file-chip file-chip--continued' }
-          : {
-              class: 'file-chip',
-              style: `--file-icon: ${fileIconCssUrl(href)}`,
-              'data-hint': OPEN_HINT,
-            },
+          : { class: 'file-chip', style: `--file-icon: ${fileIconCssUrl(href)}` },
       ),
     )
     previous = { href, end: pos + node.nodeSize }
@@ -63,7 +65,19 @@ export const FileChips = Extension.create({
           decorations(state) {
             return this.getState(state)
           },
-          // Cmd/Ctrl-click opens links (a plain click places the cursor, to edit them).
+          handleDOMEvents: {
+            // A chip is a button: a click downloads the file (without moving the cursor there).
+            mousedown(_view, event) {
+              if (event.button !== 0) return false
+              const chip = (event.target as Element | null)?.closest?.('.file-chip')
+              const href = chip?.closest('a')?.getAttribute('href')
+              if (!href || !isAttachmentHref(href)) return false
+              event.preventDefault()
+              downloadFile(href)
+              return true
+            },
+          },
+          // Cmd/Ctrl-click opens other links (a plain click places the cursor, to edit them).
           handleClick(view, pos, event) {
             if (!(event.metaKey || event.ctrlKey)) return false
             const link = view.state.doc
