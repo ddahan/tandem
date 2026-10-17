@@ -42,10 +42,7 @@ defineShortcuts({
       :min-size="14"
       :default-size="17"
       :max-size="30"
-      :ui="{
-        body: 'gap-3 pb-2',
-        footer: 'flex-col items-stretch gap-1 border-t border-default py-2',
-      }"
+      :ui="{ body: 'gap-3 pb-2', footer: 'border-t border-default py-2' }"
     >
       <template #header="{ collapsed }">
         <AppLogo :collapsed="collapsed" />
@@ -69,15 +66,17 @@ defineShortcuts({
             />
           </UTooltip>
         </div>
-      </template>
 
-      <template #footer="{ collapsed }">
         <UNavigationMenu
           :collapsed="collapsed"
           :items="navigation"
           orientation="vertical"
           tooltip
+          class="mt-auto"
         />
+      </template>
+
+      <template #footer="{ collapsed }">
         <div
           class="flex w-full items-center gap-1"
           :class="collapsed ? 'flex-col' : 'justify-between'"
