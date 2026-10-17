@@ -191,6 +191,11 @@ folders and the versions.
   `nuxt generate`.
 - Icons are bundled at build time (no icon API at runtime): use literal `i-lucide-*` names in
   the source so the build finds them.
+- Landing page (`pages/landing.vue`, `layout: false`, demos in `components/landing/`): CSS
+  animations (classes prefixed `landing-`), `v-reveal` (`utils/reveal.ts`) for scroll reveals,
+  and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,
+  which shows the final state). Its claims are real: commands and tool names from the CLI and
+  MCP server, timings from `bench`.
 - File-type icons (attachment chips, Files panel) come from the VS Code icon set:
   `utils/file-icon-map.ts` maps extensions to icons, and `scripts/file-icons.ts` extracts their
   SVG into `utils/file-icons.generated.ts` (committed; regenerate after changing the map with

@@ -125,6 +125,10 @@ typically inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
+- A landing page at `/landing` presents Myfluence (full width, without the sidebar): a note
+  written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
+  shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
+  shows its final state.
 - A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
   the tree's menu shows the shortcuts of its actions.
 - Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
