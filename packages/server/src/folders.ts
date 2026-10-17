@@ -43,16 +43,54 @@ export async function folderProblem(
   return writable ? null : "Tandem can't write in this folder."
 }
 
+const mobileDocuments = () => join(homedir(), 'Library', 'Mobile Documents')
+const iCloudDrive = () => join(mobileDocuments(), 'com~apple~CloudDocs')
+
+/** Apple's apps whose iCloud folder Finder shows in iCloud Drive (others are internal). */
+const APPLE_DOCUMENT_APPS: Record<string, string> = {
+  'com~apple~Pages': 'Pages',
+  'com~apple~Numbers': 'Numbers',
+  'com~apple~Keynote': 'Keynote',
+  'com~apple~TextEdit': 'TextEdit',
+  'com~apple~Preview': 'Preview',
+  'com~apple~ScriptEditor2': 'Script Editor',
+  'com~apple~QuickTimePlayerX': 'QuickTime Player',
+  'com~apple~Automator': 'Automator',
+}
+
+/**
+ * Apps' iCloud folders, which Finder shows inside iCloud Drive but which live next to it
+ * (`Mobile Documents/<container>/Documents`): Apple's document apps, and other apps'
+ * (`iCloud~…`, named after their last part), when not empty. Internal ones (backups…) aside.
+ */
+async function iCloudAppFolders(): Promise<{ name: string; path: string; app: true }[]> {
+  const containers = await readdir(mobileDocuments(), { withFileTypes: true }).catch(() => [])
+  const found: { name: string; path: string; app: true }[] = []
+  for (const container of containers) {
+    if (!container.isDirectory()) continue
+    const id = container.name
+    const name =
+      APPLE_DOCUMENT_APPS[id] ??
+      (id.startsWith('iCloud~') && !/~(encryptedBackups|debug|staging|shared)$/i.test(id)
+        ? id.split('~').at(-1)
+        : undefined)
+    if (!name) continue
+    const documents = join(mobileDocuments(), id, 'Documents')
+    const entries = await readdir(documents).catch(() => [])
+    if (entries.some((entry) => !entry.startsWith('.'))) {
+      found.push({ name, path: documents, app: true })
+    }
+  }
+  return found
+}
+
 /** Places to start from in the picker: the usual ones that exist on this computer. */
 function places(): { label: string; path: string }[] {
   const home = homedir()
   const list = [
     { label: 'Home', path: home },
     { label: 'Documents', path: join(home, 'Documents') },
-    {
-      label: 'iCloud Drive',
-      path: join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs'),
-    },
+    { label: 'iCloud Drive', path: iCloudDrive() },
   ]
   // OneDrive, Google Drive, Dropbox… (macOS File Provider folders).
   const cloud = join(home, 'Library', 'CloudStorage')
@@ -89,7 +127,7 @@ export async function listFolder(
       )
     },
   )
-  const folders = entries
+  const folders: FolderListing['folders'] = entries
     .filter((entry) => entry.isDirectory() && entry.name !== '.tandem')
     .filter(
       (entry) =>
@@ -98,6 +136,11 @@ export async function listFolder(
     )
     .map((entry) => ({ name: entry.name, path: join(folder, entry.name) }))
     .toSorted((a, b) => a.name.localeCompare(b.name))
+  // iCloud Drive, as Finder shows it: with the apps' folders (after the user's own).
+  if (folder === iCloudDrive()) {
+    const apps = (await iCloudAppFolders()).toSorted((a, b) => a.name.localeCompare(b.name))
+    folders.push(...apps)
+  }
   return {
     path: folder,
     parent: folder === '/' ? null : dirname(folder),

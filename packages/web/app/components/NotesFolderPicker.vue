@@ -176,10 +176,21 @@ async function useFolder() {
             class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-default hover:bg-elevated"
             @click="load(folder.path)"
           >
-            <UIcon name="i-lucide-folder" class="size-4 shrink-0 text-dimmed" />
+            <UIcon
+              :name="folder.app ? 'i-lucide-cloud' : 'i-lucide-folder'"
+              class="size-4 shrink-0 text-dimmed"
+            />
             <span class="truncate" :class="folder.name.startsWith('.') && 'text-muted'">{{
               folder.name
             }}</span>
+            <UBadge
+              v-if="folder.app"
+              label="app"
+              size="sm"
+              color="neutral"
+              variant="soft"
+              class="ms-auto"
+            />
           </button>
           <p v-if="listing && !listing.folders.length" class="px-3 py-2 text-sm text-dimmed">
             No folders inside.

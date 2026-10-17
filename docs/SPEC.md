@@ -27,7 +27,9 @@ inside OneDrive so that it is backed up and synced.
   item), "Change…" opens a folder picker drawn by the app (the server lists folders: a browser
   can't): places (Home, Documents, iCloud Drive, OneDrive…), the path, subfolders, "New
   folder", a path field, and "Show hidden folders" (⇧⌘., as in Finder: folders whose name
-  starts with a dot). It says what the selected folder holds (Tandem notes, whose history
+  starts with a dot). iCloud Drive lists, as Finder does, the apps' iCloud folders after the
+  user's own (NotePlan, Pages…: named after the app, marked "app"), which live elsewhere on
+  disk (`Mobile Documents/<app>/Documents`); empty and internal ones are left out. It says what the selected folder holds (Tandem notes, whose history
   and tags come along; Markdown files, which become notes; nothing) or why it can't be used
   (the home folder or the disk itself, Tandem's own folder, missing, not writable). Switching
   saves the choice and restarts the app's server on it (a few seconds), then the app reloads;

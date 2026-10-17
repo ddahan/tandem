@@ -53,6 +53,36 @@ describe('choosing the notes folder', () => {
     await expect(listFolder(join(root, 'missing'))).rejects.toThrow(/doesn't exist/)
   })
 
+  it("shows apps' iCloud folders in iCloud Drive, as Finder does", async () => {
+    const home = await folder()
+    const mobile = join(home, 'Library', 'Mobile Documents')
+    const make = async (container: string, file?: string) => {
+      await mkdir(join(mobile, container, 'Documents'), { recursive: true })
+      if (file) await writeFile(join(mobile, container, 'Documents', file), '')
+    }
+    await mkdir(join(mobile, 'com~apple~CloudDocs', 'Mine'), { recursive: true })
+    await make('iCloud~co~noteplan~NotePlan', 'Note.md')
+    await make('com~apple~Pages', 'Letter.pages')
+    await make('iCloud~com~empty~App')
+    await make('iCloud~com~burbn~instagram~encryptedBackups', 'data')
+    await make('com~apple~mail', 'internal')
+    const previous = process.env.HOME
+    process.env.HOME = home
+    try {
+      const listing = await listFolder(join(mobile, 'com~apple~CloudDocs'))
+      expect(listing.folders.map((f) => [f.name, f.app ?? false])).toEqual([
+        ['Mine', false],
+        ['NotePlan', true],
+        ['Pages', true],
+      ])
+      expect(listing.folders[1]!.path).toBe(
+        join(mobile, 'iCloud~co~noteplan~NotePlan', 'Documents'),
+      )
+    } finally {
+      process.env.HOME = previous
+    }
+  })
+
   it('creates folders', async () => {
     const root = await folder()
     expect(await createFolder(root, ' Notes ')).toBe(join(root, 'Notes'))

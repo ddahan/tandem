@@ -109,7 +109,8 @@ export interface FolderListing {
   path: string
   /** Null at the top of the disk. */
   parent: string | null
-  folders: { name: string; path: string }[]
+  /** `app`: an app's iCloud folder, shown in iCloud Drive as Finder does (named after the app). */
+  folders: { name: string; path: string; app?: boolean }[]
   /** It already holds Tandem notes (a `.tandem` folder). */
   tandem: boolean
   /** Markdown files directly inside: they become notes. */
