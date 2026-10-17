@@ -822,3 +822,25 @@ test('shows a pointer on everything clickable', async ({ page, request }) => {
   // Text fields keep the text cursor.
   await expect(page.getByPlaceholder(/Search notes/)).not.toHaveCSS('cursor', 'pointer')
 })
+
+test('offers to copy the Markdown only in the Markdown source view', async ({
+  page,
+  context,
+  request,
+}) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const note = await createNote(request, 'Copy note', '# Copy me\n\nSome **text**.\n')
+  await openNote(page, note.id)
+  const copy = page.getByRole('menuitem', { name: 'Copy Markdown' })
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Copy file path' })).toBeVisible()
+  await expect(copy).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('button', { name: 'Markdown source' }).click()
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await copy.click()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    '# Copy me\n\nSome **text**.\n',
+  )
+})

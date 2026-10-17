@@ -256,11 +256,16 @@ const moreItems = computed<DropdownMenuItem[][]>(() => [
       icon: 'i-lucide-folder-tree',
       onSelect: () => void navigator.clipboard.writeText(notePath.value),
     },
-    {
-      label: 'Copy Markdown',
-      icon: 'i-lucide-clipboard-copy',
-      onSelect: () => void navigator.clipboard.writeText(content.value),
-    },
+    // Only while the Markdown itself is shown.
+    ...(mode.value === 'source'
+      ? [
+          {
+            label: 'Copy Markdown',
+            icon: 'i-lucide-clipboard-copy',
+            onSelect: () => void navigator.clipboard.writeText(content.value),
+          },
+        ]
+      : []),
   ],
   [
     {
