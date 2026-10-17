@@ -3,7 +3,7 @@
 // menu, a selection toolbar, a table toolbar, emoji and `[[` link menus, block drag handles,
 // and file drops/pastes (uploaded to the note's attachments).
 import type { EditorCustomHandlers, EditorSuggestionMenuItem, EditorToolbarItem } from '@nuxt/ui'
-import { gitHubEmojis } from '@tiptap/extension-emoji'
+import type { EmojiItem } from '@tiptap/extension-emoji'
 import type { Editor as CoreEditor } from '@tiptap/core'
 import { VueNodeViewRenderer, type Editor } from '@tiptap/vue-3'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
@@ -454,6 +454,12 @@ function onUpdate(value: unknown) {
   emit('change', markdown)
 }
 
+// The `:` menu's list (about 800 KB) loads after the note shows, not with it.
+const emojis = shallowRef<EmojiItem[]>([])
+onMounted(() => {
+  void import('@tiptap/extension-emoji').then((module) => (emojis.value = module.gitHubEmojis))
+})
+
 onMounted(() => {
   const editor = editorRef.value?.editor
   if (!editor) return
@@ -583,7 +589,7 @@ defineExpose({
         :filter-fields="['label', 'description']"
         :limit="10"
       />
-      <UEditorEmojiMenu :editor="editor" :items="gitHubEmojis" />
+      <UEditorEmojiMenu :editor="editor" :items="emojis" />
       <!-- Nested: list items get their own handle (one item moves, not the whole list). No edge
            detection: it would pick the whole list as the pointer crosses the item's left edge,
            on its way to the handle. -->

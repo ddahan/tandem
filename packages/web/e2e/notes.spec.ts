@@ -406,6 +406,19 @@ test('moves one list item with the block handle, reached with the mouse', async 
     .toBe('Intro.\n\n- [ ] TODO\n- [ ] Hey\n\nEnd.\n')
 })
 
+test('inserts an emoji from the : menu (its list loads after the note)', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Emoji note', 'Party\n')
+  await openNote(page, note.id)
+  await page.locator('.ProseMirror p', { hasText: 'Party' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' :tada')
+  await page.getByRole('option', { name: /tada/ }).first().click()
+  await expect.poll(() => noteContent(request, note.id)).toBe('Party 🎉\n')
+})
+
 test('gives a page an emoji or an image icon, after its creation', async ({ page, request }) => {
   const note = await createNote(request, 'Icon note', 'Text.')
   await openNote(page, note.id)

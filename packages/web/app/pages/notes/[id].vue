@@ -415,7 +415,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               <NodeIcon :icon="node.icon" :kind="node.kind" size="title" />
             </button>
             <template #content>
-              <IconPicker :node-id="node.id" has-icon @done="iconPickerOpen = false" />
+              <LazyIconPicker :node-id="node.id" has-icon @done="iconPickerOpen = false" />
             </template>
           </UPopover>
 
@@ -452,7 +452,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               :class="iconPickerOpen && 'opacity-100'"
             />
             <template #content>
-              <IconPicker :node-id="node.id" :has-icon="false" @done="iconPickerOpen = false" />
+              <LazyIconPicker :node-id="node.id" :has-icon="false" @done="iconPickerOpen = false" />
             </template>
           </UPopover>
           <UInputTags

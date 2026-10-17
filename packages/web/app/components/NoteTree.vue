@@ -377,7 +377,7 @@ function rowClass(item: TreeItem) {
       @update:open="(open) => !open && (iconFor = null)"
     >
       <template #body>
-        <IconPicker
+        <LazyIconPicker
           v-if="iconFor"
           :node-id="iconFor.id"
           :has-icon="!!iconFor.node.icon"
