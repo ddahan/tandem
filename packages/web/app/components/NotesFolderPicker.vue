@@ -13,12 +13,16 @@ const loading = ref(false)
 const typed = ref('')
 const newName = ref<string | null>(null)
 const switching = ref(false)
+/** Hidden folders (`.name`), as Finder's ⇧⌘. shows them. */
+const showHidden = ref(false)
 
 async function load(path: string) {
   loading.value = true
   error.value = ''
   try {
-    listing.value = await unwrap(api['disk-folders'].$get({ query: { path } }))
+    listing.value = await unwrap(
+      api['disk-folders'].$get({ query: { path, hidden: showHidden.value ? 'true' : 'false' } }),
+    )
     typed.value = listing.value.path
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : String(failure)
@@ -33,6 +37,18 @@ watch(open, (isOpen) => {
   newName.value = null
   void load(props.current.replace(/\/[^/]+\/?$/, '') || '/')
 })
+
+watch(showHidden, () => {
+  if (listing.value) void load(listing.value.path)
+})
+
+/** ⇧⌘. as in Finder (by key position: Shift turns "." into another character). */
+function onKeydown(event: KeyboardEvent) {
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.code === 'Period') {
+    event.preventDefault()
+    showHidden.value = !showHidden.value
+  }
+}
 
 /** The path as clickable parts. */
 const crumbs = computed(() => {
@@ -116,7 +132,7 @@ async function useFolder() {
         <p class="text-xs text-muted">Tandem restarts on it, then opens again.</p>
       </div>
 
-      <div v-else class="space-y-3" data-testid="notes-folder-picker">
+      <div v-else class="space-y-3" data-testid="notes-folder-picker" @keydown="onKeydown">
         <div v-if="listing?.places.length" class="flex flex-wrap gap-1.5">
           <UButton
             v-for="place in listing.places"
@@ -161,7 +177,9 @@ async function useFolder() {
             @click="load(folder.path)"
           >
             <UIcon name="i-lucide-folder" class="size-4 shrink-0 text-dimmed" />
-            <span class="truncate">{{ folder.name }}</span>
+            <span class="truncate" :class="folder.name.startsWith('.') && 'text-muted'">{{
+              folder.name
+            }}</span>
           </button>
           <p v-if="listing && !listing.folders.length" class="px-3 py-2 text-sm text-dimmed">
             No folders inside.
@@ -206,6 +224,13 @@ async function useFolder() {
             :disabled="!listing"
             @click="newName = ''"
           />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <UCheckbox v-model="showHidden" label="Show hidden folders" />
+          <span class="flex gap-0.5"
+            ><UKbd value="shift" /><UKbd value="meta" /><UKbd value="."
+          /></span>
         </div>
 
         <p

@@ -47,6 +47,9 @@ describe('choosing the notes folder', () => {
     expect(listing.folders.map((f) => f.name)).toEqual(['archive', 'Work'])
     expect(listing).toMatchObject({ path: root, tandem: true, markdownFiles: 1, problem: null })
     expect(listing.places.map((p) => p.label)).toContain('Home')
+    // Hidden folders on request (Finder's ⇧⌘.), never Tandem's own.
+    const all = await listFolder(root, [], { hidden: true })
+    expect(all.folders.map((f) => f.name)).toEqual(['.hidden', 'archive', 'Work'])
     await expect(listFolder(join(root, 'missing'))).rejects.toThrow(/doesn't exist/)
   })
 

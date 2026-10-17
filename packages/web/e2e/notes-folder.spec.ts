@@ -46,6 +46,16 @@ test('picks another folder: browses, creates one, and switches', async ({ page, 
   await picker.getByRole('button', { name: 'Picker notes' }).click()
   await expect(summary).toContainText('Holds Tandem notes')
 
+  // Hidden folders, on request (⇧⌘. as in Finder).
+  mkdirSync(join(base, '.picker hidden'), { recursive: true })
+  await picker.getByRole('button', { name: '..' }).click()
+  await expect(picker.getByRole('button', { name: '.picker hidden' })).toHaveCount(0)
+  await picker.getByLabel('Show hidden folders').check()
+  await expect(picker.getByRole('button', { name: '.picker hidden' })).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+Shift+Period')
+  await expect(picker.getByRole('button', { name: '.picker hidden' })).toHaveCount(0)
+  await picker.getByRole('button', { name: 'Picker notes' }).click()
+
   // A new, empty folder.
   await picker.getByRole('button', { name: 'New folder' }).click()
   await picker.getByLabel('New folder name').fill('Fresh notes')

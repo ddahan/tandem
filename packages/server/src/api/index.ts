@@ -310,8 +310,14 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     // Folders on disk, for the notes folder picker (not the tree's folders: /folders).
     .get(
       '/disk-folders',
-      zValidator('query', z.object({ path: z.string().optional() })),
-      async (c) => c.json(await listFolder(c.req.valid('query').path ?? '', forbidden)),
+      zValidator(
+        'query',
+        z.object({ path: z.string().optional(), hidden: z.enum(['true', 'false']).optional() }),
+      ),
+      async (c) => {
+        const { path, hidden } = c.req.valid('query')
+        return c.json(await listFolder(path ?? '', forbidden, { hidden: hidden === 'true' }))
+      },
     )
     .post(
       '/disk-folders',

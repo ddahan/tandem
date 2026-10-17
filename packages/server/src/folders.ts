@@ -70,8 +70,15 @@ function places(): { label: string; path: string }[] {
   return list.filter((place) => existsSync(place.path))
 }
 
-/** A folder for the picker: its subfolders (hidden ones and ~/Library aside) and what it holds. */
-export async function listFolder(path: string, forbidden: string[] = []): Promise<FolderListing> {
+/**
+ * A folder for the picker: its subfolders and what it holds. Hidden folders (`.name`) and
+ * ~/Library are left out unless `hidden`, as in Finder (⇧⌘.); `.tandem` always is.
+ */
+export async function listFolder(
+  path: string,
+  forbidden: string[] = [],
+  options: { hidden?: boolean } = {},
+): Promise<FolderListing> {
   const folder = resolve(path || homedir())
   const entries = await readdir(folder, { withFileTypes: true }).catch(
     (error: NodeJS.ErrnoException) => {
@@ -83,8 +90,12 @@ export async function listFolder(path: string, forbidden: string[] = []): Promis
     },
   )
   const folders = entries
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .filter((entry) => !(folder === homedir() && entry.name === 'Library'))
+    .filter((entry) => entry.isDirectory() && entry.name !== '.tandem')
+    .filter(
+      (entry) =>
+        options.hidden ||
+        !(entry.name.startsWith('.') || (folder === homedir() && entry.name === 'Library')),
+    )
     .map((entry) => ({ name: entry.name, path: join(folder, entry.name) }))
     .toSorted((a, b) => a.name.localeCompare(b.name))
   return {

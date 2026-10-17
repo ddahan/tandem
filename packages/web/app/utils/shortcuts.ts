@@ -49,6 +49,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Save now',
         description: 'Notes save by themselves; this saves without waiting.',
       },
+      {
+        keys: [['shift', 'meta', '.']],
+        label: 'Show hidden folders',
+        description: 'In the notes folder picker (Settings), as in Finder.',
+      },
     ],
   },
   {
