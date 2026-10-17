@@ -205,7 +205,9 @@ html.dark[data-tone='cool'] {
    inside it keep its spacing). */
 .note-editor a.file-chip {
   display: inline-block;
-  padding: 0.05em 0.55em 0.05em 0.45em;
+  /* Roomy, yet no taller than a line of text: a line with a chip keeps its spacing. */
+  margin: 0 0.1em;
+  padding: 0.15em 0.75em 0.15em 0.6em;
   border: 1px solid var(--ui-border) !important;
   border-radius: 999px;
   background: var(--ui-bg-elevated);
@@ -220,7 +222,7 @@ html.dark[data-tone='cool'] {
   display: inline-block;
   width: 1.05em;
   height: 1.05em;
-  margin-right: 0.3em;
+  margin-right: 0.4em;
   vertical-align: -0.18em;
   /* The file type's icon (set by FileLink). */
   background: var(--file-icon) center / contain no-repeat;
