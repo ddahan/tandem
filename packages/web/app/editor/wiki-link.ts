@@ -1,8 +1,11 @@
 // `[[Target]]`, `[[Target#Heading]]`, `[[Target|label]]`: links between notes, as an inline
 // node (an atom: edited as a whole). Without it, the Markdown serializer would escape the
-// brackets of plain text (`\[\[Target\]\]`).
+// brackets of plain text (`\[\[Target\]\]`). Links to a note that doesn't exist get the
+// `wiki-link--missing` class (a decoration: existence depends on the tree, not the document).
 import { InputRule, Node, mergeAttributes } from '@tiptap/core'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 
 export interface WikiLinkAttributes {
   target: string
@@ -13,6 +16,29 @@ export interface WikiLinkAttributes {
 export interface WikiLinkOptions {
   /** Called when a link is clicked. */
   onOpen: (attributes: WikiLinkAttributes) => void
+  /** Whether the link's note exists. */
+  exists: (target: string) => boolean
+}
+
+/** Dispatch a transaction with this meta to re-check links (the tree changed). */
+export const wikiLinkStatusKey = new PluginKey<DecorationSet>('wikiLinkStatus')
+
+function missingLinks(doc: ProseMirrorNode, exists: (target: string) => boolean): DecorationSet {
+  const decorations: Decoration[] = []
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'wikiLink') return true
+    const { target } = node.attrs as WikiLinkAttributes
+    if (!exists(target)) {
+      decorations.push(
+        Decoration.node(pos, pos + node.nodeSize, {
+          class: 'wiki-link--missing',
+          title: `“${target}” doesn't exist yet: click to create it`,
+        }),
+      )
+    }
+    return false
+  })
+  return DecorationSet.create(doc, decorations)
 }
 
 const PATTERN = /^\[\[([^[\]|#\n]+)(?:#([^[\]|\n]*))?(?:\|([^[\]\n]*))?\]\]/
@@ -29,7 +55,7 @@ export const WikiLink = Node.create<WikiLinkOptions>({
   selectable: true,
 
   addOptions() {
-    return { onOpen: () => {} }
+    return { onOpen: () => {}, exists: () => true }
   },
 
   addAttributes() {
@@ -123,8 +149,21 @@ export const WikiLink = Node.create<WikiLinkOptions>({
   },
 
   addProseMirrorPlugins() {
-    const onOpen = this.options.onOpen
+    const { onOpen, exists } = this.options
     return [
+      new Plugin<DecorationSet>({
+        key: wikiLinkStatusKey,
+        state: {
+          init: (_config, state) => missingLinks(state.doc, exists),
+          apply: (tr, value, _old, state) =>
+            tr.docChanged || tr.getMeta(wikiLinkStatusKey)
+              ? missingLinks(state.doc, exists)
+              : value,
+        },
+        props: {
+          decorations: (state) => wikiLinkStatusKey.getState(state),
+        },
+      }),
       new Plugin({
         key: new PluginKey('wikiLinkClick'),
         props: {

@@ -13,7 +13,7 @@ import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { createExtensions, starterKitOptions } from '~/editor/extensions'
-import type { WikiLinkAttributes } from '~/editor/wiki-link'
+import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
 import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
 
 const props = defineProps<{
@@ -43,14 +43,20 @@ const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 // --- Extensions ----------------------------------------------------------------------------
 
-function openWikiLink(attributes: WikiLinkAttributes) {
-  const key = linkKey(attributes.target)
+/** The page a wiki link points to: by path first, then by title (as the server resolves it). */
+function linkedPage(target: string) {
+  const key = linkKey(target)
   const pages = tree.nodes.value.filter((n) => n.kind === 'page')
-  const match =
+  return (
     pages.find((n) => linkKey(n.path) === key) ??
     pages
       .filter((n) => linkKey(n.title) === key)
       .toSorted((a, b) => a.path.length - b.path.length)[0]
+  )
+}
+
+function openWikiLink(attributes: WikiLinkAttributes) {
+  const match = linkedPage(attributes.target)
   if (match) {
     void navigateTo(`/notes/${match.id}`)
     return
@@ -69,8 +75,19 @@ function openWikiLink(attributes: WikiLinkAttributes) {
   })
 }
 
+// A note created, renamed or deleted can change which links point to an existing note.
+watch(
+  () => tree.nodes.value,
+  () => {
+    const editor = editorRef.value?.editor
+    if (editor && !editor.isDestroyed)
+      editor.view.dispatch(editor.state.tr.setMeta(wikiLinkStatusKey, true))
+  },
+)
+
 const extensions = createExtensions({
   onOpenWikiLink: openWikiLink,
+  wikiLinkExists: (target) => !!linkedPage(target),
   onFiles: (editor, files, pos) => void uploadFiles(editor, files, pos),
 }).map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {

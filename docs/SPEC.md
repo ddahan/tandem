@@ -56,7 +56,9 @@ typically inside OneDrive so that it is backed up and synced.
   10 MB ask for confirmation first. No maximum size.
 - **Links between notes**: `[[Note title]]` (or `[[Folder/Note title]]` when titles are
   ambiguous), with autocomplete when typing `[[`, a backlinks panel, and automatic link
-  updates when a note is renamed or moved.
+  updates when a note is renamed or moved. A link to a note that doesn't exist yet looks
+  different (muted, a "new file" icon, a copy cursor), and clicking it offers to create the
+  note; it turns into a normal link as soon as the note exists.
 - **Conflicts**: if a note changes on disk while it is open, it reloads live when there are no
   unsaved edits; otherwise a banner offers "Keep mine", "Take theirs" or "Compare".
 

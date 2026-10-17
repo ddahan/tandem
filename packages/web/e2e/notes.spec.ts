@@ -453,6 +453,46 @@ test('moves one list item with the block handle, reached with the mouse', async 
     .toBe('Intro.\n\n- [ ] TODO\n- [ ] Hey\n\nEnd.\n')
 })
 
+test('shows links to missing notes differently, until the note exists', async ({
+  page,
+  request,
+}) => {
+  await createNote(request, 'Link target')
+  const note = await createNote(
+    request,
+    'Links note',
+    'See [[Link target]] and [[Not written yet]].\n',
+  )
+  await openNote(page, note.id)
+  const existing = page.locator('.ProseMirror .wiki-link', { hasText: 'Link target' })
+  const missing = page.locator('.ProseMirror .wiki-link', { hasText: 'Not written yet' })
+  await expect(existing).not.toHaveClass(/wiki-link--missing/)
+  await expect(existing).toHaveCSS('cursor', 'pointer')
+  await expect(missing).toHaveClass(/wiki-link--missing/)
+  await expect(missing).toHaveCSS('cursor', 'copy')
+
+  // Clicking offers to create it; once created, it's a normal link.
+  await missing.click()
+  await page.getByRole('button', { name: 'Create it' }).click()
+  await expect(page).not.toHaveURL(new RegExp(note.id))
+  await openNote(page, note.id)
+  await expect(missing).toBeVisible()
+  await expect(missing).not.toHaveClass(/wiki-link--missing/)
+
+  // Live: an agent creates a missing note while this one is open.
+  await api(
+    request,
+    'PUT',
+    `/notes/${note.id}/content`,
+    { content: 'See [[Link target]] and [[Not written yet]] and [[By an agent]].\n' },
+    'claude',
+  )
+  const byAgent = page.locator('.ProseMirror .wiki-link', { hasText: 'By an agent' })
+  await expect(byAgent).toHaveClass(/wiki-link--missing/)
+  await createNote(request, 'By an agent')
+  await expect(byAgent).not.toHaveClass(/wiki-link--missing/)
+})
+
 test('places the handle left of list markers, and a moved item keeps its author', async ({
   page,
   request,

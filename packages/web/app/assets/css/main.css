@@ -190,6 +190,17 @@ html.dark[data-tone='cool'] {
     center / contain no-repeat;
 }
 
+/* A link to a note that doesn't exist yet: muted, with a "new file" icon; clicking offers to
+   create it, hence the copy cursor (an arrow with a plus). */
+.note-editor .wiki-link.wiki-link--missing {
+  color: var(--ui-text-muted);
+  border-bottom-color: var(--ui-text-dimmed) !important;
+  cursor: copy;
+}
+.note-editor .wiki-link.wiki-link--missing::before {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3Cpath d='M9 15h6'/%3E%3Cpath d='M12 18v-6'/%3E%3C/svg%3E");
+}
+
 /* Attachments shown as chips */
 .note-editor .file-chip {
   display: inline-flex;

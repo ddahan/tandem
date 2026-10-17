@@ -22,6 +22,8 @@ export const lowlight = createLowlight(common)
 
 export interface ExtensionOptions {
   onOpenWikiLink?: (attributes: WikiLinkAttributes) => void
+  /** Whether a wiki link's note exists (links to missing notes look different). */
+  wikiLinkExists?: (target: string) => boolean
   onFiles?: (editor: Editor, files: File[], pos: number | null) => void
 }
 
@@ -36,7 +38,10 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     DetailsSummary,
     DetailsContent,
     ResizableImage,
-    WikiLink.configure({ onOpen: options.onOpenWikiLink ?? (() => {}) }),
+    WikiLink.configure({
+      onOpen: options.onOpenWikiLink ?? (() => {}),
+      exists: options.wikiLinkExists ?? (() => true),
+    }),
     FileChips,
     JoinLists,
     BlockKeys,
