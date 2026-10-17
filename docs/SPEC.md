@@ -108,7 +108,7 @@ typically inside OneDrive so that it is backed up and synced.
   save status, actions), editor, collapsible right panel (outline, backlinks, history,
   attachments). Full-width toggle. Keyboard shortcuts throughout.
 - Light, dark or system color mode. Settings page: color mode, primary and neutral colors,
-  corner radius, editor font and width, the owner's display name.
+  corner radius, editor font, width and text size (notes only: the interface keeps its size), the owner's display name.
 - Installable as an app (web app manifest): its own window and Dock icon, via Safari's
   "File → Add to Dock" or Chrome's "Install".
 - English interface; French formats for dates, times and numbers (`17/10/2026 14:32`).

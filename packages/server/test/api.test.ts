@@ -108,6 +108,13 @@ describe('API', () => {
     const settings = await (
       await client.settings.$patch({ json: { primaryColor: 'emerald' } })
     ).json()
+    expect(
+      (await (await client.settings.$patch({ json: { editorFontSize: 'large' } })).json())
+        .editorFontSize,
+    ).toBe('large')
+    expect(
+      (await client.settings.$patch({ json: { editorFontSize: 'huge' as 'large' } })).status,
+    ).toBe(400)
     expect(settings.primaryColor).toBe('emerald')
     expect((await client.settings.$patch({ json: { primaryColor: 'Not a color!' } })).status).toBe(
       400,

@@ -341,10 +341,13 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           aria-label="Title"
           class="w-full"
           :ui="{
-            base: 'px-0 text-4xl leading-tight font-bold tracking-tight text-highlighted placeholder:text-dimmed md:text-4xl',
+            base: 'px-0 leading-tight font-bold tracking-tight text-highlighted placeholder:text-dimmed',
             root: 'w-full',
           }"
-          :style="{ fontFamily: 'var(--editor-font)' }"
+          :style="{
+            fontFamily: 'var(--editor-font)',
+            fontSize: 'calc(var(--editor-font-size) * 2.25)',
+          }"
           @keydown.enter.prevent="titleEnter"
           @blur="commitTitle"
         />

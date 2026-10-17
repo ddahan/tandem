@@ -264,3 +264,26 @@ test('asks before attaching a file over 10 MB', async ({ page, request }) => {
     .poll(() => noteContent(request, note.id))
     .toContain('[video.mp4](Large%20drop.assets/video.mp4)')
 })
+
+test('changes the text size of notes only', async ({ page, request }) => {
+  const note = await createNote(request, 'Text size note', '# Heading\n\nBody text.')
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Text size: Extra large' }).click()
+  await expect
+    .poll(
+      async () =>
+        (await api<{ editorFontSize: string }>(request, 'GET', '/settings')).editorFontSize,
+    )
+    .toBe('xlarge')
+  await openNote(page, note.id)
+  const fontSize = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((element) => getComputedStyle(element).fontSize)
+  expect(await fontSize('.ProseMirror p')).toBe('20px')
+  expect(await fontSize('.ProseMirror h1')).toBe('37.5px')
+  // The interface keeps its size.
+  expect(await fontSize('[data-testid="tree-Text size note"]')).toBe('14px')
+  await api(request, 'PATCH', '/settings', { editorFontSize: 'medium' })
+})

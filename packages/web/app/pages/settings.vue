@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Settings } from '@myfluence/shared'
+import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
 
 const { settings, update } = useSettings()
 const colorMode = useColorMode()
@@ -39,6 +40,12 @@ const widths: { value: Settings['editorWidth']; label: string }[] = [
   { value: 'medium', label: 'Medium' },
   { value: 'wide', label: 'Wide' },
   { value: 'full', label: 'Full' },
+]
+const sizes: { value: Settings['editorFontSize']; label: string }[] = [
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
+  { value: 'xlarge', label: 'Extra large' },
 ]
 const modes = [
   { value: 'light', label: 'Light', icon: 'i-lucide-sun' },
@@ -169,6 +176,21 @@ async function set(patch: Partial<Settings>) {
                 >
                 <span class="text-xs text-muted">{{ font.label }}</span>
               </button>
+            </div>
+          </UFormField>
+          <UFormField label="Text size" description="In notes only; the interface keeps its size.">
+            <div class="flex flex-wrap items-end gap-2">
+              <UButton
+                v-for="size in sizes"
+                :key="size.value"
+                color="neutral"
+                :variant="settings.editorFontSize === size.value ? 'soft' : 'outline'"
+                :aria-label="`Text size: ${size.label}`"
+                @click="set({ editorFontSize: size.value })"
+              >
+                <span :style="{ fontSize: EDITOR_FONT_SIZES[size.value] }">Aa</span>
+                <span class="text-xs text-muted">{{ size.label }}</span>
+              </UButton>
             </div>
           </UFormField>
           <UFormField label="Page width">

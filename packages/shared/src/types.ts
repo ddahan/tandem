@@ -98,6 +98,8 @@ export interface Settings {
   radius: number
   editorFont: 'sans' | 'serif' | 'mono' | 'system'
   editorWidth: 'narrow' | 'medium' | 'wide' | 'full'
+  /** Text size in notes only (not in the interface). */
+  editorFontSize: 'small' | 'medium' | 'large' | 'xlarge'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -107,6 +109,7 @@ export const DEFAULT_SETTINGS: Settings = {
   radius: 0.375,
   editorFont: 'sans',
   editorWidth: 'medium',
+  editorFontSize: 'medium',
 }
 
 /** Server-sent events, on `/api/events`. */

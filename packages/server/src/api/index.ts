@@ -46,6 +46,7 @@ const settingsPatch = z
     radius: z.number().min(0).max(1),
     editorFont: z.enum(['sans', 'serif', 'mono', 'system']),
     editorWidth: z.enum(['narrow', 'medium', 'wide', 'full']),
+    editorFontSize: z.enum(['small', 'medium', 'large', 'xlarge']),
   })
   .partial()
 

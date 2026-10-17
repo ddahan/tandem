@@ -8,6 +8,14 @@ const EDITOR_WIDTHS: Record<Settings['editorWidth'], string> = {
   full: '100%',
 }
 
+/** Text size of notes; headings, code and the title scale with it (em units in main.css). */
+export const EDITOR_FONT_SIZES: Record<Settings['editorFontSize'], string> = {
+  small: '15px',
+  medium: '16px',
+  large: '18px',
+  xlarge: '20px',
+}
+
 const EDITOR_FONTS: Record<Settings['editorFont'], string> = {
   sans: 'var(--font-sans)',
   serif: 'var(--font-serif)',
@@ -26,6 +34,7 @@ export function useSettings() {
     const root = document.documentElement.style
     root.setProperty('--ui-radius', `${value.radius}rem`)
     root.setProperty('--editor-width', EDITOR_WIDTHS[value.editorWidth])
+    root.setProperty('--editor-font-size', EDITOR_FONT_SIZES[value.editorFontSize])
     root.setProperty('--editor-font', EDITOR_FONTS[value.editorFont])
   }
 

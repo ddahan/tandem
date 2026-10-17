@@ -18,6 +18,7 @@
   /* Set from Settings (useSettings). */
   --editor-font: var(--font-sans);
   --editor-width: 52rem;
+  --editor-font-size: 16px;
   --ui-radius: 0.375rem;
   font-feature-settings: 'cv11', 'ss01';
 }
@@ -30,9 +31,36 @@ body {
 
 .note-editor .ProseMirror {
   font-family: var(--editor-font);
-  font-size: 1rem;
+  font-size: var(--editor-font-size);
   min-height: 50vh;
   padding-bottom: 30vh;
+}
+
+/* Sizes relative to the note's text size (Nuxt UI's editor uses rem, which ignores it). */
+.note-editor .ProseMirror h1 {
+  font-size: 1.875em;
+}
+.note-editor .ProseMirror h2 {
+  font-size: 1.5em;
+}
+.note-editor .ProseMirror h3 {
+  font-size: 1.25em;
+}
+.note-editor .ProseMirror h4 {
+  font-size: 1.125em;
+}
+.note-editor .ProseMirror :is(p, li) {
+  line-height: 1.75;
+}
+.note-editor .ProseMirror code {
+  font-size: 0.875em;
+}
+.note-editor .ProseMirror pre {
+  font-size: 0.875em;
+  line-height: 1.6;
+}
+.note-editor .ProseMirror pre code {
+  font-size: inherit;
 }
 
 .note-editor .ProseMirror :is(h1, h2, h3, h4) {
@@ -327,6 +355,7 @@ body {
 /* Rendered Markdown outside the editor (authorship view, history preview) */
 .rendered-markdown {
   font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
   line-height: 1.75;
 }
 .rendered-markdown > * + * {
@@ -337,13 +366,13 @@ body {
   color: var(--ui-text-highlighted);
 }
 .rendered-markdown h1 {
-  font-size: 1.875rem;
+  font-size: 1.875em;
 }
 .rendered-markdown h2 {
-  font-size: 1.5rem;
+  font-size: 1.5em;
 }
 .rendered-markdown h3 {
-  font-size: 1.25rem;
+  font-size: 1.25em;
 }
 .rendered-markdown :is(ul, ol) {
   padding-inline-start: 1.5rem;
@@ -371,7 +400,7 @@ body {
   border-radius: calc(var(--ui-radius) * 1.5);
   padding: 0.75rem 1rem;
   overflow-x: auto;
-  font-size: 0.875rem;
+  font-size: 0.875em;
 }
 .rendered-markdown pre code {
   background: none;
