@@ -48,14 +48,6 @@ watch(
       else if (rect.bottom > box.bottom) panel.scrollTop += rect.bottom - box.bottom
     }),
 )
-
-function itemClass(heading: Heading, index: number) {
-  const top = heading.level === minLevel.value
-  if (index === props.active) return ['text-primary', top && 'font-medium']
-  return top
-    ? 'font-medium text-default hover:text-highlighted'
-    : 'text-muted hover:text-highlighted'
-}
 </script>
 
 <template>
@@ -77,7 +69,7 @@ function itemClass(heading: Heading, index: number) {
       type="button"
       class="block w-full truncate rounded-md py-1 pe-2 text-start text-sm transition-colors hover:bg-elevated"
       :style="{ paddingInlineStart: `${0.75 + (heading.level - minLevel) * 0.85}rem` }"
-      :class="itemClass(heading, index)"
+      :class="index === active ? 'text-primary' : 'text-muted hover:text-highlighted'"
       :aria-current="index === active ? 'location' : undefined"
       @click="$emit('go', heading.pos)"
     >
