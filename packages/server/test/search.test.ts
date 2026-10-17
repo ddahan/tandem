@@ -113,6 +113,28 @@ describe('search', () => {
     expect(results).toHaveLength(3)
   })
 
+  it('ranks recently updated notes higher among equal matches', async () => {
+    const { vault, clock } = await createTestVault()
+    const old = await vault.createPage({ title: 'A', content: 'apple tart\n', author: OWNER })
+    clock.advance(365 * 86_400_000)
+    const recent = await vault.createPage({ title: 'B', content: 'apple tart\n', author: OWNER })
+    expect((await vault.searchNotes('apple')).results.map((r) => r.id)).toEqual([recent.id, old.id])
+  })
+
+  it('follows edits, removals and a full reindex', async () => {
+    const { vault, ids } = await seeded()
+    await vault.saveContent(ids.summer, 'Montagne cette année.\n', { author: OWNER })
+    expect((await vault.searchNotes('plage')).results).toEqual([])
+    expect((await vault.searchNotes('montagne')).results.map((r) => r.id)).toEqual([ids.summer])
+    await vault.remove(ids.db)
+    expect((await vault.searchNotes('sqlite')).results).toEqual([])
+    await vault.reindexAll()
+    expect((await vault.searchNotes('montagne')).results.map((r) => r.id)).toEqual([ids.summer])
+    expect((await vault.searchNotes('budget')).results[0]?.attachments).toEqual([
+      'budget-2026.xlsx',
+    ])
+  })
+
   it('escapes HTML in snippets', async () => {
     const { vault } = await createTestVault()
     await vault.createPage({

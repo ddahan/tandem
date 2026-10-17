@@ -3,7 +3,7 @@
 // serialize writes with the vault's lock rather than with SQLite transactions across awaits.
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
+import { DatabaseSync, type SQLInputValue, type StatementSync } from 'node:sqlite'
 import { fileURLToPath } from 'node:url'
 import { drizzle, type SqliteRemoteDatabase } from 'drizzle-orm/sqlite-proxy'
 import { migrate } from 'drizzle-orm/sqlite-proxy/migrator'
@@ -37,11 +37,23 @@ export async function openDatabase(path: string, restoreFrom?: string): Promise<
   }
 
   const sqlite = new DatabaseSync(path)
-  sqlite.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;')
+  // NORMAL: the safe setting for WAL (no corruption; a power cut may lose the last commits,
+  // which the Markdown files and the next reconcile restore). FULL syncs the disk on every commit.
+  sqlite.exec(
+    'PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;',
+  )
 
+  // Drizzle sends the same few SQL strings again and again: compile each once.
+  const statements = new Map<string, StatementSync>()
   const db = drizzle(
     async (sql, params, method) => {
-      const statement = sqlite.prepare(sql)
+      let statement = statements.get(sql)
+      if (!statement) {
+        // `IN (?, ?, …)` lists make new strings: keep the cache bounded.
+        if (statements.size >= 500) statements.clear()
+        statement = sqlite.prepare(sql)
+        statements.set(sql, statement)
+      }
       const values = params as SQLInputValue[]
       if (method === 'run') {
         statement.run(...values)

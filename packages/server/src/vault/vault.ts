@@ -7,7 +7,7 @@ import { EventEmitter } from 'node:events'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { asc, desc, eq, inArray } from 'drizzle-orm'
+import { asc, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
   DEFAULT_SETTINGS,
@@ -56,6 +56,10 @@ import { SearchIndex, matchesFilters, parseQuery, type Candidate } from './searc
 import { markdownToText } from './text.ts'
 
 export type NodeRow = typeof nodes.$inferSelect
+/** A row without the page's content and authorship: what listings need (much smaller). */
+export type NodeMeta = Omit<NodeRow, 'content' | 'blame'>
+
+const { content: _content, blame: _blame, ...metaColumns } = getTableColumns(nodes)
 
 export interface VaultOptions {
   dataDir: string
@@ -505,7 +509,8 @@ export class Vault {
       const row = await this.requireRow(id)
       const subtree = await this.subtreeOf(row)
       for (const page of subtree) {
-        if (page.kind === 'page' && page.pendingSnapshot) await this.snapshot(page)
+        if (page.kind === 'page' && page.pendingSnapshot)
+          await this.snapshot(await this.requireRow(page.id))
       }
       const trashId = nanoid(12)
       const trashRoot = join(this.metaDir, 'trash', trashId)
@@ -741,7 +746,8 @@ export class Vault {
     return this.lock.run(async () => {
       this.search.clear()
       const pages = (await this.allRows()).filter((row) => row.kind === 'page')
-      for (const page of pages) await this.indexPage(page)
+      // One content at a time: never every note in memory at once.
+      for (const page of pages) await this.indexPage(await this.requireRow(page.id))
     })
   }
 
@@ -806,8 +812,9 @@ export class Vault {
     this.events.emit('event', event)
   }
 
-  private async allRows(): Promise<NodeRow[]> {
-    return (await this.db.select().from(nodes)) as NodeRow[]
+  /** Every node, without contents (see NodeMeta): full rows are loaded one at a time. */
+  private async allRows(): Promise<NodeMeta[]> {
+    return (await this.db.select(metaColumns).from(nodes)) as NodeMeta[]
   }
 
   private async requireRow(id: string): Promise<NodeRow> {
@@ -876,8 +883,18 @@ export class Vault {
   }
 
   private async nextPosition(dir: string): Promise<number> {
-    const siblings = (await this.allRows()).filter((row) => dirnameOf(row.path) === dir)
-    return siblings.reduce((max, row) => Math.max(max, row.position + 1), 0)
+    // Direct children of `dir` only (not deeper), in SQL: imports call this once per page.
+    const prefix = dir ? `${dir}/` : ''
+    const row = await this.db
+      .select({ max: sql<number | null>`max(${nodes.position})` })
+      .from(nodes)
+      .where(
+        sql`substr(${nodes.path}, 1, ${prefix.length}) = ${prefix}
+          AND instr(substr(${nodes.path}, ${prefix.length + 1}), '/') = 0`,
+      )
+      .get()
+    const max = row?.max ?? null
+    return max === null ? 0 : max + 1
   }
 
   private async insertFolder(path: string, now: number): Promise<NodeRow> {
@@ -903,7 +920,7 @@ export class Vault {
   }
 
   /** The node and everything below it (child pages, folders). */
-  private async subtreeOf(row: NodeRow): Promise<NodeRow[]> {
+  private async subtreeOf(row: NodeMeta): Promise<NodeMeta[]> {
     const base = row.kind === 'page' ? childrenDirOf(row.path) : row.path
     return (await this.allRows()).filter((r) => r.id === row.id || r.path.startsWith(`${base}/`))
   }
@@ -1165,7 +1182,7 @@ export class Vault {
           .update(nodes)
           .set({ path: page.path, mtime: page.mtime, size: page.size })
           .where(eq(nodes.id, match.id))
-        await this.indexPage({ ...match, path: page.path })
+        await this.indexPage({ ...(await this.requireRow(match.id)), path: page.path })
       } else {
         const row: NodeRow = {
           id: nanoid(12),
@@ -1204,7 +1221,7 @@ export class Vault {
       const content = await readFile(this.abs(row.path), 'utf8').catch(() => null)
       if (content === null) continue
       if (hashContent(content) !== row.hash) {
-        await this.saveInternal(row, content, EXTERNAL, { write: false })
+        await this.saveInternal(await this.requireRow(row.id), content, EXTERNAL, { write: false })
       } else {
         await this.db
           .update(nodes)
@@ -1234,18 +1251,18 @@ export class Vault {
 
 // --- Helpers -------------------------------------------------------------------------------
 
-function byPosition(a: NodeRow, b: NodeRow): number {
+function byPosition(a: NodeMeta, b: NodeMeta): number {
   return a.position - b.position || titleFromPath(a.path).localeCompare(titleFromPath(b.path))
 }
 
 /** Which node owns each folder: a page owns its children folder; a folder row owns itself. */
-function ownersByDir(rows: NodeRow[]): Map<string, NodeRow> {
-  const owners = new Map<string, NodeRow>()
+function ownersByDir(rows: NodeMeta[]): Map<string, NodeMeta> {
+  const owners = new Map<string, NodeMeta>()
   for (const row of rows) owners.set(row.kind === 'page' ? childrenDirOf(row.path) : row.path, row)
   return owners
 }
 
-function toTreeNode(row: NodeRow, owners: Map<string, NodeRow>): TreeNode {
+function toTreeNode(row: NodeMeta, owners: Map<string, NodeMeta>): TreeNode {
   return {
     id: row.id,
     kind: row.kind,
@@ -1260,7 +1277,7 @@ function toTreeNode(row: NodeRow, owners: Map<string, NodeRow>): TreeNode {
 }
 
 /** `emoji:🎉` → the emoji; `image:<file>` → the API URL (the file name changes with each image). */
-function parseIcon(row: NodeRow): NodeIcon | null {
+function parseIcon(row: NodeMeta): NodeIcon | null {
   if (row.icon?.startsWith('emoji:')) return { type: 'emoji', emoji: row.icon.slice(6) }
   if (row.icon?.startsWith('image:')) {
     return {

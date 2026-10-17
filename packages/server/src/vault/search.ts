@@ -6,7 +6,10 @@
 // - Typo tolerance: a word that matches nothing in the index is replaced by the closest indexed
 //   word (edit distance), and the response says so.
 // - Fallback: when words find too little, a trigram index finds them inside other words.
-import type { DatabaseSync } from 'node:sqlite'
+//
+// Each page has a fixed rowid in both indexes (table `search_rows`): updates and lookups by page
+// go straight to its rows instead of scanning the index. Statements are prepared once.
+import type { DatabaseSync, StatementSync } from 'node:sqlite'
 import type { SearchResponse, SearchResult } from '@myfluence/shared'
 import { escapeHtml, foldText } from './text.ts'
 
@@ -92,26 +95,51 @@ interface Vocabulary {
 export class SearchIndex {
   private vocabulary: Vocabulary | null = null
   private readonly sqlite: DatabaseSync
+  private readonly statements = new Map<string, StatementSync>()
 
   constructor(sqlite: DatabaseSync) {
     this.sqlite = sqlite
   }
 
+  private statement(sql: string): StatementSync {
+    let statement = this.statements.get(sql)
+    if (!statement) {
+      statement = this.sqlite.prepare(sql)
+      this.statements.set(sql, statement)
+    }
+    return statement
+  }
+
+  private rowidOf(nodeId: string): number | null {
+    const row = this.statement('SELECT rowid FROM search_rows WHERE node_id = ?').get(nodeId) as
+      | { rowid: number }
+      | undefined
+    return row?.rowid ?? null
+  }
+
   /** (Re)indexes a page. */
   index(nodeId: string, title: string, body: string, attachments: string[]): void {
-    this.remove(nodeId)
+    let rowid = this.rowidOf(nodeId)
+    if (rowid === null) {
+      rowid = Number(
+        this.statement('INSERT INTO search_rows (node_id) VALUES (?)').run(nodeId).lastInsertRowid,
+      )
+    }
     const names = attachments.join('\n')
     for (const table of ['notes_fts', 'notes_trigram']) {
-      this.sqlite
-        .prepare(`INSERT INTO ${table} (node_id, title, body, attachments) VALUES (?, ?, ?, ?)`)
-        .run(nodeId, title, body, names)
+      this.statement(`DELETE FROM ${table} WHERE rowid = ?`).run(rowid)
+      this.statement(
+        `INSERT INTO ${table} (rowid, node_id, title, body, attachments) VALUES (?, ?, ?, ?, ?)`,
+      ).run(rowid, nodeId, title, body, names)
     }
     this.vocabulary = null
   }
 
   remove(nodeId: string): void {
-    this.sqlite.prepare('DELETE FROM notes_fts WHERE node_id = ?').run(nodeId)
-    this.sqlite.prepare('DELETE FROM notes_trigram WHERE node_id = ?').run(nodeId)
+    const rowid = this.rowidOf(nodeId)
+    if (rowid === null) return
+    for (const table of ['notes_fts', 'notes_trigram', 'search_rows'])
+      this.statement(`DELETE FROM ${table} WHERE rowid = ?`).run(rowid)
     this.vocabulary = null
   }
 
@@ -121,7 +149,9 @@ export class SearchIndex {
     if (ids.length === 0) return result
     const rows = this.sqlite
       .prepare(
-        `SELECT node_id AS id, attachments FROM notes_fts WHERE node_id IN (${ids.map(() => '?').join(',')})`,
+        `SELECT s.node_id AS id, f.attachments FROM search_rows s
+         JOIN notes_fts f ON f.rowid = s.rowid
+         WHERE s.node_id IN (${ids.map(() => '?').join(',')})`,
       )
       .all(...ids) as { id: string; attachments: string }[]
     for (const row of rows) result.set(row.id, row.attachments ? row.attachments.split('\n') : [])
@@ -129,7 +159,7 @@ export class SearchIndex {
   }
 
   clear(): void {
-    this.sqlite.exec('DELETE FROM notes_fts; DELETE FROM notes_trigram;')
+    this.sqlite.exec('DELETE FROM notes_fts; DELETE FROM notes_trigram; DELETE FROM search_rows;')
     this.vocabulary = null
   }
 
@@ -180,6 +210,23 @@ export class SearchIndex {
     return best?.term ?? null
   }
 
+  /** Snippets of the given matches (by rowid), one query per index that found them. */
+  private snippets(found: { rowid: number; table: string; match: string }[]): Map<number, string> {
+    const result = new Map<number, string>()
+    for (const table of ['notes_fts', 'notes_trigram']) {
+      const mine = found.filter((f) => f.table === table)
+      if (!mine.length) continue
+      const rows = this.sqlite
+        .prepare(
+          `SELECT rowid, snippet(${table}, 2, char(1), char(2), '…', 14) AS snippet
+           FROM ${table} WHERE ${table} MATCH ? AND rowid IN (${mine.map(() => '?').join(',')})`,
+        )
+        .all(mine[0]!.match, ...mine.map((f) => f.rowid)) as { rowid: number; snippet: string }[]
+      for (const row of rows) result.set(row.rowid, row.snippet)
+    }
+    return result
+  }
+
   search(
     query: string,
     options: {
@@ -208,34 +255,36 @@ export class SearchIndex {
       return word
     })
 
-    const scored = new Map<string, { score: number; snippet: string }>()
+    // Ranks first; snippets (costly) only for the results shown, below.
+    type Table = 'notes_fts' | 'notes_trigram'
+    const scored = new Map<string, { score: number; rowid: number; table: Table; match: string }>()
     const match = ftsMatch(parsed, words)
     if (match) {
-      const rows = this.sqlite
-        .prepare(
-          `SELECT node_id AS id, bm25(notes_fts, 0, 10, 1, 4) AS rank,
-             snippet(notes_fts, 2, char(1), char(2), '…', 14) AS snippet
-           FROM notes_fts WHERE notes_fts MATCH ? ORDER BY rank LIMIT 500`,
-        )
-        .all(match) as { id: string; rank: number; snippet: string }[]
-      for (const row of rows) scored.set(row.id, { score: -row.rank, snippet: row.snippet })
+      const rows = this.statement(
+        `SELECT rowid, node_id AS id, bm25(notes_fts, 0, 10, 1, 4) AS rank
+         FROM notes_fts WHERE notes_fts MATCH ? ORDER BY rank LIMIT 500`,
+      ).all(match) as { rowid: number; id: string; rank: number }[]
+      for (const row of rows)
+        scored.set(row.id, { score: -row.rank, rowid: row.rowid, table: 'notes_fts', match })
     }
 
     if (scored.size < limit) {
       const trigram = trigramMatch(parsed, words)
       if (trigram) {
-        const rows = this.sqlite
-          .prepare(
-            `SELECT node_id AS id, bm25(notes_trigram, 0, 10, 1, 4) AS rank,
-               snippet(notes_trigram, 2, char(1), char(2), '…', 14) AS snippet
-             FROM notes_trigram WHERE notes_trigram MATCH ? ORDER BY rank LIMIT 200`,
-          )
-          .all(trigram) as { id: string; rank: number; snippet: string }[]
+        const rows = this.statement(
+          `SELECT rowid, node_id AS id, bm25(notes_trigram, 0, 10, 1, 4) AS rank
+           FROM notes_trigram WHERE notes_trigram MATCH ? ORDER BY rank LIMIT 200`,
+        ).all(trigram) as { rowid: number; id: string; rank: number }[]
         // Below every word match: trigram matches are less precise.
         const floor = Math.min(0, ...[...scored.values()].map((s) => s.score))
         for (const row of rows) {
           if (!scored.has(row.id))
-            scored.set(row.id, { score: floor - 1 / (1 + row.rank * -1), snippet: row.snippet })
+            scored.set(row.id, {
+              score: floor - 1 / (1 + row.rank * -1),
+              rowid: row.rowid,
+              table: 'notes_trigram',
+              match: trigram,
+            })
         }
       }
     }
@@ -251,14 +300,18 @@ export class SearchIndex {
       const boost = 1 + 0.25 * Math.exp(-ageDays / 30)
       results.push({ id, score: score > 0 ? score * boost : score / boost })
     }
-    results.toSorted((a, b) => b.score - a.score)
-    const ids = results.slice(0, limit).map((r) => r.id)
+    const ids = results
+      .toSorted((a, b) => b.score - a.score)
+      .slice(0, limit)
+      .map((r) => r.id)
 
     const terms = [...words, ...parsed.phrases]
     const snippets = new Map<string, string>()
     const matchedAttachments = new Map<string, string[]>()
-    for (const id of ids) {
-      snippets.set(id, formatSnippet(scored.get(id)?.snippet ?? ''))
+    const found = ids.map((id) => scored.get(id)!)
+    const rawSnippets = this.snippets(found)
+    for (const [index, id] of ids.entries()) {
+      snippets.set(id, formatSnippet(rawSnippets.get(found[index]!.rowid) ?? ''))
       const candidate = candidates.get(id)
       matchedAttachments.set(
         id,
