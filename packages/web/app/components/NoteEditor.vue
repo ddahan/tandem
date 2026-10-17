@@ -1,0 +1,588 @@
+<script setup lang="ts">
+// The note editor: Nuxt UI's Editor (TipTap, Markdown in and out) with our extensions, a slash
+// menu, a selection toolbar, a table toolbar, emoji and `[[` link menus, block drag handles,
+// and file drops/pastes (uploaded to the note's attachments).
+import type { EditorCustomHandlers, EditorSuggestionMenuItem, EditorToolbarItem } from '@nuxt/ui'
+import { gitHubEmojis } from '@tiptap/extension-emoji'
+import type { Editor as CoreEditor } from '@tiptap/core'
+import { VueNodeViewRenderer, type Editor } from '@tiptap/vue-3'
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
+import type { TreeNode } from '@myfluence/shared'
+import { linkKey } from '@myfluence/shared'
+import CalloutView from '~/components/editor/CalloutView.vue'
+import CodeBlockView from '~/components/editor/CodeBlockView.vue'
+import { Callout, type CalloutType } from '~/editor/callout'
+import { createExtensions, starterKitOptions } from '~/editor/extensions'
+import type { WikiLinkAttributes } from '~/editor/wiki-link'
+import { filesPrefix } from '~/utils/markdown-paths'
+
+const props = defineProps<{
+  /** Initial content, in editor form (see markdown-paths). */
+  content: string
+  noteId: string
+  notePath: string
+}>()
+
+const emit = defineEmits<{
+  change: [markdown: string]
+  headings: [headings: Heading[]]
+}>()
+
+export interface Heading {
+  level: number
+  text: string
+  pos: number
+}
+
+const api = useApi()
+const tree = useTree()
+const toast = useToast()
+const showError = useApiErrorToast()
+const editorRef = useTemplateRef<{ editor: Editor | undefined }>('editorRef')
+const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
+
+// --- Extensions ----------------------------------------------------------------------------
+
+function openWikiLink(attributes: WikiLinkAttributes) {
+  const key = linkKey(attributes.target)
+  const pages = tree.nodes.value.filter((n) => n.kind === 'page')
+  const match =
+    pages.find((n) => linkKey(n.path) === key) ??
+    pages
+      .filter((n) => linkKey(n.title) === key)
+      .toSorted((a, b) => a.path.length - b.path.length)[0]
+  if (match) {
+    void navigateTo(`/notes/${match.id}`)
+    return
+  }
+  toast.add({
+    title: `“${attributes.target}” doesn't exist yet`,
+    icon: 'i-lucide-file-question',
+    actions: [
+      {
+        label: 'Create it',
+        icon: 'i-lucide-file-plus',
+        onClick: () =>
+          void tree.createPage(null, attributes.target.split('/').pop() ?? attributes.target),
+      },
+    ],
+  })
+}
+
+const extensions = createExtensions({
+  onOpenWikiLink: openWikiLink,
+  onFiles: (editor, files, pos) => void uploadFiles(editor, files, pos),
+}).map((extension) => {
+  if (extension.name === CodeBlockLowlight.name) {
+    return (extension as typeof CodeBlockLowlight).extend({
+      addNodeView: () => VueNodeViewRenderer(CodeBlockView),
+    })
+  }
+  if (extension.name === Callout.name) {
+    return Callout.extend({ addNodeView: () => VueNodeViewRenderer(CalloutView) })
+  }
+  return extension
+})
+
+// --- Uploads -------------------------------------------------------------------------------
+
+const LARGE_FILE = 10 * 1024 * 1024
+const largeFiles = ref<File[]>([])
+let confirmLarge: ((ok: boolean) => void) | null = null
+
+function askLarge(files: File[]): Promise<boolean> {
+  largeFiles.value = files
+  return new Promise((resolve) => (confirmLarge = resolve))
+}
+
+function answerLarge(ok: boolean) {
+  largeFiles.value = []
+  confirmLarge?.(ok)
+  confirmLarge = null
+}
+
+async function uploadFiles(editor: CoreEditor, files: File[], pos: number | null) {
+  if (!files.length) return
+  const large = files.filter((file) => file.size > LARGE_FILE)
+  if (large.length && !(await askLarge(large))) return
+  const uploading = toast.add({
+    title: files.length === 1 ? `Uploading ${files[0]!.name}…` : `Uploading ${files.length} files…`,
+    icon: 'i-lucide-loader-circle',
+    duration: 0,
+  })
+  const content = []
+  try {
+    for (const file of files) {
+      const attachment = await unwrap(
+        api.notes[':id'].attachments.$post({ param: { id: props.noteId }, form: { file } }),
+      )
+      const src = `${filesPrefix(props.notePath)}${attachment.markdownPath}`
+      if (attachment.isImage) content.push({ type: 'image', attrs: { src, alt: attachment.name } })
+      else {
+        content.push(
+          { type: 'text', text: attachment.name, marks: [{ type: 'link', attrs: { href: src } }] },
+          { type: 'text', text: ' ' },
+        )
+      }
+    }
+    const at = pos ?? editor.state.selection.from
+    editor.chain().focus().insertContentAt(at, content).run()
+  } catch (error) {
+    showError(error, 'Upload failed')
+  } finally {
+    toast.remove(uploading.id)
+  }
+}
+
+function pickFiles() {
+  fileInput.value?.click()
+}
+
+function onFilesPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const editor = editorRef.value?.editor
+  if (editor && input.files?.length) void uploadFiles(editor, [...input.files], null)
+  input.value = ''
+}
+
+// --- Menus ---------------------------------------------------------------------------------
+
+type TableAction =
+  | 'addRowAfter'
+  | 'addColumnAfter'
+  | 'deleteRow'
+  | 'deleteColumn'
+  | 'toggleHeaderRow'
+  | 'deleteTable'
+
+/** One handler per table command (toolbar items can't carry arguments). */
+function tableHandlers() {
+  const actions: TableAction[] = [
+    'addRowAfter',
+    'addColumnAfter',
+    'deleteRow',
+    'deleteColumn',
+    'toggleHeaderRow',
+    'deleteTable',
+  ]
+  return Object.fromEntries(
+    actions.map((action) => [
+      action,
+      {
+        canExecute: (editor: Editor) => editor.isActive('table'),
+        execute: (editor: Editor) => editor.chain().focus()[action](),
+        isActive: () => false,
+      },
+    ]),
+  ) as Record<
+    TableAction,
+    {
+      canExecute: (editor: Editor) => boolean
+      execute: (editor: Editor) => ReturnType<Editor['chain']>
+      isActive: () => boolean
+    }
+  >
+}
+
+const handlers = {
+  callout: {
+    canExecute: (editor: Editor) => editor.can().setCallout(),
+    execute: (editor: Editor, item: { calloutType?: CalloutType }) =>
+      editor.chain().focus().setCallout(item.calloutType),
+    isActive: (editor: Editor) => editor.isActive('callout'),
+  },
+  details: {
+    canExecute: (editor: Editor) => editor.can().setDetails(),
+    execute: (editor: Editor) => editor.chain().focus().setDetails(),
+    isActive: (editor: Editor) => editor.isActive('details'),
+  },
+  table: {
+    canExecute: (editor: Editor) =>
+      editor.can().insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+    execute: (editor: Editor) =>
+      editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+    isActive: (editor: Editor) => editor.isActive('table'),
+  },
+  mermaid: {
+    canExecute: () => true,
+    execute: (editor: Editor) =>
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: 'codeBlock',
+          attrs: { language: 'mermaid' },
+          content: [{ type: 'text', text: 'flowchart LR\n  A[Idea] --> B[Note] --> C[Done]' }],
+        }),
+    isActive: () => false,
+  },
+  upload: {
+    canExecute: () => true,
+    execute: (editor: Editor) => {
+      pickFiles()
+      return editor.chain()
+    },
+    isActive: () => false,
+  },
+  wikiLink: {
+    canExecute: () => true,
+    execute: (editor: Editor, item: { target?: string }) =>
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          { type: 'wikiLink', attrs: { target: item.target } },
+          { type: 'text', text: ' ' },
+        ]),
+    isActive: () => false,
+  },
+  startWikiLink: {
+    canExecute: () => true,
+    execute: (editor: Editor) => editor.chain().focus().insertContent('[['),
+    isActive: () => false,
+  },
+  ...tableHandlers(),
+} satisfies EditorCustomHandlers
+
+type Handlers = typeof handlers
+
+const slashItems: EditorSuggestionMenuItem<Handlers>[][] = [
+  [
+    { type: 'label', label: 'Text' },
+    { kind: 'paragraph', label: 'Paragraph', icon: 'i-lucide-type' },
+    { kind: 'heading', level: 1, label: 'Heading 1', icon: 'i-lucide-heading-1' },
+    { kind: 'heading', level: 2, label: 'Heading 2', icon: 'i-lucide-heading-2' },
+    { kind: 'heading', level: 3, label: 'Heading 3', icon: 'i-lucide-heading-3' },
+    { kind: 'bulletList', label: 'Bullet list', icon: 'i-lucide-list' },
+    { kind: 'orderedList', label: 'Numbered list', icon: 'i-lucide-list-ordered' },
+    { kind: 'taskList', label: 'To-do list', icon: 'i-lucide-list-checks' },
+    { kind: 'blockquote', label: 'Quote', icon: 'i-lucide-text-quote' },
+  ],
+  [
+    { type: 'label', label: 'Blocks' },
+    { kind: 'codeBlock', label: 'Code block', icon: 'i-lucide-square-code' },
+    { kind: 'table', label: 'Table', icon: 'i-lucide-table' },
+    { kind: 'callout', calloutType: 'note', label: 'Callout: note', icon: 'i-lucide-info' },
+    { kind: 'callout', calloutType: 'tip', label: 'Callout: tip', icon: 'i-lucide-lightbulb' },
+    {
+      kind: 'callout',
+      calloutType: 'warning',
+      label: 'Callout: warning',
+      icon: 'i-lucide-triangle-alert',
+    },
+    { kind: 'details', label: 'Collapsible section', icon: 'i-lucide-list-collapse' },
+    { kind: 'mermaid', label: 'Diagram (Mermaid)', icon: 'i-lucide-workflow' },
+    { kind: 'horizontalRule', label: 'Divider', icon: 'i-lucide-separator-horizontal' },
+  ],
+  [
+    { type: 'label', label: 'Insert' },
+    {
+      kind: 'startWikiLink',
+      label: 'Link to a note',
+      description: 'Or type [[',
+      icon: 'i-lucide-file-symlink',
+    },
+    {
+      kind: 'upload',
+      label: 'Image or file',
+      description: 'Or drop it anywhere',
+      icon: 'i-lucide-paperclip',
+    },
+  ],
+]
+
+const toolbarItems: EditorToolbarItem<Handlers>[][] = [
+  [
+    {
+      label: 'Turn into',
+      trailingIcon: 'i-lucide-chevron-down',
+      activeColor: 'neutral',
+      activeVariant: 'ghost',
+      tooltip: { text: 'Turn into' },
+      content: { align: 'start' },
+      ui: { label: 'text-xs' },
+      items: [
+        { type: 'label', label: 'Turn into' },
+        { kind: 'paragraph', label: 'Paragraph', icon: 'i-lucide-type' },
+        { kind: 'heading', level: 1, label: 'Heading 1', icon: 'i-lucide-heading-1' },
+        { kind: 'heading', level: 2, label: 'Heading 2', icon: 'i-lucide-heading-2' },
+        { kind: 'heading', level: 3, label: 'Heading 3', icon: 'i-lucide-heading-3' },
+        { kind: 'bulletList', label: 'Bullet list', icon: 'i-lucide-list' },
+        { kind: 'orderedList', label: 'Numbered list', icon: 'i-lucide-list-ordered' },
+        { kind: 'taskList', label: 'To-do list', icon: 'i-lucide-list-checks' },
+        { kind: 'blockquote', label: 'Quote', icon: 'i-lucide-text-quote' },
+        { kind: 'codeBlock', label: 'Code block', icon: 'i-lucide-square-code' },
+      ],
+    },
+  ],
+  [
+    {
+      kind: 'mark',
+      mark: 'bold',
+      icon: 'i-lucide-bold',
+      tooltip: { text: 'Bold', kbds: ['meta', 'b'] },
+    },
+    {
+      kind: 'mark',
+      mark: 'italic',
+      icon: 'i-lucide-italic',
+      tooltip: { text: 'Italic', kbds: ['meta', 'i'] },
+    },
+    {
+      kind: 'mark',
+      mark: 'strike',
+      icon: 'i-lucide-strikethrough',
+      tooltip: { text: 'Strikethrough' },
+    },
+    {
+      kind: 'mark',
+      mark: 'code',
+      icon: 'i-lucide-code',
+      tooltip: { text: 'Code', kbds: ['meta', 'e'] },
+    },
+  ],
+  [{ slot: 'link', icon: 'i-lucide-link', tooltip: { text: 'Link' } }],
+]
+
+const tableItems: EditorToolbarItem<Handlers>[][] = [
+  [
+    {
+      kind: 'addRowAfter',
+      icon: 'i-lucide-between-horizontal-end',
+      tooltip: { text: 'Add row' },
+    },
+    {
+      kind: 'addColumnAfter',
+      icon: 'i-lucide-between-vertical-end',
+      tooltip: { text: 'Add column' },
+    },
+    {
+      kind: 'toggleHeaderRow',
+      icon: 'i-lucide-heading',
+      tooltip: { text: 'Toggle header row' },
+    },
+  ],
+  [
+    {
+      kind: 'deleteRow',
+      icon: 'i-lucide-rows-3',
+      tooltip: { text: 'Delete row' },
+    },
+    {
+      kind: 'deleteColumn',
+      icon: 'i-lucide-columns-3',
+      tooltip: { text: 'Delete column' },
+    },
+    {
+      kind: 'deleteTable',
+      icon: 'i-lucide-trash-2',
+      color: 'error',
+      tooltip: { text: 'Delete table' },
+    },
+  ],
+]
+
+const wikiItems = computed<EditorSuggestionMenuItem<Handlers>[]>(() => {
+  const pages = tree.nodes.value.filter((n) => n.kind === 'page' && n.id !== props.noteId)
+  const titleCounts = new Map<string, number>()
+  for (const page of pages)
+    titleCounts.set(linkKey(page.title), (titleCounts.get(linkKey(page.title)) ?? 0) + 1)
+  return pages.map((page: TreeNode) => ({
+    kind: 'wikiLink',
+    label: page.title,
+    description: page.path.replace(/\.md$/, ''),
+    icon: 'i-lucide-file-text',
+    target:
+      (titleCounts.get(linkKey(page.title)) ?? 0) > 1 ? page.path.replace(/\.md$/, '') : page.title,
+  }))
+})
+
+// --- Link popover ----------------------------------------------------------------------------
+
+const linkUrl = ref('')
+const linkOpen = ref(false)
+
+function openLink(editor: Editor) {
+  linkUrl.value = (editor.getAttributes('link').href as string | undefined) ?? ''
+  linkOpen.value = true
+}
+
+function applyLink(editor: Editor) {
+  const href = linkUrl.value.trim()
+  const chain = editor.chain().focus().extendMarkRange('link')
+  if (href)
+    chain
+      .setLink({ href: /^[a-z][a-z0-9+.-]*:|^\/|^#/i.test(href) ? href : `https://${href}` })
+      .run()
+  else chain.unsetLink().run()
+  linkOpen.value = false
+}
+
+function removeLink(editor: Editor) {
+  linkUrl.value = ''
+  applyLink(editor)
+}
+
+// --- Content -----------------------------------------------------------------------------------
+
+function collectHeadings(editor: Editor) {
+  const headings: Heading[] = []
+  editor.state.doc.descendants((node, pos) => {
+    if (node.type.name === 'heading')
+      headings.push({ level: node.attrs.level as number, text: node.textContent, pos })
+    return node.type.name !== 'heading'
+  })
+  emit('headings', headings)
+}
+
+function onUpdate(value: unknown) {
+  emit('change', String(value))
+  const editor = editorRef.value?.editor
+  if (editor) collectHeadings(editor)
+}
+
+onMounted(() => {
+  const editor = editorRef.value?.editor
+  if (editor) collectHeadings(editor)
+})
+
+defineExpose({
+  /** Replaces the content (an external change), keeping the cursor where it can. */
+  setContent(markdown: string) {
+    const editor = editorRef.value?.editor
+    if (!editor) return
+    const { from } = editor.state.selection
+    editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+    editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size))
+    collectHeadings(editor)
+  },
+  scrollTo(pos: number) {
+    const editor = editorRef.value?.editor
+    if (!editor) return
+    const dom = editor.view.nodeDOM(pos)
+    if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(pos + 1)
+      .run()
+  },
+  focus(position: 'start' | 'end' = 'start') {
+    editorRef.value?.editor?.commands.focus(position)
+  },
+})
+</script>
+
+<template>
+  <div class="note-editor">
+    <UEditor
+      ref="editorRef"
+      v-slot="{ editor }"
+      :model-value="content"
+      content-type="markdown"
+      :starter-kit="starterKitOptions"
+      :image="false"
+      :mention="false"
+      :extensions="extensions"
+      :handlers="handlers"
+      :placeholder="{ placeholder: 'Type / for commands, [[ to link a note…', mode: 'firstLine' }"
+      class="w-full"
+      :ui="{ base: '*:my-4 sm:px-0' }"
+      @update:model-value="onUpdate"
+    >
+      <UEditorToolbar
+        :editor="editor"
+        :items="toolbarItems"
+        layout="bubble"
+        plugin-key="selectionToolbar"
+        :should-show="
+          ({ editor: e, view, state }: any) =>
+            !e.isActive('codeBlock') &&
+            !e.isActive('image') &&
+            view.hasFocus() &&
+            !state.selection.empty
+        "
+      >
+        <template #link>
+          <UPopover v-model:open="linkOpen" :content="{ side: 'bottom', align: 'start' }">
+            <UButton
+              icon="i-lucide-link"
+              color="neutral"
+              :variant="editor.isActive('link') ? 'soft' : 'ghost'"
+              size="sm"
+              aria-label="Link"
+              @click="openLink(editor)"
+            />
+            <template #content>
+              <form class="flex items-center gap-1 p-1" @submit.prevent="applyLink(editor)">
+                <UInput
+                  v-model="linkUrl"
+                  placeholder="Paste a link…"
+                  size="sm"
+                  autofocus
+                  class="w-64"
+                  variant="none"
+                />
+                <UButton
+                  type="submit"
+                  icon="i-lucide-corner-down-left"
+                  size="sm"
+                  color="neutral"
+                  variant="ghost"
+                  aria-label="Apply"
+                />
+                <UButton
+                  v-if="editor.isActive('link')"
+                  icon="i-lucide-unlink"
+                  size="sm"
+                  color="neutral"
+                  variant="ghost"
+                  aria-label="Remove link"
+                  @click="removeLink(editor)"
+                />
+              </form>
+            </template>
+          </UPopover>
+        </template>
+      </UEditorToolbar>
+
+      <UEditorToolbar
+        :editor="editor"
+        :items="tableItems"
+        layout="bubble"
+        plugin-key="tableToolbar"
+        :should-show="({ editor: e, view }: any) => e.isActive('table') && view.hasFocus()"
+        :options="{ placement: 'top-start' }"
+      />
+
+      <UEditorSuggestionMenu :editor="editor" :items="slashItems" />
+      <UEditorSuggestionMenu
+        :editor="editor"
+        :items="wikiItems"
+        char="[["
+        plugin-key="wikiLinkMenu"
+        :suggestion="{ allowSpaces: true }"
+        :filter-fields="['label', 'description']"
+        :limit="10"
+      />
+      <UEditorEmojiMenu :editor="editor" :items="gitHubEmojis" />
+      <UEditorDragHandle :editor="editor" />
+    </UEditor>
+
+    <input ref="fileInput" type="file" multiple class="hidden" @change="onFilesPicked" />
+
+    <UModal
+      :open="largeFiles.length > 0"
+      title="Large file"
+      :description="`${largeFiles.map((f) => f.name).join(', ')} ${largeFiles.length > 1 ? 'are' : 'is'} over 10 MB. Large files make your data folder (and its sync) heavier.`"
+      @update:open="(open) => !open && answerLarge(false)"
+    >
+      <template #footer>
+        <div class="flex w-full justify-end gap-2">
+          <UButton label="Cancel" color="neutral" variant="ghost" @click="answerLarge(false)" />
+          <UButton label="Attach anyway" icon="i-lucide-paperclip" @click="answerLarge(true)" />
+        </div>
+      </template>
+    </UModal>
+  </div>
+</template>

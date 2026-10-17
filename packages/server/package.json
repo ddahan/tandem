@@ -1,0 +1,40 @@
+{
+  "name": "@myfluence/server",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./api": "./src/api/index.ts",
+    "./client": "./src/client.ts",
+    "./app": "./src/app.ts"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --watch src/main.ts",
+    "db:generate": "drizzle-kit generate",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "seed": "node scripts/seed.ts"
+  },
+  "dependencies": {
+    "@hono/mcp": "catalog:",
+    "@hono/node-server": "catalog:",
+    "@hono/zod-validator": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "@myfluence/shared": "workspace:*",
+    "chokidar": "catalog:",
+    "diff": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "catalog:",
+    "marked": "catalog:",
+    "nanoid": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

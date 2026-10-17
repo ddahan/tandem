@@ -1,0 +1,393 @@
+// The `myfluence` CLI: the same operations as the MCP server, for agents and scripts. It talks
+// to a running Myfluence over HTTP (the internal API), so writes go through the app: history,
+// authorship and the search index stay right.
+import { readFile } from 'node:fs/promises'
+import { basename } from 'node:path'
+import { parseArgs } from 'node:util'
+import { createClient, type Client } from '@myfluence/server/client'
+import { formatDateTime, formatSize, normalizeAuthor, type TreeNode } from '@myfluence/shared'
+
+export interface Io {
+  stdout: (text: string) => void
+  stderr: (text: string) => void
+  /** Reads all of standard input as text (empty when it is a terminal). */
+  stdin: () => Promise<string>
+  /** Reads all of standard input as bytes (attachments). */
+  stdinBytes: () => Promise<Uint8Array>
+  /** Reads a file, for `attach` and `--file`. */
+  readFile: (path: string) => Promise<Uint8Array>
+}
+
+export const USAGE = `Usage: myfluence <command> [arguments] [options]
+
+Notes are referenced by id, path ("Projects/Roadmap") or title.
+
+Reading
+  search <query…>              full-text search (prefixes, "phrases", -word, tag:x, in:Folder)
+  tree                          all pages and folders
+  read <note>                   the note's Markdown (with --meta: path, tags, attachments, backlinks)
+  tags [<note> [tag…]]          all tags; a note's tags; or set a note's tags
+  history <note>                versions of a note
+  version <version-id>          the content of a version
+
+Writing (content from arguments, --file, or standard input)
+  new <title> [content]         create a page (--parent <note>, --tags a,b)
+  folder <title>                create a folder (--parent <note>)
+  write <note> [content]        replace the whole content
+  append <note> [content]       add a block at the end
+  replace <note> --find <text> --with <text> [--all]
+  rename <note> <title>         rename (links are updated)
+  move <note> [--to <parent>]   move under another page or folder (default: the root)
+  delete <note>                 move to the trash
+  restore <note> <version-id>   restore a version
+  attach <note> <file>          attach a file (--name, --insert to append its link)
+
+Options
+  --url <url>        Myfluence's address (MYFLUENCE_URL, default http://localhost:3000)
+  --author <name>    who is writing, for history and authorship (MYFLUENCE_AUTHOR, default "agent")
+  --json             machine-readable output
+  -h, --help         this help
+`
+
+export class CliError extends Error {}
+
+type Values = {
+  url?: string
+  author?: string
+  json?: boolean
+  help?: boolean
+  parent?: string
+  tags?: string
+  file?: string
+  find?: string
+  with?: string
+  all?: boolean
+  to?: string
+  name?: string
+  insert?: boolean
+  meta?: boolean
+  limit?: string
+}
+
+async function call<T>(
+  request: Promise<{ ok: boolean; status: number; json(): Promise<T> }>,
+): Promise<T> {
+  const response = await request.catch((error: unknown) => {
+    throw new CliError(
+      `Cannot reach Myfluence (${error instanceof Error ? error.message : String(error)}). Is it running?`,
+    )
+  })
+  const body = await response.json().catch(() => null)
+  if (!response.ok)
+    throw new CliError(
+      (body as { error?: string } | null)?.error ?? `Request failed (${response.status})`,
+    )
+  return body as T
+}
+
+function describeTree(nodes: TreeNode[]): string {
+  const children = new Map<string | null, TreeNode[]>()
+  for (const node of nodes)
+    children.set(node.parentId, [...(children.get(node.parentId) ?? []), node])
+  const lines: string[] = []
+  const walk = (parentId: string | null, prefix: string) => {
+    const list = (children.get(parentId) ?? []).toSorted((a, b) => a.position - b.position)
+    list.forEach((node, index) => {
+      const last = index === list.length - 1
+      lines.push(
+        `${prefix}${last ? '└─ ' : '├─ '}${node.kind === 'folder' ? `${node.title}/` : node.title}  (${node.id})`,
+      )
+      walk(node.id, `${prefix}${last ? '   ' : '│  '}`)
+    })
+  }
+  walk(null, '')
+  return lines.join('\n') || '(no notes yet)'
+}
+
+export async function run(
+  argv: string[],
+  io: Io,
+  env: Record<string, string | undefined> = process.env,
+): Promise<number> {
+  let parsed
+  try {
+    parsed = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        url: { type: 'string' },
+        author: { type: 'string' },
+        json: { type: 'boolean' },
+        help: { type: 'boolean', short: 'h' },
+        parent: { type: 'string' },
+        tags: { type: 'string' },
+        file: { type: 'string' },
+        find: { type: 'string' },
+        with: { type: 'string' },
+        all: { type: 'boolean' },
+        to: { type: 'string' },
+        name: { type: 'string' },
+        insert: { type: 'boolean' },
+        meta: { type: 'boolean' },
+        limit: { type: 'string' },
+      },
+    })
+  } catch (error) {
+    io.stderr(`${error instanceof Error ? error.message : String(error)}\n\n${USAGE}`)
+    return 2
+  }
+  const values = parsed.values as Values
+  const [command, ...args] = parsed.positionals
+  if (!command || values.help) {
+    io.stdout(USAGE)
+    return command || values.help ? 0 : 2
+  }
+
+  const client = createClient(values.url ?? env.MYFLUENCE_URL ?? 'http://localhost:3000', {
+    author: normalizeAuthor(values.author ?? env.MYFLUENCE_AUTHOR),
+  })
+  const print = (text: string, data?: unknown) =>
+    io.stdout(
+      values.json && data !== undefined ? `${JSON.stringify(data, null, 2)}\n` : `${text}\n`,
+    )
+
+  try {
+    await execute(command, args, values, client, io, print)
+    return 0
+  } catch (error) {
+    io.stderr(`Error: ${error instanceof Error ? error.message : String(error)}\n`)
+    return 1
+  }
+}
+
+async function execute(
+  command: string,
+  args: string[],
+  values: Values,
+  client: Client,
+  io: Io,
+  print: (text: string, data?: unknown) => void,
+): Promise<void> {
+  const need = (index: number, what: string): string => {
+    const value = args[index]
+    if (!value) throw new CliError(`Missing ${what}. See myfluence --help.`)
+    return value
+  }
+  const resolve = async (ref: string) => call(client.resolve.$get({ query: { ref } }))
+  /** Content from extra arguments, --file, or standard input. */
+  const content = async (from: number, required = true): Promise<string> => {
+    if (args.length > from) return args.slice(from).join(' ').replace(/\\n/g, '\n')
+    if (values.file) return new TextDecoder().decode(await io.readFile(values.file))
+    const input = await io.stdin()
+    if (!input && required)
+      throw new CliError('No content: pass it as an argument, with --file, or on standard input.')
+    return input
+  }
+
+  switch (command) {
+    case 'search': {
+      const query = args.join(' ')
+      const response = await call(
+        client.search.$get({ query: { q: query, limit: values.limit ?? '20' } }),
+      )
+      const lines = response.results.map((r) => {
+        const snippet = r.snippet
+          .replace(/<\/?mark>/g, '')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+        const extra = [
+          r.tags.length ? `tags: ${r.tags.join(', ')}` : '',
+          r.attachments.length ? `files: ${r.attachments.join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')
+        return `${r.path.replace(/\.md$/, '')}  (${r.id})\n  ${snippet || '—'}${extra ? `\n  ${extra}` : ''}`
+      })
+      const header = response.correctedQuery
+        ? `Showing results for "${response.correctedQuery}"\n\n`
+        : ''
+      print(`${header}${lines.join('\n\n') || 'No results.'}`, response)
+      return
+    }
+    case 'tree': {
+      const nodes = await call(client.tree.$get())
+      print(describeTree(nodes), nodes)
+      return
+    }
+    case 'read': {
+      const node = await resolve(need(0, 'note'))
+      const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))
+      if (values.json) return print('', note)
+      if (!values.meta) return print(note.content.replace(/\n$/, ''))
+      const backlinks = await call(client.notes[':id'].backlinks.$get({ param: { id: node.id } }))
+      const meta = [
+        `path: ${node.path}`,
+        `id: ${node.id}`,
+        `updated: ${formatDateTime(node.updatedAt)}`,
+        `tags: ${note.tags.join(', ') || '—'}`,
+        `attachments: ${note.attachments.map((a) => a.markdownPath).join(', ') || '—'}`,
+        `linked from: ${backlinks.map((b) => b.path).join(', ') || '—'}`,
+      ]
+      return print(`${meta.join('\n')}\n---\n${note.content.replace(/\n$/, '')}`)
+    }
+    case 'tags': {
+      if (!args[0]) {
+        const tags = await call(client.tags.$get())
+        return print(tags.map((t) => `${t.tag} (${t.count})`).join('\n') || 'No tags.', tags)
+      }
+      const node = await resolve(args[0])
+      if (args.length === 1) {
+        const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))
+        return print(note.tags.join(', ') || 'No tags.', note.tags)
+      }
+      const tags = await call(
+        client.notes[':id'].tags.$put({ param: { id: node.id }, json: { tags: args.slice(1) } }),
+      )
+      return print(`Tags of ${node.path}: ${tags.join(', ')}`, tags)
+    }
+    case 'history': {
+      const node = await resolve(need(0, 'note'))
+      const versions = await call(client.notes[':id'].history.$get({ param: { id: node.id } }))
+      return print(
+        versions
+          .map((v) => `${v.id}  ${formatDateTime(v.createdAt)}  ${v.author}  ${formatSize(v.size)}`)
+          .join('\n') || 'No versions yet.',
+        versions,
+      )
+    }
+    case 'version': {
+      const version = await call(
+        client.versions[':id'].$get({ param: { id: need(0, 'version id') } }),
+      )
+      return print(version.content.replace(/\n$/, ''), version)
+    }
+    case 'new': {
+      const title = need(0, 'title')
+      const parentId = values.parent ? (await resolve(values.parent)).id : null
+      const body = await content(1, false)
+      const tags = values.tags
+        ? values.tags
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : undefined
+      const node = await call(
+        client.notes.$post({ json: { title, content: body, parentId, tags } }),
+      )
+      return print(`Created ${node.path} (${node.id})`, node)
+    }
+    case 'folder': {
+      const parentId = values.parent ? (await resolve(values.parent)).id : null
+      const node = await call(client.folders.$post({ json: { title: need(0, 'title'), parentId } }))
+      return print(`Created ${node.path}/ (${node.id})`, node)
+    }
+    case 'write': {
+      const node = await resolve(need(0, 'note'))
+      const result = await call(
+        client.notes[':id'].content.$put({
+          param: { id: node.id },
+          json: { content: await content(1) },
+        }),
+      )
+      return print(`Saved ${node.path}`, result)
+    }
+    case 'append': {
+      const node = await resolve(need(0, 'note'))
+      const result = await call(
+        client.notes[':id'].append.$post({
+          param: { id: node.id },
+          json: { content: await content(1) },
+        }),
+      )
+      return print(`Appended to ${node.path}`, result)
+    }
+    case 'replace': {
+      const node = await resolve(need(0, 'note'))
+      if (!values.find || values.with === undefined)
+        throw new CliError('replace needs --find <text> and --with <text>.')
+      const result = await call(
+        client.notes[':id'].replace.$post({
+          param: { id: node.id },
+          json: {
+            find: values.find.replace(/\\n/g, '\n'),
+            replace: values.with.replace(/\\n/g, '\n'),
+            all: values.all,
+          },
+        }),
+      )
+      return print(`Replaced ${result.count} occurrence(s) in ${node.path}`, result)
+    }
+    case 'rename': {
+      const node = await resolve(need(0, 'note'))
+      const renamed = await call(
+        client.nodes[':id'].$patch({
+          param: { id: node.id },
+          json: { title: need(1, 'new title') },
+        }),
+      )
+      return print(`Renamed to ${renamed.path}`, renamed)
+    }
+    case 'move': {
+      const node = await resolve(need(0, 'note'))
+      const parentId = values.to ? (await resolve(values.to)).id : null
+      const moved = await call(
+        client.nodes[':id'].move.$post({ param: { id: node.id }, json: { parentId } }),
+      )
+      return print(`Moved to ${moved.path}`, moved)
+    }
+    case 'delete': {
+      const node = await resolve(need(0, 'note'))
+      const result = await call(client.nodes[':id'].$delete({ param: { id: node.id } }))
+      return print(`Moved ${node.path} to the trash`, result)
+    }
+    case 'restore': {
+      const node = await resolve(need(0, 'note'))
+      const result = await call(
+        client.notes[':id'].restore.$post({
+          param: { id: node.id },
+          json: { versionId: need(1, 'version id') },
+        }),
+      )
+      return print(`Restored ${node.path}`, result)
+    }
+    case 'attach': {
+      const node = await resolve(need(0, 'note'))
+      const path = need(1, 'file (or - for standard input, with --name)')
+      const name = values.name ?? (path === '-' ? undefined : basename(path))
+      if (!name) throw new CliError('Give the file a --name when reading it from standard input.')
+      const data = path === '-' ? await io.stdinBytes() : await io.readFile(path)
+      const file = new File([data as Uint8Array<ArrayBuffer>], name)
+      const attachment = await call(
+        client.notes[':id'].attachments.$post({ param: { id: node.id }, form: { file, name } }),
+      )
+      const markdown = attachment.isImage
+        ? `![${attachment.name}](${attachment.markdownPath})`
+        : `[${attachment.name}](${attachment.markdownPath})`
+      if (values.insert)
+        await call(
+          client.notes[':id'].append.$post({ param: { id: node.id }, json: { content: markdown } }),
+        )
+      return print(markdown, attachment)
+    }
+    default:
+      throw new CliError(`Unknown command "${command}". See myfluence --help.`)
+  }
+}
+
+async function readStdin(): Promise<Uint8Array> {
+  if (process.stdin.isTTY) return new Uint8Array()
+  const chunks: Buffer[] = []
+  for await (const chunk of process.stdin) chunks.push(chunk as Buffer)
+  return new Uint8Array(Buffer.concat(chunks))
+}
+
+/** The real input and output of the process. */
+export const processIo: Io = {
+  stdout: (text) => void process.stdout.write(text),
+  stderr: (text) => void process.stderr.write(text),
+  stdin: async () => new TextDecoder().decode(await readStdin()),
+  stdinBytes: readStdin,
+  readFile: async (path) => new Uint8Array(await readFile(path)),
+}

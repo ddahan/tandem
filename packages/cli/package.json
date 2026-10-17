@@ -1,0 +1,21 @@
+{
+  "name": "@myfluence/cli",
+  "private": true,
+  "bin": {
+    "myfluence": "./src/main.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@myfluence/server": "workspace:*",
+    "@myfluence/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

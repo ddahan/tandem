@@ -1,0 +1,96 @@
+#!/usr/bin/env sh
+# The one command for working on Myfluence: ./mf <command>. Everything runs in Docker (there is
+# no Node on the Mac). Dependencies are installed on first use and after lockfile changes.
+set -eu
+cd "$(dirname "$0")"
+
+usage() {
+  cat <<USAGE
+Usage: ./mf <command> [args]
+
+  start             build and start the app in the background (http://localhost:3000)
+  stop              stop the app
+  logs              follow the app's output
+  dev               run the dev servers with reload (http://localhost:3010), Ctrl-C stops them
+  check             format check, lint, builds, type checks and unit tests (definition of done)
+  test [package]    unit tests, of one package (server, web, shared, cli) or of all
+  e2e               end-to-end tests (Playwright, against a production build)
+  typecheck         type checks
+  build             production builds
+  format            format every file (Oxfmt)
+  lint              lint every file (Oxlint)
+  pnpm <args>       any pnpm command, in the toolchain container
+  setup             rebuild the toolchain image and reinstall dependencies
+USAGE
+}
+
+dev_compose() { docker compose -f compose.dev.yaml "$@"; }
+
+toolchain() {
+  docker image inspect myfluence-dev-tools > /dev/null 2>&1 || dev_compose build node
+}
+
+pnpm_() {
+  toolchain
+  dev_compose --progress quiet run --rm --no-deps node pnpm "$@"
+}
+
+prepare() {
+  stamp=node_modules/.mf-installed
+  if [ ! -f "$stamp" ] || [ pnpm-lock.yaml -nt "$stamp" ] || [ pnpm-workspace.yaml -nt "$stamp" ]; then
+    pnpm_ install
+    touch "$stamp"
+  fi
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+
+case "$cmd" in
+  start) docker compose up -d --build "$@" && echo "Myfluence runs on http://localhost:3000" ;;
+  stop) docker compose down ;;
+  logs) docker compose logs -f ;;
+  dev)
+    prepare
+    toolchain
+    trap true INT
+    status=0
+    dev_compose --profile dev up --remove-orphans || status=$?
+    dev_compose --profile dev down
+    exit "$status"
+    ;;
+  check | format | lint | typecheck | build)
+    prepare
+    pnpm_ "$cmd" "$@"
+    ;;
+  test)
+    prepare
+    if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
+      package="$1"
+      shift
+      pnpm_ --filter "@myfluence/$package" test "$@"
+    else
+      pnpm_ test "$@"
+    fi
+    ;;
+  e2e)
+    prepare
+    pnpm_ --filter @myfluence/web build
+    pnpm_ --filter @myfluence/web test:e2e "$@"
+    ;;
+  pnpm)
+    prepare
+    pnpm_ "$@"
+    ;;
+  setup)
+    dev_compose build node
+    pnpm_ install
+    touch node_modules/.mf-installed
+    ;;
+  "" | help | -h | --help) usage ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

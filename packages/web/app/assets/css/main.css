@@ -1,0 +1,396 @@
+/* All palette colors are emitted (theme(static)): the primary and neutral colors are chosen at
+   runtime in Settings. */
+@import 'tailwindcss' theme(static);
+@import '@nuxt/ui';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/literata';
+@import '@fontsource-variable/jetbrains-mono';
+
+@source '../../editor';
+
+@theme static {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Literata Variable', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  /* Set from Settings (useSettings). */
+  --editor-font: var(--font-sans);
+  --editor-width: 52rem;
+  --ui-radius: 0.375rem;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Editor content ---------------------------------------------------------------------- */
+
+.note-editor .ProseMirror {
+  font-family: var(--editor-font);
+  font-size: 1rem;
+  min-height: 50vh;
+  padding-bottom: 30vh;
+}
+
+.note-editor .ProseMirror :is(h1, h2, h3, h4) {
+  font-family: var(--editor-font);
+  letter-spacing: -0.01em;
+  scroll-margin-top: 5rem;
+}
+
+/* Wiki links */
+.note-editor .wiki-link {
+  border-bottom: 1px dashed color-mix(in oklab, var(--ui-primary) 60%, transparent) !important;
+  cursor: pointer;
+}
+.note-editor .wiki-link::before {
+  content: '';
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.2em;
+  vertical-align: -0.05em;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z'/%3E%3Cpath d='M14 2v4a2 2 0 0 0 2 2h4'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Attachments shown as chips */
+.note-editor .file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.05em 0.55em 0.05em 0.45em;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-bg-elevated);
+  font-size: 0.9em;
+}
+.note-editor .file-chip::before {
+  content: '';
+  width: 0.95em;
+  height: 0.95em;
+  flex: none;
+  background-color: var(--ui-text-muted);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.note-editor .file-chip a,
+.note-editor a .file-chip {
+  border-bottom: 0 !important;
+}
+
+/* Task lists */
+.note-editor ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0.25rem;
+}
+.note-editor ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding-inline-start: 0;
+}
+.note-editor ul[data-type='taskList'] li > label {
+  margin-top: 0.35rem;
+  user-select: none;
+}
+.note-editor ul[data-type='taskList'] li > label input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ui-primary);
+  cursor: pointer;
+}
+.note-editor ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+.note-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: var(--ui-text-muted);
+  text-decoration: line-through;
+}
+
+/* Tables */
+.note-editor .tableWrapper {
+  overflow-x: auto;
+}
+.note-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+.note-editor :is(td, th) {
+  border: 1px solid var(--ui-border);
+  padding: 0.4rem 0.7rem;
+  vertical-align: top;
+  position: relative;
+}
+.note-editor th {
+  background: var(--ui-bg-elevated);
+  font-weight: 600;
+  text-align: start;
+}
+.note-editor :is(td, th) > p {
+  margin: 0;
+}
+.note-editor .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklab, var(--ui-primary) 15%, transparent);
+  pointer-events: none;
+}
+
+/* Callouts */
+.callout {
+  --callout: var(--ui-info);
+  border-inline-start: 3px solid var(--callout);
+  background: color-mix(in oklab, var(--callout) 8%, transparent);
+  border-radius: calc(var(--ui-radius) * 1.5);
+  padding: 0.75rem 1rem;
+}
+.callout > :first-child {
+  margin-top: 0;
+}
+.callout > :last-child {
+  margin-bottom: 0;
+}
+[data-callout='tip'] {
+  --callout: var(--ui-success);
+}
+[data-callout='important'] {
+  --callout: var(--ui-secondary);
+}
+[data-callout='warning'] {
+  --callout: var(--ui-warning);
+}
+[data-callout='caution'] {
+  --callout: var(--ui-error);
+}
+
+.rendered-markdown .callout-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--callout);
+}
+.rendered-markdown li:has(> input[type='checkbox']) {
+  list-style: none;
+  margin-inline-start: -1.25rem;
+}
+.rendered-markdown input[type='checkbox'] {
+  margin-inline-end: 0.5rem;
+  accent-color: var(--ui-primary);
+}
+
+/* Collapsible sections */
+.note-editor .details {
+  display: flex;
+  gap: 0.25rem;
+  border: 1px solid var(--ui-border);
+  border-radius: calc(var(--ui-radius) * 1.5);
+  padding: 0.5rem 0.75rem;
+}
+.note-editor .details > button {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  color: var(--ui-text-muted);
+}
+.note-editor .details > button:hover {
+  background: var(--ui-bg-elevated);
+}
+.note-editor .details > button::before {
+  content: '';
+  width: 1rem;
+  height: 1rem;
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transition: transform 150ms;
+}
+.note-editor .details.is-open > button::before {
+  transform: rotate(90deg);
+}
+.note-editor .details > div {
+  flex: 1;
+  min-width: 0;
+}
+.note-editor .details summary {
+  font-weight: 600;
+  list-style: none;
+}
+.note-editor .details summary::-webkit-details-marker {
+  display: none;
+}
+.note-editor .details [data-type='detailsContent'] > * {
+  margin-top: 0.75rem;
+}
+.note-editor .details:not(.is-open) [data-type='detailsContent'] {
+  display: none;
+}
+
+/* Resizable images */
+.note-editor [data-resize-container] {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+}
+.note-editor [data-resize-handle] {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  background: var(--ui-primary);
+  border: 2px solid var(--ui-bg);
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 120ms;
+  z-index: 1;
+}
+.note-editor [data-resize-container]:hover [data-resize-handle],
+.note-editor .ProseMirror-selectednode [data-resize-handle] {
+  opacity: 1;
+}
+.note-editor [data-resize-handle='bottom-right'] {
+  right: -0.35rem;
+  bottom: -0.35rem;
+  cursor: nwse-resize;
+}
+.note-editor [data-resize-handle='bottom-left'] {
+  left: -0.35rem;
+  bottom: -0.35rem;
+  cursor: nesw-resize;
+}
+
+/* Syntax highlighting (highlight.js classes from lowlight), light and dark */
+.note-editor pre code .hljs-comment,
+.note-editor pre code .hljs-quote {
+  color: var(--ui-text-dimmed);
+  font-style: italic;
+}
+.note-editor pre code :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type) {
+  color: var(--color-violet-600);
+}
+.note-editor pre code :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-attribute) {
+  color: var(--color-emerald-700);
+}
+.note-editor pre code :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet) {
+  color: var(--color-amber-700);
+}
+.note-editor
+  pre
+  code
+  :is(.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class) {
+  color: var(--color-sky-700);
+}
+.note-editor pre code :is(.hljs-variable, .hljs-template-variable, .hljs-attr, .hljs-params) {
+  color: var(--color-rose-700);
+}
+.note-editor pre code .hljs-deletion {
+  color: var(--color-red-700);
+}
+.dark .note-editor pre code :is(.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type) {
+  color: var(--color-violet-300);
+}
+.dark .note-editor pre code :is(.hljs-string, .hljs-regexp, .hljs-addition, .hljs-attribute) {
+  color: var(--color-emerald-300);
+}
+.dark .note-editor pre code :is(.hljs-number, .hljs-literal, .hljs-symbol, .hljs-bullet) {
+  color: var(--color-amber-300);
+}
+.dark
+  .note-editor
+  pre
+  code
+  :is(.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class) {
+  color: var(--color-sky-300);
+}
+.dark .note-editor pre code :is(.hljs-variable, .hljs-template-variable, .hljs-attr, .hljs-params) {
+  color: var(--color-rose-300);
+}
+
+/* Search snippets */
+.search-snippet mark {
+  background: color-mix(in oklab, var(--ui-primary) 22%, transparent);
+  color: inherit;
+  border-radius: 0.2em;
+  padding: 0 0.1em;
+}
+
+/* Rendered Markdown outside the editor (authorship view, history preview) */
+.rendered-markdown {
+  font-family: var(--editor-font);
+  line-height: 1.75;
+}
+.rendered-markdown > * + * {
+  margin-top: 1rem;
+}
+.rendered-markdown :is(h1, h2, h3, h4) {
+  font-weight: 700;
+  color: var(--ui-text-highlighted);
+}
+.rendered-markdown h1 {
+  font-size: 1.875rem;
+}
+.rendered-markdown h2 {
+  font-size: 1.5rem;
+}
+.rendered-markdown h3 {
+  font-size: 1.25rem;
+}
+.rendered-markdown :is(ul, ol) {
+  padding-inline-start: 1.5rem;
+}
+.rendered-markdown ul {
+  list-style: disc;
+}
+.rendered-markdown ol {
+  list-style: decimal;
+}
+.rendered-markdown a {
+  color: var(--ui-primary);
+}
+.rendered-markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--ui-bg-muted);
+  border: 1px solid var(--ui-border-muted);
+  border-radius: var(--ui-radius);
+  padding: 0.1em 0.35em;
+}
+.rendered-markdown pre {
+  background: var(--ui-bg-muted);
+  border: 1px solid var(--ui-border-muted);
+  border-radius: calc(var(--ui-radius) * 1.5);
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+}
+.rendered-markdown pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.rendered-markdown blockquote {
+  border-inline-start: 4px solid var(--ui-border-accented);
+  padding-inline-start: 1rem;
+  color: var(--ui-text-muted);
+}
+.rendered-markdown table {
+  border-collapse: collapse;
+}
+.rendered-markdown :is(td, th) {
+  border: 1px solid var(--ui-border);
+  padding: 0.3rem 0.6rem;
+}
+.rendered-markdown img {
+  max-width: 100%;
+  border-radius: var(--ui-radius);
+}

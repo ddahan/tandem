@@ -1,0 +1,11 @@
+{
+  // Unit and end-to-end tests (the app itself is checked by vue-tsc with Nuxt's tsconfig).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  },
+  "include": ["test", "e2e", "playwright.config.ts", "vitest.config.ts"]
+}

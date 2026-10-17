@@ -1,0 +1,63 @@
+packages:
+  - packages/*
+
+# One version of each dependency for the whole repo: packages reference it with "catalog:".
+catalog:
+  '@fontsource-variable/inter': ^5.3.0
+  '@fontsource-variable/jetbrains-mono': ^5.3.0
+  '@fontsource-variable/literata': ^5.3.0
+  '@hono/mcp': ^0.3.2
+  '@hono/node-server': ^2.1.4
+  '@hono/zod-validator': ^0.9.1
+  '@iconify-json/lucide': ^1.2.142
+  '@modelcontextprotocol/sdk': ^1.32.1
+  '@nuxt/ui': ^4.12.0
+  '@playwright/test': ^1.64.1
+  '@resvg/resvg-js': ^2.6.2
+  '@tiptap/core': ^3.32.0
+  '@tiptap/extension-code-block-lowlight': ^3.32.0
+  '@tiptap/extension-details': ^3.32.0
+  '@tiptap/extension-emoji': ^3.32.0
+  '@tiptap/extension-file-handler': ^3.32.0
+  '@tiptap/extension-image': ^3.32.0
+  '@tiptap/extension-list': ^3.32.0
+  '@tiptap/extension-table': ^3.32.0
+  '@tiptap/extension-task-list': ^3.32.0
+  '@tiptap/extensions': ^3.32.0
+  '@tiptap/markdown': ^3.32.0
+  '@tiptap/pm': ^3.32.0
+  '@tiptap/starter-kit': ^3.32.0
+  '@tiptap/vue-3': ^3.32.0
+  '@types/node': ^26.6.5
+  '@vitest/coverage-v8': ^5.0.5
+  '@vueuse/core': ^15.0.0
+  chokidar: ^5.0.0
+  diff: ^9.0.0
+  drizzle-kit: ^0.31.11
+  drizzle-orm: ^0.45.4
+  happy-dom: ^21.0.3
+  hono: ^4.13.13
+  lowlight: ^3.3.0
+  marked: ^18.1.1
+  mermaid: ^12.2.0
+  nanoid: ^6.0.2
+  nuxt: ^4.6.1
+  oxfmt: ^0.72.0
+  oxlint: ^1.87.0
+  tailwindcss: ^4.3.3
+  typescript: ^7.0.2
+  vitest: ^5.0.3
+  vue-router: ^5.4.0
+  vue-tsc: ^3.3.12
+  vue: ^3.5.43
+  zod: ^4.6.5
+
+catalogs:
+  # vue-tsc still needs the JavaScript TypeScript API, which TypeScript 7 no longer has.
+  vue:
+    typescript: ~6.0.3
+
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  vue-demi: false

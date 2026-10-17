@@ -1,0 +1,41 @@
+// End-to-end tests: the production build of the web app, served by the real server on a
+// temporary data folder. Run with `./mf e2e` (it builds the web app first).
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { defineConfig, devices } from '@playwright/test'
+
+const dataDir = mkdtempSync(join(tmpdir(), 'myfluence-e2e-'))
+const port = 3020
+
+export default defineConfig({
+  testDir: './e2e',
+  // One server, one data folder: tests run one after the other.
+  workers: 1,
+  fullyParallel: false,
+  retries: 0,
+  timeout: 30_000,
+  expect: { timeout: 7_000 },
+  reporter: [['list']],
+  use: {
+    baseURL: `http://localhost:${port}`,
+    ...devices['Desktop Chrome'],
+    viewport: { width: 1440, height: 900 },
+    trace: 'retain-on-failure',
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+  webServer: {
+    command: 'node ../server/src/main.ts',
+    url: `http://localhost:${port}/health`,
+    reuseExistingServer: false,
+    timeout: 30_000,
+    env: {
+      PORT: String(port),
+      HOST: '127.0.0.1',
+      MYFLUENCE_DATA_DIR: dataDir,
+      MYFLUENCE_DB_PATH: join(dataDir, '..', `${dataDir.split('/').pop()}-db`, 'myfluence.db'),
+      MYFLUENCE_WEB_DIR: '.output/public',
+      MYFLUENCE_SESSION_IDLE_MS: '1500',
+    },
+  },
+})

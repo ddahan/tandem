@@ -1,0 +1,53 @@
+// The editor's extensions beyond what UEditor adds (starter kit, Markdown, placeholder), with
+// their Markdown parsing and serialization. Pure TypeScript (no Vue components) so that the
+// Markdown round-trip can be unit-tested; node views are added by the editor component.
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
+import { FileHandler } from '@tiptap/extension-file-handler'
+import { TaskItem, TaskList } from '@tiptap/extension-list'
+import { TableKit } from '@tiptap/extension-table'
+import type { AnyExtension, Editor } from '@tiptap/core'
+import type { StarterKitOptions } from '@tiptap/starter-kit'
+import { common, createLowlight } from 'lowlight'
+import { Callout } from './callout'
+import { Details, DetailsContent, DetailsSummary } from './details'
+import { FileChips } from './file-chips'
+import { ResizableImage } from './image'
+import { WikiLink, type WikiLinkAttributes } from './wiki-link'
+
+export const lowlight = createLowlight(common)
+
+export interface ExtensionOptions {
+  onOpenWikiLink?: (attributes: WikiLinkAttributes) => void
+  onFiles?: (editor: Editor, files: File[], pos: number | null) => void
+}
+
+export function createExtensions(options: ExtensionOptions = {}): AnyExtension[] {
+  return [
+    CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
+    TableKit.configure({ table: { resizable: false } }),
+    TaskList,
+    TaskItem.configure({ nested: true }),
+    Callout,
+    Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
+    DetailsSummary,
+    DetailsContent,
+    ResizableImage,
+    WikiLink.configure({ onOpen: options.onOpenWikiLink ?? (() => {}) }),
+    FileChips,
+    FileHandler.configure({
+      onDrop: (editor, files, pos) => options.onFiles?.(editor, files, pos),
+      onPaste: (editor, files, htmlContent) => {
+        // Pasted HTML with images (from a web page) is handled by the editor itself.
+        if (htmlContent) return
+        options.onFiles?.(editor, files, null)
+      },
+    }),
+  ]
+}
+
+/** UEditor's starter kit options: our code block replaces the plain one. */
+export const starterKitOptions: Partial<StarterKitOptions> = {
+  codeBlock: false,
+  link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
+  heading: { levels: [1, 2, 3, 4] },
+}

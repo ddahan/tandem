@@ -1,0 +1,98 @@
+<script setup lang="ts">
+// The Cmd+K palette: full-text search on the server as you type, plus a few actions.
+import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
+import { refDebounced } from '@vueuse/core'
+import type { SearchResponse } from '@myfluence/shared'
+
+const api = useApi()
+const tree = useTree()
+const colorMode = useColorMode()
+
+const searchTerm = ref('')
+const debounced = refDebounced(searchTerm, 120)
+const response = ref<SearchResponse | null>(null)
+const loading = ref(false)
+let latest = 0
+
+watch(
+  debounced,
+  async (q) => {
+    const request = ++latest
+    loading.value = true
+    try {
+      const result = await unwrap(api.search.$get({ query: { q, limit: '20' } }))
+      if (request === latest) response.value = result
+    } finally {
+      if (request === latest) loading.value = false
+    }
+  },
+  { immediate: true },
+)
+
+const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
+  const results = response.value?.results ?? []
+  const corrected = response.value?.correctedQuery
+  return [
+    {
+      id: 'notes',
+      label: !searchTerm.value.trim()
+        ? 'Recent'
+        : corrected
+          ? `Showing results for “${corrected}”`
+          : 'Notes',
+      ignoreFilter: true,
+      items: results.map((result) => {
+        const parents = tree
+          .ancestors(result.id)
+          .slice(0, -1)
+          .map((n) => n.title)
+          .join(' / ')
+        return {
+          id: result.id,
+          label: result.title,
+          suffix: parents,
+          descriptionHtml: result.snippet || undefined,
+          icon: result.attachments.length ? 'i-lucide-paperclip' : 'i-lucide-file-text',
+          to: `/notes/${result.id}`,
+          class: 'search-snippet',
+        }
+      }),
+    },
+    {
+      id: 'actions',
+      label: 'Actions',
+      items: [
+        {
+          label: 'New page',
+          icon: 'i-lucide-file-plus',
+          kbds: ['meta', 'alt', 'n'],
+          onSelect: () => void tree.createPage(),
+        },
+        {
+          label: 'Full search',
+          icon: 'i-lucide-search',
+          to: { path: '/search', query: { q: searchTerm.value } },
+        },
+        { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
+        { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
+        {
+          label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',
+          icon: colorMode.value === 'dark' ? 'i-lucide-sun' : 'i-lucide-moon',
+          onSelect: () => (colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'),
+        },
+      ],
+    },
+  ]
+})
+</script>
+
+<template>
+  <UDashboardSearch
+    v-model:search-term="searchTerm"
+    :groups="groups"
+    :loading="loading"
+    :color-mode="false"
+    placeholder='Search notes… (tag:x, in:Folder, -word, "phrase")'
+    :fuse="{ resultLimit: 20 }"
+  />
+</template>

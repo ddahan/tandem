@@ -1,0 +1,245 @@
+// The main flows of the app, in a real browser against the real server.
+import { expect, test, type Page } from '@playwright/test'
+import { api, createNote, focusEnd, noteContent, openNote, resolve, waitSaved } from './helpers'
+
+test('creates a page, edits it with Markdown shortcuts, and saves it in the background', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New page', exact: true }).first().click()
+  await expect(page).toHaveURL(/\/notes\//)
+
+  const title = page.getByLabel('Title')
+  await title.fill('First page')
+  await title.press('Enter')
+  await expect(page.locator('.ProseMirror')).toBeFocused()
+  await page.keyboard.type('## Plan')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Some **bold** text')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('[ ] a task')
+
+  await waitSaved(page)
+  await expect(page.getByTestId('tree-First page')).toBeVisible()
+  await expect
+    .poll(() => noteContent(request, 'First page'))
+    .toBe('## Plan\n\nSome **bold** text\n\n- [ ] a task\n')
+})
+
+test('links notes with [[ and follows the link', async ({ page, request }) => {
+  const target = await createNote(request, 'Link target', 'The target.')
+  const source = await createNote(request, 'Link source', 'Start.')
+  await openNote(page, source.id)
+  await focusEnd(page)
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('See [[Link ta')
+  // The `[[` menu lists matching notes; Enter picks the first one.
+  await expect(page.getByRole('option', { name: /Link target/ })).toBeVisible()
+  await page.keyboard.press('Enter')
+  await waitSaved(page)
+  await expect.poll(() => noteContent(request, 'Link source')).toContain('See [[Link target]]')
+
+  await page.locator('.ProseMirror .wiki-link').click()
+  await expect(page).toHaveURL(new RegExp(`/notes/${target.id}`))
+  // The backlink is listed in the side panel.
+  await page.getByRole('tab', { name: 'Links' }).click()
+  await expect(page.getByRole('link', { name: /Link source/ })).toBeVisible()
+})
+
+test('searches from the palette, forgiving typos', async ({ page, request }) => {
+  const note = await createNote(
+    request,
+    'Quarterly budget',
+    'Numbers for the marketing department.',
+  )
+  await page.goto('/')
+  await page
+    .getByRole('button', { name: /Search/ })
+    .first()
+    .click()
+  await page.getByPlaceholder(/Search notes/).fill('markting')
+  await expect(page.getByText('Showing results for “marketing”')).toBeVisible()
+  await page.getByRole('option', { name: /Quarterly budget/ }).click()
+  await expect(page).toHaveURL(new RegExp(`/notes/${note.id}`))
+})
+
+test('renames a note from its title, keeping links working', async ({ page, request }) => {
+  const note = await createNote(request, 'Old title', 'Content')
+  await createNote(request, 'Linker', 'Points to [[Old title]].')
+  await openNote(page, note.id)
+  const title = page.getByLabel('Title')
+  await title.fill('New title')
+  await title.press('Tab')
+  await expect(page.getByTestId('tree-New title')).toBeVisible()
+  expect((await resolve(request, 'New title')).id).toBe(note.id)
+  await expect.poll(() => noteContent(request, 'Linker')).toBe('Points to [[New title]].')
+})
+
+test('moves a page by dragging it onto another one in the tree', async ({ page, request }) => {
+  await createNote(request, 'Drag parent')
+  const child = await createNote(request, 'Drag child')
+  await page.goto('/')
+  await page.getByTestId('tree-Drag child').dragTo(page.getByTestId('tree-Drag parent'))
+  await expect
+    .poll(async () => (await resolve(request, child.id)).path)
+    .toBe('Drag parent/Drag child.md')
+})
+
+test('shows changes made by an agent live, with authorship', async ({ page, request }) => {
+  const note = await createNote(request, 'Live note', 'Written by me.')
+  await openNote(page, note.id)
+  await api(request, 'POST', `/notes/${note.id}/append`, { content: 'Added by Claude.' }, 'claude')
+  await expect(page.locator('.ProseMirror')).toContainText('Added by Claude.')
+  await expect(page.getByText('Updated by Claude').first()).toBeVisible()
+
+  await page.getByRole('button', { name: 'Authorship' }).click()
+  await expect(page.getByTestId('authorship-block')).toHaveCount(2)
+  await expect(page.getByText('Written by', { exact: true })).toBeVisible()
+  await expect(page.getByText('Claude', { exact: true })).toBeVisible()
+})
+
+test('detects a conflict with an agent and keeps my version', async ({ page, request }) => {
+  const note = await createNote(request, 'Conflict note', 'Original.')
+  await openNote(page, note.id)
+  await focusEnd(page)
+  await page.keyboard.type(' Mine.')
+  // The agent saves before the editor's background save.
+  await api(request, 'PUT', `/notes/${note.id}/content`, { content: 'Theirs.' }, 'claude')
+  await expect(
+    page.getByText('This note was changed elsewhere while you were editing'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Keep mine' }).click()
+  await expect.poll(() => noteContent(request, note.id)).toBe('Original. Mine.\n')
+})
+
+test('keeps history and restores a version', async ({ page, request }) => {
+  const note = await createNote(request, 'History note', 'First version.')
+  // A version is kept once the session is idle (1.5 s in these tests).
+  await expect
+    .poll(async () => (await api<unknown[]>(request, 'GET', `/notes/${note.id}/history`)).length, {
+      timeout: 10_000,
+    })
+    .toBe(1)
+  await api(request, 'PUT', `/notes/${note.id}/content`, { content: 'Second version.' }, 'claude')
+  await openNote(page, note.id)
+  await page.getByRole('tab', { name: 'History' }).click()
+  await page.getByTestId('history-version').first().click()
+  await page.getByRole('button', { name: 'Restore this version' }).click()
+  await expect(page.locator('.ProseMirror')).toContainText('First version.')
+  await expect.poll(() => noteContent(request, note.id)).toBe('First version.')
+})
+
+test('attaches files from the side panel', async ({ page, request }) => {
+  const note = await createNote(request, 'Attachments note', 'Files below.')
+  await openNote(page, note.id)
+  await page.getByRole('tab', { name: 'Files' }).click()
+  const png = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64',
+  )
+  await page
+    .locator('input[type=file]')
+    .last()
+    .setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: png })
+  const image = page.locator('.ProseMirror img')
+  await expect(image).toBeVisible()
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1)
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toContain('![pixel.png](Attachments%20note.assets/pixel.png)')
+})
+
+test('moves to the trash, restores, and empties the trash', async ({ page, request }) => {
+  const note = await createNote(request, 'Trash me', 'Bye.')
+  await openNote(page, note.id)
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Move to trash' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Move to trash' }).click()
+  await expect(page).toHaveURL('/')
+
+  await page.goto('/trash')
+  await expect(page.getByTestId('trash-item').filter({ hasText: 'Trash me' })).toBeVisible()
+  await page
+    .getByTestId('trash-item')
+    .filter({ hasText: 'Trash me' })
+    .getByRole('button', { name: 'Restore' })
+    .click()
+  await expect(page.getByTestId('tree-Trash me')).toBeVisible()
+
+  await api(request, 'DELETE', `/nodes/${note.id}`)
+  await page.reload()
+  await page.getByRole('button', { name: 'Empty trash' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click()
+  await expect(page.getByText('The trash is empty')).toBeVisible()
+})
+
+test('edits the Markdown source directly', async ({ page, request }) => {
+  const note = await createNote(request, 'Source note', '# Title\n')
+  await openNote(page, note.id)
+  await page.getByRole('button', { name: 'Markdown source' }).click()
+  const source = page.getByRole('textbox', { name: 'Markdown source' })
+  await expect(source).toHaveValue('# Title\n')
+  await source.fill('# Title\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n')
+  await waitSaved(page)
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(page.locator('.ProseMirror table')).toBeVisible()
+})
+
+test('changes the theme and the settings', async ({ page, request }) => {
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'emerald' }).click()
+  await expect
+    .poll(
+      async () => (await api<{ primaryColor: string }>(request, 'GET', '/settings')).primaryColor,
+    )
+    .toBe('emerald')
+  await page.getByRole('button', { name: 'Dark', exact: true }).first().click()
+  await expect(page.locator('html')).toHaveClass(/dark/)
+})
+
+/** Drops files on the editor, as dragging them from Finder would. */
+async function dropFiles(
+  page: Page,
+  files: { name: string; type: string; size?: number; text?: string }[],
+) {
+  await page.locator('.ProseMirror').evaluate((editor, list) => {
+    const transfer = new DataTransfer()
+    for (const file of list) {
+      const data = file.size ? new Uint8Array(file.size) : (file.text ?? '')
+      transfer.items.add(new File([data], file.name, { type: file.type }))
+    }
+    const rect = editor.getBoundingClientRect()
+    editor.dispatchEvent(
+      new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: transfer,
+        clientX: rect.x + 5,
+        clientY: rect.y + 5,
+      }),
+    )
+  }, files)
+}
+
+test('drops a file into a note, shown as a file chip', async ({ page, request }) => {
+  const note = await createNote(request, 'Drop note', 'Before.')
+  await openNote(page, note.id)
+  await dropFiles(page, [{ name: 'report.pdf', type: 'application/pdf', text: 'PDF' }])
+  await expect(page.locator('.ProseMirror .file-chip')).toHaveText('report.pdf')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toContain('[report.pdf](Drop%20note.assets/report.pdf)')
+})
+
+test('asks before attaching a file over 10 MB', async ({ page, request }) => {
+  const note = await createNote(request, 'Large drop', 'Before.')
+  await openNote(page, note.id)
+  await dropFiles(page, [{ name: 'video.mp4', type: 'video/mp4', size: 11 * 1024 * 1024 }])
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('over 10 MB')
+  await dialog.getByRole('button', { name: 'Attach anyway' }).click()
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toContain('[video.mp4](Large%20drop.assets/video.mp4)')
+})
