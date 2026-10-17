@@ -13,6 +13,13 @@ import { streamSSE } from 'hono/streaming'
 import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
 import { DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@tandem/shared'
+import {
+  createFolder,
+  DEFAULT_READ_ONLY_REASON,
+  folderProblem,
+  listFolder,
+  type NotesFolderControl,
+} from '../folders.ts'
 import { ConflictError, NotFoundError, ValidationError } from '../vault/errors.ts'
 import type { Vault } from '../vault/vault.ts'
 
@@ -52,7 +59,19 @@ const settingsPatch = z
   })
   .partial()
 
-export function createApi(vault: Vault) {
+export interface ApiOptions {
+  /** How the notes folder can change (default: it can't, from the app). */
+  notesFolder?: NotesFolderControl
+  /** Folders that can't be the notes folder (the app's own). */
+  forbiddenFolders?: string[]
+}
+
+export function createApi(vault: Vault, options: ApiOptions = {}) {
+  const notesFolder = options.notesFolder ?? {
+    readOnlyReason: DEFAULT_READ_ONLY_REASON,
+    change: () => Promise.reject(new ValidationError(DEFAULT_READ_ONLY_REASON)),
+  }
+  const forbidden = options.forbiddenFolders ?? []
   const api = new Hono()
     .onError((error, c) => {
       if (error instanceof NotFoundError) return c.json({ error: error.message }, 404)
@@ -276,6 +295,33 @@ export function createApi(vault: Vault) {
     .delete('/trash', async (c) => c.json({ deleted: await vault.emptyTrash() }))
 
     // --- Settings ----------------------------------------------------------------------------
+    // --- Notes folder (Settings › Notes folder) ----------------------------------------------
+    .get('/notes-folder', (c) =>
+      c.json({ path: vault.dataDir, readOnlyReason: notesFolder.readOnlyReason }),
+    )
+    .put('/notes-folder', zValidator('json', z.object({ path: z.string().min(1) })), async (c) => {
+      if (notesFolder.readOnlyReason) throw new ValidationError(notesFolder.readOnlyReason)
+      const { path } = c.req.valid('json')
+      const problem = await folderProblem(path, forbidden)
+      if (problem) throw new ValidationError(problem)
+      await notesFolder.change(path)
+      return c.json({ path })
+    })
+    // Folders on disk, for the notes folder picker (not the tree's folders: /folders).
+    .get(
+      '/disk-folders',
+      zValidator('query', z.object({ path: z.string().optional() })),
+      async (c) => c.json(await listFolder(c.req.valid('query').path ?? '', forbidden)),
+    )
+    .post(
+      '/disk-folders',
+      zValidator('json', z.object({ parent: z.string().min(1), name: z.string().min(1) })),
+      async (c) => {
+        const { parent, name } = c.req.valid('json')
+        return c.json({ path: await createFolder(parent, name) })
+      },
+    )
+
     .get('/settings', async (c) => c.json(await vault.getSettings()))
     .patch('/settings', zValidator('json', settingsPatch), async (c) =>
       c.json(await vault.updateSettings(c.req.valid('json'))),

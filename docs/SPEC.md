@@ -23,6 +23,15 @@ inside OneDrive so that it is backed up and synced.
 - **Docker**: `./td start` from a clone of the repository (the developer's setup).
 - Both use the same notes folder layout; switching between them only takes pointing the new
   one at the same folder (its database is restored from the folder's backup).
+- **Settings › Notes folder** shows the folder in use. In the standalone app (run as the login
+  item), "Change…" opens a folder picker drawn by the app (the server lists folders: a browser
+  can't): places (Home, Documents, iCloud Drive, OneDrive…), the path, subfolders, "New
+  folder", a path field. It says what the selected folder holds (Tandem notes, whose history
+  and tags come along; Markdown files, which become notes; nothing) or why it can't be used
+  (the home folder or the disk itself, Tandem's own folder, missing, not writable). Switching
+  saves the choice and restarts the app's server on it (a few seconds), then the app reloads;
+  nothing is moved or copied. Each folder keeps its own database. With Docker, or when started
+  by hand, the folder is shown read-only, with how to change it.
 
 ## Storage
 

@@ -1,24 +1,36 @@
 // The standalone Tandem app: one executable, without Docker or Node. `tandem serve` runs the
 // app; every other command is the CLI (packages/cli), talking to the running app.
-import { join } from 'node:path'
 import { processIo, run, USAGE } from '@tandem/cli/cli'
 import { startServer } from '@tandem/server/server'
 import { SERVE_USAGE, serveOptions } from './options.ts'
 import { appDir, buildVersion, runtimeFiles } from './runtime.ts'
+import { databaseFor, readSettings, writeSettings } from './settings.ts'
 
 async function serve(args: string[]) {
-  const { dataDir, port } = serveOptions(args)
   const home = appDir()
+  const saved = readSettings(home)
+  const { dataDir, port, asService } = serveOptions(args, process.env, saved)
   const { version, webDir, migrationsFolder } = runtimeFiles(home)
   console.log(`Tandem ${version}`)
   const app = await startServer({
     dataDir,
-    dbPath: join(home, 'tandem.db'),
+    dbPath: databaseFor(home, dataDir),
     webDir,
     migrationsFolder,
     port,
     // Local only: there is no authentication.
     hostname: '127.0.0.1',
+    forbiddenFolders: [home],
+    notesFolder: {
+      readOnlyReason: asService
+        ? null
+        : 'Tandem was started by hand: start it again with --data <folder> to change it.',
+      // Saved, then a clean exit: launchd starts the login item again, on the new folder.
+      async change(path) {
+        writeSettings(home, { ...saved, dataDir: path, port })
+        setTimeout(() => void stop(), 300)
+      },
+    },
   })
   const stop = async () => {
     await app.stop()

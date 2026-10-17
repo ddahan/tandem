@@ -38,9 +38,12 @@ That's all: no Docker, no Node. The installer downloads Tandem (one executable, 
 Linux, Apple Silicon or Intel), checks it, asks where your notes live (default `~/Tandem`; a
 OneDrive or iCloud folder works), starts it at login, and opens <http://localhost:3000>.
 
+- **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
+  in a few seconds; nothing is moved).
 - **Update**: run the same command again (your notes folder is remembered).
 - **Uninstall**: `… | sh -s -- --uninstall` (your notes stay).
-- Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`. Logs:
+- Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
+  `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
 - With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
 

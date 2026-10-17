@@ -8,11 +8,13 @@
 #
 # Options (environment): TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
 # TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this file instead of
-# downloading), TANDEM_HOME (the app's own folder), TANDEM_NO_OPEN=1 (don't open the browser).
+# downloading), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login item's
+# name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
 
 REPO="ddahan/tandem"
-LABEL="app.tandem"
+# The login item's name (another one runs a second Tandem, e.g. TANDEM_HOME + TANDEM_PORT).
+LABEL="${TANDEM_SERVICE_LABEL:-app.tandem}"
 
 say() { printf '%s\n' "$*"; }
 fail() {
@@ -28,6 +30,7 @@ case "$os" in
     app_dir="${TANDEM_HOME:-$HOME/Library/Application Support/Tandem}"
     service_file="$HOME/Library/LaunchAgents/$LABEL.plist"
     log_file="$HOME/Library/Logs/Tandem.log"
+    [ "$LABEL" = app.tandem ] || log_file="$HOME/Library/Logs/$LABEL.log"
     ;;
   Linux)
     platform=linux
@@ -133,12 +136,17 @@ if curl -fs -m 2 "http://localhost:$port/health" > /dev/null 2>&1; then
 fi
 mkdir -p "$bin_dir" "$app_dir"
 mv "$work/tandem" "$bin"
-printf 'data_dir=%s\nport=%s\n' "'$data_dir'" "$port" > "$settings"
+# The login item runs `tandem serve`, which reads the folder and port from this file (also
+# written by Settings › Notes folder).
+printf 'data_dir=%s\nport=%s\n' "'$(printf '%s' "$data_dir" | sed "s/'/'\\\\''/g")'" "$port" > "$settings"
 
 # --- Start at login -------------------------------------------------------------------------
 home_env=""
 if [ "$platform" = darwin ]; then
-  [ -n "${TANDEM_HOME:-}" ] && home_env="<key>EnvironmentVariables</key><dict><key>TANDEM_HOME</key><string>$TANDEM_HOME</string></dict>"
+  env_entries=""
+  [ -n "${TANDEM_HOME:-}" ] && env_entries="$env_entries<key>TANDEM_HOME</key><string>$TANDEM_HOME</string>"
+  [ "$LABEL" = app.tandem ] || env_entries="$env_entries<key>TANDEM_SERVICE_LABEL</key><string>$LABEL</string>"
+  [ -n "$env_entries" ] && home_env="<key>EnvironmentVariables</key><dict>$env_entries</dict>"
   mkdir -p "$(dirname "$service_file")" "$(dirname "$log_file")"
   cat > "$service_file" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -147,14 +155,12 @@ if [ "$platform" = darwin ]; then
 <dict>
   <key>Label</key><string>$LABEL</string>
   <key>ProgramArguments</key>
-  <array>
-    <string>$bin</string><string>serve</string>
-    <string>--data</string><string>$data_dir</string>
-    <string>--port</string><string>$port</string>
-  </array>
+  <array><string>$bin</string><string>serve</string></array>
   $home_env
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <!-- Restarted 2 s after it stops (launchd's default is 10): switching folders restarts it. -->
+  <key>ThrottleInterval</key><integer>2</integer>
   <key>StandardOutPath</key><string>$log_file</string>
   <key>StandardErrorPath</key><string>$log_file</string>
 </dict>
@@ -169,7 +175,7 @@ elif command -v systemctl > /dev/null 2>&1; then
 Description=Tandem notes
 
 [Service]
-ExecStart="$bin" serve --data "$data_dir" --port $port
+ExecStart="$bin" serve
 $home_env
 Restart=on-failure
 

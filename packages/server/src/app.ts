@@ -4,13 +4,13 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
-import { createApi, createFileRoutes } from './api/index.ts'
+import { createApi, createFileRoutes, type ApiOptions } from './api/index.ts'
 import { createMcpRoutes } from './api/mcp.ts'
 import type { Vault } from './vault/vault.ts'
 
-export function createApp(vault: Vault, options: { webDir?: string } = {}) {
+export function createApp(vault: Vault, options: { webDir?: string } & ApiOptions = {}) {
   const app = new Hono()
-    .route('/api', createApi(vault))
+    .route('/api', createApi(vault, options))
     .route('/mcp', createMcpRoutes(vault))
     .route('/files', createFileRoutes(vault))
     .get('/health', (c) => c.json({ ok: true }))

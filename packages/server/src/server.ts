@@ -5,6 +5,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
+import type { NotesFolderControl } from './folders.ts'
 import { openDatabase } from './db/client.ts'
 import { Vault } from './vault/vault.ts'
 import { watchVault } from './watcher.ts'
@@ -24,6 +25,10 @@ export interface ServerOptions {
   sessionIdleMs?: number
   /** Poll the notes folder instead of relying on file system events. */
   watchPolling?: boolean
+  /** How the notes folder can change from the app (default: it can't). */
+  notesFolder?: NotesFolderControl
+  /** Folders that can't be the notes folder (the app's own). */
+  forbiddenFolders?: string[]
 }
 
 const README = `# Tandem internal folder
@@ -80,9 +85,20 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   vault.dirty = true
   backup()
 
-  const server = serve({ fetch: createApp(vault, { webDir }).fetch, port, hostname }, (info) => {
-    console.log(`Tandem listens on http://${hostname}:${info.port}`)
-  })
+  const server = serve(
+    {
+      fetch: createApp(vault, {
+        webDir,
+        notesFolder: options.notesFolder,
+        forbiddenFolders: options.forbiddenFolders,
+      }).fetch,
+      port,
+      hostname,
+    },
+    (info) => {
+      console.log(`Tandem listens on http://${hostname}:${info.port}`)
+    },
+  )
 
   return {
     async stop() {

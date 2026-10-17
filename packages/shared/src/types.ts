@@ -97,6 +97,29 @@ export interface TrashItem {
   pageCount: number
 }
 
+/** The notes folder in use, and whether it can be changed from the app. */
+export interface NotesFolder {
+  path: string
+  /** Null when Settings can change it; otherwise why not (e.g. a Docker mount). */
+  readOnlyReason: string | null
+}
+
+/** A folder, as the notes folder picker shows it (the server lists folders: a browser can't). */
+export interface FolderListing {
+  path: string
+  /** Null at the top of the disk. */
+  parent: string | null
+  folders: { name: string; path: string }[]
+  /** It already holds Tandem notes (a `.tandem` folder). */
+  tandem: boolean
+  /** Markdown files directly inside: they become notes. */
+  markdownFiles: number
+  /** Null when it can be the notes folder; otherwise why not. */
+  problem: string | null
+  /** Home, Documents, iCloud Drive, OneDrive…: those that exist. */
+  places: { label: string; path: string }[]
+}
+
 export interface Settings {
   /** Shown next to the logo and in the browser tab. */
   workspaceName: string

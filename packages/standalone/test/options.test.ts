@@ -10,12 +10,25 @@ describe('serve options', () => {
     expect(serveOptions(['--data', 'notes', '--port', '3100'], {})).toEqual({
       dataDir: resolve('notes'),
       port: 3100,
+      asService: false,
     })
-    expect(serveOptions([], { TANDEM_DATA_DIR: '/n', TANDEM_PORT: '4000' })).toEqual({
+    expect(serveOptions([], { TANDEM_DATA_DIR: '/n', TANDEM_PORT: '4000' })).toMatchObject({
       dataDir: '/n',
       port: 4000,
     })
     expect(serveOptions(['--data', '/n'], {}).port).toBe(3000)
+  })
+
+  it('uses the saved folder: last by hand, first as the login item', () => {
+    const saved = { dataDir: '/saved', port: 3200 }
+    expect(serveOptions(['--data', '/arg'], {}, saved)).toMatchObject({ dataDir: '/arg' })
+    expect(serveOptions([], {}, saved)).toMatchObject({ dataDir: '/saved', port: 3200 })
+    // An older installer put the folder in the login item's arguments: Settings' choice wins.
+    expect(serveOptions(['--data', '/arg'], { XPC_SERVICE_NAME: 'app.tandem' }, saved)).toEqual({
+      dataDir: '/saved',
+      port: 3200,
+      asService: true,
+    })
   })
 
   it('needs a notes folder and a valid port', () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_SETTINGS, type Settings } from '@tandem/shared'
+import { DEFAULT_SETTINGS, type NotesFolder, type Settings } from '@tandem/shared'
 import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
 import { accentShade, logoSvg } from '~/utils/logo'
 
@@ -64,6 +64,13 @@ const modes = [
 const install = useInstallApp()
 const installLogo = logoSvg(accentShade, 'install-settings-logo')
 
+const api = useApi()
+const notesFolder = ref<NotesFolder | null>(null)
+const pickerOpen = ref(false)
+onMounted(async () => {
+  notesFolder.value = await unwrap(api['notes-folder'].$get()).catch(() => null)
+})
+
 const workspaceName = ref(settings.value.workspaceName)
 const displayName = ref(settings.value.displayName)
 function saveWorkspaceName() {
@@ -98,6 +105,35 @@ async function set(patch: Partial<Settings>) {
               @change="saveWorkspaceName"
             />
           </UFormField>
+        </section>
+
+        <USeparator />
+
+        <section>
+          <h2 class="font-semibold text-highlighted">Notes folder</h2>
+          <p class="mb-4 text-sm text-muted">Where your notes are, as Markdown files.</p>
+          <div class="flex flex-wrap items-center gap-3" data-testid="notes-folder">
+            <code
+              class="max-w-full truncate rounded-md border border-muted bg-muted px-2 py-1 text-sm text-highlighted"
+              >{{ notesFolder?.path ?? '…' }}</code
+            >
+            <UButton
+              v-if="notesFolder && !notesFolder.readOnlyReason"
+              label="Change…"
+              icon="i-lucide-folder-open"
+              color="neutral"
+              variant="outline"
+              @click="pickerOpen = true"
+            />
+          </div>
+          <p v-if="notesFolder?.readOnlyReason" class="mt-2 text-xs text-muted">
+            {{ notesFolder.readOnlyReason }}
+          </p>
+          <NotesFolderPicker
+            v-if="notesFolder"
+            v-model:open="pickerOpen"
+            :current="notesFolder.path"
+          />
         </section>
 
         <USeparator />

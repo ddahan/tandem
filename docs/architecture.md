@@ -231,11 +231,24 @@ folders and the versions.
   then signs the macOS executables ad hoc (`codesign`, on the Mac), writes `SHA256SUMS` and
   runs the Linux one as a smoke test.
 - `src/runtime.ts`: the app folder (`~/Library/Application Support/Tandem/`, `~/.local/share/tandem/`,
-  or `TANDEM_HOME`) holds the live database and the embedded files, extracted once per build
+  or `TANDEM_HOME`) holds the live databases and the embedded files, extracted once per build
   into `runtime/<build>/` (atomically, older builds removed).
+- `src/settings.ts`: `install.env` in the app folder (notes folder, port; shell syntax, as the
+  installer sources it). `tandem serve` reads it: by hand, after its arguments and the
+  environment; as the login item (`XPC_SERVICE_NAME` is its label), before them, since it holds
+  the folder chosen in Settings. One live database per notes folder
+  (`databases/<hash of its path>.db`): switching folders never mixes their ids and history; a
+  folder's first one is restored from its backup, and the single `tandem.db` of 0.1 becomes
+  the current folder's.
+- Switching folders (Settings): `api/index.ts` exposes `GET/PUT /notes-folder` and
+  `GET/POST /disk-folders` (`folders.ts`: listing and checks); whoever starts the server passes
+  a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
+  (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
+  the folder is read-only.
 - `install.sh` (repo root): downloads the latest release for the platform, checks it, writes
-  `install.env` (notes folder, port) in the app folder for updates, and registers the service
+  `install.env`, and registers the service, which runs `tandem serve` alone
   (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
+  `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).
 
 ## CLI (`packages/cli`)
 
