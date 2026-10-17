@@ -8,29 +8,32 @@ How Tandem is built. What it does and why is in [SPEC.md](SPEC.md); how to work 
 ```
  Browser (Nuxt SPA) ──HTTP /api, SSE /api/events──┐
  Agents ─────────────HTTP /mcp (MCP) ─────────────┤
- CLI (in the container) ──HTTP /api ──────────────┤
+ CLI (`tandem …`) ───────HTTP /api ──────────────┤
                                                   ▼
                                    Hono server (packages/server)
                                          │  Vault (one lock)
                      ┌───────────────────┼────────────────────┐
                      ▼                   ▼                    ▼
            Markdown files          SQLite (node:sqlite)   File watcher
-           <data folder>           Docker volume, backed  (chokidar) → reconcile
-                                   up to <data>/.tandem
+           <data folder>           app folder or Docker   (chokidar) → reconcile
+                                   volume, backed up to
+                                   <data>/.tandem
 ```
 
 One process serves everything: the API, the MCP endpoint, attachment files (`/files/…`) and the
-built web app. It runs TypeScript directly (Node's type stripping: no build step for the
-server, the CLI and the shared package).
+built web app. In Docker and development it runs TypeScript directly (Node's type stripping:
+no build step for the server, the CLI and the shared package); the standalone app is the same
+code bundled into one executable (below).
 
 ## Packages
 
-| Package           | Contents                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------- |
-| `packages/shared` | Types of the API's data; rules both sides apply (titles, wiki links, authors, French formats) |
-| `packages/server` | Vault, database, search, history, watcher, Hono API, MCP server, entry point                  |
-| `packages/cli`    | The `tandem` CLI (a typed client of the API)                                                  |
-| `packages/web`    | Nuxt 4 single-page app with Nuxt UI; editor extensions; Playwright tests                      |
+| Package               | Contents                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------------- |
+| `packages/shared`     | Types of the API's data; rules both sides apply (titles, wiki links, authors, French formats) |
+| `packages/server`     | Vault, database, search, history, watcher, Hono API, MCP server, entry point                  |
+| `packages/cli`        | The `tandem` CLI (a typed client of the API)                                                  |
+| `packages/web`        | Nuxt 4 single-page app with Nuxt UI; editor extensions; Playwright tests                      |
+| `packages/standalone` | The standalone app: one executable (server + CLI + web app), its build                        |
 
 The web app and the CLI use the server's API through Hono's typed client
 (`@tandem/server/client`): route types flow from the server to its clients.
@@ -215,9 +218,29 @@ folders and the versions.
   SVG into `utils/file-icons.generated.ts` (committed; regenerate after changing the map with
   `./td pnpm --filter @tandem/web file-icons`). Unknown types get a generic file icon.
 
+## Standalone app (`packages/standalone`)
+
+- `src/main.ts`: `tandem serve --data <folder>` runs `startServer` (`packages/server/src/server.ts`,
+  which the Docker entry `main.ts` also uses) on 127.0.0.1; any other command is the CLI.
+- `scripts/build.ts` (via `./td release`): esbuild bundles the entry and its dependencies into
+  one ES module; the web app and the migrations become embedded assets (with a manifest:
+  version, build hash, files); `node --build-sea` turns Node's official binary for each target
+  (downloaded once into `.cache/`, checked against nodejs.org's SHA-256 sums) into
+  `dist/tandem-<os>-<arch>`. Everything runtime is JavaScript plus `node:sqlite`: no native
+  module, which is what makes cross-building from the Linux toolchain possible. `./td release`
+  then signs the macOS executables ad hoc (`codesign`, on the Mac), writes `SHA256SUMS` and
+  runs the Linux one as a smoke test.
+- `src/runtime.ts`: the app folder (`~/Library/Application Support/Tandem/`, `~/.local/share/tandem/`,
+  or `TANDEM_HOME`) holds the live database and the embedded files, extracted once per build
+  into `runtime/<build>/` (atomically, older builds removed).
+- `install.sh` (repo root): downloads the latest release for the platform, checks it, writes
+  `install.env` (notes folder, port) in the app folder for updates, and registers the service
+  (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
+
 ## CLI (`packages/cli`)
 
 `cli.ts` parses arguments (`node:util` `parseArgs`) and calls the API with the typed client;
 `run()` takes its input and output as parameters, so tests run it against an in-memory app.
-In production it is installed as `/usr/local/bin/tandem` in the image; `bin/tandem` on the
-Mac runs it with `docker compose exec` and streams host files through standard input.
+It is part of the standalone executable (`tandem`). In Docker it is installed as
+`/usr/local/bin/tandem` in the image; `bin/tandem` on the Mac runs it with
+`docker compose exec` and streams host files through standard input.

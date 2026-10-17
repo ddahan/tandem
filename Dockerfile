@@ -10,6 +10,7 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/server/package.json packages/server/
 COPY packages/cli/package.json packages/cli/
 COPY packages/web/package.json packages/web/
+COPY packages/standalone/package.json packages/standalone/
 
 # --- The web app, built to static files ---------------------------------------------------
 FROM base AS web

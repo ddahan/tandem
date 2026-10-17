@@ -2,8 +2,8 @@
 
 Local notes, written by you **and** your agents.
 
-Tandem is a note-taking app that runs on your Mac (in Docker) and keeps everything in one
-folder of plain Markdown files — typically inside OneDrive, so your notes are synced and backed
+Tandem is a note-taking app that runs on your computer (macOS or Linux) and keeps everything
+in one folder of plain Markdown files — typically inside OneDrive, so your notes are synced and backed
 up. You write in a rich editor; agents (Claude Code, Claude Desktop, scripts) write through an
 MCP server or a CLI, and every line remembers who wrote it.
 
@@ -28,14 +28,26 @@ MCP server or a CLI, and every line remembers who wrote it.
 - Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.
 - Installable as an app with its own window and Dock icon.
 
-## Requirements
+## Install
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (nothing else: there is no
-  Node on the Mac, everything runs in containers).
-- A folder for your notes. With OneDrive, right-click it in Finder → **Always Keep on This
-  Device**: Docker can't read online-only files.
+```bash
+curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/install.sh | sh
+```
 
-## Start
+That's all: no Docker, no Node. The installer downloads Tandem (one executable, for macOS or
+Linux, Apple Silicon or Intel), checks it, asks where your notes live (default `~/Tandem`; a
+OneDrive or iCloud folder works), starts it at login, and opens <http://localhost:3000>.
+
+- **Update**: run the same command again (your notes folder is remembered).
+- **Uninstall**: `… | sh -s -- --uninstall` (your notes stay).
+- Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`. Logs:
+  `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
+- With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
+
+### With Docker instead
+
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) and a clone of this
+repository:
 
 ```bash
 cp .env.example .env     # then set TANDEM_DATA_DIR to your notes folder
@@ -43,7 +55,8 @@ cp .env.example .env     # then set TANDEM_DATA_DIR to your notes folder
 ```
 
 Open <http://localhost:3000>. The app restarts with Docker; `./td stop` stops it and
-`./td logs` shows its output. After pulling changes, `./td start` rebuilds.
+`./td logs` shows its output. After pulling changes, `./td start` rebuilds. Docker can't read
+OneDrive's online-only files: keep the folder on the device.
 
 ### As a Mac app
 
@@ -67,7 +80,8 @@ The header names the agent in the history and authorship views. Tools: `search_n
 
 ### CLI
 
-`bin/tandem` runs the CLI inside the running container. Put it on your `PATH` once:
+Installed with the installer, Tandem is also the `tandem` command. With Docker, `bin/tandem`
+runs the CLI inside the running container; put it on your `PATH` once:
 
 ```bash
 ln -s "$PWD/bin/tandem" /usr/local/bin/tandem
@@ -101,9 +115,11 @@ instructions).
 
 - Notes are plain Markdown, without front matter: readable and editable by any tool. Edits
   made outside the app (an agent, a text editor, Finder) are picked up live.
-- Ids, tags, order, history and authorship are in a SQLite database on a Docker volume, backed
-  up into `.tandem/tandem.db`. If the volume is lost (e.g. `docker compose down -v`), the
-  backup is restored automatically on the next start.
+- Ids, tags, order, history and authorship are in a SQLite database outside the notes folder
+  (`~/Library/Application Support/Tandem/` on macOS, `~/.local/share/tandem/` on Linux, a
+  volume with Docker), backed up into `.tandem/tandem.db`. If it is lost, the backup is
+  restored automatically on the next start; this is also how you move from Docker to the
+  installer (or back): point the new one at the same notes folder.
 - One computer at a time: don't run two Tandem instances on the same folder.
 
 ## Development
@@ -117,6 +133,17 @@ Everything goes through `./td` (run it alone for the list):
 | All checks (format, lint, build, types, unit tests) | `./td check`                                                |
 | End-to-end tests (Playwright)                       | `./td e2e`                                                  |
 | Unit tests of one package                           | `./td test server`                                          |
+| Standalone executables (all platforms)              | `./td release`                                              |
+
+### Releasing
+
+`./td release` builds the executables into `packages/standalone/dist` (signed for macOS,
+checked, with `SHA256SUMS`). Set the version in `packages/standalone/package.json`, then
+publish them as a GitHub release; the installer always takes the latest one:
+
+```bash
+gh release create v0.1.0 packages/standalone/dist/tandem-* packages/standalone/dist/SHA256SUMS
+```
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

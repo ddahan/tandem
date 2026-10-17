@@ -5,6 +5,9 @@
     "tandem": "./src/main.ts"
   },
   "type": "module",
+  "exports": {
+    "./cli": "./src/cli.ts"
+  },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"

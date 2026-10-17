@@ -37,6 +37,7 @@ catalog:
   diff: ^9.0.0
   drizzle-kit: ^0.31.11
   drizzle-orm: ^0.45.4
+  esbuild: ^0.28.2
   happy-dom: ^21.0.3
   hono: ^4.13.13
   lowlight: ^3.3.0

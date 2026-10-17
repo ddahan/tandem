@@ -13,6 +13,8 @@ changing it) want [docs/agents.md](docs/agents.md).
 | `packages/server`            | The server: vault, SQLite (Drizzle), search, history, watcher, API, MCP        |
 | `packages/cli`               | The `tandem` CLI                                                               |
 | `packages/web`               | The Nuxt UI single-page app, its editor extensions, its Playwright tests       |
+| `packages/standalone`        | The standalone executable (server + CLI + web app) and its build               |
+| `install.sh`                 | The one-line installer of the standalone app (macOS, Linux)                    |
 | `bin/tandem`                 | Runs the CLI in the running container, from the Mac                            |
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
 | `compose.yaml`, `Dockerfile` | The app as the owner runs it                                                   |
@@ -23,19 +25,20 @@ changing it) want [docs/agents.md](docs/agents.md).
 
 There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 
-| Task                              | Command                                                                                    |
-| --------------------------------- | ------------------------------------------------------------------------------------------ |
-| Dev servers with reload           | `./td dev` → http://localhost:3010 (API on :3011, data in `.data/notes`)                   |
-| Same, in the background (agents)  | `docker compose -f compose.dev.yaml --profile dev up -d`, then `… logs -f`, `… down`       |
-| Demo notes in the dev data folder | `./td pnpm --filter @tandem/server seed http://server:3011`                                |
-| All checks                        | `./td check` (format, lint with 0 warnings, builds, type checks, unit tests with coverage) |
-| End-to-end tests                  | `./td e2e` (builds the web app, runs Playwright against the real server)                   |
-| Unit tests of one package         | `./td test server` (`shared`, `server`, `cli`, `web`)                                      |
-| Server benchmark                  | `./td pnpm --filter @tandem/server bench [pages]` (large generated vault, API timings)     |
-| Format / lint                     | `./td format` · `./td lint`                                                                |
-| Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
-| The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3000)                           |
-| Rebuild the toolchain image       | `./td setup` (after changing `compose.dev.yaml`)                                           |
+| Task                              | Command                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| Dev servers with reload           | `./td dev` → http://localhost:3010 (API on :3011, data in `.data/notes`)                     |
+| Same, in the background (agents)  | `docker compose -f compose.dev.yaml --profile dev up -d`, then `… logs -f`, `… down`         |
+| Demo notes in the dev data folder | `./td pnpm --filter @tandem/server seed http://server:3011`                                  |
+| All checks                        | `./td check` (format, lint with 0 warnings, builds, type checks, unit tests with coverage)   |
+| End-to-end tests                  | `./td e2e` (builds the web app, runs Playwright against the real server)                     |
+| Unit tests of one package         | `./td test server` (`shared`, `server`, `cli`, `web`, `standalone`)                          |
+| Server benchmark                  | `./td pnpm --filter @tandem/server bench [pages]` (large generated vault, API timings)       |
+| Format / lint                     | `./td format` · `./td lint`                                                                  |
+| Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                          |
+| The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3000)                             |
+| Rebuild the toolchain image       | `./td setup` (after changing `compose.dev.yaml`)                                             |
+| Standalone executables            | `./td release` (all platforms, or `--targets darwin-arm64`), into `packages/standalone/dist` |
 
 The owner's app (port 3000) and the dev servers (3010/3011) can run at the same time; they use
 different data folders. **Never point the dev servers or tests at the owner's data folder.**
@@ -114,7 +117,8 @@ A change is done when:
 4. Server and shared code keep at least 80% line coverage (enforced by their `test` scripts,
    so by `./td check`).
 5. If dependencies, the Dockerfile, compose files or entry points changed: `./td start` builds,
-   and the app answers on http://localhost:3000.
+   and the app answers on http://localhost:3000. If the server's start-up, the standalone
+   package or `install.sh` changed: `./td release` passes (it runs the Linux executable).
 6. A visible change was checked in a browser (dev servers), in light and dark mode.
 7. The documentation describes the new behavior, and no document describes the old one
    (SPEC for behavior changes, architecture for design changes, agents guide for anything an

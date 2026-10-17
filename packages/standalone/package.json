@@ -1,0 +1,21 @@
+{
+  "name": "@tandem/standalone",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "package": "node scripts/build.ts"
+  },
+  "dependencies": {
+    "@tandem/cli": "workspace:*",
+    "@tandem/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -11,7 +11,8 @@ instructions (or point it here).
 claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"
 ```
 
-**CLI**, from the Mac (`bin/tandem`, see the README), with your name for authorship:
+**CLI** (`tandem`, installed with the app; with Docker, `bin/tandem`: see the README), with
+your name for authorship:
 
 ```bash
 export TANDEM_AUTHOR=claude

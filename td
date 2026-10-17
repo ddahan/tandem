@@ -17,6 +17,9 @@ Usage: ./td <command> [args]
   e2e               end-to-end tests (Playwright, against a production build)
   typecheck         type checks
   build             production builds
+  release [--targets darwin-arm64,…]
+                    the standalone app: one executable per platform, signed (macOS) and
+                    checked, in packages/standalone/dist (publish: see README)
   format            format every file (Oxfmt)
   lint              lint every file (Oxlint)
   pnpm <args>       any pnpm command, in the toolchain container
@@ -81,6 +84,28 @@ case "$cmd" in
   pnpm)
     prepare
     pnpm_ "$@"
+    ;;
+  release)
+    prepare
+    pnpm_ --filter @tandem/web build
+    pnpm_ --filter @tandem/standalone package "$@"
+    dist=packages/standalone/dist
+    # macOS runs only signed executables: ad hoc is enough (no Apple account), on a Mac.
+    for file in "$dist"/tandem-darwin-*; do
+      [ -f "$file" ] || continue
+      if command -v codesign > /dev/null 2>&1; then
+        codesign --sign - --force "$file"
+      else
+        echo "Warning: $file is unsigned (codesign only exists on macOS)." >&2
+      fi
+    done
+    (cd "$dist" && shasum -a 256 tandem-* > SHA256SUMS)
+    # Smoke test: the Linux executable for this machine runs, in the toolchain container.
+    linux="tandem-linux-$(dev_compose --progress quiet run --rm --no-deps node uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
+    if [ -f "$dist/$linux" ]; then
+      dev_compose --progress quiet run --rm --no-deps node "$dist/$linux" version
+    fi
+    ls -lh "$dist"
     ;;
   setup)
     dev_compose build node

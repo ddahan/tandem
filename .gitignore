@@ -9,3 +9,6 @@ playwright-report
 test-results
 coverage
 .DS_Store
+
+# Node binaries downloaded to build the standalone app
+.cache

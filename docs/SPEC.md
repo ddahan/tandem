@@ -9,8 +9,20 @@ built.
 
 A local, single-user note-taking app whose notes are written both by the owner (in a rich
 editor) and by coding agents (through a CLI, an MCP server, or by editing the Markdown files
-directly). It runs on one Mac, in Docker, and stores everything in one configurable folder,
-typically inside OneDrive so that it is backed up and synced.
+directly). It runs on one computer and stores everything in one configurable folder, typically
+inside OneDrive so that it is backed up and synced.
+
+## Installation
+
+- **Standalone** (the default): one executable per platform (macOS and Linux, arm64 and x64),
+  with neither Docker nor Node needed. A one-line installer (`install.sh`) downloads it from
+  the latest GitHub release, checks its SHA-256, asks for the notes folder, starts it at login
+  (a LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens
+  the app. Running the installer again updates it (the notes folder is remembered);
+  `--uninstall` removes it and never touches the notes.
+- **Docker**: `./td start` from a clone of the repository (the developer's setup).
+- Both use the same notes folder layout; switching between them only takes pointing the new
+  one at the same folder (its database is restored from the folder's backup).
 
 ## Storage
 
@@ -21,16 +33,17 @@ typically inside OneDrive so that it is backed up and synced.
 - **Attachments** of `Note.md` live in `Note.assets/`, next to it, and are referenced with
   relative paths (`![](Note.assets/diagram.png)`, `[report.pdf](Note.assets/report.pdf)`).
 - **Structured data lives in SQLite**: stable note ids, tags, creation and update dates, tree
-  order, history metadata, line authorship and settings. The live database is on a local
-  Docker volume (never inside OneDrive: SQLite and file sync don't mix). About a minute after
+  order, history metadata, line authorship and settings. The live database is in the app's own
+  folder (`~/Library/Application Support/Tandem/` on macOS) or on a Docker volume, never inside
+  OneDrive (SQLite and file sync don't mix). About a minute after
   any change, and on shutdown, a consistent copy is written to `<data>/.tandem/tandem.db`;
   it is restored automatically when the local database is missing.
 - **External edits** (an agent editing a file, Finder moving one) are picked up by a file
   watcher. A file that disappears and reappears elsewhere with the same content keeps its
   metadata (a move). Writing through the CLI or MCP server is preferred: it keeps authorship.
 - **Single computer**: one instance of the app uses a data folder at a time.
-- OneDrive's "Always keep on this device" must be enabled on the data folder (Docker can't
-  read online-only placeholders).
+- With Docker, OneDrive's "Always keep on this device" must be enabled on the data folder
+  (Docker can't read online-only placeholders); the standalone app reads them like any app.
 
 ## Editing
 
