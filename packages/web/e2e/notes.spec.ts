@@ -355,3 +355,30 @@ test('aligns task checkboxes with their text, at any text size', async ({ page, 
   }
   await api(request, 'PATCH', '/settings', { editorFontSize: 'medium' })
 })
+
+test('moves one list item with the block handle, reached with the mouse', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Handle note', 'Intro.\n\n- [ ] Hey\n- [ ] TODO\n\nEnd.\n')
+  await openNote(page, note.id)
+  const item = page.locator('.ProseMirror li', { hasText: 'Hey' })
+  const box = (await item.boundingBox())!
+  const y = box.y + box.height / 2
+  // From the text to the handle, left of the block, as a hand would: the handle stays.
+  await page.mouse.move(box.x + 80, y)
+  await page.mouse.move(box.x - 16, y, { steps: 12 })
+  const handle = page.locator('button[data-slot="handle"]')
+  await expect(handle).toBeVisible()
+
+  const grip = (await handle.boundingBox())!
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2, { steps: 4 })
+  const target = (await page.locator('.ProseMirror li', { hasText: 'TODO' }).boundingBox())!
+  await page.mouse.down()
+  // Over the end of the line: the editor drops after the item (before it, near the start).
+  await page.mouse.move(target.x + target.width - 20, target.y + target.height / 2, { steps: 16 })
+  await page.mouse.up()
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('Intro.\n\n- [ ] TODO\n- [ ] Hey\n\nEnd.\n')
+})

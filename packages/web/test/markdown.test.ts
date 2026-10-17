@@ -106,6 +106,39 @@ describe('Markdown round-trip', () => {
   })
 })
 
+const taskItem = (text: string) => ({
+  type: 'taskItem',
+  attrs: { checked: false },
+  content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+})
+
+describe('adjacent lists', () => {
+  it('are merged into one list (no loose Markdown list)', () => {
+    const lists = createEditor('')
+    lists.commands.setContent({
+      type: 'doc',
+      content: [
+        { type: 'taskList', content: [taskItem('Hey')] },
+        { type: 'taskList', content: [taskItem('TODO')] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'End' }] },
+      ],
+    })
+    expect(lists.getJSON().content?.map((node) => node.type)).toEqual(['taskList', 'paragraph'])
+    expect(lists.getMarkdown().trim()).toBe('- [ ] Hey\n- [ ] TODO\n\nEnd')
+  })
+
+  it('leave lists of different kinds apart', () => {
+    const lists = createEditor('- a\n\n1. b')
+    lists.commands.insertContentAt(lists.state.doc.content.size, 'x')
+    expect(
+      lists
+        .getJSON()
+        .content?.map((node) => node.type)
+        .slice(0, 2),
+    ).toEqual(['bulletList', 'orderedList'])
+  })
+})
+
 describe('attachment paths', () => {
   it('makes relative paths absolute for the editor, and back', () => {
     const markdown =

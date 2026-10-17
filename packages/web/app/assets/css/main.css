@@ -97,6 +97,18 @@ html.dark[data-tone='cool'] {
   padding-bottom: 30vh;
 }
 
+/* Room for the block drag handle inside the editor: it is drawn left of each block, and the
+   pointer must not leave the editor on its way there (the handle hides when it does). The
+   negative margin keeps the text aligned with the title. The handle exists from `sm` up. */
+@media (min-width: 640px) {
+  .note-editor {
+    margin-inline-start: -3rem;
+  }
+  .note-editor .ProseMirror {
+    padding-inline-start: 3rem;
+  }
+}
+
 /* Sizes relative to the note's text size (Nuxt UI's editor uses rem, which ignores it). */
 .note-editor .ProseMirror h1 {
   font-size: 1.875em;

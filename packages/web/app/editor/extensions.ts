@@ -11,6 +11,7 @@ import { common, createLowlight } from 'lowlight'
 import { Callout } from './callout'
 import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips } from './file-chips'
+import { JoinLists } from './join-lists'
 import { ResizableImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
 
@@ -34,6 +35,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     ResizableImage,
     WikiLink.configure({ onOpen: options.onOpenWikiLink ?? (() => {}) }),
     FileChips,
+    JoinLists,
     FileHandler.configure({
       onDrop: (editor, files, pos) => options.onFiles?.(editor, files, pos),
       onPaste: (editor, files, htmlContent) => {

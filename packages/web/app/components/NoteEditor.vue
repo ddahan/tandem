@@ -566,7 +566,10 @@ defineExpose({
         :limit="10"
       />
       <UEditorEmojiMenu :editor="editor" :items="gitHubEmojis" />
-      <UEditorDragHandle :editor="editor" />
+      <!-- Nested: list items get their own handle (one item moves, not the whole list). No edge
+           detection: it would pick the whole list as the pointer crosses the item's left edge,
+           on its way to the handle. -->
+      <UEditorDragHandle :editor="editor" :nested="{ edgeDetection: 'none' }" />
     </UEditor>
 
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFilesPicked" />
