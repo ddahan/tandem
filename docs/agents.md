@@ -56,4 +56,5 @@ GitHub-flavored Markdown, plus:
   to the note, URL-encoded (`My%20note.assets/a%20b.png`). `attach_file` / `myfluence attach`
   store the file and return the Markdown to use.
 - Tables are GFM tables: no merged cells, only inline content in cells.
-- No front matter: tags are set with `set_tags` / `myfluence tags <note> <tag…>`.
+- No front matter: tags are set with `set_tags` / `myfluence tags <note> <tag…>`, icons with
+  `set_icon` / `myfluence icon <note> <emoji>`.

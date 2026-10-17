@@ -125,6 +125,39 @@ describe('API', () => {
     )
   })
 
+  it('sets, serves and clears icons', async () => {
+    const { client, app } = await setup()
+    const page = await (await client.notes.$post({ json: { title: 'P' } })).json()
+    const emoji = await (
+      await client.nodes[':id'].icon.$put({ param: { id: page.id }, json: { emoji: '🎯' } })
+    ).json()
+    expect(emoji.icon).toEqual({ type: 'emoji', emoji: '🎯' })
+    expect((await app.request(`/api/nodes/${page.id}/icon`)).status).toBe(404)
+
+    const response = await client.nodes[':id'].icon.$post({
+      param: { id: page.id },
+      form: {
+        file: new File([new Uint8Array([137, 80, 78, 71])], 'icon.png', { type: 'image/png' }),
+      },
+    })
+    const image = await response.json()
+    expect(image.icon).toMatchObject({ type: 'image' })
+    const url = image.icon?.type === 'image' ? image.icon.url : ''
+    const served = await app.request(url)
+    expect(served.status).toBe(200)
+    expect(served.headers.get('content-type')).toBe('image/png')
+    expect(served.headers.get('cache-control')).toContain('immutable')
+
+    const bad = await client.nodes[':id'].icon.$post({
+      param: { id: page.id },
+      form: { file: new File(['x'], 'notes.txt') },
+    })
+    expect(bad.status).toBe(400)
+    expect(
+      (await (await client.nodes[':id'].icon.$delete({ param: { id: page.id } })).json()).icon,
+    ).toBeNull()
+  })
+
   it('streams events', async () => {
     const { app, vault } = await setup()
     const response = await app.request('/api/events')

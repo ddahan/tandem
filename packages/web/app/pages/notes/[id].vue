@@ -178,12 +178,12 @@ onBeforeRouteLeave(async () => {
 const fullWidth = useLocalStorage('myfluence-full-width', false)
 const panelOpen = useLocalStorage('myfluence-side-panel', true)
 const authorshipKey = ref(0)
+const iconPickerOpen = ref(false)
 
 const breadcrumb = computed<BreadcrumbItem[]>(() =>
   tree.ancestors(id.value).map((n, index, all) => ({
     label: n.title,
-    icon:
-      index === 0 ? (n.kind === 'folder' ? 'i-lucide-folder' : 'i-lucide-file-text') : undefined,
+    node: n,
     to: n.kind === 'page' && index < all.length - 1 ? `/notes/${n.id}` : undefined,
   })),
 )
@@ -268,7 +268,11 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               link: 'min-w-0',
               linkLabel: 'truncate',
             }"
-          />
+          >
+            <template #item-leading="{ item }">
+              <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
+            </template>
+          </UBreadcrumb>
         </template>
         <template #right>
           <SaveStatus :status="doc.status.value" :saved-at="doc.savedAt.value" />
@@ -332,6 +336,37 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @take-theirs="takeTheirs"
           @compare="comparing = true"
         />
+
+        <!-- The page's icon: click to change it; "Add icon" shows on hover when there is none. -->
+        <div class="group/icon mb-1 flex min-h-8 items-end">
+          <UPopover v-model:open="iconPickerOpen" :content="{ align: 'start' }">
+            <button
+              v-if="node.icon"
+              type="button"
+              class="-ms-1 rounded-lg p-1 transition-colors hover:bg-elevated"
+              aria-label="Change icon"
+            >
+              <NodeIcon :icon="node.icon" :kind="node.kind" size="xl" />
+            </button>
+            <UButton
+              v-else
+              label="Add icon"
+              icon="i-lucide-smile-plus"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              class="-ms-2 opacity-0 transition-opacity group-hover/icon:opacity-100 focus-visible:opacity-100"
+              :class="iconPickerOpen && 'opacity-100'"
+            />
+            <template #content>
+              <IconPicker
+                :node-id="node.id"
+                :has-icon="!!node.icon"
+                @done="iconPickerOpen = false"
+              />
+            </template>
+          </UPopover>
+        </div>
 
         <UInput
           ref="titleInput"

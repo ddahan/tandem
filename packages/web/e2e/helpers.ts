@@ -21,6 +21,7 @@ interface Node {
   id: string
   path: string
   title: string
+  icon: unknown
 }
 
 export function createNote(

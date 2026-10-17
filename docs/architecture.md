@@ -57,6 +57,7 @@ The web app and the CLI use the server's API through Hono's typed client
 | `versions`                   | History metadata; contents in `<data>/.myfluence/history/`                                                                                                                    |
 | `trash`                      | Deleted items, with the rows needed to restore them                                                                                                                           |
 | `settings`                   | The owner's settings (JSON values)                                                                                                                                            |
+| `nodes.icon`                 | Custom icon of a page or folder: `emoji:<emoji>` or `image:<file>` (in `<data>/.myfluence/icons/`, served at `/api/nodes/:id/icon`); the API returns a `NodeIcon`             |
 | `notes_fts`, `notes_trigram` | FTS5 indexes (words; trigrams), filled by the vault                                                                                                                           |
 
 - Drizzle (`sqlite-proxy` driver over `node:sqlite`: no native module). Migrations are in

@@ -27,6 +27,7 @@ Reading
   tree                          all pages and folders
   read <note>                   the note's Markdown (with --meta: path, tags, attachments, backlinks)
   tags [<note> [tag…]]          all tags; a note's tags; or set a note's tags
+  icon <note> [emoji]           set a page's or folder's icon (--clear to remove it)
   history <note>                versions of a note
   version <version-id>          the content of a version
 
@@ -66,6 +67,7 @@ type Values = {
   name?: string
   insert?: boolean
   meta?: boolean
+  clear?: boolean
   limit?: string
 }
 
@@ -129,6 +131,7 @@ export async function run(
         name: { type: 'string' },
         insert: { type: 'boolean' },
         meta: { type: 'boolean' },
+        clear: { type: 'boolean' },
         limit: { type: 'string' },
       },
     })
@@ -246,6 +249,20 @@ async function execute(
         client.notes[':id'].tags.$put({ param: { id: node.id }, json: { tags: args.slice(1) } }),
       )
       return print(`Tags of ${node.path}: ${tags.join(', ')}`, tags)
+    }
+    case 'icon': {
+      const node = await resolve(need(0, 'note'))
+      if (values.clear) {
+        const cleared = await call(client.nodes[':id'].icon.$delete({ param: { id: node.id } }))
+        return print(`Removed the icon of ${node.path}`, cleared)
+      }
+      const updated = await call(
+        client.nodes[':id'].icon.$put({
+          param: { id: node.id },
+          json: { emoji: need(1, 'emoji') },
+        }),
+      )
+      return print(`Icon of ${node.path}: ${need(1, 'emoji')}`, updated)
     }
     case 'history': {
       const node = await resolve(need(0, 'note'))

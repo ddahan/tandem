@@ -80,6 +80,11 @@ describe('MCP server', () => {
       }),
     )
     expect(attach).toBe('![pic.png](Plan.assets/pic.png)')
+
+    await tool('set_icon', { note: 'Plan', emoji: '🗺️' })
+    expect((await vault.getNode(created.id)).icon).toEqual({ type: 'emoji', emoji: '🗺️' })
+    await tool('set_icon', { note: 'Plan' })
+    expect((await vault.getNode(created.id)).icon).toBeNull()
   })
 
   it('returns errors as tool results', async () => {

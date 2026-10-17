@@ -61,7 +61,8 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           label: result.title,
           suffix: parents,
           descriptionHtml: result.snippet || undefined,
-          icon: result.attachments.length ? 'i-lucide-paperclip' : 'i-lucide-file-text',
+          slot: 'note' as const,
+          nodeIcon: result.icon,
           to: `/notes/${result.id}`,
           class: 'search-snippet',
         }
@@ -117,5 +118,9 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
     :color-mode="false"
     placeholder='Search notes… (tag:x, in:Folder, -word, "phrase")'
     :fuse="{ resultLimit: 20 }"
-  />
+  >
+    <template #note-leading="{ item }">
+      <NodeIcon :icon="item.nodeIcon" kind="page" size="md" />
+    </template>
+  </UDashboardSearch>
 </template>

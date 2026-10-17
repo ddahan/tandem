@@ -163,6 +163,38 @@ export function createApi(vault: Vault) {
       c.json(await vault.remove(c.req.valid('param').id)),
     )
 
+    // --- Icons ------------------------------------------------------------------------------
+    .put(
+      '/nodes/:id/icon',
+      zValidator('param', idParam),
+      zValidator('json', z.object({ emoji: z.string().min(1).max(32) })),
+      async (c) =>
+        c.json(await vault.setIconEmoji(c.req.valid('param').id, c.req.valid('json').emoji)),
+    )
+    .post(
+      '/nodes/:id/icon',
+      zValidator('param', idParam),
+      zValidator('form', z.object({ file: z.instanceof(File) })),
+      async (c) => {
+        const { file } = c.req.valid('form')
+        const data = new Uint8Array(await file.arrayBuffer())
+        return c.json(await vault.setIconImage(c.req.valid('param').id, file.name, data))
+      },
+    )
+    .delete('/nodes/:id/icon', zValidator('param', idParam), async (c) =>
+      c.json(await vault.clearIcon(c.req.valid('param').id)),
+    )
+    .get('/nodes/:id/icon', zValidator('param', idParam), async (c) => {
+      const path = await vault.iconFile(c.req.valid('param').id)
+      const info = await stat(path).catch(() => null)
+      if (!info?.isFile()) throw new NotFoundError('Icon file missing')
+      c.header('Content-Type', getMimeType(path) ?? 'application/octet-stream')
+      // The URL changes with each new image (?v=…): cache it for good.
+      c.header('Cache-Control', 'public, max-age=31536000, immutable')
+      c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'")
+      return c.body(Readable.toWeb(createReadStream(path)) as ReadableStream)
+    })
+
     // --- Tags, links, attachments ----------------------------------------------------------
     .get('/tags', async (c) => c.json(await vault.listTags()))
     .put(

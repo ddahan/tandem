@@ -382,3 +382,40 @@ test('moves one list item with the block handle, reached with the mouse', async 
     .poll(() => noteContent(request, note.id))
     .toBe('Intro.\n\n- [ ] TODO\n- [ ] Hey\n\nEnd.\n')
 })
+
+test('gives a page an emoji or an image icon, after its creation', async ({ page, request }) => {
+  const note = await createNote(request, 'Icon note', 'Text.')
+  await openNote(page, note.id)
+  const row = page.getByTestId('tree-Icon note')
+
+  // Emoji, from the page itself.
+  await page.getByLabel('Title').hover()
+  await page.getByRole('button', { name: 'Add icon' }).click()
+  const picker = page.getByTestId('icon-picker')
+  await picker.getByLabel('Search emojis').fill('rocket')
+  await picker.getByRole('button', { name: 'rocket', exact: true }).click()
+  await expect(row.getByTestId('node-icon')).toHaveText('🚀')
+  expect((await resolve(request, note.id)).icon).toEqual({ type: 'emoji', emoji: '🚀' })
+
+  // Image, from the computer.
+  await page.getByRole('button', { name: 'Change icon' }).click()
+  await page.getByTestId('icon-upload').setInputFiles({
+    name: 'icon.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  })
+  const image = row.getByTestId('node-icon').locator('img')
+  await expect(image).toBeVisible()
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1)
+
+  // Removed from the tree's menu.
+  await row.hover()
+  await row.getByRole('button', { name: 'Actions' }).click()
+  await page.getByRole('menuitem', { name: 'Change icon…' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Remove the icon' }).click()
+  await expect(row.getByTestId('node-icon').locator('img')).toHaveCount(0)
+  expect((await resolve(request, note.id)).icon).toBeNull()
+})

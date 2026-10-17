@@ -81,6 +81,9 @@ describe('CLI', () => {
     )
     expect(raw?.size).toBe(6)
     expect((await cli(['attach', 'B', '-'])).err).toContain('--name')
+    expect((await cli(['icon', 'B', '📌'])).out).toBe('Icon of F/B.md: 📌\n')
+    expect((await vault.resolveRef('B')).icon).toEqual({ type: 'emoji', emoji: '📌' })
+    expect((await cli(['icon', 'B', '--clear'])).out).toBe('Removed the icon of F/B.md\n')
     expect((await cli(['delete', 'B'])).out).toBe('Moved F/B.md to the trash\n')
   })
 

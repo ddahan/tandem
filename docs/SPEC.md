@@ -73,6 +73,10 @@ typically inside OneDrive so that it is backed up and synced.
   actions (new page, new child page, new folder, rename, delete).
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
+- Icons: any page or folder can be given an emoji or an image (from the computer) after its
+  creation: from the note page (above the title) or the tree's menu. Shown in the tree, the
+  breadcrumb, the note page, search results and Home. Stored in SQLite (images in
+  `<data>/.myfluence/icons/`), never in the Markdown.
 - Nothing else (no favorites, recents, daily notes or templates for now).
 
 ## Search

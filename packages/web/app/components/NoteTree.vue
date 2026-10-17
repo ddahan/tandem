@@ -58,6 +58,8 @@ async function commitRename() {
 // --- Deleting ------------------------------------------------------------------------------
 
 const deleting = ref<TreeItem | null>(null)
+/** The node whose icon is being changed (picker dialog). */
+const iconFor = ref<TreeItem | null>(null)
 
 async function confirmDelete() {
   const item = deleting.value
@@ -94,6 +96,11 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
     ],
     [
       { label: 'Rename', icon: 'i-lucide-pencil', onSelect: () => startRename(item) },
+      {
+        label: 'Change icon…',
+        icon: 'i-lucide-smile-plus',
+        onSelect: () => (iconFor.value = item),
+      },
       ...(item.node.kind === 'page'
         ? [
             {
@@ -263,7 +270,7 @@ function rowClass(item: TreeItem) {
               />
             </button>
             <span v-else class="size-5 shrink-0" />
-            <UIcon :name="item.icon" class="size-4 shrink-0 text-dimmed" />
+            <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
 
             <UInput
               v-if="renamingId === item.id"
@@ -319,6 +326,22 @@ function rowClass(item: TreeItem) {
         variant="naked"
       />
     </div>
+
+    <UModal
+      :open="!!iconFor"
+      :title="iconFor ? `Icon of “${iconFor.label}”` : ''"
+      :ui="{ content: 'max-w-fit', body: 'p-0 sm:p-0' }"
+      @update:open="(open) => !open && (iconFor = null)"
+    >
+      <template #body>
+        <IconPicker
+          v-if="iconFor"
+          :node-id="iconFor.id"
+          :has-icon="!!iconFor.node.icon"
+          @done="iconFor = null"
+        />
+      </template>
+    </UModal>
 
     <UModal
       :open="!!deleting"

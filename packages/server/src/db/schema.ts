@@ -31,6 +31,8 @@ export const nodes = sqliteTable(
     pendingSnapshot: integer('pending_snapshot', { mode: 'boolean' }).notNull().default(false),
     /** Pages: line authorship, JSON `[count, author, at][]` runs over the current lines. */
     blame: text('blame'),
+    /** Custom icon: `emoji:<emoji>`, or `image:<file>` in `<data>/.myfluence/icons/`. */
+    icon: text('icon'),
   },
   (table) => [index('nodes_hash').on(table.hash)],
 )

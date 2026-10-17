@@ -15,7 +15,8 @@ MCP server or a CLI, and every line remembers who wrote it.
   Mermaid diagrams, callouts, collapsible sections, emojis, links, resizable images. `/` for
   blocks, `[[` to link a note, `:` for emojis, a raw Markdown mode when you need it.
 - **Autosave** in the background, with conflict detection when an agent edits the same note.
-- **Pages in a tree** (pages can have child pages), with drag and drop, tags and breadcrumbs.
+- **Pages in a tree** (pages can have child pages), with drag and drop, tags, breadcrumbs, and
+  icons (an emoji or an image) for any page or folder.
 - **Files**: drop or paste a file anywhere in a note; it is copied next to the note
   (`Note.assets/`) and shown as an image or a file chip.
 - **Search** (`⌘K`): prefixes, accents ignored, typos corrected, `"phrases"`, `-word`,
@@ -61,7 +62,7 @@ claude mcp add --transport http myfluence http://localhost:3000/mcp --header "X-
 
 The header names the agent in the history and authorship views. Tools: `search_notes`,
 `list_notes`, `read_note`, `create_note`, `create_folder`, `append_to_note`, `replace_in_note`,
-`write_note`, `rename_note`, `move_note`, `delete_note`, `set_tags`, `list_tags`,
+`write_note`, `rename_note`, `move_note`, `delete_note`, `set_tags`, `set_icon`, `list_tags`,
 `note_history`, `read_version`, `attach_file`.
 
 ### CLI
@@ -94,6 +95,7 @@ instructions).
   .myfluence/
     myfluence.db              backup of the app's database (refreshed every minute)
     history/<note id>/        past versions of notes
+    icons/                    image icons of pages and folders
     trash/                    deleted notes
 ```
 

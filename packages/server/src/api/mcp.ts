@@ -270,6 +270,23 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
   )
 
   server.registerTool(
+    'set_icon',
+    {
+      title: 'Set an icon',
+      description:
+        'Sets an emoji as the icon of a page or folder, shown in the tree. Omit emoji to remove it.',
+      inputSchema: { note: ref, emoji: z.string().optional() },
+    },
+    async ({ note, emoji }) =>
+      attempt(async () => {
+        const node = await vault.resolveRef(note)
+        return json(
+          emoji ? await vault.setIconEmoji(node.id, emoji) : await vault.clearIcon(node.id),
+        )
+      }),
+  )
+
+  server.registerTool(
     'list_tags',
     {
       title: 'List tags',

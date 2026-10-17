@@ -2,6 +2,9 @@
 
 export type NodeKind = 'page' | 'folder'
 
+/** A custom icon of a page or folder; images are served by the API (`url`). */
+export type NodeIcon = { type: 'emoji'; emoji: string } | { type: 'image'; url: string }
+
 /** A page or a folder of the tree. `parentId` is null at the root. */
 export interface TreeNode {
   id: string
@@ -13,6 +16,8 @@ export interface TreeNode {
   position: number
   createdAt: number
   updatedAt: number
+  /** Null: the default page or folder icon. */
+  icon: NodeIcon | null
 }
 
 export interface Attachment {
@@ -68,6 +73,7 @@ export interface SearchResult {
   attachments: string[]
   tags: string[]
   updatedAt: number
+  icon: NodeIcon | null
 }
 
 export interface SearchResponse {

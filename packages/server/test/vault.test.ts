@@ -368,6 +368,68 @@ describe('reconciling with the files', () => {
   })
 })
 
+describe('icons', () => {
+  it('sets emoji and image icons, replacing and clearing them', async () => {
+    const { vault, dataDir, clock } = await createTestVault()
+    const page = await vault.createPage({ title: 'P', author: OWNER })
+    expect(page.icon).toBeNull()
+    expect((await vault.setIconEmoji(page.id, ' 🚀 ')).icon).toEqual({ type: 'emoji', emoji: '🚀' })
+    await expect(vault.setIconEmoji(page.id, 'not an emoji at all')).rejects.toThrow(
+      ValidationError,
+    )
+
+    const withImage = await vault.setIconImage(page.id, 'logo.PNG', new Uint8Array([1, 2, 3]))
+    expect(withImage.icon).toMatchObject({ type: 'image' })
+    const first = await vault.iconFile(page.id)
+    expect(existsSync(first)).toBe(true)
+    clock.advance(1000)
+    await vault.setIconImage(page.id, 'other.webp', new Uint8Array([4]))
+    expect(existsSync(first)).toBe(false)
+    await expect(vault.setIconImage(page.id, 'doc.pdf', new Uint8Array([1]))).rejects.toThrow(
+      /must be an image/,
+    )
+    await expect(
+      vault.setIconImage(page.id, 'big.png', new Uint8Array(6 * 1024 * 1024)),
+    ).rejects.toThrow(/5 MB/)
+
+    expect((await vault.clearIcon(page.id)).icon).toBeNull()
+    expect(existsSync(join(dataDir, '.myfluence/icons'))).toBe(true)
+    await expect(vault.iconFile(page.id)).rejects.toThrow(NotFoundError)
+  })
+
+  it('keeps icons through renames, moves and the trash, and deletes them forever with the page', async () => {
+    const { vault } = await createTestVault()
+    const folder = await vault.createFolder({ title: 'F' })
+    const page = await vault.createPage({ title: 'P', author: OWNER })
+    await vault.setIconImage(page.id, 'i.png', new Uint8Array([1]))
+    await vault.setIconEmoji(folder.id, '📁')
+    await vault.rename(page.id, 'Q', OWNER)
+    await vault.move(page.id, { parentId: folder.id }, OWNER)
+    expect((await vault.getNode(page.id)).icon).toMatchObject({ type: 'image' })
+    const file = await vault.iconFile(page.id)
+
+    const { trashId } = await vault.remove(folder.id)
+    await vault.restoreFromTrash(trashId)
+    expect((await vault.getNode(folder.id)).icon).toEqual({ type: 'emoji', emoji: '📁' })
+    expect(existsSync(file)).toBe(true)
+
+    await vault.remove(folder.id)
+    await vault.emptyTrash()
+    expect(existsSync(file)).toBe(false)
+  })
+
+  it('shows icons in search results', async () => {
+    const { vault } = await createTestVault()
+    const page = await vault.createPage({ title: 'Iconic', content: 'words', author: OWNER })
+    await vault.setIconEmoji(page.id, '✨')
+    expect((await vault.searchNotes('iconic')).results[0]?.icon).toEqual({
+      type: 'emoji',
+      emoji: '✨',
+    })
+    expect((await vault.searchNotes('')).results[0]?.icon).toEqual({ type: 'emoji', emoji: '✨' })
+  })
+})
+
 describe('settings', () => {
   it('merges stored settings with defaults', async () => {
     const { vault } = await createTestVault()

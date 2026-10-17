@@ -30,6 +30,7 @@ Managed by Myfluence: don't edit by hand.
   own database is lost.
 - \`history/<note id>/\`: past versions of notes.
 - \`trash/\`: deleted notes, until the trash is emptied.
+- \`icons/\`: image icons of pages and folders.
 `,
 )
 

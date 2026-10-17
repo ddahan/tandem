@@ -88,7 +88,7 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
               :to="`/notes/${note.id}`"
               class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-elevated/60"
             >
-              <UIcon name="i-lucide-file-text" class="size-4 shrink-0 text-dimmed" />
+              <NodeIcon :icon="note.icon" kind="page" size="md" />
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-medium text-default">{{ note.title }}</span>
                 <span class="block truncate text-xs text-dimmed">{{

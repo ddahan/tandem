@@ -27,6 +27,7 @@ import {
   type Backlink,
   type BlameRange,
   type HistoryVersion,
+  type NodeIcon,
   type NoteDetail,
   type SearchResponse,
   type SearchResult,
@@ -359,6 +360,7 @@ export class Vault {
         lastSaveAt: now,
         pendingSnapshot: content !== '',
         blame: JSON.stringify(initialBlame(content, input.author, now)),
+        icon: null,
       }
       await this.db.insert(nodes).values(row)
       if (input.tags?.length) await this.writeTags(row.id, input.tags)
@@ -656,6 +658,62 @@ export class Vault {
     })
   }
 
+  /** Sets an emoji as the icon of a page or folder. */
+  async setIconEmoji(id: string, emoji: string): Promise<TreeNode> {
+    const value = emoji.trim()
+    if (!value || [...value].length > 8) throw new ValidationError('The icon must be an emoji')
+    return this.lock.run(async () => {
+      const row = await this.requireRow(id)
+      await this.removeIconFiles(id)
+      await this.db
+        .update(nodes)
+        .set({ icon: `emoji:${value}` })
+        .where(eq(nodes.id, id))
+      this.changed({ type: 'tree' })
+      return this.nodeOf({ ...row, icon: `emoji:${value}` })
+    })
+  }
+
+  /** Sets an image as the icon of a page or folder (stored in `.myfluence/icons/`). */
+  async setIconImage(id: string, fileName: string, data: Uint8Array): Promise<TreeNode> {
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
+    if (!ICON_EXTENSIONS.has(extension)) {
+      throw new ValidationError('The icon must be an image (PNG, JPEG, GIF, WebP, SVG or AVIF)')
+    }
+    if (data.byteLength > ICON_MAX_BYTES)
+      throw new ValidationError('The icon image must be under 5 MB')
+    return this.lock.run(async () => {
+      const row = await this.requireRow(id)
+      await this.removeIconFiles(id)
+      const file = `${id}-${this.now()}.${extension}`
+      await atomicWrite(join(this.metaDir, 'icons', file), data)
+      await this.db
+        .update(nodes)
+        .set({ icon: `image:${file}` })
+        .where(eq(nodes.id, id))
+      this.changed({ type: 'tree' })
+      return this.nodeOf({ ...row, icon: `image:${file}` })
+    })
+  }
+
+  /** Back to the default icon. */
+  async clearIcon(id: string): Promise<TreeNode> {
+    return this.lock.run(async () => {
+      const row = await this.requireRow(id)
+      await this.removeIconFiles(id)
+      await this.db.update(nodes).set({ icon: null }).where(eq(nodes.id, id))
+      this.changed({ type: 'tree' })
+      return this.nodeOf({ ...row, icon: null })
+    })
+  }
+
+  /** The file of an image icon. */
+  async iconFile(id: string): Promise<string> {
+    const row = await this.requireRow(id)
+    if (!row.icon?.startsWith('image:')) throw new NotFoundError('No image icon')
+    return join(this.metaDir, 'icons', row.icon.slice(6))
+  }
+
   // --- Background work -----------------------------------------------------------------------
 
   /**
@@ -838,6 +896,7 @@ export class Vault {
       lastSaveAt: null,
       pendingSnapshot: false,
       blame: null,
+      icon: null,
     }
     await this.db.insert(nodes).values(row)
     return row
@@ -1060,6 +1119,14 @@ export class Vault {
     if (owner) await removeIfEmpty(this.abs(dir))
   }
 
+  private async removeIconFiles(id: string): Promise<void> {
+    const dir = join(this.metaDir, 'icons')
+    const files = await readdir(dir).catch(() => [] as string[])
+    for (const file of files) {
+      if (file.startsWith(`${id}-`)) await rm(join(dir, file), { force: true })
+    }
+  }
+
   private async deleteTrashItem(trashId: string): Promise<void> {
     const item = await this.db.select().from(trash).where(eq(trash.id, trashId)).get()
     if (!item) throw new NotFoundError('Not in the trash')
@@ -1067,6 +1134,7 @@ export class Vault {
     await rm(join(this.metaDir, 'trash', trashId), { recursive: true, force: true })
     for (const row of payload.rows) {
       await rm(join(this.metaDir, 'history', row.id), { recursive: true, force: true })
+      await this.removeIconFiles(row.id)
       await this.db.delete(versions).where(eq(versions.nodeId, row.id))
     }
     await this.db.delete(trash).where(eq(trash.id, trashId))
@@ -1114,6 +1182,7 @@ export class Vault {
           lastSaveAt: now,
           pendingSnapshot: content !== '',
           blame: JSON.stringify(initialBlame(content, EXTERNAL, Math.round(page.mtime))),
+          icon: null,
         }
         await this.db.insert(nodes).values(row)
         await this.indexPage(row)
@@ -1186,8 +1255,24 @@ function toTreeNode(row: NodeRow, owners: Map<string, NodeRow>): TreeNode {
     position: row.position,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    icon: parseIcon(row),
   }
 }
+
+/** `emoji:🎉` → the emoji; `image:<file>` → the API URL (the file name changes with each image). */
+function parseIcon(row: NodeRow): NodeIcon | null {
+  if (row.icon?.startsWith('emoji:')) return { type: 'emoji', emoji: row.icon.slice(6) }
+  if (row.icon?.startsWith('image:')) {
+    return {
+      type: 'image',
+      url: `/api/nodes/${row.id}/icon?v=${encodeURIComponent(row.icon.slice(6))}`,
+    }
+  }
+  return null
+}
+
+const ICON_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'])
+const ICON_MAX_BYTES = 5 * 1024 * 1024
 
 function searchResult(
   node: TreeNode,
@@ -1203,6 +1288,7 @@ function searchResult(
     snippet,
     attachments,
     tags: tagList,
+    icon: node.icon,
   }
 }
 
