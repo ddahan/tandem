@@ -31,6 +31,7 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./mf`.
 | All checks                        | `./mf check` (format, lint with 0 warnings, builds, type checks, unit tests with coverage) |
 | End-to-end tests                  | `./mf e2e` (builds the web app, runs Playwright against the real server)                   |
 | Unit tests of one package         | `./mf test server` (`shared`, `server`, `cli`, `web`)                                      |
+| Server benchmark                  | `./mf pnpm --filter @myfluence/server bench [pages]` (large generated vault, API timings)  |
 | Format / lint                     | `./mf format` · `./mf lint`                                                                |
 | Any pnpm command                  | `./mf pnpm <args>`, e.g. `./mf pnpm --filter @myfluence/web add <dep>`                     |
 | The real app (the owner's)        | `./mf start` · `./mf stop` · `./mf logs` (http://localhost:3000)                           |

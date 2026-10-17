@@ -14,7 +14,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "seed": "node scripts/seed.ts"
+    "seed": "node scripts/seed.ts",
+    "bench": "node scripts/bench.ts"
   },
   "dependencies": {
     "@hono/mcp": "catalog:",
