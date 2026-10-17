@@ -5,8 +5,8 @@ const tree = useTree()
 const { openSearch } = useSearchPalette()
 const colorMode = useColorMode()
 
+// At the bottom of the sidebar; the logo leads Home.
 const navigation = computed<NavigationMenuItem[]>(() => [
-  { label: 'Home', icon: 'i-lucide-house', to: '/' },
   { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },
@@ -42,7 +42,10 @@ defineShortcuts({
       :min-size="14"
       :default-size="17"
       :max-size="30"
-      :ui="{ body: 'gap-3 pb-2', footer: 'border-t border-default py-2' }"
+      :ui="{
+        body: 'gap-3 pb-2',
+        footer: 'flex-col items-stretch gap-1 border-t border-default py-2',
+      }"
     >
       <template #header="{ collapsed }">
         <AppLogo :collapsed="collapsed" />
@@ -53,13 +56,6 @@ defineShortcuts({
           :collapsed="collapsed"
           :kbds="['meta', 'shift', 'f']"
           class="bg-transparent ring-default"
-        />
-
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="navigation"
-          orientation="vertical"
-          tooltip
         />
 
         <NoteTree v-if="!collapsed" class="-mx-1 min-h-0 flex-1" />
@@ -76,6 +72,12 @@ defineShortcuts({
       </template>
 
       <template #footer="{ collapsed }">
+        <UNavigationMenu
+          :collapsed="collapsed"
+          :items="navigation"
+          orientation="vertical"
+          tooltip
+        />
         <div
           class="flex w-full items-center gap-1"
           :class="collapsed ? 'flex-col' : 'justify-between'"
