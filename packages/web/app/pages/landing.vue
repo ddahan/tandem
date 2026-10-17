@@ -88,11 +88,14 @@ const CAPABILITIES = [
   { icon: 'i-lucide-history', label: 'History' },
   { icon: 'i-lucide-pen-line', label: 'Line authorship' },
   { icon: 'i-lucide-search', label: 'Full-text search' },
+  { icon: 'i-lucide-replace', label: 'Find and replace' },
   { icon: 'i-lucide-trash-2', label: 'Trash with undo' },
   { icon: 'i-lucide-keyboard', label: 'VS Code shortcuts' },
   { icon: 'i-lucide-moon', label: 'Dark mode' },
   { icon: 'i-lucide-bot', label: 'MCP server' },
   { icon: 'i-lucide-terminal', label: 'CLI' },
+  { icon: 'i-lucide-folder-sync', label: 'Any notes folder' },
+  { icon: 'i-lucide-download', label: 'Installable app' },
 ]
 
 const AUTHORSHIP = [
@@ -245,7 +248,7 @@ const AGENT_POINTS = [
           style="--delay: 360ms"
         >
           <li
-            v-for="point in ['Plain .md files', 'Syncs with any folder', 'Light and dark']"
+            v-for="point in ['Plain .md files', 'Syncs with any folder', 'One app, no Docker']"
             :key="point"
             class="flex items-center gap-1.5"
           >
@@ -628,8 +631,9 @@ teams by the end of the month.
             repository. Edit them in any app: Tandem notices, and keeps the history.
           </p>
           <p class="mt-4 text-lg text-muted">
-            Tags, history and authorship live in SQLite next to them, backed up into the same
-            folder. Leave anytime with everything.
+            Switch folders anytime from Settings, iCloud Drive and OneDrive included: each one keeps
+            its own tags, history and authorship, backed up inside it. Leave anytime with
+            everything.
           </p>
         </div>
       </div>
