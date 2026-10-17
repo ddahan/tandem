@@ -1,6 +1,15 @@
 // The main flows of the app, in a real browser against the real server.
 import { expect, test, type Page } from '@playwright/test'
-import { api, createNote, focusEnd, noteContent, openNote, resolve, waitSaved } from './helpers'
+import {
+  api,
+  chooseTheme,
+  createNote,
+  focusEnd,
+  noteContent,
+  openNote,
+  resolve,
+  waitSaved,
+} from './helpers'
 
 test('creates a page, edits it with Markdown shortcuts, and saves it in the background', async ({
   page,
@@ -234,14 +243,33 @@ test('colors the title bar like the background (theme-color)', async ({ page, re
   await expect(themeColor).toHaveCount(1)
   await expect(themeColor).toHaveAttribute('content', '#fbf8f1')
 
-  await page.getByRole('button', { name: 'Dark', exact: true }).click()
+  await chooseTheme(page, 'Dark')
   await expect(themeColor).toHaveAttribute('content', '#1e1c19')
   // Remembered: the next launch starts with it.
   await page.reload({ waitUntil: 'domcontentloaded' })
   await expect(themeColor).toHaveAttribute('content', '#1e1c19')
 
-  await page.getByRole('button', { name: 'Light', exact: true }).click()
+  await chooseTheme(page, 'Light')
   await api(request, 'PATCH', '/settings', { backgroundTone: 'white' })
+})
+
+test('switches the color mode from one theme button', async ({ page }) => {
+  await page.goto('/')
+  const button = page.getByRole('button', { name: /^Theme: / })
+  await expect(button).toHaveCount(1)
+  await expect(button).toHaveAccessibleName('Theme: System')
+  await chooseTheme(page, 'Dark')
+  await expect(page.locator('html')).toHaveClass(/dark/)
+  await expect(button).toHaveAccessibleName('Theme: Dark')
+  // The menu marks the current choice.
+  await button.click()
+  await expect(page.getByRole('menuitemcheckbox', { name: 'Dark' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await page.getByRole('menuitemcheckbox', { name: 'Light' }).click()
+  await expect(page.locator('html')).not.toHaveClass(/dark/)
+  await expect(button).toHaveAccessibleName('Theme: Light')
 })
 
 test('shows the chosen theme at once on reload, before the settings load', async ({
@@ -782,7 +810,7 @@ test('shows a pointer on everything clickable', async ({ page, request }) => {
   await createNote(request, 'Pointer note')
   await page.goto('/')
   for (const clickable of [
-    page.getByRole('button', { name: 'Light' }),
+    page.getByRole('button', { name: /^Theme: / }),
     page.getByRole('button', { name: 'New page', exact: true }).first(),
     page.getByTestId('tree-Pointer note'),
     page.getByRole('link', { name: 'Trash' }),

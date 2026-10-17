@@ -58,3 +58,9 @@ export async function focusEnd(page: Page) {
 export async function waitSaved(page: Page) {
   await expect(page.getByTestId('save-status')).toContainText('Saved')
 }
+
+/** Picks a color mode from the sidebar's theme menu. */
+export async function chooseTheme(page: Page, mode: 'Light' | 'Dark' | 'System') {
+  await page.getByRole('button', { name: /^Theme: / }).click()
+  await page.getByRole('menuitemcheckbox', { name: mode }).click()
+}

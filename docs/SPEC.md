@@ -138,11 +138,12 @@ typically inside OneDrive so that it is backed up and synced.
   shows its final state.
 - A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
   the tree's menu shows the shortcuts of its actions.
-- Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
-  sepia or cool, each with a light and a dark variant), primary and neutral colors,
+- Light, dark or system color mode, switched from one button at the bottom of the sidebar (it
+  shows the current mode; its menu offers the three). Settings page: color mode, background tone
+  (white, paper, sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
-  owner's display name, and the workspace name (next to the logo and in the browser tab;
-  Tandem by default).
+  owner's display name, and the workspace name (next to the logo and in the browser tab; Tandem by
+  default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes

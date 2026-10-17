@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui'
 
 const tree = useTree()
 const { openSearch } = useSearchPalette()
@@ -17,6 +17,19 @@ const colorModes = [
   { value: 'dark', icon: 'i-lucide-moon', label: 'Dark' },
   { value: 'system', icon: 'i-lucide-monitor', label: 'System' },
 ]
+// One button showing the current mode; its menu switches.
+const currentMode = computed(
+  () => colorModes.find((mode) => mode.value === colorMode.preference) ?? colorModes[2]!,
+)
+const colorModeItems = computed<DropdownMenuItem[]>(() =>
+  colorModes.map((mode) => ({
+    type: 'checkbox' as const,
+    label: mode.label,
+    icon: mode.icon,
+    checked: colorMode.preference === mode.value,
+    onUpdateChecked: () => (colorMode.preference = mode.value),
+  })),
+)
 
 defineShortcuts({
   meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
@@ -83,17 +96,22 @@ defineShortcuts({
           class="flex w-full items-center gap-1"
           :class="collapsed ? 'flex-col' : 'justify-between'"
         >
-          <UFieldGroup v-if="!collapsed" size="xs">
-            <UTooltip v-for="mode in colorModes" :key="mode.value" :text="mode.label">
-              <UButton
-                :icon="mode.icon"
-                :aria-label="mode.label"
-                color="neutral"
-                :variant="colorMode.preference === mode.value ? 'soft' : 'ghost'"
-                @click="colorMode.preference = mode.value"
-              />
-            </UTooltip>
-          </UFieldGroup>
+          <UDropdownMenu
+            :items="colorModeItems"
+            :content="{ side: 'top', align: 'start' }"
+            :ui="{ content: 'min-w-36' }"
+          >
+            <UButton
+              :icon="currentMode.icon"
+              :label="collapsed ? undefined : currentMode.label"
+              :trailing-icon="collapsed ? undefined : 'i-lucide-chevron-up'"
+              :aria-label="`Theme: ${currentMode.label}`"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              :ui="{ trailingIcon: 'size-3.5 text-dimmed' }"
+            />
+          </UDropdownMenu>
           <UDashboardSidebarCollapse />
         </div>
       </template>
