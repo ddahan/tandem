@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { Settings } from '@myfluence/shared'
+import { DEFAULT_SETTINGS, type Settings } from '@myfluence/shared'
 import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
 
 const { settings, update } = useSettings()
 const colorMode = useColorMode()
 const showError = useApiErrorToast()
-useHead({ title: 'Settings · Myfluence' })
+useHead({ title: 'Settings' })
 
 const PRIMARY = [
   'red',
@@ -60,7 +60,12 @@ const modes = [
   { value: 'system', label: 'System', icon: 'i-lucide-monitor' },
 ]
 
+const workspaceName = ref(settings.value.workspaceName)
 const displayName = ref(settings.value.displayName)
+function saveWorkspaceName() {
+  workspaceName.value = workspaceName.value.trim() || DEFAULT_SETTINGS.workspaceName
+  void set({ workspaceName: workspaceName.value })
+}
 async function set(patch: Partial<Settings>) {
   try {
     await update(patch)
@@ -78,6 +83,21 @@ async function set(patch: Partial<Settings>) {
 
     <template #body>
       <div class="mx-auto w-full max-w-2xl space-y-10 py-4">
+        <section>
+          <h2 class="font-semibold text-highlighted">Workspace</h2>
+          <p class="mb-4 text-sm text-muted">Shown next to the logo and in the browser tab.</p>
+          <UFormField label="Workspace name">
+            <UInput
+              v-model="workspaceName"
+              class="w-64"
+              maxlength="40"
+              @change="saveWorkspaceName"
+            />
+          </UFormField>
+        </section>
+
+        <USeparator />
+
         <section>
           <h2 class="font-semibold text-highlighted">You</h2>
           <p class="mb-4 text-sm text-muted">

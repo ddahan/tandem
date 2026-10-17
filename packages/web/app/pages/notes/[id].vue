@@ -23,7 +23,7 @@ await doc.load()
 const node = computed(() => tree.byId.value.get(id.value) ?? doc.note.value?.node ?? null)
 const notePath = computed(() => node.value?.path ?? doc.note.value?.node.path ?? '')
 
-useHead({ title: () => (node.value ? `${node.value.title} · Myfluence` : 'Myfluence') })
+useHead({ title: () => node.value?.title || 'Untitled' })
 
 // --- Content and modes ---------------------------------------------------------------------
 

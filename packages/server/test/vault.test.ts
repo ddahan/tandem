@@ -435,6 +435,7 @@ describe('settings', () => {
   it('merges stored settings with defaults', async () => {
     const { vault } = await createTestVault()
     expect((await vault.getSettings()).primaryColor).toBe('indigo')
+    expect((await vault.getSettings()).workspaceName).toBe('Myfluence')
     const updated = await vault.updateSettings({ primaryColor: 'emerald', displayName: 'David' })
     expect(updated).toMatchObject({
       primaryColor: 'emerald',

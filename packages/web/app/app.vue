@@ -1,8 +1,12 @@
 <script setup lang="ts">
 // Loads the tree and settings once, then keeps them in sync with the server's events.
 const tree = useTree()
-const { load: loadSettings, favicon } = useSettings()
-useHead({ link: [{ key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: favicon }] })
+const { settings, load: loadSettings, favicon } = useSettings()
+useHead({
+  // Pages set their own title; the workspace name follows it.
+  titleTemplate: computed(() => `%s · ${settings.value.workspaceName}`),
+  link: [{ key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: favicon }],
+})
 const showError = useApiErrorToast()
 
 try {

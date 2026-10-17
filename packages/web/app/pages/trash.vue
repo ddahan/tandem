@@ -14,7 +14,7 @@ await load()
 useServerEvents((event) => {
   if (event.type === 'trash' || event.type === 'resync') void load()
 })
-useHead({ title: 'Trash · Myfluence' })
+useHead({ title: 'Trash' })
 
 async function restore(item: TrashItem) {
   try {

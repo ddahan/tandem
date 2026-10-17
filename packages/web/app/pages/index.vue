@@ -31,7 +31,7 @@ const greeting = computed(() => {
   return `${hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}${name}`
 })
 
-useHead({ title: 'Myfluence' })
+useHead({ title: 'Home' })
 
 const actions: { label: string; icon: string; to?: string; onClick?: () => void }[] = [
   { label: 'New page', icon: 'i-lucide-file-plus', onClick: () => void tree.createPage() },

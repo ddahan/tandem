@@ -40,6 +40,7 @@ const idParam = z.object({ id: z.string().min(1) })
 
 const settingsPatch = z
   .object({
+    workspaceName: z.string().trim().min(1).max(40),
     displayName: z.string().max(60),
     primaryColor: z.string().regex(/^[a-z]+$/),
     neutralColor: z.string().regex(/^[a-z]+$/),

@@ -98,6 +98,8 @@ export interface TrashItem {
 }
 
 export interface Settings {
+  /** Shown next to the logo and in the browser tab. */
+  workspaceName: string
   displayName: string
   primaryColor: string
   neutralColor: string
@@ -111,6 +113,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  workspaceName: 'Myfluence',
   displayName: 'Me',
   primaryColor: 'indigo',
   neutralColor: 'zinc',

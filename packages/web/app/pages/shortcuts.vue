@@ -2,7 +2,7 @@
 // All keyboard shortcuts and typing rules (from utils/shortcuts.ts).
 import { SHORTCUT_GROUPS } from '~/utils/shortcuts'
 
-useHead({ title: 'Keyboard shortcuts · Myfluence' })
+useHead({ title: 'Keyboard shortcuts' })
 </script>
 
 <template>

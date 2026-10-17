@@ -217,6 +217,13 @@ test('changes the theme and the settings', async ({ page, request }) => {
     .toBe('emerald')
   await page.getByRole('button', { name: 'Dark', exact: true }).first().click()
   await expect(page.locator('html')).toHaveClass(/dark/)
+
+  // The workspace name: next to the logo and in the tab.
+  await page.getByLabel('Workspace name').fill('Brain')
+  await page.getByLabel('Workspace name').press('Enter')
+  await expect(page.getByTestId('workspace-name')).toHaveText('Brain')
+  await expect(page).toHaveTitle('Settings · Brain')
+  await api(request, 'PATCH', '/settings', { workspaceName: 'Myfluence' })
 })
 
 /** Drops files on the editor, as dragging them from Finder would. */
