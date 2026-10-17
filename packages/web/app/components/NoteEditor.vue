@@ -14,7 +14,7 @@ import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { createExtensions, starterKitOptions } from '~/editor/extensions'
 import type { WikiLinkAttributes } from '~/editor/wiki-link'
-import { filesPrefix } from '~/utils/markdown-paths'
+import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
 
 const props = defineProps<{
   /** Initial content, in editor form (see markdown-paths). */
@@ -435,15 +435,30 @@ function collectHeadings(editor: Editor) {
   emit('headings', headings)
 }
 
+/**
+ * The Markdown last reported (or loaded), tidied. The editor normalizes some Markdown when it
+ * loads a note (table padding, escapes), and extensions adjust the document later (an empty
+ * paragraph after a final list, on the first transaction): those change nothing the user did,
+ * so they must not save the note (and take its authorship). Only a different Markdown is a
+ * change; blank lines don't count (they are tidied on save anyway).
+ */
+let reported: string | null = null
+
 function onUpdate(value: unknown) {
-  emit('change', String(value))
+  const markdown = String(value)
   const editor = editorRef.value?.editor
   if (editor) collectHeadings(editor)
+  const tidy = normalizeMarkdown(markdown)
+  if (tidy === reported) return
+  reported = tidy
+  emit('change', markdown)
 }
 
 onMounted(() => {
   const editor = editorRef.value?.editor
-  if (editor) collectHeadings(editor)
+  if (!editor) return
+  reported = normalizeMarkdown(editor.getMarkdown())
+  collectHeadings(editor)
 })
 
 defineExpose({
@@ -453,6 +468,7 @@ defineExpose({
     if (!editor) return
     const { from } = editor.state.selection
     editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
+    reported = normalizeMarkdown(editor.getMarkdown())
     editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size))
     collectHeadings(editor)
   },

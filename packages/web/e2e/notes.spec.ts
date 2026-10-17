@@ -419,3 +419,31 @@ test('gives a page an emoji or an image icon, after its creation', async ({ page
   await expect(row.getByTestId('node-icon').locator('img')).toHaveCount(0)
   expect((await resolve(request, note.id)).icon).toBeNull()
 })
+
+test('opening a note never saves it (nor takes its authorship)', async ({ page, request }) => {
+  // Markdown the editor would write differently: table padding, a backslash, angle brackets.
+  // Ending with a list: the editor appends an empty paragraph on its first transaction, which
+  // the image's loading triggers.
+  const note = await createNote(request, 'Untouched note', '', 'claude')
+  const png =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+  await request.post(`/api/notes/${note.id}/attachments`, {
+    multipart: {
+      file: { name: 'dot.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') },
+    },
+  })
+  const content =
+    '| A | Longer header |\n| --- | --- |\n| ⌘\\ | </> |\n\n![dot](Untouched%20note.assets/dot.png)\n\n- one\n- two\n'
+  await api(request, 'PUT', `/notes/${note.id}/content`, { content }, 'claude')
+  await openNote(page, note.id)
+  await expect
+    .poll(() =>
+      page.locator('.ProseMirror img').evaluate((img: HTMLImageElement) => img.naturalWidth),
+    )
+    .toBe(1)
+  await page.waitForTimeout(1500)
+  expect(await noteContent(request, note.id)).toBe(content)
+  const blame = await api<{ author: string }[]>(request, 'GET', `/notes/${note.id}/blame`)
+  expect(new Set(blame.map((range) => range.author))).toEqual(new Set(['claude']))
+  await expect(page.getByTestId('save-status')).toHaveCount(0)
+})

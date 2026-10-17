@@ -122,6 +122,7 @@ describe('authorship normalization', () => {
     expect(normalizeLine('| --- | --- |')).toBe(normalizeLine('| ----- | ------ |'))
     expect(normalizeLine('* item')).toBe(normalizeLine('- item'))
     expect(normalizeLine('snake\\_case')).toBe(normalizeLine('snake_case'))
+    expect(normalizeLine('(&lt;/&gt; button)')).toBe(normalizeLine('(</> button)'))
   })
 })
 

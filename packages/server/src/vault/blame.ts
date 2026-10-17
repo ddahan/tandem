@@ -33,6 +33,10 @@ export function normalizeLine(line: string): string {
       .replace(/__(.+?)__/g, '**$1**')
       .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g, '$1_$2_')
       .replace(/&nbsp;| /g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
       .replace(/^(\s*)(?:-{3,}|\*{3,}|_{3,})$/, '$1---')
       // Table separator rows (column padding changes with the content).
       .replace(/^\|?(?:\s*:?-+:?\s*\|)+\s*:?-*:?\s*$/, (row) =>
