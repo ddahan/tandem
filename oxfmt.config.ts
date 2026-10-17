@@ -12,6 +12,7 @@ export default defineConfig({
     '**/.nuxt/**',
     '**/.output/**',
     '**/test/fixtures/**',
+    '**/*.generated.ts',
   ],
   sortTailwindcss: { stylesheet: './packages/web/app/assets/css/main.css', attributes: ['ui'] },
 })

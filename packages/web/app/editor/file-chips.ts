@@ -1,9 +1,10 @@
-// Links to attachments (`Note.assets/…`) are shown as file chips: an icon, the file name, a
-// pill. The Markdown stays a plain link; only the display changes (decorations).
+// Links to attachments (`Note.assets/…`) are shown as file chips: the file type's icon, the
+// file name, a pill. The Markdown stays a plain link; only the display changes (decorations).
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { fileIconCssUrl } from '../utils/file-icons'
 
 export function isAttachmentHref(href: string): boolean {
   return /\.assets\/[^/]+$/.test(href)
@@ -11,18 +12,27 @@ export function isAttachmentHref(href: string): boolean {
 
 function decorations(doc: ProseMirrorNode): DecorationSet {
   const found: Decoration[] = []
+  // A link split over several text nodes (some of it bold…) gets one icon, on its first part.
+  let previous: { href: string; end: number } | null = null
   doc.descendants((node, pos) => {
     if (!node.isText) return
     const link = node.marks.find((mark) => mark.type.name === 'link')
     const href = link?.attrs.href as string | undefined
-    if (!href || !isAttachmentHref(href)) return
-    const extension = href.split('.').pop()?.toLowerCase() ?? ''
+    if (!href || !isAttachmentHref(href)) {
+      previous = null
+      return
+    }
+    const continued = previous?.href === href && previous.end === pos
     found.push(
-      Decoration.inline(pos, pos + node.nodeSize, {
-        class: 'file-chip',
-        'data-extension': extension,
-      }),
+      Decoration.inline(
+        pos,
+        pos + node.nodeSize,
+        continued
+          ? { class: 'file-chip file-chip--continued' }
+          : { class: 'file-chip', style: `--file-icon: ${fileIconCssUrl(href)}` },
+      ),
     )
+    previous = { href, end: pos + node.nodeSize }
   })
   return DecorationSet.create(doc, found)
 }

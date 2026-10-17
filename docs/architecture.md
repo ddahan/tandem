@@ -166,6 +166,10 @@ folders and the versions.
   (sanitized).
 - Icons are bundled at build time (no icon API at runtime): use literal `i-lucide-*` names in
   the source so the build finds them.
+- File-type icons (attachment chips, Files panel) come from the VS Code icon set:
+  `utils/file-icon-map.ts` maps extensions to icons, and `scripts/file-icons.ts` extracts their
+  SVG into `utils/file-icons.generated.ts` (committed; regenerate after changing the map with
+  `./mf pnpm --filter @myfluence/web file-icons`). Unknown types get a generic file icon.
 
 ## CLI (`packages/cli`)
 

@@ -165,3 +165,29 @@ describe('normalizing', () => {
     expect(normalizeMarkdown('a  \nb')).toBe('a  \nb\n')
   })
 })
+
+describe('file icons', () => {
+  it('picks the icon of the file type, or a generic one', async () => {
+    const { fileIconName, fileIconSvg, fileIconCssUrl } = await import('../app/utils/file-icons')
+    expect(fileIconName('report.PDF')).toBe('file-type-pdf2')
+    expect(fileIconName('/files/My%20note.assets/data.csv?v=2')).toBe('file-type-csv')
+    expect(fileIconName('budget.xlsx')).toBe('file-type-excel')
+    expect(fileIconName('archive.tar.gz')).toBe('file-type-zip')
+    expect(fileIconName('mystery.qwerty')).toBe('default-file')
+    expect(fileIconName('README')).toBe('default-file')
+    expect(fileIconSvg('a.pdf')).toMatch(/^<svg/)
+    expect(fileIconCssUrl('a.pdf')).toMatch(/^url\("data:image\/svg\+xml,%3Csvg/)
+  })
+
+  it('shows chips with the icon of their file type, once per link', () => {
+    const chips = createEditor(
+      '[report.pdf](N.assets/report.pdf) and [**data**.csv](N.assets/data.csv)',
+    )
+    const dom = chips.view.dom
+    const icons = [
+      ...dom.querySelectorAll<HTMLElement>('.file-chip:not(.file-chip--continued)'),
+    ].map((chip) => decodeURIComponent(chip.style.getPropertyValue('--file-icon')))
+    expect(icons).toHaveLength(2)
+    expect(dom.querySelectorAll('.file-chip--continued')).toHaveLength(1)
+  })
+})

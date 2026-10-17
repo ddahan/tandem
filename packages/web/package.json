@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "icons": "node scripts/icons.ts",
-    "screenshot": "node scripts/screenshot.ts"
+    "screenshot": "node scripts/screenshot.ts",
+    "file-icons": "node scripts/file-icons.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "catalog:",
@@ -44,6 +45,8 @@
   },
   "devDependencies": {
     "@iconify-json/lucide": "catalog:",
+    "@iconify-json/vscode-icons": "catalog:",
+    "@iconify/utils": "catalog:",
     "@playwright/test": "catalog:",
     "@resvg/resvg-js": "catalog:",
     "@tiptap/starter-kit": "catalog:",

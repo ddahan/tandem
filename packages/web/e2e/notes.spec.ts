@@ -248,6 +248,13 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   await openNote(page, note.id)
   await dropFiles(page, [{ name: 'report.pdf', type: 'application/pdf', text: 'PDF' }])
   await expect(page.locator('.ProseMirror .file-chip')).toHaveText('report.pdf')
+  // With the PDF icon (bundled SVG), and in the Files panel too.
+  const chipIcon = await page
+    .locator('.ProseMirror .file-chip')
+    .evaluate((chip) => getComputedStyle(chip, '::before').backgroundImage)
+  expect(chipIcon).toContain('data:image/svg+xml')
+  await page.getByRole('tab', { name: 'Files' }).click()
+  await expect(page.getByTestId('file-icon').locator('svg')).toHaveCount(1)
   await expect
     .poll(() => noteContent(request, note.id))
     .toContain('[report.pdf](Drop%20note.assets/report.pdf)')

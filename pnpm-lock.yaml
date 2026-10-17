@@ -185,6 +185,12 @@ catalogs:
     '@iconify-json/lucide':
       specifier: ^1.2.142
       version: 1.2.145
+    '@iconify-json/vscode-icons':
+      specifier: ^1.2.90
+      version: 1.2.90
+    '@iconify/utils':
+      specifier: ^3.1.7
+      version: 3.1.7
     '@modelcontextprotocol/sdk':
       specifier: ^1.32.1
       version: 1.32.1
@@ -503,6 +509,12 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.145
+      '@iconify-json/vscode-icons':
+        specifier: 'catalog:'
+        version: 1.2.90
+      '@iconify/utils':
+        specifier: 'catalog:'
+        version: 3.1.7
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.64.1
@@ -1378,6 +1390,9 @@ packages:
 
   '@iconify-json/lucide@1.2.145':
     resolution: {integrity: sha512-eYBZipY6g4bbJNyKBAEq1wBy3mJ2jKtI4O2K30ArO2lMpVDOEuQfu5aDZhiimj1+Q/mIrn3ZxnDeX1BbILxkwQ==}
+
+  '@iconify-json/vscode-icons@1.2.90':
+    resolution: {integrity: sha512-4nhCCePjGb2V2oghUkOiE2Vqaa4o+mCrVN4hmbKO3UtJdISo4ESvmMAY7rScaCBOcaZ7QPmQ2lEIOi69t8p6VQ==}
 
   '@iconify/collections@1.0.752':
     resolution: {integrity: sha512-7VthYrhNzcAxNlBejT8RB1Jwq3z+6+6hE8t/VsAx1GjCCCQEKtmbywmGBamKMKKLY7vSt72c5JqhVpW1x0uUZQ==}
@@ -7104,6 +7119,10 @@ snapshots:
       zod: 4.6.7
 
   '@iconify-json/lucide@1.2.145':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/vscode-icons@1.2.90':
     dependencies:
       '@iconify/types': 2.0.0
 

@@ -26,5 +26,6 @@ export default defineConfig({
     '**/.data/**',
     '**/playwright-report/**',
     '**/test-results/**',
+    '**/*.generated.ts',
   ],
 })

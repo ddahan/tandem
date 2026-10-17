@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Files attached to the note (its `.assets` folder): open, copy or insert their Markdown, add.
 import { formatSize, type Attachment } from '@myfluence/shared'
+import { fileIconSvg } from '~/utils/file-icons'
 
 const props = defineProps<{ noteId: string; notePath: string }>()
 const emit = defineEmits<{ insert: [markdown: string] }>()
@@ -24,17 +25,6 @@ const url = (attachment: Attachment) =>
   `/files/${attachment.path.split('/').map(encodeURIComponent).join('/')}`
 const markdownOf = (a: Attachment) =>
   a.isImage ? `![${a.name}](${a.markdownPath})` : `[${a.name}](${a.markdownPath})`
-
-function icon(attachment: Attachment): string {
-  if (attachment.isImage) return 'i-lucide-image'
-  const extension = attachment.name.split('.').pop()?.toLowerCase() ?? ''
-  if (['pdf'].includes(extension)) return 'i-lucide-file-text'
-  if (['zip', 'gz', 'tar', '7z', 'rar'].includes(extension)) return 'i-lucide-file-archive'
-  if (['xls', 'xlsx', 'csv', 'numbers'].includes(extension)) return 'i-lucide-file-spreadsheet'
-  if (['mp4', 'mov', 'webm'].includes(extension)) return 'i-lucide-file-video'
-  if (['mp3', 'wav', 'm4a'].includes(extension)) return 'i-lucide-file-audio'
-  return 'i-lucide-file'
-}
 
 const files = ref<File[] | null>(null)
 async function upload(selected: File[] | null | undefined) {
@@ -88,7 +78,12 @@ async function copy(attachment: Attachment) {
         :key="attachment.path"
         class="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-elevated"
       >
-        <UIcon :name="icon(attachment)" class="size-4 shrink-0 text-dimmed" />
+        <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->
+        <span
+          class="size-4 shrink-0 [&_svg]:size-full"
+          data-testid="file-icon"
+          v-html="fileIconSvg(attachment.name)"
+        />
         <a
           :href="url(attachment)"
           target="_blank"
