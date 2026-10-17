@@ -334,3 +334,24 @@ test('draws the logo and the tab icon in the accent color', async ({ page, reque
     .toEqual([expect.stringMatching(/^data:image\/svg\+xml/)])
   await api(request, 'PATCH', '/settings', { primaryColor: 'indigo' })
 })
+
+test('aligns task checkboxes with their text, at any text size', async ({ page, request }) => {
+  const note = await createNote(request, 'Tasks note', '- [x] Done task\n- [ ] Open task\n')
+  // Distance between the centers of each checkbox and of its first line of text.
+  const offsets = () =>
+    page.locator('.ProseMirror li[data-checked]').evaluateAll((items) =>
+      items.map((item) => {
+        const box = item.querySelector('input')!.getBoundingClientRect()
+        const range = document.createRange()
+        range.selectNodeContents(item.querySelector('p')!)
+        const line = range.getClientRects()[0]!
+        return Math.abs(box.top + box.height / 2 - (line.top + line.height / 2))
+      }),
+    )
+  for (const size of ['medium', 'xlarge']) {
+    await api(request, 'PATCH', '/settings', { editorFontSize: size })
+    await openNote(page, note.id)
+    for (const offset of await offsets()) expect(offset).toBeLessThan(1.5)
+  }
+  await api(request, 'PATCH', '/settings', { editorFontSize: 'medium' })
+})

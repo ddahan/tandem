@@ -184,14 +184,24 @@ html.dark[data-tone='cool'] {
   padding-inline-start: 0;
 }
 .note-editor ul[data-type='taskList'] li > label {
-  margin-top: 0.35rem;
+  /* Exactly one line of text tall (the paragraphs' line height), checkbox centered: it stays
+     on the first line whatever the text size. */
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 1.75em;
   user-select: none;
 }
 .note-editor ul[data-type='taskList'] li > label input {
-  width: 1rem;
-  height: 1rem;
+  width: 1em;
+  height: 1em;
+  margin: 0;
   accent-color: var(--ui-primary);
   cursor: pointer;
+}
+.note-editor ul[data-type='taskList'] li > div > p {
+  margin: 0;
+  line-height: 1.75;
 }
 .note-editor ul[data-type='taskList'] li > div {
   flex: 1;
