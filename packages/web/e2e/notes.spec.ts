@@ -523,7 +523,7 @@ test('edits with VS Code shortcuts, listed on the Shortcuts page', async ({ page
   // ⌘/ opens the page listing them.
   await page.keyboard.press('ControlOrMeta+/')
   await expect(page).toHaveURL(/\/shortcuts$/)
-  await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toBeVisible()
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toHaveCount(2)
   await expect(
     page.getByTestId('shortcut').filter({ hasText: 'Select all occurrences' }),
   ).toBeVisible()
@@ -536,4 +536,86 @@ test('edits with VS Code shortcuts, listed on the Shortcuts page', async ({ page
         .map((icon) => icon.className),
     )
   expect(missing).toEqual([])
+})
+
+test('finds and replaces in the note (⌘F), and searches all notes (⌘⇧F)', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Find note', 'Red apple, green apple.\n\nApple pie.\n')
+  await openNote(page, note.id)
+  // The selected word is the query.
+  await page
+    .locator('.ProseMirror p', { hasText: 'Red apple' })
+    .dblclick({ position: { x: 50, y: 8 } })
+  await page.keyboard.press('ControlOrMeta+F')
+  const bar = page.getByTestId('find-bar')
+  await expect(bar.getByLabel('Find in the note')).toHaveValue('apple')
+  await expect(page.getByTestId('find-count')).toHaveText(/of 3/)
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.ProseMirror .find-match--current')).toHaveCount(1)
+  await bar.getByRole('button', { name: 'Match case' }).click()
+  await expect(page.getByTestId('find-count')).toHaveText(/of 2/)
+
+  // Replace all, from the replace field.
+  await bar.getByRole('button', { name: 'Show replace' }).click()
+  await bar.getByLabel('Replace with').fill('pear')
+  await bar.getByRole('button', { name: 'Replace all' }).click()
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('Red pear, green pear.\n\nApple pie.\n')
+  await page.keyboard.press('Escape')
+  await expect(bar).toHaveCount(0)
+  await expect(page.locator('.ProseMirror .find-match')).toHaveCount(0)
+
+  // ⌘⇧F: the search palette, with the selected text.
+  await page
+    .locator('.ProseMirror p', { hasText: 'Apple pie' })
+    .dblclick({ position: { x: 10, y: 8 } })
+  await page.keyboard.press('ControlOrMeta+Shift+F')
+  await expect(page.getByPlaceholder(/Search notes/)).toHaveValue('Apple')
+})
+
+test('manages pages from the tree with the keyboard', async ({ page, request }) => {
+  await createNote(request, 'Key first')
+  const second = await createNote(request, 'Key second')
+  await page.goto('/')
+  const row = (title: string) => page.getByTestId(`tree-${title}`)
+  const order = async () =>
+    (
+      await api<{ title: string; parentId: string | null; position: number }[]>(
+        request,
+        'GET',
+        '/tree',
+      )
+    )
+      .filter((n) => n.title.startsWith('Key ') && n.parentId === null)
+      .toSorted((a, b) => a.position - b.position)
+      .map((n) => n.title)
+
+  // ⌥↑ moves it up among its siblings.
+  await row('Key second').focus()
+  await page.keyboard.press('Alt+ArrowUp')
+  await expect.poll(order).toEqual(['Key second', 'Key first'])
+
+  // F2 renames.
+  await row('Key second').focus()
+  await page.keyboard.press('F2')
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('Key renamed')
+  await page.keyboard.press('Enter')
+  await expect(row('Key renamed')).toBeVisible()
+
+  // ⌘⌫ moves it to the trash at once; Undo brings it back.
+  await row('Key renamed').focus()
+  await page.keyboard.press('ControlOrMeta+Backspace')
+  await expect(row('Key renamed')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await expect(row('Key renamed')).toBeVisible()
+  expect((await resolve(request, second.id)).title).toBe('Key renamed')
+
+  // The menu shows these shortcuts.
+  await row('Key renamed').hover()
+  await row('Key renamed').getByRole('button', { name: 'Actions' }).click()
+  await expect(page.getByRole('menuitem', { name: /Move to trash/ }).locator('kbd')).toHaveCount(2)
 })

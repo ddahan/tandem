@@ -166,7 +166,8 @@ folders and the versions.
   (sanitized).
 - Editing shortcuts in the VS Code style: `editor/block-keys.ts` (move, duplicate, delete,
   insert blocks, on `NodeRange`s so list items move within their list) and
-  `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
+  `editor/find.ts` with `FindBar.vue` (⌘F: query, matches and current match in plugin state,
+  decorations, replace), `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
   drawn as decorations; typing, Backspace and Delete apply to all of them). The Shortcuts page
   (`pages/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
 - Icons are bundled at build time (no icon API at runtime): use literal `i-lucide-*` names in

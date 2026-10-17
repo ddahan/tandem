@@ -18,6 +18,7 @@ export function useTree() {
   const loaded = useState('tree:loaded', () => false)
   const api = useApi()
   const showError = useApiErrorToast()
+  const toast = useToast()
 
   const byId = computed(() => new Map(nodes.value.map((node) => [node.id, node])))
 
@@ -127,6 +128,39 @@ export function useTree() {
     }
   }
 
+  /** Moves a node to the trash right away, with an "Undo" in the toast (no confirmation). */
+  async function moveToTrash(id: string): Promise<boolean> {
+    const title = byId.value.get(id)?.title ?? 'Item'
+    try {
+      const { trashId } = await unwrap(api.nodes[':id'].$delete({ param: { id } }))
+      await refresh()
+      toast.add({
+        title: `“${title}” moved to the trash`,
+        icon: 'i-lucide-trash-2',
+        actions: [
+          {
+            label: 'Undo',
+            icon: 'i-lucide-undo-2',
+            color: 'neutral',
+            variant: 'outline',
+            onClick: async () => {
+              try {
+                await unwrap(api.trash[':id'].restore.$post({ param: { id: trashId } }))
+                await refresh()
+              } catch (error) {
+                showError(error, 'Could not restore')
+              }
+            },
+          },
+        ],
+      })
+      return true
+    } catch (error) {
+      showError(error, 'Could not delete')
+      return false
+    }
+  }
+
   /** Is `id` the node `ancestorId` or below it? */
   function isWithin(id: string, ancestorId: string): boolean {
     return ancestors(id).some((node) => node.id === ancestorId)
@@ -146,5 +180,6 @@ export function useTree() {
     rename,
     move,
     remove,
+    moveToTrash,
   }
 }

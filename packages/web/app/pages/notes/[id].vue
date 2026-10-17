@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
+import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import { OWNER, authorLabel, formatDateTime } from '@myfluence/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
@@ -33,10 +34,51 @@ const content = ref(doc.note.value?.content ?? '')
 const editorContent = ref(toEditorMarkdown(content.value, notePath.value))
 const editorKey = ref(0)
 const editor = useTemplateRef<{
+  editor: TiptapEditor | undefined
   setContent(markdown: string): void
   scrollTo(pos: number): void
   focus(position?: 'start' | 'end'): void
 }>('editor')
+
+// --- Find in the note (⌘F, ⌘⌥F with replace) ---------------------------------------------------
+
+const findOpen = ref(false)
+const findReplacing = ref(false)
+const findInitial = ref('')
+const findBar = useTemplateRef<{ focus(text?: string): void }>('findBar')
+
+function openFind(replace: boolean) {
+  const tiptap = editor.value?.editor
+  if (!tiptap) return
+  // The selected text (on one line) is what to find, as in VS Code.
+  const { from, to } = tiptap.state.selection
+  const selected = tiptap.state.doc.textBetween(from, to, '\n')
+  const text = selected && !selected.includes('\n') ? selected : ''
+  if (replace) findReplacing.value = true
+  if (findOpen.value) {
+    findBar.value?.focus(text || undefined)
+    return
+  }
+  findInitial.value = text
+  findOpen.value = true
+}
+
+// Only in edit mode: elsewhere (Markdown source), the browser's own find works.
+defineShortcuts(
+  computed(() =>
+    mode.value === 'edit'
+      ? {
+          meta_f: { usingInput: true, handler: () => openFind(false) },
+          meta_alt_f: { usingInput: true, handler: () => openFind(true) },
+        }
+      : {},
+  ),
+)
+function closeFind() {
+  findOpen.value = false
+  findReplacing.value = false
+}
+watch(mode, closeFind)
 const headings = ref<Heading[]>([])
 
 function resetEditor(markdown: string) {
@@ -333,6 +375,17 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
         class="mx-auto w-full px-6 pt-10 pb-4 sm:px-12"
         :style="{ maxWidth: fullWidth ? '100%' : 'calc(var(--editor-width) + 6rem)' }"
       >
+        <!-- Find bar: pinned to the top right of the note while it scrolls. -->
+        <div v-if="findOpen && editor?.editor" class="sticky top-2 z-30 flex h-0 justify-end">
+          <FindBar
+            ref="findBar"
+            v-model:replacing="findReplacing"
+            :editor="editor.editor"
+            :initial-query="findInitial"
+            @close="closeFind"
+          />
+        </div>
+
         <ConflictBanner
           v-if="doc.conflict.value"
           class="mb-6"

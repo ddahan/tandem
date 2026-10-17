@@ -55,18 +55,45 @@ async function commitRename() {
   if (id && title && title !== tree.byId.value.get(id)?.title) await tree.rename(id, title)
 }
 
-// --- Deleting ------------------------------------------------------------------------------
+// --- Deleting and keyboard ---------------------------------------------------------------------
 
-const deleting = ref<TreeItem | null>(null)
 /** The node whose icon is being changed (picker dialog). */
 const iconFor = ref<TreeItem | null>(null)
 
-async function confirmDelete() {
-  const item = deleting.value
-  deleting.value = null
-  if (!item) return
+async function trash(item: TreeItem) {
   const wasOpen = currentId.value && tree.isWithin(currentId.value, item.id)
-  if ((await tree.remove(item.id)) && wasOpen) await navigateTo('/')
+  if ((await tree.moveToTrash(item.id)) && wasOpen) await navigateTo('/')
+}
+
+/** Moves a node up or down among its siblings, and keeps the focus on it. */
+async function moveSibling(item: TreeItem, step: -1 | 1) {
+  const siblings = tree.childrenOf.value.get(item.node.parentId) ?? []
+  const index = siblings.findIndex((n) => n.id === item.id) + step
+  if (index < 0 || index >= siblings.length) return
+  await tree.move(item.id, item.node.parentId, index)
+  await nextTick()
+  document.querySelector<HTMLElement>(`[data-node-id="${item.id}"]`)?.focus()
+}
+
+/**
+ * Keys on a focused row (arrows, ↵ and → ← are the tree's own): ⌘⌫ (or Delete) to the trash,
+ * F2 to rename, ⌥↑/⌥↓ to reorder. Listed on the Shortcuts page and in the row's menu.
+ */
+function onRowKeydown(event: KeyboardEvent, item: TreeItem) {
+  if (renamingId.value) return
+  const handle = (action: () => unknown) => {
+    event.preventDefault()
+    // Before the tree's own arrow handling (which would move the focus).
+    event.stopImmediatePropagation()
+    void action()
+  }
+  if ((event.key === 'Backspace' && (event.metaKey || event.ctrlKey)) || event.key === 'Delete') {
+    handle(() => trash(item))
+  } else if (event.key === 'F2') {
+    handle(() => startRename(item))
+  } else if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+    handle(() => moveSibling(item, event.key === 'ArrowUp' ? -1 : 1))
+  }
 }
 
 // --- Menu ------------------------------------------------------------------------------------
@@ -95,7 +122,19 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
       },
     ],
     [
-      { label: 'Rename', icon: 'i-lucide-pencil', onSelect: () => startRename(item) },
+      { label: 'Rename', icon: 'i-lucide-pencil', kbds: ['F2'], onSelect: () => startRename(item) },
+      {
+        label: 'Move up',
+        icon: 'i-lucide-arrow-up',
+        kbds: ['alt', 'arrowup'],
+        onSelect: () => void moveSibling(item, -1),
+      },
+      {
+        label: 'Move down',
+        icon: 'i-lucide-arrow-down',
+        kbds: ['alt', 'arrowdown'],
+        onSelect: () => void moveSibling(item, 1),
+      },
       {
         label: 'Change icon…',
         icon: 'i-lucide-smile-plus',
@@ -114,10 +153,11 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
     ],
     [
       {
-        label: 'Delete',
+        label: 'Move to trash',
         icon: 'i-lucide-trash-2',
         color: 'error' as const,
-        onSelect: () => (deleting.value = item),
+        kbds: ['meta', 'backspace'],
+        onSelect: () => void trash(item),
       },
     ],
   ]
@@ -248,6 +288,8 @@ function rowClass(item: TreeItem) {
             class="group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
             :class="rowClass(item)"
             draggable="true"
+            :data-node-id="item.id"
+            @keydown.capture="onRowKeydown($event, item)"
             :data-testid="`tree-${item.label}`"
             @click="open(item)"
             @dragstart="onDragStart($event, item)"
@@ -340,29 +382,6 @@ function rowClass(item: TreeItem) {
           :has-icon="!!iconFor.node.icon"
           @done="iconFor = null"
         />
-      </template>
-    </UModal>
-
-    <UModal
-      :open="!!deleting"
-      title="Move to trash?"
-      :description="
-        deleting
-          ? `“${deleting.label}”${deleting.children?.length ? ' and everything inside it' : ''} will be moved to the trash. You can restore it from there.`
-          : ''
-      "
-      @update:open="(value) => !value && (deleting = null)"
-    >
-      <template #footer>
-        <div class="flex w-full justify-end gap-2">
-          <UButton label="Cancel" color="neutral" variant="ghost" @click="deleting = null" />
-          <UButton
-            label="Move to trash"
-            color="error"
-            icon="i-lucide-trash-2"
-            @click="confirmDelete"
-          />
-        </div>
       </template>
     </UModal>
   </div>

@@ -12,6 +12,7 @@ import { BlockKeys } from './block-keys'
 import { Callout } from './callout'
 import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips } from './file-chips'
+import { Find } from './find'
 import { JoinLists } from './join-lists'
 import { Occurrences } from './occurrences'
 import { ResizableImage } from './image'
@@ -40,6 +41,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     JoinLists,
     BlockKeys,
     Occurrences,
+    Find,
     FileHandler.configure({
       onDrop: (editor, files, pos) => options.onFiles?.(editor, files, pos),
       onPaste: (editor, files, htmlContent) => {

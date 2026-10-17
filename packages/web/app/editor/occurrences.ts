@@ -36,18 +36,30 @@ export function extraSelections(state: EditorState): Range[] {
   return occurrencesKey.getState(state) ?? []
 }
 
-/** Every occurrence of `text` in the document, in order (within a block, not across blocks). */
-export function findOccurrences(doc: ProseMirrorNode, text: string): Range[] {
+/**
+ * Every occurrence of `text` in the document, in order (within a block, not across blocks).
+ * Case-insensitive matching compares lowercase text, when lowercasing keeps the length (it
+ * does for the scripts notes use), so that offsets stay positions.
+ */
+export function findOccurrences(
+  doc: ProseMirrorNode,
+  text: string,
+  options: { caseSensitive?: boolean } = {},
+): Range[] {
   const found: Range[] = []
   if (!text) return found
+  const caseSensitive = options.caseSensitive ?? true
+  const query = caseSensitive ? text : text.toLowerCase()
   doc.descendants((node, pos) => {
     if (!node.isTextblock) return true
     // One character per position: inline leaves (links to notes, line breaks) count as one.
-    const content = node.textBetween(0, node.content.size, undefined, '￼')
-    let index = content.indexOf(text)
+    const raw = node.textBetween(0, node.content.size, undefined, '￼')
+    const lower = raw.toLowerCase()
+    const content = caseSensitive || lower.length !== raw.length ? raw : lower
+    let index = content.indexOf(query)
     while (index !== -1) {
-      found.push({ from: pos + 1 + index, to: pos + 1 + index + text.length })
-      index = content.indexOf(text, index + text.length)
+      found.push({ from: pos + 1 + index, to: pos + 1 + index + query.length })
+      index = content.indexOf(query, index + query.length)
     }
     return false
   })

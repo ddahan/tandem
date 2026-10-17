@@ -258,6 +258,16 @@ html.dark[data-tone='cool'] {
   }
 }
 
+/* Find in the note (⌘F) */
+.note-editor .find-match {
+  background: color-mix(in oklab, var(--color-amber-400) 35%, transparent);
+  border-radius: 2px;
+}
+.note-editor .find-match--current {
+  background: color-mix(in oklab, var(--color-amber-500) 70%, transparent);
+  box-shadow: 0 0 0 1px var(--color-amber-600);
+}
+
 /* Tables */
 .note-editor .tableWrapper {
   overflow-x: auto;

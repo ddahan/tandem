@@ -2,6 +2,7 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const tree = useTree()
+const { openSearch } = useSearchPalette()
 const colorMode = useColorMode()
 
 const navigation = computed<NavigationMenuItem[]>(() => [
@@ -21,6 +22,14 @@ defineShortcuts({
   meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
   'meta_/': { usingInput: true, handler: () => void navigateTo('/shortcuts') },
+  // Search in every note (as in VS Code); the selected text, if any, is the query.
+  meta_shift_f: {
+    usingInput: true,
+    handler: () => {
+      const selected = window.getSelection()?.toString().trim() ?? ''
+      openSearch(selected.includes('\n') ? '' : selected)
+    },
+  },
 })
 </script>
 

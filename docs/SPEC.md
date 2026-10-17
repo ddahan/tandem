@@ -118,7 +118,14 @@ typically inside OneDrive so that it is backed up and synced.
   delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a
   word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once (Esc goes back to one
   selection; pasting into several isn't supported).
-- A Keyboard shortcuts page (sidebar, ⌘K palette, ⌘/) lists every shortcut and typing rule.
+- Find in the note (⌘F, ⌘⌥F with replace), as in VS Code: highlighted matches, count, next /
+  previous, match case, replace and replace all. ⌘⇧F opens the search across all notes, with
+  the selected text.
+- Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
+  reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
+  message that follows offers Undo.
+- A Keyboard shortcuts page (sidebar, ⌘K palette, ⌘/) lists every shortcut and typing rule;
+  the tree's menu shows the shortcuts of its actions.
 - Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
   sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the owner's display name.

@@ -462,6 +462,8 @@ onMounted(() => {
 })
 
 defineExpose({
+  /** The TipTap editor (for the find bar). */
+  editor: computed(() => editorRef.value?.editor),
   /** Replaces the content (an external change), keeping the cursor where it can. */
   setContent(markdown: string) {
     const editor = editorRef.value?.editor

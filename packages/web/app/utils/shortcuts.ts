@@ -31,6 +31,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Search',
         description: 'Notes, text and attachment names, and actions.',
       },
+      {
+        keys: [['meta', 'shift', 'f']],
+        label: 'Search in all notes',
+        description: 'The same search, starting from the selected text.',
+      },
       { keys: [['meta', 'alt', 'n']], label: 'New page' },
       { keys: [['meta', '/']], label: 'Keyboard shortcuts', description: 'This page.' },
       {
@@ -47,6 +52,51 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         keys: [['meta', 's']],
         label: 'Save now',
         description: 'Notes save by themselves; this saves without waiting.',
+      },
+    ],
+  },
+  {
+    id: 'find',
+    title: 'Find in the note',
+    description: 'As in VS Code: the matches are highlighted, the current one selected.',
+    icon: 'i-lucide-text-search',
+    shortcuts: [
+      { keys: [['meta', 'f']], label: 'Find', description: 'Starts from the selected text.' },
+      { keys: [['meta', 'alt', 'f']], label: 'Find and replace' },
+      { keys: [['enter'], ['shift', 'enter']], label: 'Next or previous match' },
+      {
+        keys: [['meta', 'enter']],
+        label: 'Replace all',
+        description: 'In the replace field; ↵ replaces the current match.',
+      },
+      {
+        keys: [['escape']],
+        label: 'Close',
+        description: 'Back to the note, on the current match.',
+      },
+    ],
+  },
+  {
+    id: 'tree',
+    title: 'Pages tree',
+    description: 'On the page or folder focused in the sidebar (click it, or Tab to the tree).',
+    icon: 'i-lucide-list-tree',
+    shortcuts: [
+      { keys: [['arrowup'], ['arrowdown']], label: 'Previous or next item' },
+      { keys: [['arrowright'], ['arrowleft']], label: 'Expand or collapse' },
+      { keys: [['enter']], label: 'Open' },
+      { keys: [['F2']], label: 'Rename' },
+      {
+        keys: [
+          ['alt', 'arrowup'],
+          ['alt', 'arrowdown'],
+        ],
+        label: 'Move up or down',
+      },
+      {
+        keys: [['meta', 'backspace'], ['delete']],
+        label: 'Move to the trash',
+        description: 'Undo from the message that appears.',
       },
     ],
   },
