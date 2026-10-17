@@ -76,7 +76,7 @@ async function copy(attachment: Attachment) {
       <li
         v-for="attachment in attachments"
         :key="attachment.path"
-        class="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-elevated"
+        class="group flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-[120ms] hover:bg-accented"
       >
         <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->
         <span
@@ -88,33 +88,40 @@ async function copy(attachment: Attachment) {
           :href="url(attachment)"
           target="_blank"
           rel="noopener"
-          class="min-w-0 flex-1 truncate text-sm text-default hover:underline"
+          class="min-w-0 flex-1 truncate text-sm text-default"
           >{{ attachment.name }}</a
         >
-        <span class="text-xs text-dimmed group-hover:hidden">{{
-          formatSize(attachment.size)
-        }}</span>
-        <span class="hidden gap-0.5 group-hover:flex">
-          <UTooltip text="Copy Markdown">
-            <UButton
-              icon="i-lucide-copy"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              aria-label="Copy Markdown"
-              @click="copy(attachment)"
-            />
-          </UTooltip>
-          <UTooltip text="Insert at the end">
-            <UButton
-              icon="i-lucide-corner-down-left"
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              aria-label="Insert"
-              @click="emit('insert', markdownOf(attachment))"
-            />
-          </UTooltip>
+        <!-- The size and the actions share one cell, sized for the larger: hovering swaps them
+             without moving the name. -->
+        <span class="grid shrink-0 items-center justify-items-end">
+          <span
+            class="col-start-1 row-start-1 text-xs text-dimmed group-focus-within:invisible group-hover:invisible"
+            >{{ formatSize(attachment.size) }}</span
+          >
+          <span
+            class="invisible col-start-1 row-start-1 flex gap-0.5 group-focus-within:visible group-hover:visible"
+          >
+            <UTooltip text="Copy Markdown">
+              <UButton
+                icon="i-lucide-copy"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                aria-label="Copy Markdown"
+                @click="copy(attachment)"
+              />
+            </UTooltip>
+            <UTooltip text="Insert at the end">
+              <UButton
+                icon="i-lucide-corner-down-left"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                aria-label="Insert"
+                @click="emit('insert', markdownOf(attachment))"
+              />
+            </UTooltip>
+          </span>
         </span>
       </li>
     </ul>
