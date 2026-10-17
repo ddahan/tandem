@@ -304,6 +304,16 @@ html.dark[data-tone='cool'] {
   background: color-mix(in oklab, var(--color-amber-500) 70%, transparent);
   box-shadow: 0 0 0 1px var(--color-amber-600);
 }
+/* A file chip with a match: the whole chip, ringed (it keeps its own look). */
+.note-editor .file-chip.find-match {
+  background: color-mix(in oklab, var(--color-amber-400) 22%, var(--ui-bg-elevated));
+  border-radius: 999px;
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--color-amber-500) 70%, transparent);
+}
+.note-editor .file-chip.find-match--current {
+  background: color-mix(in oklab, var(--color-amber-500) 45%, var(--ui-bg-elevated));
+  box-shadow: 0 0 0 2px var(--color-amber-600);
+}
 
 /* Tables */
 .note-editor .tableWrapper {

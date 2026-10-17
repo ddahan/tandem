@@ -22,6 +22,26 @@ export function downloadFile(href: string): void {
   link.remove()
 }
 
+/**
+ * Where the chips are: each attachment link's whole text (a link split over several text
+ * nodes, some of it bold, is one chip). Other decorations over part of a chip would cut it
+ * into several pills: they cover the whole chip instead (find, in find.ts).
+ */
+export function chipRanges(doc: ProseMirrorNode): { from: number; to: number }[] {
+  const ranges: { from: number; to: number; href: string }[] = []
+  doc.descendants((node, pos) => {
+    if (!node.isText) return
+    const href = node.marks.find((mark) => mark.type.name === 'link')?.attrs.href as
+      | string
+      | undefined
+    if (!href || !isAttachmentHref(href)) return
+    const last = ranges.at(-1)
+    if (last && last.href === href && last.to === pos) last.to = pos + node.nodeSize
+    else ranges.push({ from: pos, to: pos + node.nodeSize, href })
+  })
+  return ranges.map(({ from, to }) => ({ from, to }))
+}
+
 function decorations(doc: ProseMirrorNode): DecorationSet {
   const found: Decoration[] = []
   // A link split over several text nodes (some of it bold…) gets one icon, on its first part.

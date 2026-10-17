@@ -4,6 +4,7 @@
 import { Extension, type CommandProps } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { chipRanges } from './file-chips'
 import { findOccurrences, type Range } from './occurrences'
 
 declare module '@tiptap/core' {
@@ -152,11 +153,23 @@ export const Find = Extension.create({
           decorations(state) {
             const { matches, current } = findState(state)
             if (!matches.length) return null
+            // A match in a file chip highlights the whole chip: highlighting part of it would
+            // cut the chip into several pills.
+            const chips = chipRanges(state.doc)
+            const highlights = new Map<string, { from: number; to: number; current: boolean }>()
+            for (const [index, match] of matches.entries()) {
+              const chip = chips.find((c) => match.from < c.to && match.to > c.from)
+              const from = chip ? Math.min(chip.from, match.from) : match.from
+              const to = chip ? Math.max(chip.to, match.to) : match.to
+              const key = `${from}-${to}`
+              const isCurrent = index === current || highlights.get(key)?.current === true
+              highlights.set(key, { from, to, current: isCurrent })
+            }
             return DecorationSet.create(
               state.doc,
-              matches.map((m, index) =>
-                Decoration.inline(m.from, m.to, {
-                  class: index === current ? 'find-match find-match--current' : 'find-match',
+              [...highlights.values()].map(({ from, to, current: isCurrent }) =>
+                Decoration.inline(from, to, {
+                  class: isCurrent ? 'find-match find-match--current' : 'find-match',
                 }),
               ),
             )
