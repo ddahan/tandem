@@ -394,60 +394,64 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @compare="comparing = true"
         />
 
-        <!-- The page's icon: click to change it; "Add icon" shows on hover when there is none. -->
-        <div class="group/icon mb-1 flex min-h-8 items-end">
-          <UPopover v-model:open="iconPickerOpen" :content="{ align: 'start' }">
+        <!-- The page's icon, left of the title (click to change it). Without one, "Add icon"
+             shows on hover in the line below. -->
+        <div
+          class="group/header flex items-center gap-[0.3em] leading-tight font-bold tracking-tight"
+          :style="{
+            fontFamily: 'var(--editor-font)',
+            fontSize: 'calc(var(--editor-font-size) * 2.25)',
+          }"
+        >
+          <UPopover v-if="node.icon" v-model:open="iconPickerOpen" :content="{ align: 'start' }">
             <button
-              v-if="node.icon"
               type="button"
-              class="-ms-1 rounded-lg p-1 transition-colors hover:bg-elevated"
+              class="-ms-[0.1em] shrink-0 rounded-lg p-[0.05em] transition-colors hover:bg-elevated"
               aria-label="Change icon"
             >
-              <NodeIcon :icon="node.icon" :kind="node.kind" size="xl" />
+              <NodeIcon :icon="node.icon" :kind="node.kind" size="title" />
             </button>
+            <template #content>
+              <IconPicker :node-id="node.id" has-icon @done="iconPickerOpen = false" />
+            </template>
+          </UPopover>
+
+          <UInput
+            ref="titleInput"
+            v-model="titleDraft"
+            variant="none"
+            placeholder="Untitled"
+            aria-label="Title"
+            class="min-w-0 flex-1"
+            :ui="{
+              base: 'px-0 text-[length:inherit]! leading-tight font-bold tracking-tight text-highlighted placeholder:text-dimmed',
+              root: 'w-full',
+            }"
+            @keydown.enter.prevent="titleEnter"
+            @blur="commitTitle"
+          />
+        </div>
+
+        <div
+          class="group/meta mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted"
+        >
+          <span class="flex items-center gap-1"
+            ><UIcon name="i-lucide-calendar" class="size-3.5" /> {{ created }}</span
+          >
+          <UPopover v-if="!node.icon" v-model:open="iconPickerOpen" :content="{ align: 'start' }">
             <UButton
-              v-else
               label="Add icon"
               icon="i-lucide-smile-plus"
               color="neutral"
               variant="ghost"
               size="xs"
-              class="-ms-2 opacity-0 transition-opacity group-hover/icon:opacity-100 focus-visible:opacity-100"
+              class="-mx-2 opacity-0 transition-opacity group-hover/meta:opacity-100 focus-visible:opacity-100"
               :class="iconPickerOpen && 'opacity-100'"
             />
             <template #content>
-              <IconPicker
-                :node-id="node.id"
-                :has-icon="!!node.icon"
-                @done="iconPickerOpen = false"
-              />
+              <IconPicker :node-id="node.id" :has-icon="false" @done="iconPickerOpen = false" />
             </template>
           </UPopover>
-        </div>
-
-        <UInput
-          ref="titleInput"
-          v-model="titleDraft"
-          variant="none"
-          placeholder="Untitled"
-          aria-label="Title"
-          class="w-full"
-          :ui="{
-            base: 'px-0 leading-tight font-bold tracking-tight text-highlighted placeholder:text-dimmed',
-            root: 'w-full',
-          }"
-          :style="{
-            fontFamily: 'var(--editor-font)',
-            fontSize: 'calc(var(--editor-font-size) * 2.25)',
-          }"
-          @keydown.enter.prevent="titleEnter"
-          @blur="commitTitle"
-        />
-
-        <div class="mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
-          <span class="flex items-center gap-1"
-            ><UIcon name="i-lucide-calendar" class="size-3.5" /> {{ created }}</span
-          >
           <UInputTags
             :model-value="tags"
             placeholder="Add tag…"

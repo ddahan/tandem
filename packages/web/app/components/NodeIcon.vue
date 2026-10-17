@@ -3,7 +3,7 @@
 import type { NodeIcon, NodeKind } from '@myfluence/shared'
 
 const props = withDefaults(
-  defineProps<{ icon: NodeIcon | null; kind: NodeKind; size?: 'sm' | 'md' | 'xl' }>(),
+  defineProps<{ icon: NodeIcon | null; kind: NodeKind; size?: 'sm' | 'md' | 'title' }>(),
   {
     size: 'sm',
   },
@@ -12,7 +12,8 @@ const props = withDefaults(
 const SIZES = {
   sm: { box: 'size-4', emoji: 'text-[0.95rem]', icon: 'size-4' },
   md: { box: 'size-5', emoji: 'text-lg', icon: 'size-4.5' },
-  xl: { box: 'size-16', emoji: 'text-[3.5rem]', icon: 'size-12' },
+  // Next to a title: follows its font size.
+  title: { box: 'size-[1.15em]', emoji: 'text-[0.95em]', icon: 'size-[0.9em]' },
 }
 const sizes = computed(() => SIZES[props.size])
 </script>
