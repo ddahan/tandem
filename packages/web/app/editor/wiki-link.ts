@@ -33,10 +33,12 @@ export const WikiLink = Node.create<WikiLinkOptions>({
   },
 
   addAttributes() {
+    // Rendered as data-* attributes by renderHTML only: as plain attributes, `target` would
+    // become the link's HTML target (a named window) and reload the app on click.
     return {
-      target: { default: '' },
-      heading: { default: null },
-      label: { default: null },
+      target: { default: '', renderHTML: () => ({}) },
+      heading: { default: null, renderHTML: () => ({}) },
+      label: { default: null, renderHTML: () => ({}) },
     }
   },
 
@@ -62,7 +64,8 @@ export const WikiLink = Node.create<WikiLinkOptions>({
         'data-target': target,
         'data-heading': heading,
         'data-label': label,
-        href: '#',
+        // No href: navigation is done by the app's router (onOpen), never by the browser.
+        role: 'link',
         class: 'wiki-link',
       }),
       label || (heading ? `${target} › ${heading}` : target),
@@ -125,6 +128,14 @@ export const WikiLink = Node.create<WikiLinkOptions>({
       new Plugin({
         key: new PluginKey('wikiLinkClick'),
         props: {
+          handleDOMEvents: {
+            // Belt and braces: the browser must never follow a wiki link itself.
+            click: (_view, event) => {
+              if ((event.target as Element | null)?.closest?.('[data-wiki-link]'))
+                event.preventDefault()
+              return false
+            },
+          },
           handleClickOn(_view, _pos, node, _nodePos, event) {
             if (node.type.name !== 'wikiLink') return false
             event.preventDefault()

@@ -66,6 +66,13 @@ describe('Markdown round-trip', () => {
     expect(paragraph?.content?.filter((n) => n.type === 'wikiLink')).toHaveLength(2)
   })
 
+  it('renders wiki links without HTML target nor href (the router navigates)', () => {
+    createEditor('[[Projects/Roadmap|the roadmap]]')
+    const html = editor!.getHTML()
+    expect(html).toContain('data-target="Projects/Roadmap"')
+    expect(html).not.toMatch(/\s(target|href)=/)
+  })
+
   it('keeps callouts', () => {
     const markdown = '> [!WARNING]\n> Careful with **this**.\n>\n> Second paragraph.'
     expect(roundTrip(markdown)).toBe(markdown)

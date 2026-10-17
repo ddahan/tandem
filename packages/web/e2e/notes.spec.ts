@@ -40,8 +40,14 @@ test('links notes with [[ and follows the link', async ({ page, request }) => {
   await waitSaved(page)
   await expect.poll(() => noteContent(request, 'Link source')).toContain('See [[Link target]]')
 
+  // In-app navigation: the page is not reloaded (the marker survives).
+  await page.evaluate(() => ((window as Window & { marker?: string }).marker = 'still here'))
   await page.locator('.ProseMirror .wiki-link').click()
   await expect(page).toHaveURL(new RegExp(`/notes/${target.id}`))
+  expect(await page.evaluate(() => (window as Window & { marker?: string }).marker)).toBe(
+    'still here',
+  )
+  expect(page.context().pages()).toHaveLength(1)
   // The backlink is listed in the side panel.
   await page.getByRole('tab', { name: 'Links' }).click()
   await expect(page.getByRole('link', { name: /Link source/ })).toBeVisible()
