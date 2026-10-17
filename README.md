@@ -1,13 +1,13 @@
-# Myfluence
+# Tandem
 
 Local notes, written by you **and** your agents.
 
-Myfluence is a note-taking app that runs on your Mac (in Docker) and keeps everything in one
+Tandem is a note-taking app that runs on your Mac (in Docker) and keeps everything in one
 folder of plain Markdown files — typically inside OneDrive, so your notes are synced and backed
 up. You write in a rich editor; agents (Claude Code, Claude Desktop, scripts) write through an
 MCP server or a CLI, and every line remembers who wrote it.
 
-![Myfluence](docs/screenshot.png)
+![Tandem](docs/screenshot.png)
 
 ## Features
 
@@ -38,26 +38,26 @@ MCP server or a CLI, and every line remembers who wrote it.
 ## Start
 
 ```bash
-cp .env.example .env     # then set MYFLUENCE_DATA_DIR to your notes folder
-./mf start               # builds and starts the app
+cp .env.example .env     # then set TANDEM_DATA_DIR to your notes folder
+./td start               # builds and starts the app
 ```
 
-Open <http://localhost:3000>. The app restarts with Docker; `./mf stop` stops it and
-`./mf logs` shows its output. After pulling changes, `./mf start` rebuilds.
+Open <http://localhost:3000>. The app restarts with Docker; `./td stop` stops it and
+`./td logs` shows its output. After pulling changes, `./td start` rebuilds.
 
 ### As a Mac app
 
 - **Safari**: open <http://localhost:3000>, then **File → Add to Dock**.
 - **Chrome**: open it, then **⋮ → Cast, save and share → Install page as app**.
 
-It then opens in its own window, with the Myfluence icon in the Dock.
+It then opens in its own window, with the Tandem icon in the Dock.
 
 ## Agents
 
 ### MCP (Claude Code, Claude Desktop, any MCP client)
 
 ```bash
-claude mcp add --transport http myfluence http://localhost:3000/mcp --header "X-Myfluence-Author: claude"
+claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"
 ```
 
 The header names the agent in the history and authorship views. Tools: `search_notes`,
@@ -67,17 +67,17 @@ The header names the agent in the history and authorship views. Tools: `search_n
 
 ### CLI
 
-`bin/myfluence` runs the CLI inside the running container. Put it on your `PATH` once:
+`bin/tandem` runs the CLI inside the running container. Put it on your `PATH` once:
 
 ```bash
-ln -s "$PWD/bin/myfluence" /usr/local/bin/myfluence
+ln -s "$PWD/bin/tandem" /usr/local/bin/tandem
 ```
 
 ```bash
-myfluence search "roadmap tag:work"
-MYFLUENCE_AUTHOR=claude myfluence append "Projects/Roadmap" "- [ ] Write the docs"
-myfluence attach "Projects/Roadmap" ~/Desktop/diagram.png --insert
-myfluence --help
+tandem search "roadmap tag:work"
+TANDEM_AUTHOR=claude tandem append "Projects/Roadmap" "- [ ] Write the docs"
+tandem attach "Projects/Roadmap" ~/Desktop/diagram.png --insert
+tandem --help
 ```
 
 See [docs/agents.md](docs/agents.md) for everything agents need to know (and paste into their
@@ -92,8 +92,8 @@ instructions).
     Roadmap.md
     Roadmap.assets/           Roadmap's attachments
   Ideas/                      a folder
-  .myfluence/
-    myfluence.db              backup of the app's database (refreshed every minute)
+  .tandem/
+    tandem.db              backup of the app's database (refreshed every minute)
     history/<note id>/        past versions of notes
     icons/                    image icons of pages and folders
     trash/                    deleted notes
@@ -102,21 +102,21 @@ instructions).
 - Notes are plain Markdown, without front matter: readable and editable by any tool. Edits
   made outside the app (an agent, a text editor, Finder) are picked up live.
 - Ids, tags, order, history and authorship are in a SQLite database on a Docker volume, backed
-  up into `.myfluence/myfluence.db`. If the volume is lost (e.g. `docker compose down -v`), the
+  up into `.tandem/tandem.db`. If the volume is lost (e.g. `docker compose down -v`), the
   backup is restored automatically on the next start.
-- One computer at a time: don't run two Myfluence instances on the same folder.
+- One computer at a time: don't run two Tandem instances on the same folder.
 
 ## Development
 
-Everything goes through `./mf` (run it alone for the list):
+Everything goes through `./td` (run it alone for the list):
 
-| Task                                                | Command                                                        |
-| --------------------------------------------------- | -------------------------------------------------------------- |
-| Dev servers with reload (localhost:3010)            | `./mf dev`                                                     |
-| Demo notes (while `./mf dev` runs)                  | `./mf pnpm --filter @myfluence/server seed http://server:3011` |
-| All checks (format, lint, build, types, unit tests) | `./mf check`                                                   |
-| End-to-end tests (Playwright)                       | `./mf e2e`                                                     |
-| Unit tests of one package                           | `./mf test server`                                             |
+| Task                                                | Command                                                     |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| Dev servers with reload (localhost:3010)            | `./td dev`                                                  |
+| Demo notes (while `./td dev` runs)                  | `./td pnpm --filter @tandem/server seed http://server:3011` |
+| All checks (format, lint, build, types, unit tests) | `./td check`                                                |
+| End-to-end tests (Playwright)                       | `./td e2e`                                                  |
+| Unit tests of one package                           | `./td test server`                                          |
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

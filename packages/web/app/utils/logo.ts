@@ -1,12 +1,15 @@
-// The Myfluence logo, drawn in a color scale (the accent color), for the sidebar and the
-// browser tab. public/icon.svg is the same drawing in the default indigo (manifest, Dock icon).
+// The Tandem logo: two pages written side by side, yours in front (its lines alternate between
+// your color and the agent's amber), the agent's behind. Drawn in a color scale (the accent
+// color) for the sidebar and the browser tab; public/icon.svg and the PNG icons are the same
+// drawing in the default indigo (scripts/icons.ts).
 
 export type LogoShade = 50 | 200 | 300 | 400 | 500 | 600
 
 /** The logo's SVG; `shade(n)` gives the CSS color of shade n (a var() or a resolved color). */
-export function logoSvg(shade: (n: LogoShade) => string, idPrefix = 'logo'): string {
+export function logoSvg(shade: (n: LogoShade) => string, idPrefix = 'logo', radius = 114): string {
   const bg = `${idPrefix}-bg`
   const page = `${idPrefix}-page`
+  const agent = `${idPrefix}-agent`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
     <linearGradient id="${bg}" x1="0" y1="0" x2="1" y2="1">
@@ -17,14 +20,24 @@ export function logoSvg(shade: (n: LogoShade) => string, idPrefix = 'logo'): str
       <stop offset="0" style="stop-color:#ffffff"/>
       <stop offset="1" style="stop-color:${shade(50)}"/>
     </linearGradient>
+    <linearGradient id="${agent}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" style="stop-color:#fde68a"/>
+      <stop offset="1" style="stop-color:#fbbf24"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="114" fill="url(#${bg})"/>
-  <path d="M170 112h116l84 84v196a28 28 0 0 1-28 28H170a28 28 0 0 1-28-28V140a28 28 0 0 1 28-28z" fill="url(#${page})"/>
-  <path d="M286 112v58a26 26 0 0 0 26 26h58z" style="fill:${shade(200)}"/>
-  <rect x="182" y="232" width="148" height="20" rx="10" style="fill:${shade(500)}"/>
-  <rect x="182" y="276" width="118" height="20" rx="10" style="fill:${shade(300)}"/>
-  <rect x="182" y="320" width="136" height="20" rx="10" style="fill:${shade(300)}"/>
-  <path d="M394 300l12 30 30 12-30 12-12 30-12-30-30-12 30-12z" fill="#fde68a" stroke="#ffffff" stroke-width="8" stroke-linejoin="round"/>
+  <rect width="512" height="512" rx="${radius}" fill="url(#${bg})"/>
+  <g transform="rotate(9 318 226)">
+    <rect x="222" y="92" width="192" height="268" rx="30" fill="url(#${agent})"/>
+    <rect x="254" y="150" width="96" height="20" rx="10" fill="#ffffff" opacity="0.7"/>
+  </g>
+  <g transform="rotate(-7 206 290)">
+    <rect x="104" y="160" width="204" height="268" rx="30" fill="#000000" opacity="0.14" transform="translate(6 12)"/>
+    <rect x="104" y="160" width="204" height="268" rx="30" fill="url(#${page})"/>
+    <rect x="138" y="214" width="136" height="22" rx="11" style="fill:${shade(500)}"/>
+    <rect x="138" y="262" width="104" height="22" rx="11" fill="#f59e0b"/>
+    <rect x="138" y="310" width="124" height="22" rx="11" style="fill:${shade(300)}"/>
+    <rect x="138" y="358" width="80" height="22" rx="11" fill="#fbbf24"/>
+  </g>
 </svg>`
 }
 

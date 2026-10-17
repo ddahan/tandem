@@ -10,7 +10,7 @@
 // Each page has a fixed rowid in both indexes (table `search_rows`): updates and lookups by page
 // go straight to its rows instead of scanning the index. Statements are prepared once.
 import type { DatabaseSync, StatementSync } from 'node:sqlite'
-import type { SearchResponse, SearchResult } from '@myfluence/shared'
+import type { SearchResponse, SearchResult } from '@tandem/shared'
 import { escapeHtml, foldText } from './text.ts'
 
 export interface ParsedQuery {

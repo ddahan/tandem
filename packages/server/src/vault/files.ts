@@ -11,7 +11,7 @@ export function hashContent(content: string | Uint8Array): string {
 
 export async function atomicWrite(path: string, content: string | Uint8Array): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
-  const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.myfluence-tmp`)
+  const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.tandem-tmp`)
   await writeFile(temporary, content)
   await rename(temporary, path)
 }
@@ -50,7 +50,7 @@ export async function statFile(path: string): Promise<FileStat | null> {
 
 /** Names that are never part of the tree: hidden files, Office lock files, our temp files. */
 export function isIgnoredName(name: string): boolean {
-  return name.startsWith('.') || name.startsWith('~$') || name.endsWith('.myfluence-tmp')
+  return name.startsWith('.') || name.startsWith('~$') || name.endsWith('.tandem-tmp')
 }
 
 export interface ScannedPage extends FileStat {

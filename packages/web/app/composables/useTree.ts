@@ -1,5 +1,5 @@
 // The tree of pages and folders, shared by the sidebar, breadcrumbs, links and search.
-import type { TreeNode } from '@myfluence/shared'
+import type { TreeNode } from '@tandem/shared'
 
 export interface TreeItem {
   id: string

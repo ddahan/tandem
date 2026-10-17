@@ -1,6 +1,6 @@
 // The typed API client (Hono RPC, from the server package). The web app writes as the owner.
-import { createClient, type Client } from '@myfluence/server/client'
-import { OWNER } from '@myfluence/shared'
+import { createClient, type Client } from '@tandem/server/client'
+import { OWNER } from '@tandem/shared'
 
 export class ApiError extends Error {
   readonly status: number

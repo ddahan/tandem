@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createApp } from '@myfluence/server/app'
+import { createApp } from '@tandem/server/app'
 import { createTestVault } from '../../server/test/helpers.ts'
 import { run, type Io } from '../src/cli.ts'
 
@@ -14,8 +14,8 @@ async function cli(argv: string[], input = '') {
     readFile: async () => new TextEncoder().encode('file content'),
   }
   const code = await run(argv, io, {
-    MYFLUENCE_URL: 'http://test',
-    MYFLUENCE_AUTHOR: 'Claude Code',
+    TANDEM_URL: 'http://test',
+    TANDEM_AUTHOR: 'Claude Code',
   })
   return { code, out, err }
 }
@@ -33,7 +33,7 @@ describe('CLI', () => {
     await setup()
     const { code, out } = await cli(['--help'])
     expect(code).toBe(0)
-    expect(out).toContain('Usage: myfluence')
+    expect(out).toContain('Usage: tandem')
   })
 
   it('creates, appends, replaces and reads notes, as the given author', async () => {

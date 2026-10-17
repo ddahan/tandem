@@ -23,7 +23,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     id: 'app',
     title: 'App',
-    description: 'Anywhere in Myfluence.',
+    description: 'Anywhere in Tandem.',
     icon: 'i-lucide-app-window',
     shortcuts: [
       {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OWNER } from '@myfluence/shared'
+import { OWNER } from '@tandem/shared'
 import { editDistance, parseQuery } from '../src/vault/search.ts'
 import { markdownToText } from '../src/vault/text.ts'
 import { createTestVault } from './helpers.ts'

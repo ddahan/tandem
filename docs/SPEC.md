@@ -1,6 +1,6 @@
-# Myfluence — product specification
+# Tandem — product specification
 
-The reference for what Myfluence does and why. It was agreed with the owner before the first
+The reference for what Tandem does and why. It was agreed with the owner before the first
 build (October 2026). When the code and this document disagree, fix one of them in the same
 change: this file describes the intended behavior, `docs/architecture.md` describes how it is
 built.
@@ -23,7 +23,7 @@ typically inside OneDrive so that it is backed up and synced.
 - **Structured data lives in SQLite**: stable note ids, tags, creation and update dates, tree
   order, history metadata, line authorship and settings. The live database is on a local
   Docker volume (never inside OneDrive: SQLite and file sync don't mix). About a minute after
-  any change, and on shutdown, a consistent copy is written to `<data>/.myfluence/myfluence.db`;
+  any change, and on shutdown, a consistent copy is written to `<data>/.tandem/tandem.db`;
   it is restored automatically when the local database is missing.
 - **External edits** (an agent editing a file, Finder moving one) are picked up by a file
   watcher. A file that disappears and reappears elsewhere with the same content keeps its
@@ -60,12 +60,12 @@ typically inside OneDrive so that it is backed up and synced.
 
 - A snapshot of a note is kept at the end of each editing session: after 30 seconds without
   saves, or as soon as another author writes. Snapshots are Markdown files in
-  `<data>/.myfluence/history/<note id>/`; their metadata is in SQLite.
+  `<data>/.tandem/history/<note id>/`; their metadata is in SQLite.
 - The history panel lists versions (date, author), shows a diff against the current version
   and restores one (restoring is itself a new version). Old versions are thinned out: all
   are kept for 7 days, then one per day for 3 months, then one per week.
 - **Line authorship**: every save records its author: the owner (from the UI), an agent
-  (named by the CLI `--author` or `MYFLUENCE_AUTHOR`, or by the MCP connection), or
+  (named by the CLI `--author` or `TANDEM_AUTHOR`, or by the MCP connection), or
   `external` (a direct file edit). Lines keep the author who last changed them, like
   `git blame`. An "Authorship" view shows each block with its author's color, author and
   date. A paragraph edited by two authors belongs to the last one.
@@ -79,7 +79,7 @@ typically inside OneDrive so that it is backed up and synced.
 - Icons: any page or folder can be given an emoji or an image (from the computer) after its
   creation: from the note page (left of the title; "Add icon" next to the date) or the tree's menu. Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in
-  `<data>/.myfluence/icons/`), never in the Markdown.
+  `<data>/.tandem/icons/`), never in the Markdown.
 - Nothing else (no favorites, recents, daily notes or templates for now).
 
 ## Search
@@ -102,11 +102,11 @@ typically inside OneDrive so that it is backed up and synced.
 
 ## Agents
 
-- **CLI** `myfluence` (run in the container; `bin/myfluence` wraps `docker compose exec`):
+- **CLI** `tandem` (run in the container; `bin/tandem` wraps `docker compose exec`):
   search, tree, read, create, write, append, replace text, move, delete, tags, history,
   restore, attach files.
 - **MCP server** over HTTP at `http://localhost:3000/mcp` with the same operations, so any
-  MCP client (Claude Code, Claude Desktop…) can use Myfluence.
+  MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
 
 ## Interface
@@ -125,7 +125,7 @@ typically inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
-- A landing page at `/landing` presents Myfluence (full width, without the sidebar): a note
+- A landing page at `/landing` presents Tandem (full width, without the sidebar): a note
   written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
   shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
   shows its final state.
@@ -135,12 +135,12 @@ typically inside OneDrive so that it is backed up and synced.
   sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
   owner's display name, and the workspace name (next to the logo and in the browser tab;
-  Myfluence by default).
+  Tandem by default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes
   the page's background color (tone, light or dark: `theme-color`), from the first frame. In a browser tab
-  that can install it, the sidebar offers to (the logo, "Install Myfluence"): Chrome and Edge
+  that can install it, the sidebar offers to (the logo, "Install Tandem"): Chrome and Edge
   show their install dialog; Safari, which has none, gets the steps (File › Add to Dock…, or
   Share › Add to Home Screen on iOS). Closing the offer hides it for good; Settings › App still
   offers to install, or says it's installed. Hidden in the installed app and in browsers that

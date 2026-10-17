@@ -1,9 +1,9 @@
-// Takes the README's screenshot (docs/screenshot.png) of a running Myfluence:
-//   ./mf pnpm --filter @myfluence/web screenshot [base URL] [note title]
+// Takes the README's screenshot (docs/screenshot.png) of a running Tandem:
+//   ./td pnpm --filter @tandem/web screenshot [base URL] [note title]
 import { chromium } from '@playwright/test'
 
 const baseUrl = process.argv[2] ?? 'http://host.docker.internal:3000'
-const title = process.argv[3] ?? 'Myfluence'
+const title = process.argv[3] ?? 'Tandem'
 
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 })

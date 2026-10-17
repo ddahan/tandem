@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Notes linking to this one, and notes this one links to.
 import { useDebounceFn } from '@vueuse/core'
-import { linkKey, parseWikiLinks, type Backlink } from '@myfluence/shared'
+import { linkKey, parseWikiLinks, type Backlink } from '@tandem/shared'
 
 const props = defineProps<{ noteId: string; content: string }>()
 const api = useApi()

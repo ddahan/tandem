@@ -1,8 +1,8 @@
 {
-  "name": "@myfluence/cli",
+  "name": "@tandem/cli",
   "private": true,
   "bin": {
-    "myfluence": "./src/main.ts"
+    "tandem": "./src/main.ts"
   },
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@myfluence/server": "workspace:*",
-    "@myfluence/shared": "workspace:*"
+    "@tandem/server": "workspace:*",
+    "@tandem/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "catalog:",

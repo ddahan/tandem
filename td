@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
-# The one command for working on Myfluence: ./mf <command>. Everything runs in Docker (there is
+# The one command for working on Tandem: ./td <command>. Everything runs in Docker (there is
 # no Node on the Mac). Dependencies are installed on first use and after lockfile changes.
 set -eu
 cd "$(dirname "$0")"
 
 usage() {
   cat <<USAGE
-Usage: ./mf <command> [args]
+Usage: ./td <command> [args]
 
   start             build and start the app in the background (http://localhost:3000)
   stop              stop the app
@@ -27,7 +27,7 @@ USAGE
 dev_compose() { docker compose -f compose.dev.yaml "$@"; }
 
 toolchain() {
-  docker image inspect myfluence-dev-tools > /dev/null 2>&1 || dev_compose build node
+  docker image inspect tandem-dev-tools > /dev/null 2>&1 || dev_compose build node
 }
 
 pnpm_() {
@@ -36,7 +36,7 @@ pnpm_() {
 }
 
 prepare() {
-  stamp=node_modules/.mf-installed
+  stamp=node_modules/.td-installed
   if [ ! -f "$stamp" ] || [ pnpm-lock.yaml -nt "$stamp" ] || [ pnpm-workspace.yaml -nt "$stamp" ]; then
     pnpm_ install
     touch "$stamp"
@@ -47,7 +47,7 @@ cmd="${1:-}"
 [ $# -gt 0 ] && shift
 
 case "$cmd" in
-  start) docker compose up -d --build "$@" && echo "Myfluence runs on http://localhost:3000" ;;
+  start) docker compose up -d --build "$@" && echo "Tandem runs on http://localhost:3000" ;;
   stop) docker compose down ;;
   logs) docker compose logs -f ;;
   dev)
@@ -68,15 +68,15 @@ case "$cmd" in
     if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
       package="$1"
       shift
-      pnpm_ --filter "@myfluence/$package" test "$@"
+      pnpm_ --filter "@tandem/$package" test "$@"
     else
       pnpm_ test "$@"
     fi
     ;;
   e2e)
     prepare
-    pnpm_ --filter @myfluence/web build
-    pnpm_ --filter @myfluence/web test:e2e "$@"
+    pnpm_ --filter @tandem/web build
+    pnpm_ --filter @tandem/web test:e2e "$@"
     ;;
   pnpm)
     prepare
@@ -85,7 +85,7 @@ case "$cmd" in
   setup)
     dev_compose build node
     pnpm_ install
-    touch node_modules/.mf-installed
+    touch node_modules/.td-installed
     ;;
   "" | help | -h | --help) usage ;;
   *)

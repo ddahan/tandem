@@ -4,7 +4,7 @@
 // useSearchPalette().
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
-import type { SearchResponse } from '@myfluence/shared'
+import type { SearchResponse } from '@tandem/shared'
 
 const api = useApi()
 const tree = useTree()

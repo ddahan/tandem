@@ -1,15 +1,30 @@
-// Renders the PNG icons of the web app manifest from public/icon.svg (run after changing it:
-// `./mf pnpm --filter @myfluence/web icons`). Full-bleed variants (no rounded corners) are
-// used where the system applies its own mask (iOS/macOS touch icon, maskable icon).
-import { readFileSync, writeFileSync } from 'node:fs'
+// Writes the app's static icons from the logo (app/utils/logo.ts) in the default indigo:
+// public/icon.svg and the PNG icons of the web app manifest. Run after changing the logo:
+// `./td pnpm --filter @tandem/web icons`. Full-bleed variants (no rounded corners) are used
+// where the system applies its own mask (iOS/macOS touch icon, maskable icon).
+import { writeFileSync } from 'node:fs'
 import { Resvg } from '@resvg/resvg-js'
+import { logoSvg, type LogoShade } from '../app/utils/logo.ts'
 
-const svg = readFileSync(new URL('../public/icon.svg', import.meta.url), 'utf8')
-const fullBleed = svg.replace('rx="114"', 'rx="0"')
+// Tailwind's indigo.
+const INDIGO: Record<LogoShade, string> = {
+  50: '#eef2ff',
+  200: '#c7d2fe',
+  300: '#a5b4fc',
+  400: '#818cf8',
+  500: '#6366f1',
+  600: '#4f46e5',
+}
+const indigo = (n: LogoShade) => INDIGO[n]
+const rounded = logoSvg(indigo, 'icon')
+const fullBleed = logoSvg(indigo, 'icon', 0)
+
+writeFileSync(new URL('../public/icon.svg', import.meta.url), `${rounded}\n`)
+console.log('public/icon.svg')
 
 const outputs: [string, string, number][] = [
-  ['icon-192.png', svg, 192],
-  ['icon-512.png', svg, 512],
+  ['icon-192.png', rounded, 192],
+  ['icon-512.png', rounded, 512],
   ['icon-maskable-512.png', fullBleed, 512],
   ['apple-touch-icon.png', fullBleed, 180],
 ]

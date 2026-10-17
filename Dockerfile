@@ -1,5 +1,5 @@
 # Production image: the server (TypeScript run directly by Node, no build step), the built web
-# app, and the `myfluence` CLI. Built by `docker compose build` (compose.yaml).
+# app, and the `tandem` CLI. Built by `docker compose build` (compose.yaml).
 
 FROM node:26-slim AS base
 # pnpm version must match "packageManager" in package.json.
@@ -13,33 +13,33 @@ COPY packages/web/package.json packages/web/
 
 # --- The web app, built to static files ---------------------------------------------------
 FROM base AS web
-RUN --mount=type=cache,id=myfluence-pnpm-store,target=/pnpm-store \
-  pnpm install --frozen-lockfile --ignore-scripts --filter @myfluence/web...
+RUN --mount=type=cache,id=tandem-pnpm-store,target=/pnpm-store \
+  pnpm install --frozen-lockfile --ignore-scripts --filter @tandem/web...
 COPY tsconfig.base.json ./
 COPY packages/shared/src packages/shared/src
 COPY packages/server/src packages/server/src
 COPY packages/web packages/web
-RUN pnpm --filter @myfluence/web exec nuxt prepare && pnpm --filter @myfluence/web build
+RUN pnpm --filter @tandem/web exec nuxt prepare && pnpm --filter @tandem/web build
 
 # --- Runtime -----------------------------------------------------------------------------------
 FROM base AS runtime
 ENV NODE_ENV=production \
   TZ=Europe/Paris \
   PORT=3000 \
-  MYFLUENCE_DATA_DIR=/data \
-  MYFLUENCE_DB_PATH=/var/lib/myfluence/myfluence.db \
-  MYFLUENCE_WEB_DIR=/app/packages/web/dist
-RUN --mount=type=cache,id=myfluence-pnpm-store,target=/pnpm-store \
-  pnpm install --frozen-lockfile --prod --filter @myfluence/server... --filter @myfluence/cli...
+  TANDEM_DATA_DIR=/data \
+  TANDEM_DB_PATH=/var/lib/tandem/tandem.db \
+  TANDEM_WEB_DIR=/app/packages/web/dist
+RUN --mount=type=cache,id=tandem-pnpm-store,target=/pnpm-store \
+  pnpm install --frozen-lockfile --prod --filter @tandem/server... --filter @tandem/cli...
 COPY packages/shared/src packages/shared/src
 COPY packages/server/src packages/server/src
 COPY packages/server/drizzle packages/server/drizzle
 COPY packages/cli/src packages/cli/src
 COPY --from=web /app/packages/web/.output/public packages/web/dist
 RUN chmod +x packages/cli/src/main.ts \
-  && ln -s /app/packages/cli/src/main.ts /usr/local/bin/myfluence \
-  && mkdir -p /data /var/lib/myfluence \
-  && chown node:node /data /var/lib/myfluence
+  && ln -s /app/packages/cli/src/main.ts /usr/local/bin/tandem \
+  && mkdir -p /data /var/lib/tandem \
+  && chown node:node /data /var/lib/tandem
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \

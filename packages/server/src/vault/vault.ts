@@ -36,7 +36,7 @@ import {
   type TagCount,
   type TrashItem,
   type TreeNode,
-} from '@myfluence/shared'
+} from '@tandem/shared'
 import type { Database, Db } from '../db/client.ts'
 import { links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
@@ -96,7 +96,7 @@ export class Vault {
 
   constructor(options: VaultOptions) {
     this.dataDir = options.dataDir
-    this.metaDir = join(options.dataDir, '.myfluence')
+    this.metaDir = join(options.dataDir, '.tandem')
     this.db = options.database.db
     this.search = new SearchIndex(options.database.sqlite)
     this.now = options.now ?? Date.now
@@ -679,7 +679,7 @@ export class Vault {
     })
   }
 
-  /** Sets an image as the icon of a page or folder (stored in `.myfluence/icons/`). */
+  /** Sets an image as the icon of a page or folder (stored in `.tandem/icons/`). */
   async setIconImage(id: string, fileName: string, data: Uint8Array): Promise<TreeNode> {
     const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
     if (!ICON_EXTENSIONS.has(extension)) {
@@ -1065,7 +1065,7 @@ export class Vault {
     for (const [from, to] of moves) {
       if (caseOnly && existsSync(this.abs(from))) {
         // Case-insensitive file systems (macOS) need two steps for a case-only rename.
-        const temporary = `${to}.${nanoid(6)}.myfluence-tmp`
+        const temporary = `${to}.${nanoid(6)}.tandem-tmp`
         await rename(this.abs(from), this.abs(temporary))
         await rename(this.abs(temporary), this.abs(to))
       } else {

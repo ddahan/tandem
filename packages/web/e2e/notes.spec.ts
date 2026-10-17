@@ -223,7 +223,7 @@ test('changes the theme and the settings', async ({ page, request }) => {
   await page.getByLabel('Workspace name').press('Enter')
   await expect(page.getByTestId('workspace-name')).toHaveText('Brain')
   await expect(page).toHaveTitle('Settings · Brain')
-  await api(request, 'PATCH', '/settings', { workspaceName: 'Myfluence' })
+  await api(request, 'PATCH', '/settings', { workspaceName: 'Tandem' })
 })
 
 test('colors the title bar like the background (theme-color)', async ({ page, request }) => {
@@ -381,8 +381,9 @@ test('draws the logo and the tab icon in the accent color', async ({ page, reque
   const logoColor = () =>
     page
       .getByTestId('app-logo')
-      .locator('rect')
-      .nth(1)
+      // The first line of the front page: shade 500 of the accent color.
+      .locator('rect[style]')
+      .first()
       .evaluate((rect) => getComputedStyle(rect).fill)
   // The computed color of emerald 500, written the way browsers write computed colors.
   const emerald = await page.evaluate(() => {

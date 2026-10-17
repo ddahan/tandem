@@ -1,5 +1,5 @@
 // Which VS Code icon (https://icones.js.org/collection/vscode-icons) each file extension gets.
-// After changing this map, run `./mf pnpm --filter @myfluence/web file-icons` to regenerate
+// After changing this map, run `./td pnpm --filter @tandem/web file-icons` to regenerate
 // file-icons.generated.ts (the icons' SVG, bundled: no network, no blink).
 
 export const DEFAULT_FILE_ICON = 'default-file'

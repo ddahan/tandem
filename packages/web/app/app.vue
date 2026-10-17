@@ -13,7 +13,7 @@ const showError = useApiErrorToast()
 try {
   await Promise.all([tree.refresh(), loadSettings()])
 } catch (error) {
-  showError(error, 'Could not reach the Myfluence server')
+  showError(error, 'Could not reach the Tandem server')
 }
 
 useServerEvents((event) => {

@@ -2,7 +2,7 @@
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
-import { OWNER, authorLabel, formatDateTime } from '@myfluence/shared'
+import { OWNER, authorLabel, formatDateTime } from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
 
@@ -217,8 +217,8 @@ onBeforeRouteLeave(async () => {
 
 // --- Layout ----------------------------------------------------------------------------------
 
-const fullWidth = useLocalStorage('myfluence-full-width', false)
-const panelOpen = useLocalStorage('myfluence-side-panel', true)
+const fullWidth = useLocalStorage('tandem-full-width', false)
+const panelOpen = useLocalStorage('tandem-side-panel', true)
 const authorshipKey = ref(0)
 const iconPickerOpen = ref(false)
 

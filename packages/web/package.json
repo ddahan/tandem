@@ -1,5 +1,5 @@
 {
-  "name": "@myfluence/web",
+  "name": "@tandem/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,9 +17,9 @@
     "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/jetbrains-mono": "catalog:",
     "@fontsource-variable/literata": "catalog:",
-    "@myfluence/server": "workspace:*",
-    "@myfluence/shared": "workspace:*",
     "@nuxt/ui": "catalog:",
+    "@tandem/server": "workspace:*",
+    "@tandem/shared": "workspace:*",
     "@tiptap/core": "catalog:",
     "@tiptap/extension-code-block-lowlight": "catalog:",
     "@tiptap/extension-details": "catalog:",

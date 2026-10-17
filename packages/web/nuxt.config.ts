@@ -1,6 +1,6 @@
 // The web app: a single-page app (no server rendering), built to static files that the
-// Myfluence server serves. In development, `/api`, `/files` and `/mcp` go to the dev server.
-const apiUrl = process.env.MYFLUENCE_API_URL ?? 'http://localhost:3011'
+// Tandem server serves. In development, `/api`, `/files` and `/mcp` go to the dev server.
+const apiUrl = process.env.TANDEM_API_URL ?? 'http://localhost:3011'
 
 export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
@@ -10,13 +10,13 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: 'Myfluence',
+      title: 'Tandem',
       htmlAttrs: { lang: 'en' },
       meta: [
         { name: 'description', content: 'Notes, by you and your agents.' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'mobile-web-app-capable', content: 'yes' },
-        { name: 'apple-mobile-web-app-title', content: 'Myfluence' },
+        { name: 'apple-mobile-web-app-title', content: 'Tandem' },
         { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
       ],
       link: [
@@ -29,17 +29,17 @@ export default defineNuxtConfig({
         // The background tone, before the first paint (the rest: remembered-settings plugin).
         {
           innerHTML:
-            "try{var s=JSON.parse(localStorage.getItem('myfluence-settings')||'null');if(s&&s.backgroundTone)document.documentElement.dataset.tone=s.backgroundTone}catch(e){}",
+            "try{var s=JSON.parse(localStorage.getItem('tandem-settings')||'null');if(s&&s.backgroundTone)document.documentElement.dataset.tone=s.backgroundTone}catch(e){}",
         },
         // The title bar's color (theme-color), the last one seen (useThemeColor).
         {
           innerHTML:
-            "var m=document.createElement('meta');m.name='theme-color';try{m.content=localStorage.getItem('myfluence-theme-color')||''}catch(e){}if(!m.content)m.content=matchMedia('(prefers-color-scheme: dark)').matches?'#18181b':'#ffffff';document.head.appendChild(m)",
+            "var m=document.createElement('meta');m.name='theme-color';try{m.content=localStorage.getItem('tandem-theme-color')||''}catch(e){}if(!m.content)m.content=matchMedia('(prefers-color-scheme: dark)').matches?'#18181b':'#ffffff';document.head.appendChild(m)",
         },
         // The install prompt can come before the app starts: keep it (useInstallApp).
         {
           innerHTML:
-            "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.myfluenceInstallPrompt=e})",
+            "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.tandemInstallPrompt=e})",
         },
       ],
     },
@@ -51,7 +51,7 @@ export default defineNuxtConfig({
     theme: { colors: ['primary', 'secondary', 'success', 'info', 'warning', 'error'] },
   },
 
-  colorMode: { preference: 'system', storageKey: 'myfluence-color-mode' },
+  colorMode: { preference: 'system', storageKey: 'tandem-color-mode' },
 
   // Icons are bundled at build time: the app runs without internet and without an icon API.
   icon: {

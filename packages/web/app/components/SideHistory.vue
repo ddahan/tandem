@@ -2,7 +2,7 @@
 // Past versions of the note, by day, with their authors: preview, compare with the current
 // version, restore.
 import { useDebounceFn } from '@vueuse/core'
-import { authorLabel, formatDate, formatSize, type HistoryVersion } from '@myfluence/shared'
+import { authorLabel, formatDate, formatSize, type HistoryVersion } from '@tandem/shared'
 import { authorColor } from '~/utils/authorship'
 import { renderMarkdown } from '~/utils/render-markdown'
 

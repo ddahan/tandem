@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// The landing page (/landing): what Myfluence is, shown with live demos. Full width, without
+// The landing page (/landing): what Tandem is, shown with live demos. Full width, without
 // the app's sidebar. Follows the accent color, light/dark mode and reduced motion.
 import { authorColor } from '~/utils/authorship'
 import { logoSvg, accentShade } from '~/utils/logo'
 import { vReveal } from '~/utils/reveal'
 
 definePageMeta({ layout: false })
-useHead({ title: 'Myfluence — notes you write with your agents', titleTemplate: null })
+useHead({ title: 'Tandem — notes you write with your agents', titleTemplate: null })
 
 const headerLogo = logoSvg(accentShade, 'landing-logo')
 const ctaLogo = logoSvg(accentShade, 'landing-logo-cta')
@@ -161,13 +161,13 @@ const AGENT_POINTS = [
       "
     >
       <nav class="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <NuxtLink to="/landing" class="flex items-center gap-2.5" aria-label="Myfluence">
+        <NuxtLink to="/landing" class="flex items-center gap-2.5" aria-label="Tandem">
           <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
           <span
             class="size-8 overflow-hidden rounded-lg shadow-sm [&_svg]:size-full"
             v-html="headerLogo"
           />
-          <span class="text-base font-semibold tracking-tight text-highlighted">myfluence</span>
+          <span class="text-base font-semibold tracking-tight text-highlighted">tandem</span>
         </NuxtLink>
         <div class="hidden items-center gap-6 text-sm text-muted md:flex">
           <a href="#features" class="transition-colors hover:text-highlighted">Features</a>
@@ -625,7 +625,7 @@ teams by the end of the month.
           </h2>
           <p class="mt-5 text-lg text-muted">
             Every page is a Markdown file in a folder you choose — OneDrive, iCloud, a Git
-            repository. Edit them in any app: Myfluence notices, and keeps the history.
+            repository. Edit them in any app: Tandem notices, and keeps the history.
           </p>
           <p class="mt-4 text-lg text-muted">
             Tags, history and authorship live in SQLite next to them, backed up into the same
@@ -685,7 +685,7 @@ teams by the end of the month.
         <UButton
           to="/"
           size="xl"
-          label="Open Myfluence"
+          label="Open Tandem"
           trailing-icon="i-lucide-arrow-right"
           class="landing-cta-button mt-9"
         />
@@ -696,7 +696,7 @@ teams by the end of the month.
       <div
         class="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-8 text-sm text-muted sm:px-6"
       >
-        <span class="font-semibold text-highlighted">myfluence</span>
+        <span class="font-semibold text-highlighted">tandem</span>
         <span>Notes for one person and their agents.</span>
         <div class="ms-auto flex gap-5">
           <NuxtLink to="/shortcuts" class="hover:text-highlighted">Shortcuts</NuxtLink>

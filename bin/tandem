@@ -1,16 +1,16 @@
 #!/usr/bin/env sh
-# Runs the `myfluence` CLI in the running Myfluence container, from the Mac (where there is no
-# Node). Symlink it into your PATH: ln -s "$PWD/bin/myfluence" /usr/local/bin/myfluence
+# Runs the `tandem` CLI in the running Tandem container, from the Mac (where there is no
+# Node). Symlink it into your PATH: ln -s "$PWD/bin/tandem" /usr/local/bin/tandem
 #
 # Host files are sent through standard input, since the container can't see them:
-#   myfluence attach <note> ./report.pdf    and    myfluence append <note> --file ./notes.md
-# The author of the changes comes from MYFLUENCE_AUTHOR (e.g. "claude"), default "agent".
+#   tandem attach <note> ./report.pdf    and    tandem append <note> --file ./notes.md
+# The author of the changes comes from TANDEM_AUTHOR (e.g. "claude"), default "agent".
 set -eu
 repo="$(cd "$(dirname "$(readlink -f "$0" 2> /dev/null || echo "$0")")/.." && pwd)"
 
 run() {
   exec docker compose --project-directory "$repo" exec -T \
-    -e MYFLUENCE_AUTHOR="${MYFLUENCE_AUTHOR:-agent}" app myfluence "$@"
+    -e TANDEM_AUTHOR="${TANDEM_AUTHOR:-agent}" app tandem "$@"
 }
 
 # attach <note> <host file> [options]: stream the file.

@@ -1,11 +1,11 @@
 // End-to-end tests: the production build of the web app, served by the real server on a
-// temporary data folder. Run with `./mf e2e` (it builds the web app first).
+// temporary data folder. Run with `./td e2e` (it builds the web app first).
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
 
-const dataDir = mkdtempSync(join(tmpdir(), 'myfluence-e2e-'))
+const dataDir = mkdtempSync(join(tmpdir(), 'tandem-e2e-'))
 const port = 3020
 
 export default defineConfig({
@@ -32,10 +32,10 @@ export default defineConfig({
     env: {
       PORT: String(port),
       HOST: '127.0.0.1',
-      MYFLUENCE_DATA_DIR: dataDir,
-      MYFLUENCE_DB_PATH: join(dataDir, '..', `${dataDir.split('/').pop()}-db`, 'myfluence.db'),
-      MYFLUENCE_WEB_DIR: '.output/public',
-      MYFLUENCE_SESSION_IDLE_MS: '1500',
+      TANDEM_DATA_DIR: dataDir,
+      TANDEM_DB_PATH: join(dataDir, '..', `${dataDir.split('/').pop()}-db`, 'tandem.db'),
+      TANDEM_WEB_DIR: '.output/public',
+      TANDEM_SESSION_IDLE_MS: '1500',
     },
   },
 })

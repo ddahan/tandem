@@ -1,5 +1,5 @@
 {
-  "name": "@myfluence/server",
+  "name": "@tandem/server",
   "private": true,
   "type": "module",
   "exports": {
@@ -22,7 +22,7 @@
     "@hono/node-server": "catalog:",
     "@hono/zod-validator": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
-    "@myfluence/shared": "workspace:*",
+    "@tandem/shared": "workspace:*",
     "chokidar": "catalog:",
     "diff": "catalog:",
     "drizzle-orm": "catalog:",

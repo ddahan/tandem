@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatRelative } from '@myfluence/shared'
+import { formatRelative } from '@tandem/shared'
 import { useIntervalFn } from '@vueuse/core'
 import type { SaveStatus } from '~/composables/useNoteDocument'
 

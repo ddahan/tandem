@@ -20,7 +20,7 @@ afterEach(async () => {
 
 /** A vault on a temporary data folder and an in-memory database, with a manual clock. */
 export async function createTestVault(): Promise<TestVault> {
-  const dataDir = await mkdtemp(join(tmpdir(), 'myfluence-test-'))
+  const dataDir = await mkdtemp(join(tmpdir(), 'tandem-test-'))
   const database = await openDatabase(':memory:')
   const clock = {
     now: new Date('2026-10-17T10:00:00Z').getTime(),

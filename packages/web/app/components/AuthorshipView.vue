@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Who wrote what: the note rendered block by block, each with a colored bar for its author
 // (the author who last changed its lines) and, on hover, the author and date.
-import { formatDateTime, authorLabel, type BlameRange } from '@myfluence/shared'
+import { formatDateTime, authorLabel, type BlameRange } from '@tandem/shared'
 import { blocksWithAuthors, authorColor } from '~/utils/authorship'
 import { renderMarkdown } from '~/utils/render-markdown'
 

@@ -1,9 +1,9 @@
-// Fills a running Myfluence with demo notes (development and screenshots):
-//   ./mf pnpm --filter @myfluence/server seed [http://server:3011]
+// Fills a running Tandem with demo notes (development and screenshots):
+//   ./td pnpm --filter @tandem/server seed [http://server:3011]
 // Writes through the API, as the owner and as an agent, so history and authorship show both.
 import { createClient } from '../src/client.ts'
 
-const baseUrl = process.argv[2] ?? process.env.MYFLUENCE_URL ?? 'http://localhost:3011'
+const baseUrl = process.argv[2] ?? process.env.TANDEM_URL ?? 'http://localhost:3011'
 const owner = createClient(baseUrl, { author: 'owner' })
 const claude = createClient(baseUrl, { author: 'claude' })
 
@@ -17,18 +17,18 @@ const projects = await json(
   owner.notes.$post({
     json: {
       title: 'Projects',
-      content: '# Projects\n\nEverything I am working on. The current one: [[Myfluence]].\n',
+      content: '# Projects\n\nEverything I am working on. The current one: [[Tandem]].\n',
     },
   }),
 )
 
-const myfluence = await json(
+const tandem = await json(
   owner.notes.$post({
     json: {
       parentId: projects.id,
-      title: 'Myfluence',
+      title: 'Tandem',
       tags: ['work', 'app'],
-      content: `Myfluence is a **local-first** notes app, written by me *and* my agents. 🎉
+      content: `Tandem is a **local-first** notes app, written by me *and* my agents. 🎉
 
 > [!TIP]
 > Type \`/\` for blocks, \`[[\` to link a note, \`:\` for emojis.
@@ -71,7 +71,7 @@ flowchart LR
 
 await json(
   claude.notes[':id'].append.$post({
-    param: { id: myfluence.id },
+    param: { id: tandem.id },
     json: {
       content:
         '## Agent review\n\nThe sync design looks sound. Next: write the end-to-end tests. — *Claude*',
@@ -85,7 +85,7 @@ await json(
       title: 'Meeting notes',
       tags: ['meetings'],
       content:
-        '## Decisions\n\n- Use **SQLite** for metadata\n- Keep notes as Markdown files\n\n> [!NOTE]\n> Related: [[Myfluence]]\n',
+        '## Decisions\n\n- Use **SQLite** for metadata\n- Keep notes as Markdown files\n\n> [!NOTE]\n> Related: [[Tandem]]\n',
     },
   }),
 )

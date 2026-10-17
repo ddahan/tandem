@@ -34,7 +34,7 @@ defineShortcuts({
 </script>
 
 <template>
-  <UDashboardGroup unit="rem" storage="local" storage-key="myfluence-panels">
+  <UDashboardGroup unit="rem" storage="local" storage-key="tandem-panels">
     <UDashboardSidebar
       id="sidebar"
       collapsible

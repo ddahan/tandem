@@ -31,7 +31,7 @@ export const nodes = sqliteTable(
     pendingSnapshot: integer('pending_snapshot', { mode: 'boolean' }).notNull().default(false),
     /** Pages: line authorship, JSON `[count, author, at][]` runs over the current lines. */
     blame: text('blame'),
-    /** Custom icon: `emoji:<emoji>`, or `image:<file>` in `<data>/.myfluence/icons/`. */
+    /** Custom icon: `emoji:<emoji>`, or `image:<file>` in `<data>/.tandem/icons/`. */
     icon: text('icon'),
   },
   (table) => [index('nodes_hash').on(table.hash)],
@@ -63,7 +63,7 @@ export const links = sqliteTable(
   ],
 )
 
-/** Snapshots of pages; the content is in `<data>/.myfluence/history/<file>`. */
+/** Snapshots of pages; the content is in `<data>/.tandem/history/<file>`. */
 export const versions = sqliteTable(
   'versions',
   {
@@ -78,7 +78,7 @@ export const versions = sqliteTable(
   (table) => [index('versions_node').on(table.nodeId, table.createdAt)],
 )
 
-/** Deleted items; their files are in `<data>/.myfluence/trash/<id>/`. */
+/** Deleted items; their files are in `<data>/.tandem/trash/<id>/`. */
 export const trash = sqliteTable('trash', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),

@@ -13,7 +13,7 @@ async function call(
     headers: {
       'content-type': 'application/json',
       accept: 'application/json, text/event-stream',
-      'x-myfluence-author': author,
+      'x-tandem-author': author,
     },
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
   })

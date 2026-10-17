@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // Files attached to the note (its `.assets` folder): open, copy or insert their Markdown, add.
-import { formatSize, type Attachment } from '@myfluence/shared'
+import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
 const props = defineProps<{ noteId: string; notePath: string }>()

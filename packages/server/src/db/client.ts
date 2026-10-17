@@ -91,7 +91,7 @@ export async function openDatabase(path: string, restoreFrom?: string): Promise<
     sqlite,
     backup(target) {
       mkdirSync(dirname(target), { recursive: true })
-      const temporary = join(dirname(target), `.myfluence-backup-${process.pid}.tmp`)
+      const temporary = join(dirname(target), `.tandem-backup-${process.pid}.tmp`)
       rmSync(temporary, { force: true })
       sqlite.prepare('VACUUM INTO ?').run(temporary)
       renameSync(temporary, target)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OWNER } from '@myfluence/shared'
+import { OWNER } from '@tandem/shared'
 import { createApp } from '../src/app.ts'
 import { createClient } from '../src/client.ts'
 import { createTestVault } from './helpers.ts'
@@ -64,7 +64,7 @@ describe('API', () => {
     expect(file.status).toBe(200)
     expect(await file.text()).toBe('hello')
     expect(file.headers.get('content-type')).toContain('text/plain')
-    expect((await app.request('/files/.myfluence/README.md')).status).toBe(404)
+    expect((await app.request('/files/.tandem/README.md')).status).toBe(404)
     expect((await app.request('/files/..%2F..%2Fetc%2Fpasswd')).status).toBe(404)
   })
 

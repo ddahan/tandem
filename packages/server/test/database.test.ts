@@ -8,9 +8,9 @@ import { settings } from '../src/db/schema.ts'
 
 describe('database', () => {
   it('backs up and restores from the data folder', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'myfluence-db-'))
-    const live = join(dir, 'live/myfluence.db')
-    const backup = join(dir, 'data/.myfluence/myfluence.db')
+    const dir = await mkdtemp(join(tmpdir(), 'tandem-db-'))
+    const live = join(dir, 'live/tandem.db')
+    const backup = join(dir, 'data/.tandem/tandem.db')
     const first = await openDatabase(live)
     await first.db.insert(settings).values({ key: 'displayName', value: '"David"' })
     first.backup(backup)

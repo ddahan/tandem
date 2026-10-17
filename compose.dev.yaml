@@ -1,18 +1,18 @@
-# Everything Docker runs in development. There is no Node on the Mac: `./mf` runs pnpm in the
+# Everything Docker runs in development. There is no Node on the Mac: `./td` runs pnpm in the
 # `node` toolchain service, and the dev servers (web, server) extend it.
-name: myfluence-dev
+name: tandem-dev
 
 services:
   node:
     build:
       # Chromium for the end-to-end tests: its version must match @playwright/test in the
-      # catalog (pnpm-workspace.yaml). Rebuild with `./mf setup` after upgrading it.
+      # catalog (pnpm-workspace.yaml). Rebuild with `./td setup` after upgrading it.
       dockerfile_inline: |
         FROM node:26-slim
         RUN npm install -g pnpm@12.10.1
         ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
         RUN npx -y playwright@1.64.1 install --with-deps chromium
-    image: myfluence-dev-tools
+    image: tandem-dev-tools
     pull_policy: never
     init: true
     working_dir: /repo
@@ -27,7 +27,7 @@ services:
       - pnpm-store:/pnpm-store
     profiles: [tools]
 
-  # `./mf dev`: the API server (with reload) on a development data folder in .data/…
+  # `./td dev`: the API server (with reload) on a development data folder in .data/…
   server:
     extends: node
     profiles: [dev]
@@ -35,10 +35,10 @@ services:
     command: node --watch-path=src --watch-path=../shared/src src/main.ts
     environment:
       PORT: 3011
-      MYFLUENCE_DATA_DIR: /repo/.data/notes
-      MYFLUENCE_DB_PATH: /repo/.data/db/myfluence.db
+      TANDEM_DATA_DIR: /repo/.data/notes
+      TANDEM_DB_PATH: /repo/.data/db/tandem.db
       # Bind mounts on macOS don't always forward file events to Linux.
-      MYFLUENCE_WATCH_POLLING: 'true'
+      TANDEM_WATCH_POLLING: 'true'
     ports:
       - '127.0.0.1:3011:3011'
 
@@ -49,11 +49,11 @@ services:
     working_dir: /repo/packages/web
     command: node --run dev
     environment:
-      MYFLUENCE_API_URL: http://server:3011
+      TANDEM_API_URL: http://server:3011
     ports:
       - '127.0.0.1:3010:3010'
     depends_on: [server]
 
 volumes:
   pnpm-store:
-    name: myfluence-dev-pnpm-store
+    name: tandem-dev-pnpm-store

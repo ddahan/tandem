@@ -1,7 +1,7 @@
 // Groups a note's lines into display blocks (paragraphs, headings, list items, code blocks…)
 // and gives each block the author who last changed one of its lines.
 import { Lexer, type Token, type Tokens } from 'marked'
-import { EXTERNAL, OWNER, type BlameRange } from '@myfluence/shared'
+import { EXTERNAL, OWNER, type BlameRange } from '@tandem/shared'
 
 export interface AuthoredBlock {
   markdown: string

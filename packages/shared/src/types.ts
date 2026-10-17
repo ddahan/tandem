@@ -113,7 +113,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  workspaceName: 'Myfluence',
+  workspaceName: 'Tandem',
   displayName: 'Me',
   primaryColor: 'indigo',
   neutralColor: 'zinc',

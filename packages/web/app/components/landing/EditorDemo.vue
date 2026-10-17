@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The landing page's hero: a note written live by the owner and an agent, line by line, with
 // the authorship gutter, cursors, autosave and a task being checked. Loops (useDemoLoop).
-import { OWNER } from '@myfluence/shared'
+import { OWNER } from '@tandem/shared'
 import { authorColor } from '~/utils/authorship'
 
 type Author = 'you' | 'claude'

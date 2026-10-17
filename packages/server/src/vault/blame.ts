@@ -7,7 +7,7 @@
 // a normalization that ignores those formatting-only differences, so that editing one line in
 // the app doesn't take the authorship of the whole note.
 import { diffArrays } from 'diff'
-import type { BlameRange } from '@myfluence/shared'
+import type { BlameRange } from '@tandem/shared'
 
 /** One run of consecutive lines with the same author and time: `[count, author, at]`. */
 export type BlameRun = [number, string, number]

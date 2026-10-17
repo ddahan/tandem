@@ -1,5 +1,5 @@
 // Who wrote what. The owner writes from the web app; agents name themselves (CLI `--author`,
-// `MYFLUENCE_AUTHOR`, or the MCP `X-Myfluence-Author` header); direct file edits are `external`.
+// `TANDEM_AUTHOR`, or the MCP `X-Tandem-Author` header); direct file edits are `external`.
 
 export const OWNER = 'owner'
 export const EXTERNAL = 'external'

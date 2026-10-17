@@ -13,7 +13,7 @@ const showError = useApiErrorToast()
 const query = ref('')
 const groups = emojiGroups()
 const activeGroup = ref(groups[0]!.id)
-const recent = useLocalStorage<string[]>('myfluence-recent-icons', [])
+const recent = useLocalStorage<string[]>('tandem-recent-icons', [])
 const busy = ref(false)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 

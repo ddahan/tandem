@@ -4,7 +4,7 @@
 // Every save sends the hash of the content the editor started from (`baseHash`); the server
 // refuses it if the note changed since, and returns the current content (a conflict).
 import { useDebounceFn } from '@vueuse/core'
-import type { NoteDetail } from '@myfluence/shared'
+import type { NoteDetail } from '@tandem/shared'
 
 export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict'
 
@@ -147,7 +147,7 @@ export function useNoteDocument(id: Ref<string>) {
       void fetch(`/api/notes/${id.value}/content`, {
         method: 'PUT',
         keepalive: true,
-        headers: { 'content-type': 'application/json', 'x-myfluence-author': 'owner' },
+        headers: { 'content-type': 'application/json', 'x-tandem-author': 'owner' },
         body: JSON.stringify({ content: pending, baseHash }),
       })
     }

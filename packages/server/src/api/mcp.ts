@@ -1,16 +1,16 @@
 // MCP server (Streamable HTTP, stateless) at `/mcp`, so agents can read and write notes:
-//   claude mcp add --transport http myfluence http://localhost:3000/mcp \
-//     --header "X-Myfluence-Author: claude"
+//   claude mcp add --transport http tandem http://localhost:3000/mcp \
+//     --header "X-Tandem-Author: claude"
 // The author header names the agent in history and authorship (default: `agent`).
 import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { DEFAULT_AGENT, formatDateTime, normalizeAuthor, type TreeNode } from '@myfluence/shared'
+import { DEFAULT_AGENT, formatDateTime, normalizeAuthor, type TreeNode } from '@tandem/shared'
 import type { Vault } from '../vault/vault.ts'
 import { AUTHOR_HEADER } from './index.ts'
 
-const INSTRUCTIONS = `Myfluence is the user's note-taking app. Notes are Markdown pages in a tree
+const INSTRUCTIONS = `Tandem is the user's note-taking app. Notes are Markdown pages in a tree
 (a page can have child pages), with tags, history and per-line authorship. Notes are referenced by
 id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]] or
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
@@ -54,10 +54,7 @@ function describeTree(nodes: TreeNode[]): string {
 }
 
 export function createMcpServer(vault: Vault, author: string): McpServer {
-  const server = new McpServer(
-    { name: 'myfluence', version: '1.0.0' },
-    { instructions: INSTRUCTIONS },
-  )
+  const server = new McpServer({ name: 'tandem', version: '1.0.0' }, { instructions: INSTRUCTIONS })
   const ref = z.string().describe('Note id, path (e.g. "Projects/Roadmap") or title')
 
   server.registerTool(

@@ -3,7 +3,7 @@
 //
 // The `theme-color` meta tag is created by a head script (nuxt.config.ts) with the last color
 // seen, so the app opens with it; this keeps it up to date and remembers it.
-const REMEMBERED = 'myfluence-theme-color'
+const REMEMBERED = 'tandem-theme-color'
 
 /** A CSS color as #rrggbb: browsers want sRGB for this, and the palette is in oklch. */
 function toHex(color: string): string | null {

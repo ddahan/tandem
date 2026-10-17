@@ -1,6 +1,6 @@
 // Live updates from the server (`/api/events`): one EventSource for the whole app. After a
 // reconnection, listeners receive a `resync` event, since events may have been missed.
-import type { ServerEvent } from '@myfluence/shared'
+import type { ServerEvent } from '@tandem/shared'
 
 export type AppEvent = ServerEvent | { type: 'resync' }
 

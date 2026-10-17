@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatRelative, type SearchResult, type TagCount } from '@myfluence/shared'
+import { formatRelative, type SearchResult, type TagCount } from '@tandem/shared'
 
 const api = useApi()
 const tree = useTree()

@@ -12,7 +12,7 @@ defineEmits<{
   close: []
 }>()
 
-const tab = useLocalStorage('myfluence-side-tab', 'outline')
+const tab = useLocalStorage('tandem-side-tab', 'outline')
 
 const tabs: TabsItem[] = [
   { label: 'Outline', value: 'outline', icon: 'i-lucide-list-tree' },

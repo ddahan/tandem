@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { EXTERNAL, OWNER } from '@myfluence/shared'
+import { EXTERNAL, OWNER } from '@tandem/shared'
 import { ConflictError, NotFoundError, ValidationError } from '../src/vault/errors.ts'
 import { rewriteAssetLinks } from '../src/vault/vault.ts'
 import { createTestVault } from './helpers.ts'
@@ -21,12 +21,12 @@ describe('pages and folders', () => {
   it('nests child pages in a folder named after the parent page', async () => {
     const { vault, dataDir } = await createTestVault()
     const parent = await vault.createPage({ title: 'Projects', author: OWNER })
-    const child = await vault.createPage({ parentId: parent.id, title: 'Myfluence', author: OWNER })
-    expect(child.path).toBe('Projects/Myfluence.md')
+    const child = await vault.createPage({ parentId: parent.id, title: 'Tandem', author: OWNER })
+    expect(child.path).toBe('Projects/Tandem.md')
     expect(child.parentId).toBe(parent.id)
-    expect(existsSync(join(dataDir, 'Projects/Myfluence.md'))).toBe(true)
+    expect(existsSync(join(dataDir, 'Projects/Tandem.md'))).toBe(true)
     const tree = await vault.tree()
-    expect(tree.map((n) => n.path).toSorted()).toEqual(['Projects.md', 'Projects/Myfluence.md'])
+    expect(tree.map((n) => n.path).toSorted()).toEqual(['Projects.md', 'Projects/Tandem.md'])
   })
 
   it('creates folders and keeps titles unique among siblings (pages and folders alike)', async () => {
@@ -221,10 +221,10 @@ describe('trash', () => {
     const page = await vault.createPage({ title: 'P', content: 'v1', author: OWNER })
     clock.advance(60_000)
     await vault.flushIdleSessions()
-    expect(existsSync(join(dataDir, '.myfluence/history', page.id))).toBe(true)
+    expect(existsSync(join(dataDir, '.tandem/history', page.id))).toBe(true)
     await vault.remove(page.id)
     expect(await vault.emptyTrash()).toBe(1)
-    expect(existsSync(join(dataDir, '.myfluence/history', page.id))).toBe(false)
+    expect(existsSync(join(dataDir, '.tandem/history', page.id))).toBe(false)
     expect(await vault.trashList()).toEqual([])
   })
 })
@@ -394,7 +394,7 @@ describe('icons', () => {
     ).rejects.toThrow(/5 MB/)
 
     expect((await vault.clearIcon(page.id)).icon).toBeNull()
-    expect(existsSync(join(dataDir, '.myfluence/icons'))).toBe(true)
+    expect(existsSync(join(dataDir, '.tandem/icons'))).toBe(true)
     await expect(vault.iconFile(page.id)).rejects.toThrow(NotFoundError)
   })
 
@@ -435,7 +435,7 @@ describe('settings', () => {
   it('merges stored settings with defaults', async () => {
     const { vault } = await createTestVault()
     expect((await vault.getSettings()).primaryColor).toBe('indigo')
-    expect((await vault.getSettings()).workspaceName).toBe('Myfluence')
+    expect((await vault.getSettings()).workspaceName).toBe('Tandem')
     const updated = await vault.updateSettings({ primaryColor: 'emerald', displayName: 'David' })
     expect(updated).toMatchObject({
       primaryColor: 'emerald',

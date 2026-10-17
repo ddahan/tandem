@@ -1,4 +1,4 @@
-// Starts Myfluence: database (restored from the data folder's backup if needed), vault,
+// Starts Tandem: database (restored from the data folder's backup if needed), vault,
 // reconciliation with the files, watcher, background jobs and the HTTP server.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -9,23 +9,23 @@ import { Vault } from './vault/vault.ts'
 import { watchVault } from './watcher.ts'
 
 const env = process.env
-const dataDir = resolve(env.MYFLUENCE_DATA_DIR ?? '/data')
-const dbPath = resolve(env.MYFLUENCE_DB_PATH ?? '/var/lib/myfluence/myfluence.db')
-const webDir = env.MYFLUENCE_WEB_DIR ? resolve(env.MYFLUENCE_WEB_DIR) : undefined
+const dataDir = resolve(env.TANDEM_DATA_DIR ?? '/data')
+const dbPath = resolve(env.TANDEM_DB_PATH ?? '/var/lib/tandem/tandem.db')
+const webDir = env.TANDEM_WEB_DIR ? resolve(env.TANDEM_WEB_DIR) : undefined
 const port = Number(env.PORT ?? 3000)
 const hostname = env.HOST ?? '0.0.0.0'
-const backupPath = join(dataDir, '.myfluence', 'myfluence.db')
+const backupPath = join(dataDir, '.tandem', 'tandem.db')
 // A history version is kept after this long without saves (shorter in end-to-end tests).
-const sessionIdleMs = Number(env.MYFLUENCE_SESSION_IDLE_MS ?? 30_000)
+const sessionIdleMs = Number(env.TANDEM_SESSION_IDLE_MS ?? 30_000)
 
-await mkdir(join(dataDir, '.myfluence'), { recursive: true })
+await mkdir(join(dataDir, '.tandem'), { recursive: true })
 await writeFile(
-  join(dataDir, '.myfluence', 'README.md'),
-  `# Myfluence internal folder
+  join(dataDir, '.tandem', 'README.md'),
+  `# Tandem internal folder
 
-Managed by Myfluence: don't edit by hand.
+Managed by Tandem: don't edit by hand.
 
-- \`myfluence.db\`: a backup of the app's database (ids, tags, order, history index,
+- \`tandem.db\`: a backup of the app's database (ids, tags, order, history index,
   authorship, settings), refreshed about every minute. Restored automatically if the app's
   own database is lost.
 - \`history/<note id>/\`: past versions of notes.
@@ -41,7 +41,7 @@ console.log(`Data folder: ${dataDir}`)
 await vault.reconcile()
 await vault.reindexAll()
 
-const watcher = watchVault(vault, { polling: env.MYFLUENCE_WATCH_POLLING === 'true' })
+const watcher = watchVault(vault, { polling: env.TANDEM_WATCH_POLLING === 'true' })
 
 function backup() {
   if (!vault.dirty) return
@@ -66,7 +66,7 @@ vault.dirty = true
 backup()
 
 const server = serve({ fetch: createApp(vault, { webDir }).fetch, port, hostname }, (info) => {
-  console.log(`Myfluence listens on http://${hostname}:${info.port}`)
+  console.log(`Tandem listens on http://${hostname}:${info.port}`)
 })
 
 async function shutdown() {

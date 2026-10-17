@@ -1,7 +1,7 @@
 // The internal HTTP API, used by the web app and the CLI (through the typed client in
 // `../client.ts`). It is not a public API: routes change with the app's needs.
 //
-// Who is writing comes from the `X-Myfluence-Author` header: the web app sends `owner`, the CLI
+// Who is writing comes from the `X-Tandem-Author` header: the web app sends `owner`, the CLI
 // the agent's name; without it, writes are credited to a generic `agent`.
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
@@ -12,11 +12,11 @@ import { Hono, type Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
-import { DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@myfluence/shared'
+import { DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@tandem/shared'
 import { ConflictError, NotFoundError, ValidationError } from '../vault/errors.ts'
 import type { Vault } from '../vault/vault.ts'
 
-export const AUTHOR_HEADER = 'x-myfluence-author'
+export const AUTHOR_HEADER = 'x-tandem-author'
 
 type Target = 'json' | 'query' | 'param' | 'form'
 

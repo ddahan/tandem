@@ -10,7 +10,7 @@ export async function api<T = unknown>(
 ): Promise<T> {
   const response = await request.fetch(`/api${path}`, {
     method,
-    headers: { 'x-myfluence-author': author },
+    headers: { 'x-tandem-author': author },
     data: body,
   })
   expect(response.ok(), `${method} ${path}: ${await response.text()}`).toBe(true)

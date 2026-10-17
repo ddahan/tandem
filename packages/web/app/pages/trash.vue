@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatDateTime, type TrashItem } from '@myfluence/shared'
+import { formatDateTime, type TrashItem } from '@tandem/shared'
 
 const api = useApi()
 const toast = useToast()

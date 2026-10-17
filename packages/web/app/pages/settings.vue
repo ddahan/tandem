@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_SETTINGS, type Settings } from '@myfluence/shared'
+import { DEFAULT_SETTINGS, type Settings } from '@tandem/shared'
 import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
 import { accentShade, logoSvg } from '~/utils/logo'
 
@@ -268,7 +268,7 @@ async function set(patch: Partial<Settings>) {
         <section>
           <h2 class="font-semibold text-highlighted">App</h2>
           <p class="mb-4 text-sm text-muted">
-            Install Myfluence to open it from your Dock, in its own window.
+            Install Tandem to open it from your Dock, in its own window.
           </p>
           <div class="flex items-start gap-4" data-testid="install-settings">
             <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
@@ -285,7 +285,7 @@ async function set(patch: Partial<Settings>) {
             </p>
             <UButton
               v-else-if="install.method.value === 'prompt'"
-              label="Install Myfluence"
+              label="Install Tandem"
               icon="i-lucide-download"
               class="mt-2"
               @click="install.install()"
@@ -296,8 +296,8 @@ async function set(patch: Partial<Settings>) {
               class="pt-1"
             />
             <p v-else class="pt-1 text-sm text-muted">
-              Your browser isn't offering to install Myfluence (it may be installed already).
-              Chrome, Edge and Safari can install it.
+              Your browser isn't offering to install Tandem (it may be installed already). Chrome,
+              Edge and Safari can install it.
             </p>
           </div>
         </section>
@@ -306,11 +306,11 @@ async function set(patch: Partial<Settings>) {
 
         <section class="space-y-2 text-sm text-muted">
           <h2 class="font-semibold text-highlighted">For agents</h2>
-          <p>Agents can use Myfluence through its MCP server:</p>
+          <p>Agents can use Tandem through its MCP server:</p>
           <pre
             class="overflow-x-auto rounded-md border border-muted bg-muted p-3 text-xs"
-          ><code>claude mcp add --transport http myfluence http://localhost:3000/mcp --header "X-Myfluence-Author: claude"</code></pre>
-          <p>Or with the <code>bin/myfluence</code> CLI of the repository. See the README.</p>
+          ><code>claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"</code></pre>
+          <p>Or with the <code>bin/tandem</code> CLI of the repository. See the README.</p>
         </section>
       </div>
     </template>

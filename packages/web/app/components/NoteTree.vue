@@ -9,7 +9,7 @@ const tree = useTree()
 const route = useRoute()
 const showError = useApiErrorToast()
 
-const expanded = useLocalStorage<string[]>('myfluence-tree-expanded', [])
+const expanded = useLocalStorage<string[]>('tandem-tree-expanded', [])
 const currentId = computed(() => (route.name === 'notes-id' ? String(route.params.id) : null))
 
 // Keep the current note visible: expand its ancestors.
@@ -185,7 +185,7 @@ const dropTarget = ref<{ id: string | null; zone: DropZone } | null>(null)
 
 function onDragStart(event: DragEvent, item: TreeItem) {
   dragged.value = item.id
-  event.dataTransfer?.setData('application/x-myfluence-node', item.id)
+  event.dataTransfer?.setData('application/x-tandem-node', item.id)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
 

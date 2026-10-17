@@ -1,5 +1,5 @@
 // The owner's settings (stored by the server) and their effect on the interface.
-import { DEFAULT_SETTINGS, type Settings } from '@myfluence/shared'
+import { DEFAULT_SETTINGS, type Settings } from '@tandem/shared'
 import { logoSvg, resolvedAccentShade } from '~/utils/logo'
 
 const EDITOR_WIDTHS: Record<Settings['editorWidth'], string> = {
@@ -29,7 +29,7 @@ const EDITOR_FONTS: Record<Settings['editorFont'], string> = {
  * `remembered-settings.client.ts`, and the head script for the tone), so a reload doesn't flash
  * the default theme while the server's settings load. The server's settings then replace them.
  */
-const REMEMBERED = 'myfluence-settings'
+const REMEMBERED = 'tandem-settings'
 
 export function rememberedSettings(): Settings | null {
   try {

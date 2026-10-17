@@ -6,7 +6,7 @@ export type { Api }
 
 export function createClient(baseUrl: string, options?: { author?: string; fetch?: typeof fetch }) {
   return hc<Api>(`${baseUrl.replace(/\/$/, '')}/api`, {
-    headers: options?.author ? { 'x-myfluence-author': options.author } : {},
+    headers: options?.author ? { 'x-tandem-author': options.author } : {},
     fetch: options?.fetch,
   })
 }

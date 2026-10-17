@@ -1,7 +1,7 @@
 // Notes reference their attachments with paths relative to the note (`Note.assets/a.png`), as
 // in any Markdown editor. The app serves files at `/files/<path from the data folder>`, so
 // relative paths are made absolute for the editor, and back on save.
-import { dirnameOf, encodeMarkdownPath } from '@myfluence/shared'
+import { dirnameOf, encodeMarkdownPath } from '@tandem/shared'
 
 const LINK_TARGET = /(\]\(<?|\bsrc=")([^)>"\s]+)/g
 

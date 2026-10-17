@@ -1,11 +1,11 @@
-// The `myfluence` CLI: the same operations as the MCP server, for agents and scripts. It talks
-// to a running Myfluence over HTTP (the internal API), so writes go through the app: history,
+// The `tandem` CLI: the same operations as the MCP server, for agents and scripts. It talks
+// to a running Tandem over HTTP (the internal API), so writes go through the app: history,
 // authorship and the search index stay right.
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
-import { createClient, type Client } from '@myfluence/server/client'
-import { formatDateTime, formatSize, normalizeAuthor, type TreeNode } from '@myfluence/shared'
+import { createClient, type Client } from '@tandem/server/client'
+import { formatDateTime, formatSize, normalizeAuthor, type TreeNode } from '@tandem/shared'
 
 export interface Io {
   stdout: (text: string) => void
@@ -18,7 +18,7 @@ export interface Io {
   readFile: (path: string) => Promise<Uint8Array>
 }
 
-export const USAGE = `Usage: myfluence <command> [arguments] [options]
+export const USAGE = `Usage: tandem <command> [arguments] [options]
 
 Notes are referenced by id, path ("Projects/Roadmap") or title.
 
@@ -44,8 +44,8 @@ Writing (content from arguments, --file, or standard input)
   attach <note> <file>          attach a file (--name, --insert to append its link)
 
 Options
-  --url <url>        Myfluence's address (MYFLUENCE_URL, default http://localhost:3000)
-  --author <name>    who is writing, for history and authorship (MYFLUENCE_AUTHOR, default "agent")
+  --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3000)
+  --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
   --json             machine-readable output
   -h, --help         this help
 `
@@ -76,7 +76,7 @@ async function call<T>(
 ): Promise<T> {
   const response = await request.catch((error: unknown) => {
     throw new CliError(
-      `Cannot reach Myfluence (${error instanceof Error ? error.message : String(error)}). Is it running?`,
+      `Cannot reach Tandem (${error instanceof Error ? error.message : String(error)}). Is it running?`,
     )
   })
   const body = await response.json().catch(() => null)
@@ -146,8 +146,8 @@ export async function run(
     return command || values.help ? 0 : 2
   }
 
-  const client = createClient(values.url ?? env.MYFLUENCE_URL ?? 'http://localhost:3000', {
-    author: normalizeAuthor(values.author ?? env.MYFLUENCE_AUTHOR),
+  const client = createClient(values.url ?? env.TANDEM_URL ?? 'http://localhost:3000', {
+    author: normalizeAuthor(values.author ?? env.TANDEM_AUTHOR),
   })
   const print = (text: string, data?: unknown) =>
     io.stdout(
@@ -173,7 +173,7 @@ async function execute(
 ): Promise<void> {
   const need = (index: number, what: string): string => {
     const value = args[index]
-    if (!value) throw new CliError(`Missing ${what}. See myfluence --help.`)
+    if (!value) throw new CliError(`Missing ${what}. See tandem --help.`)
     return value
   }
   const resolve = async (ref: string) => call(client.resolve.$get({ query: { ref } }))
@@ -389,7 +389,7 @@ async function execute(
       return print(markdown, attachment)
     }
     default:
-      throw new CliError(`Unknown command "${command}". See myfluence --help.`)
+      throw new CliError(`Unknown command "${command}". See tandem --help.`)
   }
 }
 

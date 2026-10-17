@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The icon of a page or folder: its custom emoji or image, or the default Lucide icon.
-import type { NodeIcon, NodeKind } from '@myfluence/shared'
+import type { NodeIcon, NodeKind } from '@tandem/shared'
 
 const props = withDefaults(
   defineProps<{ icon: NodeIcon | null; kind: NodeKind; size?: 'sm' | 'md' | 'title' }>(),

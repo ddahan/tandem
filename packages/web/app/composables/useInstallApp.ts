@@ -1,4 +1,4 @@
-// Installing Myfluence as an app (PWA: public/manifest.webmanifest).
+// Installing Tandem as an app (PWA: public/manifest.webmanifest).
 //
 // - Chrome and Edge fire `beforeinstallprompt` once, early: a script in the page's head
 //   (nuxt.config.ts) keeps it until the app starts, then the plugin `install-prompt.client.ts`
@@ -20,8 +20,8 @@ const justInstalled = ref(false)
 
 /** Keeps the browser's install prompt for later (from the plugin, at startup). */
 export function captureInstallPrompt() {
-  const early = (window as Window & { myfluenceInstallPrompt?: BeforeInstallPromptEvent })
-    .myfluenceInstallPrompt
+  const early = (window as Window & { tandemInstallPrompt?: BeforeInstallPromptEvent })
+    .tandemInstallPrompt
   if (early) deferred.value = early
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault()
@@ -67,7 +67,7 @@ export function useInstallApp() {
     return safariPlatform()
   })
   /** The sidebar's banner was closed (the Settings page still offers to install). */
-  const dismissed = useLocalStorage('myfluence-install-dismissed', false)
+  const dismissed = useLocalStorage('tandem-install-dismissed', false)
 
   return { method, installed, dismissed, install: installApp }
 }

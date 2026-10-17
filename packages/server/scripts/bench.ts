@@ -1,5 +1,5 @@
 // Measures the server on a large generated vault (performance work: compare before / after):
-//   ./mf pnpm --filter @myfluence/server bench [pages]
+//   ./td pnpm --filter @tandem/server bench [pages]
 // Writes the notes as files in a temporary folder, imports them as at startup, then times the
 // API calls the app makes most (through the real HTTP app, JSON included). Prints medians.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
@@ -51,8 +51,8 @@ function note(index: number, kb: number): string {
   return lines.join('\n')
 }
 
-const dataDir = await mkdtemp(join(tmpdir(), 'myfluence-bench-'))
-const database = await openDatabase(join(dataDir, '.myfluence-bench.db'))
+const dataDir = await mkdtemp(join(tmpdir(), 'tandem-bench-'))
+const database = await openDatabase(join(dataDir, '.tandem-bench.db'))
 try {
   // 50 folders of pages; a few large notes (200 KB), the rest 2 to 8 KB.
   let totalKb = 0

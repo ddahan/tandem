@@ -1,23 +1,23 @@
-# Myfluence, the app you use: `./mf start` (or `docker compose up -d --build`), then
+# Tandem, the app you use: `./td start` (or `docker compose up -d --build`), then
 # http://localhost:3000. Settings come from .env (copy .env.example).
-name: myfluence
+name: tandem
 
 services:
   app:
     build: .
-    image: myfluence
+    image: tandem
     restart: unless-stopped
     init: true
     ports:
       # Local only: there is no authentication.
-      - '127.0.0.1:${MYFLUENCE_PORT:-3000}:3000'
+      - '127.0.0.1:${TANDEM_PORT:-3000}:3000'
     environment:
-      MYFLUENCE_WATCH_POLLING: ${MYFLUENCE_WATCH_POLLING:-false}
+      TANDEM_WATCH_POLLING: ${TANDEM_WATCH_POLLING:-false}
     volumes:
       # Your notes (Markdown files, attachments, history): typically a OneDrive folder.
-      - ${MYFLUENCE_DATA_DIR:?Set MYFLUENCE_DATA_DIR in .env (see .env.example)}:/data
+      - ${TANDEM_DATA_DIR:?Set TANDEM_DATA_DIR in .env (see .env.example)}:/data
       # The live database, outside the synced folder (a backup is kept in the data folder).
-      - db:/var/lib/myfluence
+      - db:/var/lib/tandem
 
 volumes:
   db:

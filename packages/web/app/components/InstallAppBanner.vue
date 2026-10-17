@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The sidebar's offer to install Myfluence as an app, while it runs in a browser tab that can
+// The sidebar's offer to install Tandem as an app, while it runs in a browser tab that can
 // install it (useInstallApp). Closing it hides it for good; Settings still offers to install.
 import { accentShade, logoSvg } from '~/utils/logo'
 
@@ -29,7 +29,7 @@ const logo = logoSvg(accentShade, 'install-banner-logo')
         v-html="logo"
       />
       <div class="min-w-0">
-        <p class="text-sm font-medium text-highlighted">Install Myfluence</p>
+        <p class="text-sm font-medium text-highlighted">Install Tandem</p>
         <p class="text-xs text-muted">
           {{ method === 'ios' ? 'On your Home Screen.' : 'In your Dock, in its own window.' }}
         </p>

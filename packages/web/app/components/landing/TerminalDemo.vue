@@ -12,13 +12,13 @@ const SCENES: { id: 'cli' | 'mcp'; label: string; rows: Row[] }[] = [
     id: 'cli',
     label: 'CLI',
     rows: [
-      { kind: 'command', text: 'myfluence search "launch plan"' },
+      { kind: 'command', text: 'tandem search "launch plan"' },
       { kind: 'output', text: 'Projects/Launch plan  (k3Jd9xQe2TmA)' },
       { kind: 'dim', text: '  Ship the beta to ten friendly teams by the end…' },
       { kind: 'dim', text: '  tags: work, launch' },
       {
         kind: 'command',
-        text: 'myfluence append "Launch plan" "- [ ] Book the venue" --author claude',
+        text: 'tandem append "Launch plan" "- [ ] Book the venue" --author claude',
       },
       { kind: 'success', text: 'Appended to Projects/Launch plan.md' },
     ],

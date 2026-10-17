@@ -5,7 +5,7 @@ test('shows the landing page without the app sidebar, and leads into the app', a
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/landing')
-  await expect(page).toHaveTitle('Myfluence — notes you write with your agents')
+  await expect(page).toHaveTitle('Tandem — notes you write with your agents')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('with your agents')
   await expect(page.getByLabel('Title')).toHaveCount(0)
   await expect(page.getByTestId('workspace-name')).toHaveCount(0)
@@ -17,7 +17,7 @@ test('shows the landing page without the app sidebar, and leads into the app', a
   const agents = page.getByRole('heading', { name: 'Give your agents a pen, not just a peek.' })
   await agents.scrollIntoViewIfNeeded()
   await expect(agents).toBeVisible()
-  await expect(page.getByText('myfluence search "launch plan"')).toBeVisible()
+  await expect(page.getByText('tandem search "launch plan"')).toBeVisible()
 
   await page.getByRole('link', { name: 'Open the app' }).first().click()
   await expect(page).toHaveURL(/\/$/)
