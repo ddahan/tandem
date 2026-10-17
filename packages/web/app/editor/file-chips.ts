@@ -6,6 +6,12 @@ import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { fileIconCssUrl } from '../utils/file-icons'
 
+/** How to open a file from its chip (a plain click places the cursor, to edit the link). */
+const OPEN_HINT =
+  typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
+    ? '⌘ + click to open'
+    : 'Ctrl + click to open'
+
 export function isAttachmentHref(href: string): boolean {
   return /\.assets\/[^/]+$/.test(href)
 }
@@ -29,7 +35,11 @@ function decorations(doc: ProseMirrorNode): DecorationSet {
         pos + node.nodeSize,
         continued
           ? { class: 'file-chip file-chip--continued' }
-          : { class: 'file-chip', style: `--file-icon: ${fileIconCssUrl(href)}` },
+          : {
+              class: 'file-chip',
+              style: `--file-icon: ${fileIconCssUrl(href)}`,
+              'data-hint': OPEN_HINT,
+            },
       ),
     )
     previous = { href, end: pos + node.nodeSize }
