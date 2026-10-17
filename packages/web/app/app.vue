@@ -7,6 +7,7 @@ useHead({
   titleTemplate: computed(() => `%s · ${settings.value.workspaceName}`),
   link: [{ key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: favicon }],
 })
+useThemeColor()
 const showError = useApiErrorToast()
 
 try {

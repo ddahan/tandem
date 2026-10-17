@@ -193,6 +193,9 @@ folders and the versions.
   `nuxt generate`.
 - Icons are bundled at build time (no icon API at runtime): use literal `i-lucide-*` names in
   the source so the build finds them.
+- Title bar color: `useThemeColor` sets `theme-color` to the page's background (as #rrggbb,
+  via a canvas: the palette is oklch) whenever the tone, neutral color or mode changes, and
+  remembers it; a head script creates the tag with that color before the first paint.
 - Install offer (`useInstallApp`, `InstallAppBanner`, Settings › App): an inline script in
   the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
   app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the

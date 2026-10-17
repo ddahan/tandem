@@ -226,6 +226,24 @@ test('changes the theme and the settings', async ({ page, request }) => {
   await api(request, 'PATCH', '/settings', { workspaceName: 'Myfluence' })
 })
 
+test('colors the title bar like the background (theme-color)', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { backgroundTone: 'paper' })
+  const themeColor = page.locator('meta[name="theme-color"]')
+  await page.goto('/')
+  await expect(page.getByTestId('workspace-name')).toBeVisible()
+  await expect(themeColor).toHaveCount(1)
+  await expect(themeColor).toHaveAttribute('content', '#fbf8f1')
+
+  await page.getByRole('button', { name: 'Dark', exact: true }).click()
+  await expect(themeColor).toHaveAttribute('content', '#1e1c19')
+  // Remembered: the next launch starts with it.
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await expect(themeColor).toHaveAttribute('content', '#1e1c19')
+
+  await page.getByRole('button', { name: 'Light', exact: true }).click()
+  await api(request, 'PATCH', '/settings', { backgroundTone: 'white' })
+})
+
 test('shows the chosen theme at once on reload, before the settings load', async ({
   page,
   request,

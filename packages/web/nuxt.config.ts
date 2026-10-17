@@ -14,7 +14,6 @@ export default defineNuxtConfig({
       htmlAttrs: { lang: 'en' },
       meta: [
         { name: 'description', content: 'Notes, by you and your agents.' },
-        { name: 'theme-color', content: '#18181b' },
         { name: 'apple-mobile-web-app-capable', content: 'yes' },
         { name: 'mobile-web-app-capable', content: 'yes' },
         { name: 'apple-mobile-web-app-title', content: 'Myfluence' },
@@ -31,6 +30,11 @@ export default defineNuxtConfig({
         {
           innerHTML:
             "try{var s=JSON.parse(localStorage.getItem('myfluence-settings')||'null');if(s&&s.backgroundTone)document.documentElement.dataset.tone=s.backgroundTone}catch(e){}",
+        },
+        // The title bar's color (theme-color), the last one seen (useThemeColor).
+        {
+          innerHTML:
+            "var m=document.createElement('meta');m.name='theme-color';try{m.content=localStorage.getItem('myfluence-theme-color')||''}catch(e){}if(!m.content)m.content=matchMedia('(prefers-color-scheme: dark)').matches?'#18181b':'#ffffff';document.head.appendChild(m)",
         },
         // The install prompt can come before the app starts: keep it (useInstallApp).
         {
