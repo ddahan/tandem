@@ -236,6 +236,14 @@ const modes = [
   { value: 'authorship', icon: 'i-lucide-users', label: 'Authorship' },
 ] as const
 
+// The Markdown view's copy button (shown on hover), as on code blocks.
+const copied = ref(false)
+async function copyMarkdown() {
+  await navigator.clipboard.writeText(content.value)
+  copied.value = true
+  setTimeout(() => (copied.value = false), 1500)
+}
+
 const deleting = ref(false)
 async function remove() {
   deleting.value = false
@@ -256,16 +264,6 @@ const moreItems = computed<DropdownMenuItem[][]>(() => [
       icon: 'i-lucide-folder-tree',
       onSelect: () => void navigator.clipboard.writeText(notePath.value),
     },
-    // Only while the Markdown itself is shown.
-    ...(mode.value === 'source'
-      ? [
-          {
-            label: 'Copy Markdown',
-            icon: 'i-lucide-clipboard-copy',
-            onSelect: () => void navigator.clipboard.writeText(content.value),
-          },
-        ]
-      : []),
   ],
   [
     {
@@ -483,17 +481,30 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @headings="headings = $event"
         />
 
-        <UTextarea
-          v-else-if="mode === 'source'"
-          :model-value="content"
-          autoresize
-          :rows="20"
-          variant="soft"
-          class="w-full"
-          :ui="{ base: 'font-mono text-sm leading-6' }"
-          aria-label="Markdown source"
-          @update:model-value="(value) => onSourceChange(String(value))"
-        />
+        <div v-else-if="mode === 'source'" class="group/source relative">
+          <UTextarea
+            :model-value="content"
+            autoresize
+            :rows="20"
+            variant="soft"
+            class="w-full"
+            :ui="{ base: 'pe-12 font-mono text-sm leading-6' }"
+            aria-label="Markdown source"
+            @update:model-value="(value) => onSourceChange(String(value))"
+          />
+          <UTooltip :text="copied ? 'Copied' : 'Copy Markdown'">
+            <UButton
+              :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+              size="xs"
+              color="neutral"
+              variant="soft"
+              aria-label="Copy Markdown"
+              class="absolute top-2 right-2 opacity-0 transition-opacity group-hover/source:opacity-100 focus-visible:opacity-100"
+              :class="copied && 'opacity-100'"
+              @click="copyMarkdown"
+            />
+          </UTooltip>
+        </div>
 
         <AuthorshipView
           v-else

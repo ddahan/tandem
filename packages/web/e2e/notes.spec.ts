@@ -823,7 +823,7 @@ test('shows a pointer on everything clickable', async ({ page, request }) => {
   await expect(page.getByPlaceholder(/Search notes/)).not.toHaveCSS('cursor', 'pointer')
 })
 
-test('offers to copy the Markdown only in the Markdown source view', async ({
+test('copies the Markdown from a button shown on hover in the Markdown view', async ({
   page,
   context,
   request,
@@ -831,14 +831,13 @@ test('offers to copy the Markdown only in the Markdown source view', async ({
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const note = await createNote(request, 'Copy note', '# Copy me\n\nSome **text**.\n')
   await openNote(page, note.id)
-  const copy = page.getByRole('menuitem', { name: 'Copy Markdown' })
-  await page.getByRole('button', { name: 'More actions' }).click()
-  await expect(page.getByRole('menuitem', { name: 'Copy file path' })).toBeVisible()
-  await expect(copy).toHaveCount(0)
-  await page.keyboard.press('Escape')
-
   await page.getByRole('button', { name: 'Markdown source' }).click()
-  await page.getByRole('button', { name: 'More actions' }).click()
+  const source = page.getByRole('textbox', { name: 'Markdown source' })
+  const copy = page.getByRole('button', { name: 'Copy Markdown' })
+  await page.mouse.move(0, 0)
+  await expect(copy).toHaveCSS('opacity', '0')
+  await source.hover()
+  await expect(copy).toHaveCSS('opacity', '1')
   await copy.click()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     '# Copy me\n\nSome **text**.\n',

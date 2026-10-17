@@ -35,8 +35,8 @@ typically inside OneDrive so that it is backed up and synced.
 ## Editing
 
 - WYSIWYG editor (Nuxt UI Editor, built on TipTap) that reads and writes Markdown; a raw
-  Markdown mode is available but secondary; while it shows, the note's menu offers "Copy
-  Markdown".
+  Markdown mode is available but secondary; hovering it shows a small copy button (top right),
+  as on code blocks.
 - **Autosave** in the background, about half a second after typing stops; a discreet status
   shows "Saving… / Saved". Nothing to click.
 - Formatting: headings, bold/italic/strike/inline code, links, lists, task lists, quotes,
