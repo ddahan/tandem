@@ -1,10 +1,10 @@
 // Links to attachments (`Note.assets/…`) are shown as file chips: the file type's icon, the
-// file name, a pill, and a click downloads the file. The Markdown stays a plain link; only the
-// display changes (decorations).
+// file name, a pill, and a click downloads the file. The Markdown stays a plain link: the link
+// itself is drawn as the chip (FileLink below), so other decorations (find's highlights) sit
+// inside one chip instead of cutting it into pieces.
 import { Extension } from '@tiptap/core'
+import { Link } from '@tiptap/extension-link'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { fileIconCssUrl } from '../utils/file-icons'
 
 export function isAttachmentHref(href: string): boolean {
@@ -22,52 +22,20 @@ export function downloadFile(href: string): void {
   link.remove()
 }
 
-/**
- * Where the chips are: each attachment link's whole text (a link split over several text
- * nodes, some of it bold, is one chip). Other decorations over part of a chip would cut it
- * into several pills: they cover the whole chip instead (find, in find.ts).
- */
-export function chipRanges(doc: ProseMirrorNode): { from: number; to: number }[] {
-  const ranges: { from: number; to: number; href: string }[] = []
-  doc.descendants((node, pos) => {
-    if (!node.isText) return
-    const href = node.marks.find((mark) => mark.type.name === 'link')?.attrs.href as
-      | string
-      | undefined
-    if (!href || !isAttachmentHref(href)) return
-    const last = ranges.at(-1)
-    if (last && last.href === href && last.to === pos) last.to = pos + node.nodeSize
-    else ranges.push({ from: pos, to: pos + node.nodeSize, href })
-  })
-  return ranges.map(({ from, to }) => ({ from, to }))
-}
-
-function decorations(doc: ProseMirrorNode): DecorationSet {
-  const found: Decoration[] = []
-  // A link split over several text nodes (some of it bold…) gets one icon, on its first part.
-  let previous: { href: string; end: number } | null = null
-  doc.descendants((node, pos) => {
-    if (!node.isText) return
-    const link = node.marks.find((mark) => mark.type.name === 'link')
-    const href = link?.attrs.href as string | undefined
-    if (!href || !isAttachmentHref(href)) {
-      previous = null
-      return
-    }
-    const continued = previous?.href === href && previous.end === pos
-    found.push(
-      Decoration.inline(
-        pos,
-        pos + node.nodeSize,
-        continued
-          ? { class: 'file-chip file-chip--continued' }
-          : { class: 'file-chip', style: `--file-icon: ${fileIconCssUrl(href)}` },
-      ),
-    )
-    previous = { href, end: pos + node.nodeSize }
-  })
-  return DecorationSet.create(doc, found)
-}
+/** The link, drawn as a chip (class and the file type's icon) when it points to an attachment. */
+export const FileLink = Link.extend({
+  renderHTML(props) {
+    // The parent's rendering keeps its checks (unsafe URLs are dropped).
+    const [tag, attributes, hole] = this.parent!(props) as [string, Record<string, unknown>, 0]
+    const href = attributes.href
+    if (typeof href !== 'string' || !isAttachmentHref(href)) return [tag, attributes, hole]
+    return [
+      tag,
+      { ...attributes, class: 'file-chip', style: `--file-icon: ${fileIconCssUrl(href)}` },
+      hole,
+    ]
+  },
+})
 
 export const FileChips = Extension.create({
   name: 'fileChips',
@@ -76,21 +44,13 @@ export const FileChips = Extension.create({
     return [
       new Plugin({
         key: new PluginKey('fileChips'),
-        state: {
-          init: (_, state) => decorations(state.doc),
-          apply: (transaction, set) =>
-            transaction.docChanged ? decorations(transaction.doc) : set,
-        },
         props: {
-          decorations(state) {
-            return this.getState(state)
-          },
           handleDOMEvents: {
             // A chip is a button: a click downloads the file (without moving the cursor there).
             mousedown(_view, event) {
               if (event.button !== 0) return false
-              const chip = (event.target as Element | null)?.closest?.('.file-chip')
-              const href = chip?.closest('a')?.getAttribute('href')
+              const chip = (event.target as Element | null)?.closest?.('a.file-chip')
+              const href = chip?.getAttribute('href')
               if (!href || !isAttachmentHref(href)) return false
               event.preventDefault()
               downloadFile(href)

@@ -11,7 +11,7 @@ import { common, createLowlight } from 'lowlight'
 import { BlockKeys } from './block-keys'
 import { Callout } from './callout'
 import { Details, DetailsContent, DetailsSummary } from './details'
-import { FileChips } from './file-chips'
+import { FileChips, FileLink } from './file-chips'
 import { Find } from './find'
 import { JoinLists } from './join-lists'
 import { Occurrences } from './occurrences'
@@ -38,6 +38,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     DetailsSummary,
     DetailsContent,
     ResizableImage,
+    FileLink.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https' }),
     WikiLink.configure({
       onOpen: options.onOpenWikiLink ?? (() => {}),
       exists: options.wikiLinkExists ?? (() => true),
@@ -58,9 +59,9 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
   ]
 }
 
-/** UEditor's starter kit options: our code block replaces the plain one. */
+/** UEditor's starter kit options: our code block and link (FileLink) replace its own. */
 export const starterKitOptions: Partial<StarterKitOptions> = {
   codeBlock: false,
-  link: { openOnClick: false, autolink: true, defaultProtocol: 'https' },
+  link: false,
   heading: { levels: [1, 2, 3, 4] },
 }

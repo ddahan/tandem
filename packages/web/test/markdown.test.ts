@@ -184,10 +184,14 @@ describe('file icons', () => {
       '[report.pdf](N.assets/report.pdf) and [**data**.csv](N.assets/data.csv)',
     )
     const dom = chips.view.dom
-    const icons = [
-      ...dom.querySelectorAll<HTMLElement>('.file-chip:not(.file-chip--continued)'),
-    ].map((chip) => decodeURIComponent(chip.style.getPropertyValue('--file-icon')))
-    expect(icons).toHaveLength(2)
-    expect(dom.querySelectorAll('.file-chip--continued')).toHaveLength(1)
+    // The link itself is the chip: one per link, even with part of its text in bold.
+    const links = [...dom.querySelectorAll<HTMLElement>('a.file-chip')]
+    expect(links.map((chip) => chip.textContent)).toEqual(['report.pdf', 'data.csv'])
+    expect(
+      links.every((chip) => chip.style.getPropertyValue('--file-icon').startsWith('url(')),
+    ).toBe(true)
+    expect(chips.getMarkdown().trim()).toBe(
+      '[report.pdf](N.assets/report.pdf) and [**data**.csv](N.assets/data.csv)',
+    )
   })
 })

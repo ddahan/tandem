@@ -338,9 +338,13 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   const chip = page.locator('.ProseMirror .file-chip')
   await chip.hover()
   expect(await chip.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer')
-  expect(
-    await chip.evaluate((element) => getComputedStyle(element.closest('a')!).borderBottomColor),
-  ).toBe('rgba(0, 0, 0, 0)')
+  // The pill's outline, not a link underline: its bottom edge looks like the others.
+  const edges = await chip.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return [style.borderBottomColor, style.borderTopColor, style.textDecorationLine]
+  })
+  expect(edges[0]).toBe(edges[1])
+  expect(edges[2]).toBe('none')
   const [download] = await Promise.all([page.waitForEvent('download'), chip.click()])
   expect(download.suggestedFilename()).toBe('report.pdf')
   await page.getByRole('tab', { name: 'Files' }).click()

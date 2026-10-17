@@ -26,6 +26,7 @@
     "@tiptap/extension-emoji": "catalog:",
     "@tiptap/extension-file-handler": "catalog:",
     "@tiptap/extension-image": "catalog:",
+    "@tiptap/extension-link": "catalog:",
     "@tiptap/extension-list": "catalog:",
     "@tiptap/extension-table": "catalog:",
     "@tiptap/extensions": "catalog:",

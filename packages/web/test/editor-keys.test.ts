@@ -170,7 +170,7 @@ describe('find and replace (⌘F)', () => {
     expect(e.view.dom.querySelectorAll('.find-match--current')).toHaveLength(1)
   })
 
-  it('highlights a whole file chip, never cutting it into pieces', async () => {
+  it('highlights the matching letters of a file chip, without cutting the chip', async () => {
     const { findState } = await import('../app/editor/find')
     const e = setup(
       'See [cafeline_coffee_nerds_a4.pdf](Note.assets/cafeline_coffee_nerds_a4.pdf) and coffee.',
@@ -182,9 +182,11 @@ describe('find and replace (⌘F)', () => {
     const chips = e.view.dom.querySelectorAll('.file-chip')
     expect(chips).toHaveLength(1)
     expect(chips[0]!.textContent).toBe('cafeline_coffee_nerds_a4.pdf')
-    expect(chips[0]!.classList).toContain('find-match')
-    // Plain text keeps letter-by-letter highlights.
-    expect(e.view.dom.querySelectorAll('.find-match:not(.file-chip)').length).toBeGreaterThan(0)
+    // The two c's of the file name, inside the one chip.
+    expect([...chips[0]!.querySelectorAll('.find-match')].map((m) => m.textContent)).toEqual([
+      'c',
+      'c',
+    ])
   })
 
   it('replaces the current match, then all, and follows edits', async () => {
