@@ -640,9 +640,11 @@ defineExpose({
     pinHeading(pos)
     const dom = editor.view.nodeDOM(pos)
     if (dom instanceof HTMLElement) dom.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Without TipTap's own scroll to the cursor: one frame later, instant, it would cut the
+    // smooth scroll short (no animation, and the heading left wherever the cursor showed).
     editor
       .chain()
-      .focus()
+      .focus(null, { scrollIntoView: false })
       .setTextSelection(pos + 1)
       .run()
   },

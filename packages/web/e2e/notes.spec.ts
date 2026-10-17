@@ -888,3 +888,33 @@ test('highlights the heading being read in the outline', async ({ page, request 
   await page.mouse.wheel(0, -10_000)
   await expect(current).toHaveText('Alpha')
 })
+
+test('scrolls smoothly to a heading picked in the outline, down and up', async ({
+  page,
+  request,
+}) => {
+  const long = Array.from({ length: 30 }, (_, i) => `Paragraph ${i}.`).join('\n\n')
+  const note = await createNote(
+    request,
+    'Outline jumps',
+    `# One\n\n${long}\n\n## Two\n\n${long}\n\n## Three\n\n${long}\n`,
+  )
+  await openNote(page, note.id)
+  const outline = page.getByRole('navigation', { name: 'Outline' })
+  /** Whether the heading is at the top of the note (below its 5rem scroll margin), or the note
+   * at its very top (the first heading is under the title). */
+  const atTop = (name: string) =>
+    page
+      .locator('.ProseMirror')
+      .getByRole('heading', { name })
+      .evaluate((heading) => {
+        const scroller = heading.closest('.overflow-y-auto')!
+        const offset = heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+        return scroller.scrollTop === 0 || Math.abs(offset - 80) < 4
+      })
+  for (const name of ['Three', 'One', 'Two', 'One']) {
+    await outline.getByRole('button', { name }).click()
+    await expect.poll(() => atTop(name)).toBe(true)
+    await expect(page.locator('.ProseMirror')).toBeFocused()
+  }
+})
