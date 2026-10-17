@@ -113,6 +113,11 @@ html.dark[data-tone='cool'] {
 .note-editor .ProseMirror :is(p, li) {
   line-height: 1.75;
 }
+/* List items closer together than Nuxt UI's default (0.375rem above and below). */
+.note-editor .ProseMirror li,
+.rendered-markdown li {
+  margin-block: 0.2em;
+}
 .note-editor .ProseMirror code {
   font-size: 0.875em;
 }
