@@ -24,6 +24,30 @@ const EDITOR_FONTS: Record<Settings['editorFont'], string> = {
   system: 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
 }
 
+/**
+ * The last settings seen, kept in the browser: applied before the first paint (plugin
+ * `remembered-settings.client.ts`, and the head script for the tone), so a reload doesn't flash
+ * the default theme while the server's settings load. The server's settings then replace them.
+ */
+const REMEMBERED = 'myfluence-settings'
+
+export function rememberedSettings(): Settings | null {
+  try {
+    const raw = localStorage.getItem(REMEMBERED)
+    return raw ? { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) } : null
+  } catch {
+    return null
+  }
+}
+
+function remember(value: Settings) {
+  try {
+    localStorage.setItem(REMEMBERED, JSON.stringify(value))
+  } catch {
+    // Storage unavailable (private window…): the theme just loads a moment later.
+  }
+}
+
 export function useSettings() {
   const settings = useState<Settings>('settings', () => ({ ...DEFAULT_SETTINGS }))
   const api = useApi()
@@ -46,6 +70,7 @@ export function useSettings() {
     root.setProperty('--editor-font', EDITOR_FONTS[value.editorFont])
     // Background tones are defined in main.css, per tone and color mode.
     document.documentElement.dataset.tone = value.backgroundTone
+    remember(value)
     void nextTick(() => requestAnimationFrame(updateFavicon))
   }
 

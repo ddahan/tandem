@@ -27,6 +27,11 @@ export default defineNuxtConfig({
         { rel: 'manifest', href: '/manifest.webmanifest' },
       ],
       script: [
+        // The background tone, before the first paint (the rest: remembered-settings plugin).
+        {
+          innerHTML:
+            "try{var s=JSON.parse(localStorage.getItem('myfluence-settings')||'null');if(s&&s.backgroundTone)document.documentElement.dataset.tone=s.backgroundTone}catch(e){}",
+        },
         // The install prompt can come before the app starts: keep it (useInstallApp).
         {
           innerHTML:

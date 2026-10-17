@@ -226,6 +226,34 @@ test('changes the theme and the settings', async ({ page, request }) => {
   await api(request, 'PATCH', '/settings', { workspaceName: 'Myfluence' })
 })
 
+test('shows the chosen theme at once on reload, before the settings load', async ({
+  page,
+  request,
+}) => {
+  await api(request, 'PATCH', '/settings', { primaryColor: 'emerald', backgroundTone: 'paper' })
+  const theme = () =>
+    page.evaluate(() => ({
+      primary: getComputedStyle(document.documentElement).getPropertyValue('--ui-primary'),
+      tone: document.documentElement.dataset.tone,
+    }))
+  await page.goto('/')
+  await expect(page.getByTestId('workspace-name')).toBeVisible()
+  const chosen = await theme()
+  expect(chosen.tone).toBe('paper')
+
+  // The server's settings come late: the remembered ones are already applied.
+  await page.route('**/api/settings', async (route) => {
+    await new Promise((done) => setTimeout(done, 3000))
+    await route.continue()
+  })
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+  expect(await theme()).toEqual(chosen)
+
+  await page.unroute('**/api/settings')
+  await api(request, 'PATCH', '/settings', { primaryColor: 'indigo', backgroundTone: 'white' })
+})
+
 /** Drops files on the editor, as dragging them from Finder would. */
 async function dropFiles(
   page: Page,

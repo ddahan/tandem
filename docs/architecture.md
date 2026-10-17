@@ -165,7 +165,9 @@ folders and the versions.
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (outline, links,
   history, files).
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at
-  runtime), `useServerEvents` (one EventSource; `resync` after reconnections),
+  runtime; remembers the last settings in the browser and applies them before the first paint,
+  so a reload never flashes the default theme: plugin `remembered-settings.client.ts`, and a
+  head script for the background tone), `useServerEvents` (one EventSource; `resync` after reconnections),
   `useNoteDocument` (one open note: debounced background saves, never two at once, conflicts,
   external changes, a keepalive save when the page closes).
 - Editor (`NoteEditor.vue`): `UEditor` in Markdown mode plus our extensions
