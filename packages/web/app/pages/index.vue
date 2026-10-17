@@ -55,8 +55,8 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
         <h1 class="text-3xl font-bold tracking-tight text-highlighted">{{ greeting }}</h1>
         <p class="mt-1 text-muted">
           {{ pageCount }} page{{ pageCount === 1 ? '' : 's' }} in your notes. Press
-          <UKbd value="meta" /> <UKbd value="K" /> to search, <UKbd value="/" /> in a note for
-          blocks.
+          <UKbd value="meta" /> <UKbd value="shift" /> <UKbd value="F" /> to search,
+          <UKbd value="/" /> in a note for blocks.
         </p>
 
         <div class="mt-10 grid gap-3 sm:grid-cols-3">
