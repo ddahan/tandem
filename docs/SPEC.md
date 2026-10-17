@@ -109,8 +109,9 @@ inside OneDrive so that it is backed up and synced.
   actions (new page, new child page, new folder, rename, delete).
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
-- Icons: any page or folder can be given an emoji or an image (from the computer) after its
-  creation: from the note page (left of the title; "Add icon" next to the date) or the tree's menu. Shown in the tree, the
+- Icons: every page has one, the default page icon until it is given an emoji or an image
+  (from the computer): from the note page (click the icon left of the title) or the tree's
+  menu (folders too); "Use the default icon" goes back. Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in
   `<data>/.tandem/icons/`), never in the Markdown.
 - Nothing else (no favorites, recents, daily notes or templates for now).

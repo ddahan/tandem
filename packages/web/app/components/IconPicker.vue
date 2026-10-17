@@ -80,13 +80,13 @@ function remove() {
           @click="fileInput?.click()"
         />
       </UTooltip>
-      <UTooltip v-if="hasIcon" text="Remove the icon">
+      <UTooltip v-if="hasIcon" text="Use the default icon">
         <UButton
-          icon="i-lucide-trash-2"
+          icon="i-lucide-rotate-ccw"
           color="neutral"
           variant="ghost"
           size="sm"
-          aria-label="Remove the icon"
+          aria-label="Use the default icon"
           @click="remove"
         />
       </UTooltip>

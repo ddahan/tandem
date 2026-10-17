@@ -402,8 +402,8 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @compare="comparing = true"
         />
 
-        <!-- The page's icon, left of the title (click to change it). Without one, "Add icon"
-             shows on hover in the line below. -->
+        <!-- The page's icon, left of the title (click to change it): every page has one, the
+             default icon until another is chosen. -->
         <div
           class="group/header flex items-center gap-[0.3em] leading-tight font-bold tracking-tight"
           :style="{
@@ -411,7 +411,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             fontSize: 'calc(var(--editor-font-size) * 2.25)',
           }"
         >
-          <UPopover v-if="node.icon" v-model:open="iconPickerOpen" :content="{ align: 'start' }">
+          <UPopover v-model:open="iconPickerOpen" :content="{ align: 'start' }">
             <button
               type="button"
               class="-ms-[0.1em] shrink-0 rounded-lg p-[0.05em] transition-colors hover:bg-elevated"
@@ -420,7 +420,11 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               <NodeIcon :icon="node.icon" :kind="node.kind" size="title" />
             </button>
             <template #content>
-              <LazyIconPicker :node-id="node.id" has-icon @done="iconPickerOpen = false" />
+              <LazyIconPicker
+                :node-id="node.id"
+                :has-icon="!!node.icon"
+                @done="iconPickerOpen = false"
+              />
             </template>
           </UPopover>
 
@@ -440,26 +444,10 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           />
         </div>
 
-        <div
-          class="group/meta mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted"
-        >
+        <div class="mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
           <span class="flex items-center gap-1"
             ><UIcon name="i-lucide-calendar" class="size-3.5" /> {{ created }}</span
           >
-          <UPopover v-if="!node.icon" v-model:open="iconPickerOpen" :content="{ align: 'start' }">
-            <UButton
-              label="Add icon"
-              icon="i-lucide-smile-plus"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              class="-mx-2 opacity-0 transition-opacity group-hover/meta:opacity-100 focus-visible:opacity-100"
-              :class="iconPickerOpen && 'opacity-100'"
-            />
-            <template #content>
-              <LazyIconPicker :node-id="node.id" :has-icon="false" @done="iconPickerOpen = false" />
-            </template>
-          </UPopover>
           <UInputTags
             :model-value="tags"
             placeholder="Add tag…"

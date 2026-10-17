@@ -594,10 +594,14 @@ test('gives a page an emoji or an image icon, after its creation', async ({ page
   const note = await createNote(request, 'Icon note', 'Text.')
   await openNote(page, note.id)
   const row = page.getByTestId('tree-Icon note')
+  const titleIcon = page.getByRole('button', { name: 'Change icon' }).getByTestId('node-icon')
+
+  // Every page has an icon: the default one, until another is chosen.
+  await expect(titleIcon.locator('.i-lucide\\:file-text')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add icon' })).toHaveCount(0)
 
   // Emoji, from the page itself.
-  await page.getByLabel('Title').hover()
-  await page.getByRole('button', { name: 'Add icon' }).click()
+  await page.getByRole('button', { name: 'Change icon' }).click()
   const picker = page.getByTestId('icon-picker')
   await picker.getByLabel('Search emojis').fill('rocket')
   await picker.getByRole('button', { name: 'rocket', exact: true }).click()
@@ -622,9 +626,10 @@ test('gives a page an emoji or an image icon, after its creation', async ({ page
   await row.hover()
   await row.getByRole('button', { name: 'Actions' }).click()
   await page.getByRole('menuitem', { name: 'Change icon…' }).click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Remove the icon' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Use the default icon' }).click()
   await expect(row.getByTestId('node-icon').locator('img')).toHaveCount(0)
   expect((await resolve(request, note.id)).icon).toBeNull()
+  await expect(titleIcon.locator('.i-lucide\\:file-text')).toBeVisible()
 })
 
 test('opening a note never saves it (nor takes its authorship)', async ({ page, request }) => {
