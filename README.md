@@ -147,3 +147,7 @@ gh release create v0.1.0 packages/standalone/dist/tandem-* packages/standalone/d
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.
+
+## License
+
+[MIT](LICENSE).
