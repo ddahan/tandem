@@ -305,3 +305,32 @@ test('tints the background, in light and dark mode', async ({ page, request }) =
   )
   await api(request, 'PATCH', '/settings', { backgroundTone: 'white' })
 })
+
+test('draws the logo and the tab icon in the accent color', async ({ page, request }) => {
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'emerald' }).click()
+  const logoColor = () =>
+    page
+      .getByTestId('app-logo')
+      .locator('rect')
+      .nth(1)
+      .evaluate((rect) => getComputedStyle(rect).fill)
+  // The computed color of emerald 500, written the way browsers write computed colors.
+  const emerald = await page.evaluate(() => {
+    const probe = document.createElement('span')
+    probe.style.color = 'var(--color-emerald-500)'
+    document.body.append(probe)
+    const color = getComputedStyle(probe).color
+    probe.remove()
+    return color
+  })
+  await expect.poll(logoColor).toBe(emerald)
+  await expect
+    .poll(() =>
+      page
+        .locator('link[rel="icon"]')
+        .evaluateAll((links) => links.map((l) => l.getAttribute('href'))),
+    )
+    .toEqual([expect.stringMatching(/^data:image\/svg\+xml/)])
+  await api(request, 'PATCH', '/settings', { primaryColor: 'indigo' })
+})

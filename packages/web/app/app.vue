@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Loads the tree and settings once, then keeps them in sync with the server's events.
 const tree = useTree()
-const { load: loadSettings } = useSettings()
+const { load: loadSettings, favicon } = useSettings()
+useHead({ link: [{ key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: favicon }] })
 const showError = useApiErrorToast()
 
 try {

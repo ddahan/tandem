@@ -110,6 +110,8 @@ typically inside OneDrive so that it is backed up and synced.
 - Light, dark or system color mode. Settings page: color mode, background tone (white, paper,
   sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the owner's display name.
+- The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
+  icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon, via Safari's
   "File → Add to Dock" or Chrome's "Install".
 - English interface; French formats for dates, times and numbers (`17/10/2026 14:32`).

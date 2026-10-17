@@ -1,5 +1,6 @@
 // The owner's settings (stored by the server) and their effect on the interface.
 import { DEFAULT_SETTINGS, type Settings } from '@myfluence/shared'
+import { logoSvg, resolvedAccentShade } from '~/utils/logo'
 
 const EDITOR_WIDTHS: Record<Settings['editorWidth'], string> = {
   narrow: '42rem',
@@ -27,6 +28,13 @@ export function useSettings() {
   const settings = useState<Settings>('settings', () => ({ ...DEFAULT_SETTINGS }))
   const api = useApi()
   const appConfig = useAppConfig()
+  /** The browser tab's icon: the logo in the accent color (see app.vue). */
+  const favicon = useState('favicon', () => '/icon.svg')
+
+  function updateFavicon() {
+    if (!resolvedAccentShade(500)) return
+    favicon.value = `data:image/svg+xml,${encodeURIComponent(logoSvg(resolvedAccentShade, 'favicon'))}`
+  }
 
   function apply(value: Settings) {
     appConfig.ui.colors.primary = value.primaryColor
@@ -38,6 +46,7 @@ export function useSettings() {
     root.setProperty('--editor-font', EDITOR_FONTS[value.editorFont])
     // Background tones are defined in main.css, per tone and color mode.
     document.documentElement.dataset.tone = value.backgroundTone
+    void nextTick(() => requestAnimationFrame(updateFavicon))
   }
 
   async function load() {
@@ -51,5 +60,5 @@ export function useSettings() {
     settings.value = await unwrap(api.settings.$patch({ json: patch }))
   }
 
-  return { settings, load, update, apply }
+  return { settings, favicon, load, update, apply }
 }
