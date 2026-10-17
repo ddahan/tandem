@@ -1,12 +1,11 @@
 <script setup lang="ts">
-// Files attached to the note (its `.assets` folder): open, copy or insert their Markdown, add.
+// Files attached to the note (its `.assets` folder): open them, add more.
 import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
 const props = defineProps<{ noteId: string; notePath: string }>()
 const emit = defineEmits<{ insert: [markdown: string] }>()
 const api = useApi()
-const toast = useToast()
 const showError = useApiErrorToast()
 const confirm = useConfirm()
 
@@ -53,11 +52,6 @@ async function upload(selected: File[] | null | undefined) {
   files.value = null
   await load()
 }
-
-async function copy(attachment: Attachment) {
-  await navigator.clipboard.writeText(markdownOf(attachment))
-  toast.add({ title: 'Markdown copied', icon: 'i-lucide-clipboard-check', duration: 1500 })
-}
 </script>
 
 <template>
@@ -76,7 +70,7 @@ async function copy(attachment: Attachment) {
       <li
         v-for="attachment in attachments"
         :key="attachment.path"
-        class="group flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-[120ms] hover:bg-accented"
+        class="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-[120ms] hover:bg-accented"
       >
         <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->
         <span
@@ -91,38 +85,7 @@ async function copy(attachment: Attachment) {
           class="min-w-0 flex-1 truncate text-sm text-default"
           >{{ attachment.name }}</a
         >
-        <!-- The size and the actions share one cell, sized for the larger: hovering swaps them
-             without moving the name. -->
-        <span class="grid shrink-0 items-center justify-items-end">
-          <span
-            class="col-start-1 row-start-1 text-xs text-dimmed group-focus-within:invisible group-hover:invisible"
-            >{{ formatSize(attachment.size) }}</span
-          >
-          <span
-            class="invisible col-start-1 row-start-1 flex gap-0.5 group-focus-within:visible group-hover:visible"
-          >
-            <UTooltip text="Copy Markdown">
-              <UButton
-                icon="i-lucide-copy"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                aria-label="Copy Markdown"
-                @click="copy(attachment)"
-              />
-            </UTooltip>
-            <UTooltip text="Insert at the end">
-              <UButton
-                icon="i-lucide-corner-down-left"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                aria-label="Insert"
-                @click="emit('insert', markdownOf(attachment))"
-              />
-            </UTooltip>
-          </span>
-        </span>
+        <span class="shrink-0 text-xs text-dimmed">{{ formatSize(attachment.size) }}</span>
       </li>
     </ul>
     <p v-if="!attachments.length" class="px-2 text-sm text-dimmed">

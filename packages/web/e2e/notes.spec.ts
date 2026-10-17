@@ -349,13 +349,12 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   expect(download.suggestedFilename()).toBe('report.pdf')
   await page.getByRole('tab', { name: 'Files' }).click()
   await expect(page.getByTestId('file-icon').locator('svg')).toHaveCount(1)
-  // Hovering the file shows its actions in place of its size, without moving its name.
+  // Hovering the file doesn't move its name, nor underline it (as the chips).
   const name = page
     .locator('#tandem-panels-panel-note-side')
     .getByRole('link', { name: 'report.pdf' })
   const before = await name.boundingBox()
   await name.hover()
-  await expect(page.getByRole('button', { name: 'Copy Markdown' })).toBeVisible()
   expect(await name.boundingBox()).toEqual(before)
   expect(await name.evaluate((link) => getComputedStyle(link).textDecorationLine)).toBe('none')
   await expect
