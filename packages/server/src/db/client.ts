@@ -19,14 +19,19 @@ export interface Database {
   close(): void
 }
 
-const MIGRATIONS = fileURLToPath(new URL('../../drizzle', import.meta.url))
-
 /**
  * Opens (and migrates) the database at `path` (`:memory:` for tests). When the file is missing
  * and `restoreFrom` exists, that backup is copied first: the live database is on a local volume
- * that can be lost, the backup is in the synced data folder.
+ * that can be lost, the backup is in the synced data folder. Migrations come from the package's
+ * `drizzle/` folder, or `migrationsFolder` (the standalone app extracts them elsewhere).
  */
-export async function openDatabase(path: string, restoreFrom?: string): Promise<Database> {
+export async function openDatabase(
+  path: string,
+  restoreFrom?: string,
+  options: { migrationsFolder?: string } = {},
+): Promise<Database> {
+  const migrationsFolder =
+    options.migrationsFolder ?? fileURLToPath(new URL('../../drizzle', import.meta.url))
   let restored = false
   if (path !== ':memory:') {
     mkdirSync(dirname(path), { recursive: true })
@@ -81,7 +86,7 @@ export async function openDatabase(path: string, restoreFrom?: string): Promise<
         throw error
       }
     },
-    { migrationsFolder: MIGRATIONS },
+    { migrationsFolder },
   )
 
   if (restored) console.log(`Restored the database from ${restoreFrom}`)

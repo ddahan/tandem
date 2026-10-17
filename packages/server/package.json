@@ -5,7 +5,8 @@
   "exports": {
     "./api": "./src/api/index.ts",
     "./client": "./src/client.ts",
-    "./app": "./src/app.ts"
+    "./app": "./src/app.ts",
+    "./server": "./src/server.ts"
   },
   "scripts": {
     "start": "node src/main.ts",
