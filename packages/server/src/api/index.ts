@@ -12,7 +12,7 @@ import { Hono, type Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
-import { DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@tandem/shared'
+import { CODE_THEMES, DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@tandem/shared'
 import {
   createFolder,
   DEFAULT_READ_ONLY_REASON,
@@ -56,6 +56,7 @@ const settingsPatch = z
     editorWidth: z.enum(['narrow', 'medium', 'wide', 'full']),
     editorFontSize: z.enum(['small', 'medium', 'large', 'xlarge']),
     backgroundTone: z.enum(['white', 'paper', 'sepia', 'cool']),
+    codeTheme: z.enum(CODE_THEMES),
   })
   .partial()
 

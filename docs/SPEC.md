@@ -172,6 +172,8 @@ inside OneDrive so that it is backed up and synced.
   shows the current mode; its menu offers the three). Settings page: color mode, background tone
   (white, paper, sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
+  code blocks' theme (Tandem's, which follows light and dark mode, or GitHub, GitHub Dark, One
+  Dark, Dracula, Nord, Solarized Light, Tomorrow Night Eighties, each previewed), the
   owner's display name, and the workspace name (next to the logo and in the browser tab; Tandem by
   default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock

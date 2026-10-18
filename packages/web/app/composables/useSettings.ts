@@ -70,6 +70,8 @@ export function useSettings() {
     root.setProperty('--editor-font', EDITOR_FONTS[value.editorFont])
     // Background tones are defined in main.css, per tone and color mode.
     document.documentElement.dataset.tone = value.backgroundTone
+    // Code themes too (see main.css).
+    document.documentElement.dataset.codeTheme = value.codeTheme
     remember(value)
     void nextTick(() => requestAnimationFrame(updateFavicon))
   }

@@ -938,3 +938,23 @@ test('scrolls smoothly to a heading picked in the outline, down and up', async (
     await expect(page.locator('.ProseMirror')).toBeFocused()
   }
 })
+
+test('colors code blocks with the code theme chosen in Settings', async ({ page, request }) => {
+  const note = await createNote(
+    request,
+    'Code theme note',
+    "```javascript\n// A comment\nconst greeting = 'Hello'\n```\n",
+  )
+  await page.goto('/settings')
+  await page.getByRole('button', { name: 'Code theme: Tomorrow Night Eighties' }).click()
+  await expect
+    .poll(async () => (await api<{ codeTheme: string }>(request, 'GET', '/settings')).codeTheme)
+    .toBe('tomorrow-night-eighties')
+
+  await openNote(page, note.id)
+  const block = page.locator('.ProseMirror pre')
+  await expect(block).toHaveCSS('background-color', 'rgb(45, 45, 45)')
+  await expect(block.locator('.hljs-string')).toHaveCSS('color', 'rgb(153, 204, 153)')
+  await expect(block.locator('.hljs-comment')).toHaveCSS('color', 'rgb(153, 153, 153)')
+  await api(request, 'PATCH', '/settings', { codeTheme: 'tandem' })
+})

@@ -121,6 +121,19 @@ export interface FolderListing {
   places: { label: string; path: string }[]
 }
 
+/** Color themes of code blocks: Tandem's follows light and dark mode, the others keep theirs. */
+export const CODE_THEMES = [
+  'tandem',
+  'github',
+  'github-dark',
+  'one-dark',
+  'dracula',
+  'nord',
+  'solarized-light',
+  'tomorrow-night-eighties',
+] as const
+export type CodeTheme = (typeof CODE_THEMES)[number]
+
 export interface Settings {
   /** Shown next to the logo and in the browser tab. */
   workspaceName: string
@@ -134,6 +147,8 @@ export interface Settings {
   editorFontSize: 'small' | 'medium' | 'large' | 'xlarge'
   /** Tint of the backgrounds and borders, in light and dark mode. */
   backgroundTone: 'white' | 'paper' | 'sepia' | 'cool'
+  /** Colors of code blocks (syntax highlighting and background). */
+  codeTheme: CodeTheme
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -146,6 +161,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorWidth: 'medium',
   editorFontSize: 'medium',
   backgroundTone: 'white',
+  codeTheme: 'tandem',
 }
 
 /** Server-sent events, on `/api/events`. */

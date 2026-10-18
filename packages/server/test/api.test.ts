@@ -119,6 +119,16 @@ describe('API', () => {
       (await (await client.settings.$patch({ json: { backgroundTone: 'paper' } })).json())
         .backgroundTone,
     ).toBe('paper')
+    expect(
+      (
+        await (
+          await client.settings.$patch({ json: { codeTheme: 'tomorrow-night-eighties' } })
+        ).json()
+      ).codeTheme,
+    ).toBe('tomorrow-night-eighties')
+    expect((await client.settings.$patch({ json: { codeTheme: 'neon' as 'nord' } })).status).toBe(
+      400,
+    )
     expect(settings.primaryColor).toBe('emerald')
     expect((await client.settings.$patch({ json: { primaryColor: 'Not a color!' } })).status).toBe(
       400,
