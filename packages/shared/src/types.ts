@@ -121,17 +121,26 @@ export interface FolderListing {
   places: { label: string; path: string }[]
 }
 
-/** Color themes of code blocks: Tandem's follows light and dark mode, the others keep theirs. */
+/**
+ * Color themes of code blocks, each a light and a dark variant (as the background tones): the
+ * light one in light mode, the dark one in dark mode.
+ */
 export const CODE_THEMES = [
   'tandem',
   'github',
-  'github-dark',
-  'one-dark',
+  'one',
   'dracula',
   'nord',
-  'solarized-light',
-  'tomorrow-night-eighties',
+  'solarized',
+  'tomorrow',
 ] as const
+/** Themes saved before they came in pairs, and their pair. */
+export const LEGACY_CODE_THEMES: Record<string, (typeof CODE_THEMES)[number]> = {
+  'github-dark': 'github',
+  'one-dark': 'one',
+  'solarized-light': 'solarized',
+  'tomorrow-night-eighties': 'tomorrow',
+}
 export type CodeTheme = (typeof CODE_THEMES)[number]
 
 export interface Settings {

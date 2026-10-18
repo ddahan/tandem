@@ -55,15 +55,15 @@ const sizes: { value: Settings['editorFontSize']; label: string }[] = [
   { value: 'large', label: 'Large' },
   { value: 'xlarge', label: 'Extra large' },
 ]
-const codeThemes: { value: Settings['codeTheme']; label: string }[] = [
-  { value: 'tandem', label: 'Tandem' },
-  { value: 'github', label: 'GitHub' },
-  { value: 'github-dark', label: 'GitHub Dark' },
-  { value: 'one-dark', label: 'One Dark' },
-  { value: 'dracula', label: 'Dracula' },
-  { value: 'nord', label: 'Nord' },
-  { value: 'solarized-light', label: 'Solarized Light' },
-  { value: 'tomorrow-night-eighties', label: 'Tomorrow Night Eighties' },
+// Each theme is a light and a dark variant, shown in its mode (as the background tones).
+const codeThemes: { value: Settings['codeTheme']; label: string; variants: string }[] = [
+  { value: 'tandem', label: 'Tandem', variants: 'Light and dark' },
+  { value: 'github', label: 'GitHub', variants: 'Light and dark' },
+  { value: 'one', label: 'One', variants: 'One Light, One Dark' },
+  { value: 'dracula', label: 'Dracula', variants: 'Alucard, Dracula' },
+  { value: 'nord', label: 'Nord', variants: 'Snow Storm, Nord' },
+  { value: 'solarized', label: 'Solarized', variants: 'Light and dark' },
+  { value: 'tomorrow', label: 'Tomorrow', variants: 'Tomorrow, Night Eighties' },
 ]
 const modes = [
   { value: 'light', label: 'Light', icon: 'i-lucide-sun' },
@@ -309,45 +309,48 @@ async function set(patch: Partial<Settings>) {
           </UFormField>
           <UFormField
             label="Code blocks"
-            description="Colors of code. Tandem's follows light and dark mode."
+            description="Colors of code: each theme has a light and a dark variant, as the background."
           >
             <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <!-- Each preview carries its theme's colors (data-code-theme, main.css). -->
               <button
                 v-for="theme in codeThemes"
                 :key="theme.value"
                 type="button"
                 class="rounded-lg border border-default p-1.5 text-start transition-colors hover:bg-elevated"
                 :class="settings.codeTheme === theme.value && 'border-primary ring-1 ring-primary'"
-                :data-code-theme="theme.value"
                 :aria-label="`Code theme: ${theme.label}`"
+                :title="theme.variants"
                 @click="set({ codeTheme: theme.value })"
               >
+                <!-- Each half carries one variant's colors (data-code-preview, main.css). -->
                 <span
-                  class="block overflow-hidden rounded-md border px-2 py-1.5 font-mono text-[11px] leading-relaxed whitespace-nowrap"
-                  :style="{
-                    background: 'var(--code-bg)',
-                    borderColor: 'var(--code-border)',
-                    color: 'var(--code-fg)',
-                  }"
+                  class="flex overflow-hidden rounded-md border border-default"
                   aria-hidden="true"
                 >
-                  <span class="block italic" :style="{ color: 'var(--code-comment)' }"
-                    >// Greets</span
+                  <span
+                    v-for="mode in ['light', 'dark']"
+                    :key="mode"
+                    :data-code-preview="`${theme.value}-${mode}`"
+                    class="block min-w-0 flex-1 overflow-hidden px-1.5 py-1 font-mono text-[10px] leading-relaxed whitespace-nowrap"
+                    :style="{ background: 'var(--code-bg)', color: 'var(--code-fg)' }"
                   >
-                  <span class="block"
-                    ><span :style="{ color: 'var(--code-keyword)' }">def&nbsp;</span>
-                    <span :style="{ color: 'var(--code-title)' }">hi</span>(<span
-                      :style="{ color: 'var(--code-params)' }"
-                      >n</span
-                    >):</span
-                  >
-                  <span class="block"
-                    >&nbsp;&nbsp;<span :style="{ color: 'var(--code-builtin)' }">print</span>(<span
-                      :style="{ color: 'var(--code-string)' }"
-                      >'Hi'</span
-                    >, <span :style="{ color: 'var(--code-number)' }">42</span>)</span
-                  >
+                    <span class="block italic" :style="{ color: 'var(--code-comment)' }"
+                      >// Hi</span
+                    >
+                    <span class="block"
+                      ><span :style="{ color: 'var(--code-keyword)' }">def&nbsp;</span
+                      ><span :style="{ color: 'var(--code-title)' }">hi</span>(<span
+                        :style="{ color: 'var(--code-params)' }"
+                        >n</span
+                      >):</span
+                    >
+                    <span class="block"
+                      >&nbsp;<span :style="{ color: 'var(--code-builtin)' }">len</span>(<span
+                        :style="{ color: 'var(--code-string)' }"
+                        >'a'</span
+                      >)</span
+                    >
+                  </span>
                 </span>
                 <span class="mt-1.5 block truncate px-0.5 text-xs text-muted">{{
                   theme.label

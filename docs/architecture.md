@@ -178,7 +178,8 @@ folders and the versions.
 - Editor (`NoteEditor.vue`): `UEditor` in Markdown mode plus our extensions
   (`app/editor/`): wiki links, callouts, details, resizable images, file chips, file drops,
   tables, task lists, code blocks with lowlight (colored by the code theme: CSS variables per
-  `data-code-theme` in main.css, set on `<html>` by `useSettings`). Each has Markdown parse/render rules,
+  `data-code-theme` and color mode in main.css, set on `<html>` by `useSettings`; a theme
+  saved under an older name is read as its pair). Each has Markdown parse/render rules,
   unit-tested for round-trips (`test/markdown.test.ts`). Node views (code blocks with language
   picker, copy and Mermaid preview; callouts with a type picker) are Vue components.
 - Attachment paths: notes use paths relative to themselves; the editor gets `/files/…` URLs

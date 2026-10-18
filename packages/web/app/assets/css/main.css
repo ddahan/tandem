@@ -458,9 +458,10 @@ html.dark[data-tone='cool'] {
 }
 
 /* Code blocks: background and syntax highlighting (highlight.js classes from lowlight), from
-   the code theme's colors (Settings › Code blocks). The theme is set on <html> for the notes,
-   and on each preview in Settings. Tandem's theme follows light and dark mode; the others are
-   the editors' themes of the same name, in either mode. */
+   the code theme's colors (Settings › Code blocks). Each theme is a pair, as the background
+   tones: its light variant in light mode, its dark one in dark mode. <html> carries the theme
+   (data-code-theme, set by useSettings); Settings' previews carry one variant each
+   (data-code-preview="<theme>-light|dark"). */
 .note-editor .ProseMirror pre {
   background: var(--code-bg);
   border-color: var(--code-border);
@@ -473,13 +474,16 @@ html.dark[data-tone='cool'] {
 .note-editor pre code :is(.hljs-keyword, .hljs-selector-tag, .hljs-doctag) {
   color: var(--code-keyword);
 }
-.note-editor pre code :is(.hljs-built_in, .hljs-type) {
+.note-editor pre code :is(.hljs-type) {
+  color: var(--code-type);
+}
+.note-editor pre code :is(.hljs-built_in) {
   color: var(--code-builtin);
 }
-.note-editor pre code .hljs-string {
+.note-editor pre code :is(.hljs-string) {
   color: var(--code-string);
 }
-.note-editor pre code .hljs-regexp {
+.note-editor pre code :is(.hljs-regexp) {
   color: var(--code-regexp);
 }
 .note-editor pre code :is(.hljs-number, .hljs-literal) {
@@ -488,11 +492,14 @@ html.dark[data-tone='cool'] {
 .note-editor pre code :is(.hljs-symbol, .hljs-bullet, .hljs-link) {
   color: var(--code-symbol);
 }
-.note-editor pre code .hljs-attribute {
+.note-editor pre code :is(.hljs-attribute) {
   color: var(--code-attribute);
 }
 .note-editor pre code :is(.hljs-title, .hljs-section) {
   color: var(--code-title);
+}
+.note-editor pre code :is(.hljs-title.class_, .hljs-title.class_.inherited__) {
+  color: var(--code-class);
 }
 .note-editor pre code :is(.hljs-name, .hljs-tag, .hljs-selector-id, .hljs-selector-class) {
   color: var(--code-name);
@@ -500,31 +507,32 @@ html.dark[data-tone='cool'] {
 .note-editor pre code :is(.hljs-variable, .hljs-template-variable) {
   color: var(--code-variable);
 }
-.note-editor pre code .hljs-attr {
+.note-editor pre code :is(.hljs-attr) {
   color: var(--code-attr);
 }
-.note-editor pre code .hljs-params {
+.note-editor pre code :is(.hljs-params) {
   color: var(--code-params);
 }
-.note-editor pre code .hljs-meta {
+.note-editor pre code :is(.hljs-meta) {
   color: var(--code-meta);
 }
-.note-editor pre code .hljs-addition {
+.note-editor pre code :is(.hljs-addition) {
   color: var(--code-addition);
 }
-.note-editor pre code .hljs-deletion {
+.note-editor pre code :is(.hljs-deletion) {
   color: var(--code-deletion);
 }
 
-/* Order matters: Tandem's light, its dark, then the fixed themes (same specificity). */
-:root,
-[data-code-theme='tandem'] {
+/* Tandem's: the app's own grays (they follow the background tone) and accents. */
+:root {
   --code-bg: var(--ui-bg-muted);
   --code-border: var(--ui-border-muted);
   --code-fg: var(--ui-text);
   --code-comment: var(--ui-text-dimmed);
   --code-keyword: var(--color-violet-600);
+  --code-type: var(--color-violet-600);
   --code-builtin: var(--color-violet-600);
+  --code-class: var(--color-sky-700);
   --code-string: var(--color-emerald-700);
   --code-regexp: var(--color-emerald-700);
   --code-number: var(--color-amber-700);
@@ -539,10 +547,11 @@ html.dark[data-tone='cool'] {
   --code-addition: var(--color-emerald-700);
   --code-deletion: var(--color-red-700);
 }
-.dark,
-.dark [data-code-theme='tandem'] {
+:root.dark {
   --code-keyword: var(--color-violet-300);
+  --code-type: var(--color-violet-300);
   --code-builtin: var(--color-violet-300);
+  --code-class: var(--color-sky-300);
   --code-string: var(--color-emerald-300);
   --code-regexp: var(--color-emerald-300);
   --code-number: var(--color-amber-300);
@@ -556,13 +565,65 @@ html.dark[data-tone='cool'] {
   --code-addition: var(--color-emerald-300);
   --code-deletion: var(--color-red-300);
 }
-[data-code-theme='github'] {
+/* Its previews: the app's grays exist for the current mode only, fixed grays stand in. */
+[data-code-preview='tandem-light'] {
+  --code-bg: var(--color-neutral-50);
+  --code-border: var(--color-neutral-200);
+  --code-fg: var(--color-neutral-700);
+  --code-comment: var(--color-neutral-400);
+  --code-keyword: var(--color-violet-600);
+  --code-type: var(--color-violet-600);
+  --code-builtin: var(--color-violet-600);
+  --code-class: var(--color-sky-700);
+  --code-string: var(--color-emerald-700);
+  --code-regexp: var(--color-emerald-700);
+  --code-number: var(--color-amber-700);
+  --code-symbol: var(--color-amber-700);
+  --code-attribute: var(--color-emerald-700);
+  --code-title: var(--color-sky-700);
+  --code-name: var(--color-sky-700);
+  --code-variable: var(--color-rose-700);
+  --code-attr: var(--color-rose-700);
+  --code-params: var(--color-rose-700);
+  --code-meta: var(--color-neutral-500);
+  --code-addition: var(--color-emerald-700);
+  --code-deletion: var(--color-red-700);
+}
+[data-code-preview='tandem-dark'] {
+  --code-bg: var(--color-neutral-800);
+  --code-border: var(--color-neutral-700);
+  --code-fg: var(--color-neutral-200);
+  --code-comment: var(--color-neutral-500);
+  --code-keyword: var(--color-violet-300);
+  --code-type: var(--color-violet-300);
+  --code-builtin: var(--color-violet-300);
+  --code-class: var(--color-sky-300);
+  --code-string: var(--color-emerald-300);
+  --code-regexp: var(--color-emerald-300);
+  --code-number: var(--color-amber-300);
+  --code-symbol: var(--color-amber-300);
+  --code-attribute: var(--color-emerald-300);
+  --code-title: var(--color-sky-300);
+  --code-name: var(--color-sky-300);
+  --code-variable: var(--color-rose-300);
+  --code-attr: var(--color-rose-300);
+  --code-params: var(--color-rose-300);
+  --code-meta: var(--color-neutral-400);
+  --code-addition: var(--color-emerald-300);
+  --code-deletion: var(--color-red-300);
+}
+
+/* GitHub, light and dark */
+:root[data-code-theme='github']:not(.dark),
+[data-code-preview='github-light'] {
   --code-bg: #f6f8fa;
   --code-border: #d0d7de;
   --code-fg: #24292e;
   --code-comment: #6a737d;
   --code-keyword: #d73a49;
+  --code-type: #d73a49;
   --code-builtin: #e36209;
+  --code-class: #6f42c1;
   --code-string: #032f62;
   --code-regexp: #032f62;
   --code-number: #005cc5;
@@ -577,13 +638,16 @@ html.dark[data-tone='cool'] {
   --code-addition: #22863a;
   --code-deletion: #b31d28;
 }
-[data-code-theme='github-dark'] {
-  --code-bg: #0d1117;
+:root.dark[data-code-theme='github'],
+[data-code-preview='github-dark'] {
+  --code-bg: #161b22;
   --code-border: #30363d;
   --code-fg: #c9d1d9;
   --code-comment: #8b949e;
   --code-keyword: #ff7b72;
+  --code-type: #ff7b72;
   --code-builtin: #ffa657;
+  --code-class: #d2a8ff;
   --code-string: #a5d6ff;
   --code-regexp: #a5d6ff;
   --code-number: #79c0ff;
@@ -598,13 +662,42 @@ html.dark[data-tone='cool'] {
   --code-addition: #aff5b4;
   --code-deletion: #ffdcd7;
 }
-[data-code-theme='one-dark'] {
+
+/* Atom One Light / One Dark */
+:root[data-code-theme='one']:not(.dark),
+[data-code-preview='one-light'] {
+  --code-bg: #fafafa;
+  --code-border: #e5e5e6;
+  --code-fg: #383a42;
+  --code-comment: #a0a1a7;
+  --code-keyword: #a626a4;
+  --code-type: #986801;
+  --code-builtin: #c18401;
+  --code-class: #c18401;
+  --code-string: #50a14f;
+  --code-regexp: #50a14f;
+  --code-number: #986801;
+  --code-symbol: #4078f2;
+  --code-attribute: #50a14f;
+  --code-title: #4078f2;
+  --code-name: #e45649;
+  --code-variable: #986801;
+  --code-attr: #986801;
+  --code-params: #383a42;
+  --code-meta: #4078f2;
+  --code-addition: #50a14f;
+  --code-deletion: #e45649;
+}
+:root.dark[data-code-theme='one'],
+[data-code-preview='one-dark'] {
   --code-bg: #282c34;
   --code-border: #3a3f4b;
   --code-fg: #abb2bf;
   --code-comment: #5c6370;
   --code-keyword: #c678dd;
+  --code-type: #d19a66;
   --code-builtin: #e6c07b;
+  --code-class: #e6c07b;
   --code-string: #98c379;
   --code-regexp: #98c379;
   --code-number: #d19a66;
@@ -619,13 +712,42 @@ html.dark[data-tone='cool'] {
   --code-addition: #98c379;
   --code-deletion: #e06c75;
 }
-[data-code-theme='dracula'] {
+
+/* Alucard (Dracula's light theme) / Dracula */
+:root[data-code-theme='dracula']:not(.dark),
+[data-code-preview='dracula-light'] {
+  --code-bg: #fffbeb;
+  --code-border: #e8e2c8;
+  --code-fg: #1f1f1f;
+  --code-comment: #635d97;
+  --code-keyword: #a3144d;
+  --code-type: #036a96;
+  --code-builtin: #036a96;
+  --code-class: #036a96;
+  --code-string: #846e15;
+  --code-regexp: #cb3a2a;
+  --code-number: #644ac9;
+  --code-symbol: #644ac9;
+  --code-attribute: #14710a;
+  --code-title: #14710a;
+  --code-name: #a3144d;
+  --code-variable: #1f1f1f;
+  --code-attr: #14710a;
+  --code-params: #a34d14;
+  --code-meta: #a3144d;
+  --code-addition: #14710a;
+  --code-deletion: #cb3a2a;
+}
+:root.dark[data-code-theme='dracula'],
+[data-code-preview='dracula-dark'] {
   --code-bg: #282a36;
-  --code-border: #3b3d4f;
+  --code-border: #44475a;
   --code-fg: #f8f8f2;
   --code-comment: #6272a4;
   --code-keyword: #ff79c6;
+  --code-type: #8be9fd;
   --code-builtin: #8be9fd;
+  --code-class: #8be9fd;
   --code-string: #f1fa8c;
   --code-regexp: #ff5555;
   --code-number: #bd93f9;
@@ -640,13 +762,42 @@ html.dark[data-tone='cool'] {
   --code-addition: #50fa7b;
   --code-deletion: #ff5555;
 }
-[data-code-theme='nord'] {
+
+/* Nord on its Snow Storm grays (frost colors darkened) / Nord */
+:root[data-code-theme='nord']:not(.dark),
+[data-code-preview='nord-light'] {
+  --code-bg: #eceff4;
+  --code-border: #d8dee9;
+  --code-fg: #2e3440;
+  --code-comment: #7b88a1;
+  --code-keyword: #5e81ac;
+  --code-type: #3b7a87;
+  --code-builtin: #3b7a87;
+  --code-class: #3b7a87;
+  --code-string: #5f7f44;
+  --code-regexp: #a37a1e;
+  --code-number: #8e6588;
+  --code-symbol: #5e81ac;
+  --code-attribute: #3a7d8f;
+  --code-title: #3a7d8f;
+  --code-name: #5e81ac;
+  --code-variable: #2e3440;
+  --code-attr: #3b7a87;
+  --code-params: #2e3440;
+  --code-meta: #5e81ac;
+  --code-addition: #5f7f44;
+  --code-deletion: #bf616a;
+}
+:root.dark[data-code-theme='nord'],
+[data-code-preview='nord-dark'] {
   --code-bg: #2e3440;
   --code-border: #3b4252;
   --code-fg: #d8dee9;
   --code-comment: #616e88;
   --code-keyword: #81a1c1;
+  --code-type: #81a1c1;
   --code-builtin: #8fbcbb;
+  --code-class: #8fbcbb;
   --code-string: #a3be8c;
   --code-regexp: #ebcb8b;
   --code-number: #b48ead;
@@ -661,13 +812,18 @@ html.dark[data-tone='cool'] {
   --code-addition: #a3be8c;
   --code-deletion: #bf616a;
 }
-[data-code-theme='solarized-light'] {
+
+/* Solarized Light / Solarized Dark */
+:root[data-code-theme='solarized']:not(.dark),
+[data-code-preview='solarized-light'] {
   --code-bg: #fdf6e3;
   --code-border: #eee8d5;
   --code-fg: #657b83;
   --code-comment: #93a1a1;
   --code-keyword: #859900;
+  --code-type: #b58900;
   --code-builtin: #dc322f;
+  --code-class: #b58900;
   --code-string: #2aa198;
   --code-regexp: #2aa198;
   --code-number: #2aa198;
@@ -682,22 +838,75 @@ html.dark[data-tone='cool'] {
   --code-addition: #859900;
   --code-deletion: #dc322f;
 }
-[data-code-theme='tomorrow-night-eighties'] {
+:root.dark[data-code-theme='solarized'],
+[data-code-preview='solarized-dark'] {
+  --code-bg: #002b36;
+  --code-border: #073642;
+  --code-fg: #839496;
+  --code-comment: #586e75;
+  --code-keyword: #859900;
+  --code-type: #b58900;
+  --code-builtin: #dc322f;
+  --code-class: #b58900;
+  --code-string: #2aa198;
+  --code-regexp: #2aa198;
+  --code-number: #2aa198;
+  --code-symbol: #cb4b16;
+  --code-attribute: #b58900;
+  --code-title: #268bd2;
+  --code-name: #268bd2;
+  --code-variable: #b58900;
+  --code-attr: #b58900;
+  --code-params: #839496;
+  --code-meta: #cb4b16;
+  --code-addition: #859900;
+  --code-deletion: #dc322f;
+}
+
+/* Tomorrow / Tomorrow Night Eighties (Chris Kempson's palettes, as in his editor themes) */
+:root[data-code-theme='tomorrow']:not(.dark),
+[data-code-preview='tomorrow-light'] {
+  --code-bg: #fafafa;
+  --code-border: #e0e0e0;
+  --code-fg: #4d4d4c;
+  --code-comment: #8e908c;
+  --code-keyword: #8959a8;
+  --code-type: #8959a8;
+  --code-builtin: #c99a00;
+  --code-class: #c99a00;
+  --code-string: #718c00;
+  --code-regexp: #c82829;
+  --code-number: #f5871f;
+  --code-symbol: #718c00;
+  --code-attribute: #f5871f;
+  --code-title: #4271ae;
+  --code-name: #c82829;
+  --code-variable: #c82829;
+  --code-attr: #f5871f;
+  --code-params: #f5871f;
+  --code-meta: #f5871f;
+  --code-addition: #718c00;
+  --code-deletion: #c82829;
+}
+:root.dark[data-code-theme='tomorrow'],
+[data-code-preview='tomorrow-dark'] {
   --code-bg: #2d2d2d;
   --code-border: #393939;
   --code-fg: #cccccc;
   --code-comment: #999999;
   --code-keyword: #cc99cc;
-  --code-builtin: #f99157;
+  --code-type: #cc99cc;
+  --code-builtin: #ffcc66;
+  --code-class: #ffcc66;
   --code-string: #99cc99;
   --code-regexp: #f2777a;
   --code-number: #f99157;
   --code-symbol: #99cc99;
-  --code-attribute: #ffcc66;
+  --code-attribute: #f99157;
   --code-title: #6699cc;
   --code-name: #f2777a;
   --code-variable: #f2777a;
-  --code-attr: #cccccc;
+  --code-attr: #f99157;
   --code-params: #f99157;
   --code-meta: #f99157;
   --code-addition: #99cc99;

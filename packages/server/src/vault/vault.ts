@@ -11,6 +11,7 @@ import { asc, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
   DEFAULT_SETTINGS,
+  LEGACY_CODE_THEMES,
   EXTERNAL,
   assetsDirOf,
   childrenDirOf,
@@ -329,7 +330,9 @@ export class Vault {
     const stored = Object.fromEntries(
       rows.map((row) => [row.key, JSON.parse(row.value) as unknown]),
     )
-    return { ...DEFAULT_SETTINGS, ...stored }
+    const result = { ...DEFAULT_SETTINGS, ...stored }
+    result.codeTheme = LEGACY_CODE_THEMES[result.codeTheme] ?? result.codeTheme
+    return result
   }
 
   // --- Changing ------------------------------------------------------------------------------

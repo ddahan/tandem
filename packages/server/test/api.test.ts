@@ -120,12 +120,8 @@ describe('API', () => {
         .backgroundTone,
     ).toBe('paper')
     expect(
-      (
-        await (
-          await client.settings.$patch({ json: { codeTheme: 'tomorrow-night-eighties' } })
-        ).json()
-      ).codeTheme,
-    ).toBe('tomorrow-night-eighties')
+      (await (await client.settings.$patch({ json: { codeTheme: 'tomorrow' } })).json()).codeTheme,
+    ).toBe('tomorrow')
     expect((await client.settings.$patch({ json: { codeTheme: 'neon' as 'nord' } })).status).toBe(
       400,
     )

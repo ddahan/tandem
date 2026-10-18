@@ -479,4 +479,10 @@ describe('settings', () => {
       neutralColor: 'zinc',
     })
   })
+
+  it('reads a code theme saved before themes came in pairs as its pair', async () => {
+    const { vault } = await createTestVault()
+    await vault.updateSettings({ codeTheme: 'tomorrow-night-eighties' as 'tomorrow' })
+    expect((await vault.getSettings()).codeTheme).toBe('tomorrow')
+  })
 })
