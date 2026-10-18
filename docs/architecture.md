@@ -158,7 +158,9 @@ folders and the versions.
   SVG scripts from running.
 - `/mcp` (`api/mcp.ts`): MCP over Streamable HTTP, stateless (one MCP server per request,
   carrying the request's author).
-- `/health`, and the web app's static files with a fallback to `index.html`.
+- `/health`, and the web app's static files with a fallback to `index.html`. Versioned files
+  (`/_nuxt/`) are cached for good, everything else revalidated (`no-cache`), so an update shows
+  on the next load.
 
 ## Web app (`packages/web`)
 

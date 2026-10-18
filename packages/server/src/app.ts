@@ -17,6 +17,18 @@ export function createApp(vault: Vault, options: { webDir?: string } & ApiOption
 
   const webDir = options.webDir
   if (webDir && existsSync(webDir)) {
+    // The app's files: versioned ones (`/_nuxt/`, named by their content) are kept for good;
+    // the rest (the shell, the manifest, icons) is checked on each load, so an updated app shows
+    // at once instead of a window keeping an old version.
+    app.use('/*', async (c, next) => {
+      await next()
+      if (!c.res.headers.has('cache-control')) {
+        c.res.headers.set(
+          'cache-control',
+          c.req.path.startsWith('/_nuxt/') ? 'public, max-age=31536000, immutable' : 'no-cache',
+        )
+      }
+    })
     app.use('/*', serveStatic({ root: webDir }))
     // Client-side routes (the app is a single-page app): always the app's shell.
     const shell = readFile(join(webDir, 'index.html'), 'utf8')
