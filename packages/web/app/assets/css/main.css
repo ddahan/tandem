@@ -473,6 +473,11 @@ html.dark[data-tone='cool'] {
 }
 .note-editor pre code :is(.hljs-keyword, .hljs-selector-tag, .hljs-doctag) {
   color: var(--code-keyword);
+  font-style: var(--code-keyword-style, normal);
+}
+/* Operators keep the text color, unless the theme colors them. */
+.note-editor pre code .hljs-operator {
+  color: var(--code-operator, var(--code-fg));
 }
 .note-editor pre code :is(.hljs-type) {
   color: var(--code-type);
@@ -863,29 +868,32 @@ html.dark[data-tone='cool'] {
   --code-deletion: #dc322f;
 }
 
-/* Tomorrow / Tomorrow Night Eighties (Chris Kempson's palettes, as in his editor themes) */
+/* Tomorrow / Tomorrow Night Eighties, as the "Tomorrow and Tomorrow Night Operator Mono"
+   theme for VS Code (Chris Kempson's palettes; keywords in italics, as storage there) */
 :root[data-code-theme='tomorrow']:not(.dark),
 [data-code-preview='tomorrow-light'] {
-  --code-bg: #fafafa;
+  --code-bg: #ffffff;
   --code-border: #e0e0e0;
   --code-fg: #4d4d4c;
   --code-comment: #8e908c;
   --code-keyword: #8959a8;
   --code-type: #8959a8;
-  --code-builtin: #c99a00;
-  --code-class: #c99a00;
+  --code-builtin: #c99e00;
+  --code-class: #c99e00;
   --code-string: #718c00;
   --code-regexp: #c82829;
   --code-number: #f5871f;
   --code-symbol: #718c00;
-  --code-attribute: #f5871f;
+  --code-attribute: #c99e00;
   --code-title: #4271ae;
   --code-name: #c82829;
   --code-variable: #c82829;
-  --code-attr: #f5871f;
+  --code-attr: #c99e00;
   --code-params: #f5871f;
   --code-meta: #f5871f;
   --code-addition: #718c00;
+  --code-operator: #3e999f;
+  --code-keyword-style: italic;
   --code-deletion: #c82829;
 }
 :root.dark[data-code-theme='tomorrow'],
@@ -899,17 +907,19 @@ html.dark[data-tone='cool'] {
   --code-builtin: #ffcc66;
   --code-class: #ffcc66;
   --code-string: #99cc99;
-  --code-regexp: #f2777a;
+  --code-regexp: #99cc99;
   --code-number: #f99157;
   --code-symbol: #99cc99;
-  --code-attribute: #f99157;
+  --code-attribute: #ffcc66;
   --code-title: #6699cc;
   --code-name: #f2777a;
   --code-variable: #f2777a;
-  --code-attr: #f99157;
+  --code-attr: #ffcc66;
   --code-params: #f99157;
   --code-meta: #f99157;
   --code-addition: #99cc99;
+  --code-operator: #66cccc;
+  --code-keyword-style: italic;
   --code-deletion: #f2777a;
 }
 

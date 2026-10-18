@@ -958,12 +958,14 @@ test('colors code blocks with the code theme chosen in Settings, light and dark'
   // Tomorrow in light mode, Tomorrow Night Eighties in dark mode.
   await openNote(page, note.id)
   const block = page.locator('.ProseMirror pre')
-  await expect(block).toHaveCSS('background-color', 'rgb(250, 250, 250)')
+  await expect(block).toHaveCSS('background-color', 'rgb(255, 255, 255)')
   await expect(block.locator('.hljs-string')).toHaveCSS('color', 'rgb(113, 140, 0)')
   await page.emulateMedia({ colorScheme: 'dark' })
   await expect(block).toHaveCSS('background-color', 'rgb(45, 45, 45)')
   await expect(block.locator('.hljs-string')).toHaveCSS('color', 'rgb(153, 204, 153)')
   await expect(block.locator('.hljs-keyword')).toHaveCSS('color', 'rgb(204, 153, 204)')
+  // Keywords in italics, as the Operator Mono version of the theme.
+  await expect(block.locator('.hljs-keyword')).toHaveCSS('font-style', 'italic')
   await expect(block.locator('.hljs-comment')).toHaveCSS('color', 'rgb(153, 153, 153)')
   await api(request, 'PATCH', '/settings', { codeTheme: 'tandem' })
 })

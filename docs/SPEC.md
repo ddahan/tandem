@@ -174,7 +174,7 @@ inside OneDrive so that it is backed up and synced.
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
   code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a light
   and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
-  Night Eighties), the
+  Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, and the workspace name (next to the logo and in the browser tab; Tandem by
   default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
