@@ -77,9 +77,11 @@ writing the block's content.
   `create_database` (in a note, its block added at the end; columns and first rows),
   `add_database_rows`, `update_database_row`, `delete_database_row` (only when asked).
 - CLI: `tandem databases <note>`, `tandem database <id> [--all]`,
-  `tandem database-new <note> <title> Name:text Pages:number "Status:select=To read|Done"`,
+  `tandem database-new <note> <title> Name:text Pages:number "Status:select=To read|Done"`
+  (`select!=…`: a value required),
   `tandem row-add <id> Name=Dune Pages=412`, `tandem row-set <id> <row> Status=Done`
   (`Column=` empties a value), `tandem row-delete <id> <row>`.
 - Values by column name (any case). Dates `2026-10-17` (or `17/10/2026`), numbers `12.5` or
   `12,5`, checkboxes `true`/`false` (or yes/no), choices by name. A value that doesn't fit its
-  column is refused with the reason.
+  column is refused with the reason. A choice column with `allowEmpty: false` always has a
+  value: rows added without one get its first choice, and it can't be set to null.

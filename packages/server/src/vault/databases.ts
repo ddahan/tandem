@@ -8,6 +8,8 @@ import {
   FILTER_OPERATORS,
   cellText,
   convertCell,
+  defaultCells,
+  requiresValue,
   toCellValue,
   type CellValue,
   type ColumnType,
@@ -28,6 +30,7 @@ export interface ColumnInput {
   name: string
   type: ColumnType
   options?: string[]
+  allowEmpty?: boolean
 }
 
 export interface DatabasePatch {
@@ -78,6 +81,7 @@ export class DatabaseStore {
       id: newId(),
       databaseId: id,
       position: 1,
+      cells: JSON.stringify(defaultCells(columns)),
       createdAt: now,
       updatedAt: now,
     })
@@ -121,6 +125,7 @@ export class DatabaseStore {
     if (patch.columns) {
       columns = checkColumns(await this.withChoices(id, patch.columns, before), before)
       await this.convertRows(id, before, columns)
+      await this.fillRequired(id, columns)
       changes.columns = JSON.stringify(columns)
     }
     const known = new Set(columns.map((column) => column.id))
@@ -162,7 +167,7 @@ export class DatabaseStore {
       id: newId(),
       databaseId: id,
       position,
-      cells: JSON.stringify(checkCells(input.cells ?? {}, columns, {})),
+      cells: JSON.stringify(checkCells(input.cells ?? {}, columns, defaultCells(columns))),
       createdAt: now,
       updatedAt: now,
     })
@@ -211,6 +216,25 @@ export class DatabaseStore {
 
   private async touch(id: string, now: number) {
     await this.db.update(databases).set({ updatedAt: now }).where(eq(databases.id, id))
+  }
+
+  /** Empty cells of columns that require a value take its default (the first choice). */
+  private async fillRequired(id: string, columns: DatabaseColumn[]) {
+    const defaults = defaultCells(columns)
+    if (!Object.keys(defaults).length) return
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id))
+    for (const row of rows) {
+      const cells = JSON.parse(row.cells) as Record<string, CellValue>
+      const missing = Object.keys(defaults).filter(
+        (columnId) => cells[columnId] === null || cells[columnId] === undefined,
+      )
+      if (!missing.length) continue
+      for (const columnId of missing) cells[columnId] = defaults[columnId]!
+      await this.db
+        .update(databaseRows)
+        .set({ cells: JSON.stringify(cells) })
+        .where(eq(databaseRows.id, row.id))
+    }
   }
 
   /** Columns becoming a `select` without choices: their values become the choices. */
@@ -296,6 +320,12 @@ function checkColumns(input: ColumnInput[], before: DatabaseColumn[]): DatabaseC
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean)),
       ]
       result.options = options
+      if (column.allowEmpty === false) {
+        if (!options.length) {
+          throw new ValidationError(`${name}: a value is required, so it needs a choice`)
+        }
+        result.allowEmpty = false
+      }
     }
     return result
   })
@@ -333,6 +363,9 @@ function checkCells(
           ? `${column.name}: “${String(value)}” is not one of ${column.options?.join(', ') || 'its choices (none yet)'}`
           : `${column.name}: “${String(value)}” is not a ${column.type === 'checkbox' ? 'yes or no' : column.type}`,
       )
+    }
+    if (cell === null && requiresValue(column)) {
+      throw new ValidationError(`${column.name} can't be empty`)
     }
     if (cell === null) delete next[columnId]
     else next[columnId] = cell

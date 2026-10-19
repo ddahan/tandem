@@ -72,6 +72,7 @@ function describeColumns(database: Database) {
     name: c.name,
     type: c.type,
     ...(c.options ? { choices: c.options } : {}),
+    ...(c.allowEmpty === false ? { allowEmpty: false } : {}),
   }))
 }
 
@@ -447,6 +448,12 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
               name: z.string(),
               type: z.enum(COLUMN_TYPES),
               choices: z.array(z.string()).optional().describe('For select columns'),
+              allowEmpty: z
+                .boolean()
+                .optional()
+                .describe(
+                  'Select columns: false to require a value (new rows get the first choice). Default true.',
+                ),
             }),
           )
           .min(1),
@@ -458,7 +465,12 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
         const node = await vault.resolveRef(note)
         let d = await vault.createDatabase(node.id, {
           title,
-          columns: columns.map((c) => ({ name: c.name, type: c.type, options: c.choices })),
+          columns: columns.map((c) => ({
+            name: c.name,
+            type: c.type,
+            options: c.choices,
+            allowEmpty: c.allowEmpty,
+          })),
         })
         const [first, ...others] = rows ?? []
         if (first) d = await vault.updateDatabaseRow(d.id, d.rows[0]!.id, cellsByName(d, first))

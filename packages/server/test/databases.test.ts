@@ -150,6 +150,46 @@ describe('databases', () => {
     expect(database.filters).toEqual([])
   })
 
+  it('fills choice columns that require a value with the first choice', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      columns: [
+        { name: 'Name', type: 'text' },
+        { name: 'Status', type: 'select', options: ['To read', 'Done'] },
+      ],
+    })
+    const [name, status] = database.columns
+    database = await vault.addDatabaseRow(database.id, { cells: { [status!.id]: 'Done' } })
+    expect(database.rows.map((row) => row.cells[status!.id] ?? null)).toEqual([null, 'Done'])
+
+    // Required: the empty cell takes the first choice, new rows start with it.
+    database = await vault.updateDatabase(database.id, {
+      columns: [name!, { ...status!, allowEmpty: false }],
+    })
+    expect(database.columns[1]!.allowEmpty).toBe(false)
+    expect(database.rows.map((row) => row.cells[status!.id])).toEqual(['To read', 'Done'])
+    database = await vault.addDatabaseRow(database.id, { cells: { [name!.id]: 'Dune' } })
+    expect(database.rows.at(-1)!.cells[status!.id]).toBe('To read')
+    await expect(
+      vault.updateDatabaseRow(database.id, database.rows[1]!.id, { [status!.id]: null }),
+    ).rejects.toThrow("Status can't be empty")
+    await expect(
+      vault.updateDatabase(database.id, {
+        columns: [name!, { ...status!, options: [], allowEmpty: false }],
+      }),
+    ).rejects.toThrow('a value is required, so it needs a choice')
+
+    // Allowed again: cells can be emptied.
+    database = await vault.updateDatabase(database.id, {
+      columns: [name!, { ...status!, allowEmpty: true }],
+    })
+    expect(database.columns[1]!.allowEmpty).toBeUndefined()
+    database = await vault.updateDatabaseRow(database.id, database.rows[1]!.id, {
+      [status!.id]: null,
+    })
+    expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
+  })
+
   it('refuses bad columns', async () => {
     const { vault, page } = await setup()
     const database = await vault.createDatabase(page.id)

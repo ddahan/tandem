@@ -4,7 +4,7 @@
 // the cell, a pick), not at each keystroke; the server checks it. While a cell is being
 // edited it keeps what is typed: the table reloads with every change (yours, an agent's),
 // which would otherwise put the saved value back under the cursor.
-import { cellText, type CellValue, type DatabaseColumn } from '@tandem/shared'
+import { cellText, requiresValue, type CellValue, type DatabaseColumn } from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
 const props = defineProps<{
@@ -75,7 +75,7 @@ const label = computed(() => props.column.name)
     :aria-label="label"
     @change="pick"
   >
-    <option value="">—</option>
+    <option v-if="!requiresValue(column)" value="">—</option>
     <option v-for="option in column.options ?? []" :key="option" :value="option">
       {{ option }}
     </option>

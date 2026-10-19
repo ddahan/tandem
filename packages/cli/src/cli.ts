@@ -62,7 +62,8 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   database <database>           its rows, as the saved view shows them (--all: every row)
   database-new <note> <title> <Column:type…>
                                 create one, its block added at the end of the note
-                                (types: text, number, date, checkbox, select=A|B|C)
+                                (types: text, number, date, checkbox, select=A|B|C;
+                                select!=A|B: a value required, the first by default)
   row-add <database> [Column=value…]        add a row
   row-set <database> <row> <Column=value…>  change values (Column= empties one)
   row-delete <database> <row>               delete a row
@@ -122,12 +123,14 @@ function namedValues(args: string[]): Record<string, string | null> {
   return values
 }
 
-/** `Column:type` arguments (`Status:select=To read|Done`) as columns. */
+/** `Column:type` arguments (`Status:select=To read|Done`; `select!`: a value required) as columns. */
 function columnArgs(args: string[]) {
   return args.map((arg) => {
     const at = arg.lastIndexOf(':')
     const name = at > 0 ? arg.slice(0, at) : arg
-    const [type = 'text', choices] = (at > 0 ? arg.slice(at + 1) : 'text').split('=')
+    const [given = 'text', choices] = (at > 0 ? arg.slice(at + 1) : 'text').split('=')
+    const required = given.endsWith('!')
+    const type = required ? given.slice(0, -1) : given
     if (!COLUMN_TYPES.includes(type as ColumnType)) {
       throw new CliError(`Unknown column type “${type}” (${COLUMN_TYPES.join(', ')}).`)
     }
@@ -135,6 +138,7 @@ function columnArgs(args: string[]) {
       name,
       type: type as ColumnType,
       ...(choices ? { options: choices.split('|') } : {}),
+      ...(required ? { allowEmpty: false } : {}),
     }
   })
 }
@@ -279,7 +283,7 @@ async function execute(
       }
       const lines = list.map(
         (d) =>
-          `${d.title || 'Untitled database'}  (${d.id}, ${d.rows.length} rows)\n  ${d.columns.map((c) => `${c.name}: ${c.type}${c.options ? ` (${c.options.join(', ')})` : ''}`).join(' · ')}`,
+          `${d.title || 'Untitled database'}  (${d.id}, ${d.rows.length} rows)\n  ${d.columns.map((c) => `${c.name}: ${c.type}${c.options ? ` (${c.options.join(', ')}${c.allowEmpty === false ? '; required' : ''})` : ''}`).join(' · ')}`,
       )
       return print(
         lines.join('\n\n') || `No databases in ${node.path}.`,

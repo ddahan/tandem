@@ -13,6 +13,11 @@ export interface DatabaseColumn {
   type: ColumnType
   /** `select` columns: the choices, in order. */
   options?: string[]
+  /**
+   * `select` columns: false when a value is required. New rows then start with the first
+   * choice, and a cell can't be emptied. Absent: true.
+   */
+  allowEmpty?: boolean
 }
 
 /** Text, a number, a date (`2026-10-17`), a checkbox, a choice; null when empty. */
@@ -224,6 +229,20 @@ export function viewRows(
       .map(({ row }) => row)
   }
   return rows
+}
+
+/** Whether a column must have a value (a choice list that doesn't allow empty). */
+export function requiresValue(column: DatabaseColumn): boolean {
+  return column.type === 'select' && column.allowEmpty === false && Boolean(column.options?.length)
+}
+
+/** The values a new row starts with: the first choice of columns that require a value. */
+export function defaultCells(columns: DatabaseColumn[]): Record<string, CellValue> {
+  const cells: Record<string, CellValue> = {}
+  for (const column of columns) {
+    if (requiresValue(column)) cells[column.id] = column.options![0]!
+  }
+  return cells
 }
 
 /** The ids of the databases a note's Markdown shows, in order (its `database` blocks). */

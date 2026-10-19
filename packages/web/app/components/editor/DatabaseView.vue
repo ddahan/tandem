@@ -145,9 +145,11 @@ async function removeColumn(column: DatabaseColumn) {
 // Choices of a `select` column: one per line.
 const choicesOf = ref<DatabaseColumn | null>(null)
 const choicesText = ref('')
+const allowEmpty = ref(true)
 function editChoices(column: DatabaseColumn) {
   choicesOf.value = column
   choicesText.value = (column.options ?? []).join('\n')
+  allowEmpty.value = column.allowEmpty !== false
 }
 async function saveChoices() {
   const column = choicesOf.value
@@ -157,7 +159,7 @@ async function saveChoices() {
     .map((line) => line.trim())
     .filter(Boolean)
   choicesOf.value = null
-  await setColumns(columnsWith(column.id, (c) => ({ ...c, options })))
+  await setColumns(columnsWith(column.id, (c) => ({ ...c, options, allowEmpty: allowEmpty.value })))
 }
 
 const filters = useTemplateRef<InstanceType<typeof DatabaseFilters>>('filters')
@@ -411,13 +413,24 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
         @update:open="(open) => !open && (choicesOf = null)"
       >
         <template #body>
-          <UTextarea
-            v-model="choicesText"
-            :rows="6"
-            autoresize
-            class="w-full"
-            aria-label="Choices"
-          />
+          <div class="space-y-4">
+            <UTextarea
+              v-model="choicesText"
+              :rows="6"
+              autoresize
+              class="w-full"
+              aria-label="Choices"
+            />
+            <UCheckbox
+              v-model="allowEmpty"
+              label="Allow empty"
+              :description="
+                allowEmpty
+                  ? 'A cell can be left without a choice.'
+                  : 'Every row has a choice: new rows start with the first one, empty cells take it now, and a cell can\'t be emptied.'
+              "
+            />
+          </div>
         </template>
         <template #footer>
           <div class="flex w-full justify-end gap-2">

@@ -210,3 +210,38 @@ test('picks dates with a calendar or types them, and filters on them', async ({
   await expect(block.getByTestId('database-row')).toHaveCount(1)
   await expect(block.getByRole('textbox', { name: 'Task' })).toHaveValue('Report')
 })
+
+test('a choice column can require a value: the first choice by default', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Statuses', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      { name: 'Status', type: 'select', options: ['To do', 'Done'] },
+    ],
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  const status = block.getByRole('combobox', { name: 'Status' }).first()
+  await expect(status).toHaveValue('')
+
+  await block.getByRole('button', { name: 'Status' }).click()
+  await page.getByRole('menuitem', { name: 'Edit choices…' }).click()
+  const dialog = page.getByRole('dialog')
+  const allowEmpty = dialog.getByRole('checkbox', { name: 'Allow empty' })
+  await expect(allowEmpty).toBeChecked()
+  await allowEmpty.click()
+  await expect(dialog).toContainText('new rows start with the first one')
+  await dialog.getByRole('button', { name: 'Save' }).click()
+
+  // The empty cell took the first choice, which can't be emptied any more; new rows start with it.
+  await expect(status).toHaveValue('To do')
+  await expect(status.locator('option')).toHaveText(['To do', 'Done'])
+  await block.getByRole('button', { name: 'New row' }).click()
+  await expect(block.getByRole('combobox', { name: 'Status' }).nth(1)).toHaveValue('To do')
+})
