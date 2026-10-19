@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The sidebar tree: pages and folders, with drag and drop (before, after or inside a node),
-// inline renaming and a context menu on each row.
+// inline renaming and a menu on each row (its ⋯ button, or a right-click).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import type { TreeItem } from '~/composables/useTree'
@@ -177,6 +177,30 @@ const rootMenu: DropdownMenuItem[] = [
   },
 ]
 
+// A right-click opens the menu of the row under the pointer (the root menu elsewhere), or the
+// browser's own in the rename field. One menu for the whole tree: UTree gives each row's root
+// element its focus and keys, which a menu wrapping the row would take.
+const contextItem = ref<TreeItem | null>(null)
+const contextItems = computed(() => (contextItem.value ? menu(contextItem.value) : rootMenu))
+
+function onContextMenu(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (target.closest('input')) {
+    // Before the menu's own handler (inside): the browser's menu shows.
+    event.stopPropagation()
+    return
+  }
+  const id = target.closest<HTMLElement>('[data-node-id]')?.dataset.nodeId
+  contextItem.value = (id && findItem(tree.items.value, id)) || null
+}
+
+function findItem(items: TreeItem[], id: string): TreeItem | undefined {
+  for (const item of items) {
+    const found = item.id === id ? item : item.children && findItem(item.children, id)
+    if (found) return found
+  }
+}
+
 // --- Drag and drop ---------------------------------------------------------------------------
 
 type DropZone = 'before' | 'inside' | 'after'
@@ -269,105 +293,110 @@ function rowClass(item: TreeItem) {
       @dragover.prevent
       @drop="onDropOnRoot"
       @dragend="reset"
+      @contextmenu.capture="onContextMenu"
     >
-      <UTree
-        v-model:expanded="expanded"
-        :items="tree.items.value"
-        :get-key="(item: TreeItem) => item.id"
-        :on-select="
-          (event: Event, item: TreeItem) => {
-            event.preventDefault()
-            open(item)
-          }
-        "
-        :ui="{ listWithChildren: 'ms-3 border-s border-default ps-1' }"
-        size="sm"
-      >
-        <template #item-wrapper="{ item, expanded: isExpanded }">
-          <div
-            class="group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
-            :class="rowClass(item)"
-            draggable="true"
-            :data-node-id="item.id"
-            @keydown.capture="onRowKeydown($event, item)"
-            :data-testid="`tree-${item.label}`"
-            @click="open(item)"
-            @dragstart="onDragStart($event, item)"
-            @dragover.stop="onDragOver($event, item)"
-            @dragleave="dropTarget = null"
-            @drop.stop="onDrop($event, item)"
-            @dragend="reset"
+      <UContextMenu :items="contextItems">
+        <div class="min-h-full pb-6" data-testid="tree-menu-area">
+          <UTree
+            v-model:expanded="expanded"
+            :items="tree.items.value"
+            :get-key="(item: TreeItem) => item.id"
+            :on-select="
+              (event: Event, item: TreeItem) => {
+                event.preventDefault()
+                open(item)
+              }
+            "
+            :ui="{ listWithChildren: 'ms-3 border-s border-default ps-1' }"
+            size="sm"
           >
-            <button
-              v-if="item.children?.length"
-              type="button"
-              class="grid size-5 shrink-0 place-items-center rounded text-dimmed hover:text-default"
-              :aria-label="isExpanded ? 'Collapse' : 'Expand'"
-              @click.stop="toggle(item.id)"
-            >
-              <UIcon
-                name="i-lucide-chevron-right"
-                class="size-3.5 transition-transform"
-                :class="isExpanded && 'rotate-90'"
-              />
-            </button>
-            <span v-else class="size-5 shrink-0" />
-            <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
+            <template #item-wrapper="{ item, expanded: isExpanded }">
+              <div
+                class="group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
+                :class="rowClass(item)"
+                draggable="true"
+                :data-node-id="item.id"
+                @keydown.capture="onRowKeydown($event, item)"
+                :data-testid="`tree-${item.label}`"
+                @click="open(item)"
+                @dragstart="onDragStart($event, item)"
+                @dragover.stop="onDragOver($event, item)"
+                @dragleave="dropTarget = null"
+                @drop.stop="onDrop($event, item)"
+                @dragend="reset"
+              >
+                <button
+                  v-if="item.children?.length"
+                  type="button"
+                  class="grid size-5 shrink-0 place-items-center rounded text-dimmed hover:text-default"
+                  :aria-label="isExpanded ? 'Collapse' : 'Expand'"
+                  @click.stop="toggle(item.id)"
+                >
+                  <UIcon
+                    name="i-lucide-chevron-right"
+                    class="size-3.5 transition-transform"
+                    :class="isExpanded && 'rotate-90'"
+                  />
+                </button>
+                <span v-else class="size-5 shrink-0" />
+                <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
 
-            <UInput
-              v-if="renamingId === item.id"
-              v-model="renameValue"
-              size="xs"
-              autofocus
-              aria-label="New title"
-              class="min-w-0 flex-1"
-              @click.stop
-              @keydown.enter.prevent="commitRename"
-              @keydown.esc.prevent="renamingId = null"
-              @blur="commitRename"
-            />
-            <span v-else class="min-w-0 flex-1 truncate" @dblclick.stop="startRename(item)">{{
-              item.label
-            }}</span>
-
-            <div
-              v-if="renamingId !== item.id"
-              class="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-              @click.stop
-            >
-              <UDropdownMenu :items="menu(item)" :content="{ align: 'start' }">
-                <UButton
-                  icon="i-lucide-ellipsis"
+                <UInput
+                  v-if="renamingId === item.id"
+                  v-model="renameValue"
                   size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  aria-label="Actions"
+                  autofocus
+                  aria-label="New title"
+                  class="min-w-0 flex-1"
+                  @click.stop
+                  @keydown.enter.prevent="commitRename"
+                  @keydown.esc.prevent="renamingId = null"
+                  @blur="commitRename"
                 />
-              </UDropdownMenu>
-              <UButton
-                icon="i-lucide-plus"
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                aria-label="New page inside"
-                @click="createInside(item, 'page')"
-              />
-            </div>
-          </div>
-        </template>
-      </UTree>
+                <span v-else class="min-w-0 flex-1 truncate" @dblclick.stop="startRename(item)">{{
+                  item.label
+                }}</span>
 
-      <UEmpty
-        v-if="tree.loaded.value && !tree.items.value.length"
-        icon="i-lucide-notebook-pen"
-        title="No pages yet"
-        description="Create your first page."
-        :actions="[
-          { label: 'New page', icon: 'i-lucide-plus', onClick: () => void tree.createPage() },
-        ]"
-        size="sm"
-        variant="naked"
-      />
+                <div
+                  v-if="renamingId !== item.id"
+                  class="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                  @click.stop
+                >
+                  <UDropdownMenu :items="menu(item)" :content="{ align: 'start' }">
+                    <UButton
+                      icon="i-lucide-ellipsis"
+                      size="xs"
+                      color="neutral"
+                      variant="ghost"
+                      aria-label="Actions"
+                    />
+                  </UDropdownMenu>
+                  <UButton
+                    icon="i-lucide-plus"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    aria-label="New page inside"
+                    @click="createInside(item, 'page')"
+                  />
+                </div>
+              </div>
+            </template>
+          </UTree>
+
+          <UEmpty
+            v-if="tree.loaded.value && !tree.items.value.length"
+            icon="i-lucide-notebook-pen"
+            title="No pages yet"
+            description="Create your first page."
+            :actions="[
+              { label: 'New page', icon: 'i-lucide-plus', onClick: () => void tree.createPage() },
+            ]"
+            size="sm"
+            variant="naked"
+          />
+        </div>
+      </UContextMenu>
     </div>
 
     <UModal

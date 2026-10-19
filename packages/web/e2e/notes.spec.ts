@@ -784,7 +784,7 @@ test('finds and replaces in the note (⌘F), and searches all notes (⌘⇧F)', 
   await expect(page.getByPlaceholder(/Search notes/)).toHaveValue('Apple')
 })
 
-test('manages pages from the tree with the keyboard', async ({ page, request }) => {
+test('manages pages from the tree with the keyboard and the menu', async ({ page, request }) => {
   await createNote(request, 'Key first')
   const second = await createNote(request, 'Key second')
   await page.goto('/')
@@ -828,6 +828,20 @@ test('manages pages from the tree with the keyboard', async ({ page, request }) 
   await row('Key renamed').hover()
   await row('Key renamed').getByRole('button', { name: 'Actions' }).click()
   await expect(page.getByRole('menuitem', { name: /Move to trash/ }).locator('kbd')).toHaveCount(2)
+  await page.keyboard.press('Escape')
+
+  // A right-click on the row opens the same menu.
+  await row('Key first').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Rename' }).click()
+  await expect(page.getByLabel('New title')).toBeFocused()
+  await expect(page.getByLabel('New title')).toHaveValue('Key first')
+  await page.keyboard.press('Escape')
+
+  // Below the pages, the menu creates them.
+  const area = page.getByTestId('tree-menu-area')
+  const box = await area.boundingBox()
+  await area.click({ button: 'right', position: { x: 20, y: (box?.height ?? 0) - 5 } })
+  await expect(page.getByRole('menuitem', { name: 'New folder', exact: true })).toBeVisible()
 })
 
 test('shows a pointer on everything clickable', async ({ page, request }) => {

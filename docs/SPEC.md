@@ -114,7 +114,8 @@ inside OneDrive so that it is backed up and synced.
 ## Organization
 
 - Sidebar tree of pages and folders, with drag and drop to reorder and move, and the usual
-  actions (new page, new child page, new folder, rename, delete).
+  actions (new page, new child page, new folder, rename, delete) in each row's menu: its ⋯
+  button, or a right-click on the row.
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
 - Icons: every page has one, the default page icon until it is given an emoji or an image
