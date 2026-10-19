@@ -277,7 +277,7 @@ function rowClass(item: TreeItem) {
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between px-2.5 pb-1">
       <span class="text-xs font-medium text-muted">Pages</span>
-      <UDropdownMenu :items="rootMenu" :content="{ align: 'start' }">
+      <UDropdownMenu :items="rootMenu" :content="{ align: 'start', ...keepMovedFocus }">
         <UButton
           icon="i-lucide-plus"
           size="xs"
@@ -295,7 +295,7 @@ function rowClass(item: TreeItem) {
       @dragend="reset"
       @contextmenu.capture="onContextMenu"
     >
-      <UContextMenu :items="contextItems">
+      <UContextMenu :items="contextItems" :content="keepMovedFocus">
         <div class="min-h-full pb-6" data-testid="tree-menu-area">
           <UTree
             v-model:expanded="expanded"
@@ -362,7 +362,10 @@ function rowClass(item: TreeItem) {
                   class="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                   @click.stop
                 >
-                  <UDropdownMenu :items="menu(item)" :content="{ align: 'start' }">
+                  <UDropdownMenu
+                    :items="menu(item)"
+                    :content="{ align: 'start', ...keepMovedFocus }"
+                  >
                     <UButton
                       icon="i-lucide-ellipsis"
                       size="xs"

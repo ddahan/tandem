@@ -115,12 +115,13 @@ inside OneDrive so that it is backed up and synced.
 
 - Sidebar tree of pages and folders, with drag and drop to reorder and move, and the usual
   actions (new page, new child page, new folder, rename, delete) in each row's menu: its ⋯
-  button, or a right-click on the row.
+  button, or a right-click on the row. A new page opens with its title selected, however it was
+  created (button, menu, shortcut): typing replaces it.
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
 - Icons: every page has one, the default page icon until it is given an emoji or an image
   (from the computer): from the note page (click the icon left of the title) or the tree's
-  menu (folders too); "Use the default icon" goes back. Shown in the tree, the
+  menu (folders too); "Use the default icon" goes back.  Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in
   `<data>/.tandem/icons/`), never in the Markdown.
 - Nothing else (no favorites, recents, daily notes or templates for now).

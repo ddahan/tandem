@@ -348,7 +348,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               @click="panelOpen = !panelOpen"
             />
           </UTooltip>
-          <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
+          <UDropdownMenu :items="moreItems" :content="{ align: 'end', ...keepMovedFocus }">
             <UButton
               icon="i-lucide-ellipsis"
               color="neutral"

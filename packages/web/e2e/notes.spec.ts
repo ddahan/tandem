@@ -784,6 +784,32 @@ test('finds and replaces in the note (⌘F), and searches all notes (⌘⇧F)', 
   await expect(page.getByPlaceholder(/Search notes/)).toHaveValue('Apple')
 })
 
+test('types the title of a new page at once, however the page was created', async ({
+  page,
+  request,
+}) => {
+  const parent = await createNote(request, 'Focus parent')
+  await page.goto(`/notes/${parent.id}`)
+  const title = page.getByLabel('Title')
+
+  // From a menu: once closed, the menu must not take the focus back.
+  await page.getByRole('button', { name: 'New page or folder' }).click()
+  await page.getByRole('menuitem', { name: /^New page/ }).click()
+  await expect(title).toHaveValue(/^Untitled/)
+  // After the menu's closing animation.
+  await page.waitForTimeout(500)
+  await page.keyboard.type('From the menu')
+  await expect(title).toHaveValue('From the menu')
+
+  // From a row's right-click menu.
+  await page.getByTestId('tree-Focus parent').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'New page inside' }).click()
+  await expect(title).toHaveValue(/^Untitled/)
+  await page.waitForTimeout(500)
+  await page.keyboard.type('From the row')
+  await expect(title).toHaveValue('From the row')
+})
+
 test('manages pages from the tree with the keyboard and the menu', async ({ page, request }) => {
   await createNote(request, 'Key first')
   const second = await createNote(request, 'Key second')
