@@ -11382,6 +11382,112 @@ var Hono3 = class extends Hono {
   }
 };
 
+// ../../node_modules/.pnpm/hono@4.13.13/node_modules/hono/dist/middleware/etag/digest.js
+var mergeBuffers = (buffer1, buffer2) => {
+  if (!buffer1) return buffer2;
+  const merged = new Uint8Array(new ArrayBuffer(buffer1.byteLength + buffer2.byteLength));
+  merged.set(new Uint8Array(buffer1), 0);
+  merged.set(buffer2, buffer1.byteLength);
+  return merged;
+};
+var CHUNK_SIZE = 262144;
+var generateDigest = async (stream2, generator) => {
+  if (!stream2) return null;
+  let result = void 0;
+  let chunk;
+  let chunkLength = 0;
+  const digest = async (body) => {
+    result = await generator(mergeBuffers(result, body));
+  };
+  const reader = stream2.getReader();
+  for (; ; ) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    let offset = 0;
+    while (offset < value.byteLength) {
+      const remaining = value.byteLength - offset;
+      if (chunkLength === 0 && remaining >= CHUNK_SIZE) {
+        await digest(value.subarray(offset, offset + CHUNK_SIZE));
+        offset += CHUNK_SIZE;
+        continue;
+      }
+      const requiredLength = chunkLength + remaining;
+      if (requiredLength < CHUNK_SIZE) {
+        if (!chunk) chunk = value.slice(offset);
+        else {
+          if (chunk.byteLength < requiredLength) {
+            const nextChunk = new Uint8Array(new ArrayBuffer(Math.min(CHUNK_SIZE, Math.max(requiredLength, chunk.byteLength * 2))));
+            nextChunk.set(chunk.subarray(0, chunkLength));
+            chunk = nextChunk;
+          }
+          chunk.set(value.subarray(offset), chunkLength);
+        }
+        chunkLength = requiredLength;
+        break;
+      }
+      const length = CHUNK_SIZE - chunkLength;
+      if (chunk?.byteLength !== CHUNK_SIZE) {
+        const nextChunk = new Uint8Array(/* @__PURE__ */ new ArrayBuffer(CHUNK_SIZE));
+        if (chunk) nextChunk.set(chunk.subarray(0, chunkLength));
+        chunk = nextChunk;
+      }
+      chunk.set(value.subarray(offset, offset + length), chunkLength);
+      await digest(chunk);
+      chunkLength = 0;
+      offset += length;
+    }
+  }
+  if (chunk && chunkLength > 0) await digest(chunk.subarray(0, chunkLength));
+  if (!result) return null;
+  return Array.prototype.map.call(new Uint8Array(result), (x) => x.toString(16).padStart(2, "0")).join("");
+};
+
+// ../../node_modules/.pnpm/hono@4.13.13/node_modules/hono/dist/middleware/etag/index.js
+var RETAINED_304_HEADERS = [
+  "cache-control",
+  "content-location",
+  "date",
+  "etag",
+  "expires",
+  "vary"
+];
+var stripWeak = (tag) => tag.replace(/^W\//, "");
+function etagMatches(etag2, ifNoneMatch) {
+  return ifNoneMatch != null && ifNoneMatch.split(",").some((t) => stripWeak(t.trim()) === stripWeak(etag2));
+}
+function initializeGenerator(generator) {
+  if (!generator) {
+    if (crypto && crypto.subtle) generator = (body) => crypto.subtle.digest({ name: "SHA-1" }, body);
+  }
+  return generator;
+}
+var etag = (options) => {
+  const retainedHeaders = new Set((options?.retainedHeaders ?? RETAINED_304_HEADERS).map((header) => header.toLowerCase()));
+  const weak = options?.weak ?? false;
+  const generator = initializeGenerator(options?.generateDigest);
+  return async function etag2(c, next) {
+    const ifNoneMatch = c.req.header("If-None-Match") ?? null;
+    await next();
+    if (!(c.req.method === "GET" || c.req.method === "HEAD" || c.req.method === "QUERY") || !c.res.ok) return;
+    const res = c.res;
+    let etag3 = res.headers.get("ETag");
+    if (!etag3) {
+      if (!generator) return;
+      const hash2 = await generateDigest(res.clone().body, generator);
+      if (hash2 === null) return;
+      etag3 = weak ? `W/"${hash2}"` : `"${hash2}"`;
+    }
+    if (ifNoneMatch === "*" || etagMatches(etag3, ifNoneMatch)) {
+      c.res = new Response(null, {
+        status: 304,
+        statusText: "Not Modified",
+        headers: { ETag: etag3 }
+      });
+      for (const key of Array.from(c.res.headers.keys())) if (!retainedHeaders.has(key.toLowerCase())) c.res.headers.delete(key);
+    } else c.res.headers.set("ETag", etag3);
+  };
+};
+
 // ../server/src/api/index.ts
 import { createReadStream as createReadStream2 } from "node:fs";
 import { stat as stat2 } from "node:fs/promises";
@@ -31763,11 +31869,11 @@ function createFileRoutes(vault) {
     const path = join3(vault.dataDir, clean);
     const info = await stat2(path).catch(() => null);
     if (!info?.isFile()) return c.json({ error: "Not found" }, 404);
-    const etag = `"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
-    if (c.req.header("if-none-match") === etag) return c.body(null, 304);
+    const etag2 = `"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
+    if (c.req.header("if-none-match") === etag2) return c.body(null, 304);
     c.header("Content-Type", getMimeType(clean) ?? "application/octet-stream");
     c.header("Content-Length", String(info.size));
-    c.header("ETag", etag);
+    c.header("ETag", etag2);
     c.header("Cache-Control", "no-cache");
     c.header(
       "Content-Security-Policy",
@@ -42403,13 +42509,9 @@ function createApp(vault, options = {}) {
   if (webDir && existsSync3(webDir)) {
     app.use("/*", async (c, next) => {
       await next();
-      if (!c.res.headers.has("cache-control")) {
-        c.res.headers.set(
-          "cache-control",
-          c.req.path.startsWith("/_nuxt/") ? "public, max-age=31536000, immutable" : "no-cache"
-        );
-      }
+      if (!c.res.headers.has("cache-control")) c.res.headers.set("cache-control", "no-cache");
     });
+    app.use("/*", etag());
     app.use("/*", serveStatic({ root: webDir }));
     const shell = readFile2(join4(webDir, "index.html"), "utf8");
     app.get("/*", async (c) => c.html(await shell));
