@@ -206,7 +206,15 @@ export function viewRows(
   database: Pick<Database, 'columns' | 'rows' | 'sort' | 'filters'>,
 ): DatabaseRow[] {
   const columns = new Map(database.columns.map((column) => [column.id, column]))
-  const filters = database.filters.filter((filter) => columns.has(filter.column))
+  // A condition that needs a value (all but empty / not empty) applies once it has one: a new
+  // filter doesn't hide every row while it is being written.
+  const filters = database.filters.filter(
+    (filter) =>
+      columns.has(filter.column) &&
+      (filter.operator === 'empty' ||
+        filter.operator === 'not-empty' ||
+        (filter.value !== null && filter.value !== undefined && filter.value !== '')),
+  )
   let rows = database.rows.filter((row) =>
     filters.every((filter) =>
       matches(row.cells[filter.column], filter, columns.get(filter.column)!),

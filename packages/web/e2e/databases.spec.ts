@@ -245,3 +245,45 @@ test('a choice column can require a value: the first choice by default', async (
   await block.getByRole('button', { name: 'New row' }).click()
   await expect(block.getByRole('combobox', { name: 'Status' }).nth(1)).toHaveValue('To do')
 })
+
+test("filters from a column's menu: the filters open on a new condition for it", async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Column filter', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      { name: 'Points', type: 'number' },
+    ],
+  })
+  const [task, points] = database.columns
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'Small', [points!.id]: 1 },
+  })
+  await api(request, 'POST', `/databases/${database.id}/rows`, {
+    cells: { [task!.id]: 'Big', [points!.id]: 8 },
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  await block.getByRole('button', { name: 'Points' }).click()
+  await page.getByRole('menuitem', { name: 'Filter' }).click()
+
+  const filters = page.getByTestId('database-filters')
+  await expect(filters).toBeVisible()
+  await expect(filters.getByRole('combobox', { name: 'Column' })).toContainText('Points')
+  // Still open a moment later, and no row hidden while the condition has no value.
+  await page.waitForTimeout(500)
+  await expect(filters).toBeVisible()
+  await expect(block.getByTestId('database-row')).toHaveCount(2)
+  await filters.getByRole('combobox', { name: 'Condition' }).click()
+  await page.getByRole('option', { name: '>' }).click()
+  const value = filters.getByRole('textbox', { name: 'Value' })
+  await value.fill('5')
+  await value.press('Enter')
+  await expect(block.getByTestId('database-row')).toHaveCount(1)
+  await expect(block.getByRole('textbox', { name: 'Task' })).toHaveValue('Big')
+})

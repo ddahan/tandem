@@ -1,13 +1,7 @@
 <script setup lang="ts">
 // The filters of a database view, in a popover: rows show when they match every condition.
 // Each change is saved at once (the view is saved with the database).
-import type {
-  CellValue,
-  ColumnType,
-  DatabaseColumn,
-  DatabaseFilter,
-  FilterOperator,
-} from '@tandem/shared'
+import type { CellValue, DatabaseColumn, DatabaseFilter, FilterOperator } from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
 const props = defineProps<{
@@ -19,47 +13,9 @@ const emit = defineEmits<{ update: [filters: DatabaseFilter[]] }>()
 
 const open = defineModel<boolean>('open', { default: false })
 
-const OPERATORS: Record<ColumnType, { value: FilterOperator; label: string }[]> = {
-  text: [
-    { value: 'contains', label: 'contains' },
-    { value: 'is', label: 'is' },
-    { value: 'is-not', label: 'is not' },
-    { value: 'empty', label: 'is empty' },
-    { value: 'not-empty', label: 'is not empty' },
-  ],
-  number: [
-    { value: 'is', label: '=' },
-    { value: 'is-not', label: '≠' },
-    { value: 'gt', label: '>' },
-    { value: 'lt', label: '<' },
-    { value: 'empty', label: 'is empty' },
-    { value: 'not-empty', label: 'is not empty' },
-  ],
-  date: [
-    { value: 'is', label: 'is' },
-    { value: 'lt', label: 'is before' },
-    { value: 'gt', label: 'is after' },
-    { value: 'empty', label: 'is empty' },
-    { value: 'not-empty', label: 'is not empty' },
-  ],
-  checkbox: [{ value: 'is', label: 'is' }],
-  select: [
-    { value: 'is', label: 'is' },
-    { value: 'is-not', label: 'is not' },
-    { value: 'empty', label: 'is empty' },
-    { value: 'not-empty', label: 'is not empty' },
-  ],
-}
-
 const columnOf = (filter: DatabaseFilter) => props.columns.find((c) => c.id === filter.column)
 const needsValue = (filter: DatabaseFilter) =>
   filter.operator !== 'empty' && filter.operator !== 'not-empty'
-
-function defaultFilter(column: DatabaseColumn): DatabaseFilter {
-  return column.type === 'checkbox'
-    ? { column: column.id, operator: 'is', value: true }
-    : { column: column.id, operator: OPERATORS[column.type][0]!.value, value: null }
-}
 
 function replace(index: number, filter: DatabaseFilter) {
   emit(
@@ -94,8 +50,6 @@ function add(column?: DatabaseColumn) {
   if (target) emit('update', [...props.filters, defaultFilter(target)])
   open.value = true
 }
-
-defineExpose({ add })
 </script>
 
 <template>
@@ -122,7 +76,7 @@ defineExpose({ add })
           />
           <USelect
             :model-value="filter.operator"
-            :items="OPERATORS[columnOf(filter)?.type ?? 'text']"
+            :items="FILTER_CONDITIONS[columnOf(filter)?.type ?? 'text']"
             size="xs"
             class="w-28"
             :disabled="readonly"

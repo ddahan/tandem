@@ -129,7 +129,8 @@ inside OneDrive so that it is backed up and synced.
   and deletes it. A choice list can require a value ("Allow empty" unchecked in its choices):
   new rows then start with its first choice, empty cells take it at once, and a cell can't
   be emptied. The sort and the filters (every condition must match) are saved with the
-  database, so everyone, agents included, sees the same view. A page can have any number of
+  database, so everyone, agents included, sees the same view; a condition applies once it has
+  a value (a new one hides nothing while it is written). A page can have any number of
   databases; they go to the trash with their page and come back with it. Removing a block
   keeps its database (undo brings it back); pasting a block elsewhere shows the same
   database, not a copy. A block whose database is gone says so.

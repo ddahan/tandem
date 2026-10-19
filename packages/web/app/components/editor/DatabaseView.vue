@@ -162,8 +162,18 @@ async function saveChoices() {
   await setColumns(columnsWith(column.id, (c) => ({ ...c, options, allowEmpty: allowEmpty.value })))
 }
 
-const filters = useTemplateRef<InstanceType<typeof DatabaseFilters>>('filters')
 const filtersOpen = ref(false)
+// "Filter" in a column's menu: the condition is added, and the filters open, once the menu has
+// closed (opened sooner, the popover closes again as the menu gives the focus back).
+let filterOn: DatabaseColumn | null = null
+function onMenuClosed(event: Event) {
+  if (!filterOn || !database.value) return
+  event.preventDefault()
+  const column = filterOn
+  filterOn = null
+  void setFilters([...database.value.filters, defaultFilter(column)])
+  filtersOpen.value = true
+}
 
 function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
   const sort = database.value?.sort
@@ -209,7 +219,7 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
       {
         label: 'Filter',
         icon: 'i-lucide-list-filter',
-        onSelect: () => filters.value?.add(column),
+        onSelect: () => (filterOn = column),
       },
     ],
     [
@@ -309,7 +319,6 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
           @click="setSort(null)"
         />
         <DatabaseFilters
-          ref="filters"
           v-model:open="filtersOpen"
           :columns="database.columns"
           :filters="database.filters"
@@ -337,7 +346,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                   v-else
                   :items="columnMenu(column)"
                   :disabled="readonly"
-                  :content="{ align: 'start' }"
+                  :content="{ align: 'start', onCloseAutoFocus: onMenuClosed }"
                 >
                   <button type="button" class="database-heading">
                     <UIcon :name="TYPES[column.type].icon" class="size-3.5 shrink-0 text-dimmed" />

@@ -104,6 +104,9 @@ describe('views', () => {
     [{ column: 'd', operator: 'empty' }, ['hail', 'empty']],
     [{ column: 'd', operator: 'not-empty' }, ['dune', 'left']],
     [{ column: 'gone', operator: 'empty' }, ['dune', 'hail', 'left', 'empty']],
+    // Without a value yet: not applied.
+    [{ column: 'n', operator: 'is', value: null }, ['dune', 'hail', 'left', 'empty']],
+    [{ column: 't', operator: 'contains', value: '' }, ['dune', 'hail', 'left', 'empty']],
   ] as const)('filters with %j', (filter, expected) => {
     expect(ids({ ...view, filters: [filter] })).toEqual(expected)
   })
