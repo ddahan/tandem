@@ -17,9 +17,8 @@ Usage: ./td <command> [args]
   e2e               end-to-end tests (Playwright, against a production build)
   typecheck         type checks
   build             production builds
-  release [--targets darwin-arm64,…]
-                    the standalone app: one executable per platform, signed (macOS) and
-                    checked, in packages/standalone/dist (publish: see README)
+  release           the app people install (JavaScript, run by their Node), into app/tandem,
+                    checked on the oldest supported Nodes (publish: commit it, see README)
   format            format every file (Oxfmt)
   lint              lint every file (Oxlint)
   pnpm <args>       any pnpm command, in the toolchain container
@@ -88,34 +87,18 @@ case "$cmd" in
   release)
     prepare
     pnpm_ --filter @tandem/web build
-    pnpm_ --filter @tandem/standalone package "$@"
-    dist=packages/standalone/dist
-    # macOS runs only signed executables: ad hoc is enough (no Apple account), on a Mac.
-    for file in "$dist"/tandem-darwin-*; do
-      [ -f "$file" ] || continue
-      if command -v codesign > /dev/null 2>&1; then
-        codesign --sign - --force "$file"
-      else
-        echo "Warning: $file is unsigned (codesign only exists on macOS)." >&2
-      fi
+    pnpm_ --filter @tandem/standalone package
+    # The app people install, committed in app/tandem/ (some networks only let a repository's
+    # ZIP through): JavaScript and the web app, run by the computer's own Node.
+    rm -rf app/tandem
+    cp -R packages/standalone/dist/tandem app/tandem
+    # Checked on the oldest Nodes it supports (see nodeSupported), in Docker.
+    for node in 22.16 24; do
+      docker run --rm -v "$PWD/app/tandem:/app:ro" \
+        -v "$PWD/packages/standalone/scripts/smoke.mjs:/smoke.mjs:ro" \
+        "node:$node-slim" node /smoke.mjs /app
     done
-    (cd "$dist" && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
-    # The app people install, committed in app/ (some networks only let a repository's ZIP
-    # through, not releases): the executables gzipped (GitHub takes files up to 100 MB), with
-    # their checksums, next to app/install.sh. Only from a full build: never a mix of versions.
-    if [ "$(ls "$dist"/tandem-darwin-* "$dist"/tandem-linux-* 2> /dev/null | wc -l)" -eq 4 ]; then
-      for file in "$dist"/tandem-darwin-* "$dist"/tandem-linux-*; do
-        gzip -9 -n -c "$file" > "app/$(basename "$file").gz"
-      done
-      cp "$dist/SHA256SUMS" app/SHA256SUMS
-      echo "app/ updated: commit it to publish this version."
-    fi
-    # Smoke test: the Linux executable for this machine runs, in the toolchain container.
-    linux="tandem-linux-$(dev_compose --progress quiet run --rm --no-deps node uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
-    if [ -f "$dist/$linux" ]; then
-      dev_compose --progress quiet run --rm --no-deps node "$dist/$linux" version
-    fi
-    ls -lh "$dist"
+    echo "app/tandem updated ($(du -sh app/tandem | cut -f 1)): commit it to publish this version."
     ;;
   setup)
     dev_compose build node

@@ -1,23 +1,33 @@
 // Where the standalone app keeps its own files, and the files it carries.
 //
-// - The app folder (`appDir`): the live database and the extracted runtime files, outside the
-//   notes folder (SQLite and file sync don't mix). The notes folder keeps the backup, as in
-//   Docker. `TANDEM_HOME` overrides it.
-// - The runtime files (web app, database migrations) are embedded in the executable (Node's
-//   single executable assets, listed in `manifest.json`) and extracted once per build into
-//   `<app folder>/runtime/<build>/`, where the server reads them like ordinary files.
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+// - The app folder (`appDir`): the live database and the settings, outside the notes folder
+//   (SQLite and file sync don't mix). The notes folder keeps the backup, as in Docker.
+//   `TANDEM_HOME` overrides it.
+// - The built app (scripts/build.ts) is tandem.mjs with web/, drizzle/ and manifest.json next to
+//   it, run by the computer's Node. Run from the repository instead (development), the web app
+//   and migrations are the packages' own.
+import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { getAsset, isSea } from 'node:sea'
 import { fileURLToPath } from 'node:url'
 
 export interface Manifest {
   version: string
-  /** A hash of the bundle and its files: a new build gets a new runtime folder. */
+  /** A hash of the bundle: tells builds apart. */
   build: string
-  /** Asset keys: `web/…` and `drizzle/…` paths. */
-  files: string[]
+}
+
+/** Said when Node doesn't fit (README and app/install.sh say the same). */
+export const NODE_REQUIREMENT = 'Node 22.16 or later (not 23)'
+
+/**
+ * Whether this Node runs Tandem: it needs node:sqlite with `setReturnArrays`, which came in
+ * 22.16 and 24.0, never in 23 (tried on 22.13 to 22.23, 23.11 and 24 to 26; `./td release`
+ * checks 22.16 and 24 with scripts/smoke.mjs).
+ */
+export function nodeSupported(version: string): boolean {
+  const [major = 0, minor = 0] = version.split('.').map(Number)
+  return major >= 24 || (major === 22 && minor >= 16)
 }
 
 export function appDir(env = process.env, platform = process.platform): string {
@@ -31,47 +41,39 @@ export function appDir(env = process.env, platform = process.platform): string {
 export interface Runtime {
   version: string
   webDir: string
-  /** Undefined outside the executable: the server's own `drizzle/` folder. */
+  /** Undefined in development: the server's own `drizzle/` folder. */
   migrationsFolder?: string
 }
 
-/** The version of this build (`dev` when not run as the executable). */
-export function buildVersion(): string {
-  if (!isSea()) return 'dev'
-  return (JSON.parse(getAsset('manifest.json', 'utf8')) as Manifest).version
+/** The folder of the running code: the built app's, or src/ in development. */
+const here = dirname(fileURLToPath(import.meta.url))
+
+/** The built app's manifest, next to tandem.mjs (none in development). */
+export function manifest(dir = here): Manifest | null {
+  try {
+    return JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')) as Manifest
+  } catch {
+    return null
+  }
 }
 
-/** The web app and migrations to use: extracted from the executable, or the repo's in development. */
-export function runtimeFiles(home = appDir()): Runtime {
-  if (!isSea()) {
+/** The version of this build (`dev` when run from the repository). */
+export function buildVersion(dir = here): string {
+  return manifest(dir)?.version ?? 'dev'
+}
+
+/** The web app and migrations to use: the built app's, or the repository's in development. */
+export function runtimeFiles(dir = here): Runtime {
+  const built = manifest(dir)
+  if (!built) {
     return {
       version: 'dev',
       webDir: fileURLToPath(new URL('../../web/.output/public', import.meta.url)),
     }
   }
-  const manifest = JSON.parse(getAsset('manifest.json', 'utf8')) as Manifest
-  const root = join(home, 'runtime')
-  const target = join(root, manifest.build)
-  if (!existsSync(join(target, '.complete'))) {
-    // Into a temporary folder first: a crash halfway never leaves a partial runtime behind.
-    const temporary = `${target}.${process.pid}.tmp`
-    rmSync(temporary, { recursive: true, force: true })
-    for (const key of manifest.files) {
-      const path = join(temporary, key)
-      mkdirSync(dirname(path), { recursive: true })
-      writeFileSync(path, new Uint8Array(getAsset(key)))
-    }
-    writeFileSync(join(temporary, '.complete'), manifest.version)
-    rmSync(target, { recursive: true, force: true })
-    renameSync(temporary, target)
-  }
-  // Older builds' files are no longer needed.
-  for (const name of readdirSync(root)) {
-    if (name !== manifest.build) rmSync(join(root, name), { recursive: true, force: true })
-  }
   return {
-    version: manifest.version,
-    webDir: join(target, 'web'),
-    migrationsFolder: join(target, 'drizzle'),
+    version: built.version,
+    webDir: join(dir, 'web'),
+    migrationsFolder: join(dir, 'drizzle'),
   }
 }

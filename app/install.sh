@@ -1,18 +1,19 @@
 #!/bin/sh
-# Installs (or updates) Tandem from this repository's app/ folder, without Docker, Node,
-# network or admin rights. Download the repository (GitHub: Code › Download ZIP), unzip it,
-# then run:
+# Installs (or updates) Tandem from this repository's app/ folder, without Docker, network or
+# admin rights. Needs Node 22.16 or later (not 23), already on the computer: Tandem is
+# JavaScript (app/tandem/), run by it. Download the repository (GitHub: Code › Download ZIP),
+# unzip it, then run:
 #   sh ~/Downloads/tandem-main/app/install.sh
 #
-# It unpacks the executable for this computer from this folder (tandem-<os>-<cpu>.gz, checked
-# against SHA256SUMS), asks where your notes live, and starts Tandem at login (macOS: a
-# LaunchAgent; Linux: a systemd user service), all in your home folder. Update: the same with
-# a newer download. Uninstall (your notes stay): sh install.sh --uninstall
+# It copies the app into your home folder, writes the `tandem` command (the app run by this
+# Node), asks where your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a
+# systemd user service). Update: the same with a newer download, or after changing Node.
+# Uninstall (your notes stay): sh install.sh --uninstall
 #
-# Options (environment): TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
-# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this executable instead of
-# this folder's: development), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login
-# item's name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
+# Options (environment): TANDEM_NODE (the Node to use, default: `node` on the PATH),
+# TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000), TANDEM_BIN_DIR (default
+# ~/.local/bin), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login item's
+# name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
 
 REPO="ddahan/tandem"
@@ -43,17 +44,10 @@ case "$os" in
     ;;
   *) fail "this installer supports macOS and Linux (found $os)." ;;
 esac
-case "$(uname -m)" in
-  arm64 | aarch64) arch=arm64 ;;
-  x86_64 | amd64) arch=x64 ;;
-  *) fail "unsupported processor: $(uname -m)." ;;
-esac
 bin_dir="${TANDEM_BIN_DIR:-$HOME/.local/bin}"
 bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
-asset="tandem-$platform-$arch"
-# The app's folder (app/ in the repository): this file's. The executables are compressed
-# (GitHub takes files up to 100 MB).
+# The repository's app/ folder: this file's. The app is its tandem/ folder.
 here="$(cd "$(dirname "$0")" && pwd)"
 
 stop_service() {
@@ -74,17 +68,35 @@ stop_service() {
 if [ "${1:-}" = --uninstall ]; then
   stop_service
   rm -f "$service_file" "$bin"
+  rm -rf "$app_dir/app"
   [ "$platform" = linux ] && command -v systemctl > /dev/null 2>&1 && systemctl --user daemon-reload || true
   say "Tandem is uninstalled. Your notes are untouched; the app's own folder (database copy,"
   say "settings) is kept in: $app_dir"
   exit 0
 fi
 
-# --- The app ----------------------------------------------------------------------------
-if [ -z "${TANDEM_BINARY:-}" ] && [ ! -f "$here/$asset.gz" ]; then
-  fail "no $asset.gz next to this installer: download the whole repository again
+# --- The app and Node -----------------------------------------------------------------------
+if [ ! -f "$here/tandem/tandem.mjs" ]; then
+  fail "no app next to this installer (app/tandem/): download the whole repository again
 (https://github.com/$REPO: Code › Download ZIP), unzip it, then run sh <its folder>/app/install.sh."
 fi
+# Tandem needs node:sqlite with setReturnArrays: Node 22.16 or later, never 23 (the app's
+# nodeSupported says the same).
+node_bin="${TANDEM_NODE:-$(command -v node || true)}"
+node_version=""
+[ -n "$node_bin" ] && node_version="$("$node_bin" -p process.versions.node 2> /dev/null || true)"
+major="${node_version%%.*}"
+minor="${node_version#*.}"
+minor="${minor%%.*}"
+if [ -z "$node_version" ] || ! { [ "$major" -ge 24 ] || { [ "$major" -eq 22 ] && [ "$minor" -ge 16 ]; }; }; then
+  found="none"
+  [ -n "$node_version" ] && found="Node $node_version ($node_bin)"
+  fail "Tandem needs Node 22.16 or later (not 23); found $found.
+Install it (https://nodejs.org, or nvm, Volta, Homebrew…), then run this installer again; or use
+another one: TANDEM_NODE=/path/to/node sh \"$here/install.sh\""
+fi
+# Its full path: the login item doesn't get your shell's PATH (nvm, Volta…).
+node_bin="$(cd "$(dirname "$node_bin")" && pwd)/$(basename "$node_bin")"
 
 # --- Settings: from the environment, the previous install, or questions -------------------
 data_dir=""
@@ -154,41 +166,25 @@ mkdir -p "$data_dir"
 data_dir="$(cd "$data_dir" && pwd)"
 
 # --- The app --------------------------------------------------------------------------------
-work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
-
-# The executable must match its line in SHA256SUMS (a corrupted download or copy).
-check() {
-  expected="$(grep " $asset\$" "$1" | cut -d ' ' -f 1)"
-  if command -v sha256sum > /dev/null 2>&1; then
-    actual="$(sha256sum "$work/tandem" | cut -d ' ' -f 1)"
-  else
-    actual="$(shasum -a 256 "$work/tandem" | cut -d ' ' -f 1)"
-  fi
-  [ -n "$expected" ] && [ "$expected" = "$actual" ] || fail "$2 (checksum mismatch)."
-}
-
-if [ -n "${TANDEM_BINARY:-}" ]; then
-  cp "$TANDEM_BINARY" "$work/tandem"
-else
-  say "Installing Tandem for $platform ($arch)…"
-  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unzip the whole repository."
-  gunzip -c "$here/$asset.gz" > "$work/tandem" || fail "$asset.gz is damaged: download the repository again."
-  check "$here/SHA256SUMS" "the app is damaged: download the repository again"
-fi
-chmod +x "$work/tandem"
-# A file downloaded with a browser (and what's unzipped from it) is quarantined: macOS would
-# refuse to run this executable (signed without an Apple certificate), and allowing it may take
-# an administrator. Its owner can lift the quarantine, no admin rights needed.
-if [ "$platform" = darwin ]; then
-  xattr -d com.apple.quarantine "$work/tandem" 2> /dev/null || true
-fi
-"$work/tandem" version > /dev/null || fail "the app doesn't run on this computer."
+say "Installing Tandem $(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$here/tandem/manifest.json") (Node $node_version)…"
+mkdir -p "$bin_dir" "$app_dir"
+# Copied next to the installed one first: the running version keeps its files until it stops.
+rm -rf "$app_dir/app.new"
+cp -R "$here/tandem" "$app_dir/app.new"
+"$node_bin" "$app_dir/app.new/tandem.mjs" version > /dev/null || fail "the app doesn't run with Node $node_version ($node_bin)."
 
 # Stop the running version (update), then put the new one in place.
 stop_service
-mkdir -p "$bin_dir" "$app_dir"
-mv "$work/tandem" "$bin"
+rm -rf "$app_dir/app" "$app_dir/runtime"
+mv "$app_dir/app.new" "$app_dir/app"
+# The `tandem` command: the app, run by this Node (SQLite's "experimental" warning silenced on
+# Node 22).
+cat > "$bin" << LAUNCHER
+#!/bin/sh
+# Tandem, written by its installer (app/install.sh): the app run by Node $node_version.
+exec "$node_bin" --disable-warning=ExperimentalWarning "$app_dir/app/tandem.mjs" "\$@"
+LAUNCHER
+chmod +x "$bin"
 # The login item runs `tandem serve`, which reads the folder and port from this file (also
 # written by Settings › Notes folder).
 printf 'data_dir=%s\nport=%s\n' "'$(printf '%s' "$data_dir" | sed "s/'/'\\\\''/g")'" "$port" > "$settings"
@@ -259,7 +255,8 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-say "Update:           download the repository again and run its app/install.sh"
+say "Update:           download the repository again and run its app/install.sh (also after"
+say "                  changing or removing this Node: $node_bin)"
 say "Uninstall:        sh \"$here/install.sh\" --uninstall"
 
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then

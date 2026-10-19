@@ -13,6 +13,8 @@ export default defineConfig({
     '**/.output/**',
     '**/test/fixtures/**',
     '**/*.generated.ts',
+    // The built app (./td release).
+    'app/tandem/**',
   ],
   sortTailwindcss: { stylesheet: './packages/web/app/assets/css/main.css', attributes: ['ui'] },
 })

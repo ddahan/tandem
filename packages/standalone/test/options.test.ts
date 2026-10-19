@@ -3,7 +3,7 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { serveOptions } from '../src/options.ts'
-import { appDir, buildVersion, runtimeFiles } from '../src/runtime.ts'
+import { appDir, buildVersion, nodeSupported, runtimeFiles } from '../src/runtime.ts'
 
 describe('serve options', () => {
   it('takes the notes folder and port from the arguments, then the environment', () => {
@@ -48,5 +48,14 @@ describe('app folder', () => {
   it("uses the repo's web app when not run as the executable", () => {
     expect(buildVersion()).toBe('dev')
     expect(runtimeFiles('/unused').webDir).toMatch(/packages\/web\/\.output\/public$/)
+  })
+})
+
+describe('Node', () => {
+  it('runs Tandem from 22.16 (node:sqlite with setReturnArrays), never on 23', () => {
+    for (const version of ['22.16.0', '22.23.3', '24.0.0', '25.9.0', '26.11.1'])
+      expect(nodeSupported(version)).toBe(true)
+    for (const version of ['20.19.0', '22.15.1', '23.11.1'])
+      expect(nodeSupported(version)).toBe(false)
   })
 })

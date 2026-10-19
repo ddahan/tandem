@@ -1,1 +1,2 @@
-app/*.gz binary
+# The built app (./td release): not reviewed as code.
+app/tandem/** linguist-generated -diff

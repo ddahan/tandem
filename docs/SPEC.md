@@ -14,11 +14,12 @@ inside OneDrive so that it is backed up and synced.
 
 ## Installation
 
-- **Standalone** (the default): one executable per platform (macOS and Linux, arm64 and x64),
-  with neither Docker nor Node needed. The executables are in the repository (`app/`), so
+- **Standalone** (the default): a JavaScript app (about 11 MB) run by the computer's Node,
+  **22.16 or later, not 23: a hard requirement** (no Node is bundled; the installer refuses
+  others, naming the Node it found). The app is in the repository (`app/tandem/`), so
   downloading it (a ZIP from GitHub, on any computer) is the only way, and enough: there are no
-  GitHub releases. `app/install.sh` installs the one for this computer with no network access
-  and no admin rights: it checks its SHA-256, asks for the notes folder, starts it at login (a
+  GitHub releases. `app/install.sh` installs it with no network access and no admin rights
+  (macOS and Linux): it checks Node, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
   app. Running it from a newer download updates it (the notes folder is remembered); `--uninstall`
   removes it and never touches the notes. Port 3000 by default, or the next free one when

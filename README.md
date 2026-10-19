@@ -30,9 +30,16 @@ MCP server or a CLI, and every line remembers who wrote it.
 
 ## Install
 
-The app is in this repository (`app/`): downloading it is all it takes, with no network needed
-afterwards, no Docker, no Node and no admin rights. It works where GitHub's other downloads are
-blocked.
+> **Requirement: Node.js 22.16 or later (not 23)**, already installed on the computer: Tandem
+> is a JavaScript app (in `app/tandem/`, about 11 MB) that runs on it. Node 22 and 24 (the
+> long-term support versions) or newer all work; 23 and older 22 releases don't (their built-in
+> SQLite misses what Tandem needs). Check with `node -v`. No Node? Get it from
+> [nodejs.org](https://nodejs.org): its `.pkg` installer asks for admin rights, its `.tar.gz`
+> doesn't (unpack it anywhere), nor do nvm or Volta.
+
+With Node there, the app is in this repository (`app/`): downloading it is all it takes, with no
+network needed afterwards, no Docker and no admin rights. It works where GitHub's other downloads
+are blocked.
 
 1. Download the repository, on any computer: on GitHub, **Code › Download ZIP** (or
    `git clone`). Copy it to the computer where Tandem goes if it's another one.
@@ -43,16 +50,18 @@ blocked.
    sh ~/Downloads/tandem-main/app/install.sh
    ```
 
-It unpacks the app for this computer (macOS or Linux, Apple Silicon/ARM or Intel), checks it,
-asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder works), starts
+It checks Node, copies the app into your home folder, writes the `tandem` command (the app run by
+that Node), asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder works), starts
 Tandem at login (all in your home folder) and opens <http://localhost:3000>.
 
 - **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
 - **Update**: the same with a newer download of the repository (your notes folder is
-  remembered).
+  remembered). Also after changing Node (a new version, nvm switching): the installer records
+  which Node runs Tandem.
 - **Uninstall**: `sh ~/Downloads/tandem-main/app/install.sh --uninstall` (your notes stay).
-- Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
+- Options, as environment variables: `TANDEM_NODE` (a Node other than the one on the `PATH`),
+  `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
 - **Port**: 3000, or the next free one if another app uses it (the installer says which). It
@@ -65,16 +74,19 @@ Tandem at login (all in your home folder) and opens <http://localhost:3000>.
 Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 
 1. **Never** use `sudo` or ask for admin rights, and **don't build from source**: building needs
-   Node and ~1,000 npm packages from the network. The app is ready in `app/`.
-2. Find this repository on the computer (a clone, or the unzipped `tandem-main` folder: `ls
+   ~1,000 npm packages from the network. The app is ready in `app/`.
+2. Check Node: `node -v` must be 22.16 or later, and not 23. If it isn't, stop and tell the user
+   (see the requirement above); with several Nodes (nvm…), pass a suitable one as
+   `TANDEM_NODE=/path/to/node`.
+3. Find this repository on the computer (a clone, or the unzipped `tandem-main` folder: `ls
    ~/Downloads ~/Desktop`). If it isn't there, get it: `git clone
    https://github.com/ddahan/tandem`; if that fails (blocked network), ask the user to download
    it (GitHub: Code › Download ZIP) on any computer and copy it here.
-3. Run its installer with the notes folder chosen by the user (set it, the installer would
+4. Run its installer with the notes folder chosen by the user (set it, the installer would
    otherwise ask on the terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <repository>/app/install.sh`
-4. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
+5. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
    in the installer's last lines: 3000, or the next free one when another app uses it).
-5. Tell the user to open Tandem's address and install it as an app (below), and offer to
+6. Tell the user to open Tandem's address and install it as an app (below), and offer to
    connect Claude to it (see [Agents](#agents)).
 
 ### With Docker instead
@@ -166,15 +178,15 @@ Everything goes through `./td` (run it alone for the list):
 | All checks (format, lint, build, types, unit tests) | `./td check`                                                |
 | End-to-end tests (Playwright)                       | `./td e2e`                                                  |
 | Unit tests of one package                           | `./td test server`                                          |
-| Standalone executables (all platforms)              | `./td release`                                              |
+| The app people install (`app/tandem/`)              | `./td release`                                              |
 
 ### Releasing
 
 Set the version in `packages/standalone/package.json`, then run `./td release`: it builds the
-executables (signed for macOS, checked) and puts them in `app/`, gzipped (GitHub takes files up to
-100 MB), with their checksums. Commit and push `app/`: that's the release (people install from
-the repository; there are no GitHub releases). Each release adds ~190 MB to the repository's
-history: release when it's worth it.
+app (`tandem.mjs`, the web app, the migrations) into `app/tandem/` and checks it on Node 22.16 and
+24 (in Docker). Commit and push `app/tandem/`: that's the release (people install from the
+repository; there are no GitHub releases). Each release adds about 3 MB to the repository's
+history.
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

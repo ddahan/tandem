@@ -27,5 +27,6 @@ export default defineConfig({
     '**/playwright-report/**',
     '**/test-results/**',
     '**/*.generated.ts',
+    'app/tandem/**',
   ],
 })

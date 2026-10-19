@@ -23,7 +23,7 @@ How Tandem is built. What it does and why is in [SPEC.md](SPEC.md); how to work 
 One process serves everything: the API, the MCP endpoint, attachment files (`/files/…`) and the
 built web app. In Docker and development it runs TypeScript directly (Node's type stripping:
 no build step for the server, the CLI and the shared package); the standalone app is the same
-code bundled into one executable (below).
+code bundled into one JavaScript file, run by the computer's Node (below).
 
 ## Packages
 
@@ -33,7 +33,7 @@ code bundled into one executable (below).
 | `packages/server`     | Vault, database, search, history, watcher, Hono API, MCP server, entry point                  |
 | `packages/cli`        | The `tandem` CLI (a typed client of the API)                                                  |
 | `packages/web`        | Nuxt 4 single-page app with Nuxt UI; editor extensions; Playwright tests                      |
-| `packages/standalone` | The standalone app: one executable (server + CLI + web app), its build                        |
+| `packages/standalone` | The standalone app: one JavaScript bundle (server + CLI) with the web app, its build          |
 
 The web app and the CLI use the server's API through Hono's typed client
 (`@tandem/server/client`): route types flow from the server to its clients.
@@ -230,16 +230,17 @@ folders and the versions.
   `startServer` first waits for its port while another app holds it (`port.ts`): crashing
   would make the login item restart it every 2 s.
 - `scripts/build.ts` (via `./td release`): esbuild bundles the entry and its dependencies into
-  one ES module; the web app and the migrations become embedded assets (with a manifest:
-  version, build hash, files); `node --build-sea` turns Node's official binary for each target
-  (downloaded once into `.cache/`, checked against nodejs.org's SHA-256 sums) into
-  `dist/tandem-<os>-<arch>`. Everything runtime is JavaScript plus `node:sqlite`: no native
-  module, which is what makes cross-building from the Linux toolchain possible. `./td release`
-  then signs the macOS executables ad hoc (`codesign`, on the Mac), writes `SHA256SUMS` and
-  runs the Linux one as a smoke test.
+  one ES module, `tandem.mjs` (syntax for Node 22), next to the web app (`web/`), the migrations
+  (`drizzle/`) and `manifest.json` (version, build hash): `dist/tandem/`, which `./td release`
+  copies to `app/tandem/` and checks with `scripts/smoke.mjs` on Node 22.16 and 24 (Docker
+  images): start, create a note, search it, load the web app. No Node inside (it was ~45 MB per
+  platform): the computer's runs it. `nodeSupported` (`runtime.ts`) is the requirement, Node
+  22.16+ but not 23 (`setReturnArrays` in node:sqlite); `main.ts` refuses others, and
+  `install.sh` checks the same.
 - `src/runtime.ts`: the app folder (`~/Library/Application Support/Tandem/`, `~/.local/share/tandem/`,
-  or `TANDEM_HOME`) holds the live databases and the embedded files, extracted once per build
-  into `runtime/<build>/` (atomically, older builds removed).
+  or `TANDEM_HOME`) holds the live databases, the settings and the installed app (`app/`). The
+  built app finds its files next to `tandem.mjs` (its manifest says it's built); run from the
+  repository, it uses the packages' own.
 - `src/settings.ts`: `install.env` in the app folder (notes folder, port; shell syntax, as the
   installer sources it). `tandem serve` reads it: by hand, after its arguments and the
   environment; as the login item (`XPC_SERVICE_NAME` is its label), before them, since it holds
@@ -252,12 +253,11 @@ folders and the versions.
   a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
   (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
   the folder is read-only.
-- `app/` (committed): the executables gzipped (GitHub takes files up to 100 MB), `SHA256SUMS` and
-  `install.sh`; `./td release` rewrites them (only from a full build of the four targets).
-  `install.sh` unpacks the executable for this machine from its own folder (never downloads),
-  checks it,
-  lifts macOS' quarantine (a browser download's; its owner can, without admin rights), picks
-  the port (free, or this Tandem's own: `curl` exit 7 means nothing listens; `lsof` names the
+- `app/` (committed): `tandem/` (the built app, rewritten by `./td release`) and `install.sh`. It
+  never downloads: it checks Node (`TANDEM_NODE` or the `PATH`'s, kept by full path since the
+  login item has no shell `PATH`), copies the app into the app folder (`app.new`, swapped in
+  once the running version stops), writes the `tandem` command (a launcher: that Node, with
+  SQLite's experimental warning silenced on 22, running `tandem.mjs`), picks the port (free, or this Tandem's own: `curl` exit 7 means nothing listens; `lsof` names the
   app in the way), writes
   `install.env`, and registers the service, which runs `tandem serve` alone
   (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
@@ -267,6 +267,6 @@ folders and the versions.
 
 `cli.ts` parses arguments (`node:util` `parseArgs`) and calls the API with the typed client;
 `run()` takes its input and output as parameters, so tests run it against an in-memory app.
-It is part of the standalone executable (`tandem`). In Docker it is installed as
+It is part of the standalone app (the `tandem` command). In Docker it is installed as
 `/usr/local/bin/tandem` in the image; `bin/tandem` on the Mac runs it with
 `docker compose exec` and streams host files through standard input.

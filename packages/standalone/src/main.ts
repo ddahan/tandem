@@ -1,16 +1,17 @@
-// The standalone Tandem app: one executable, without Docker or Node. `tandem serve` runs the
-// app; every other command is the CLI (packages/cli), talking to the running app.
+// The standalone Tandem app, run by the computer's Node (built into tandem.mjs, see
+// scripts/build.ts): `tandem serve` runs the app; every other command is the CLI
+// (packages/cli), talking to the running app.
 import { processIo, run, USAGE } from '@tandem/cli/cli'
 import { startServer } from '@tandem/server/server'
 import { SERVE_USAGE, serveOptions } from './options.ts'
-import { appDir, buildVersion, runtimeFiles } from './runtime.ts'
+import { appDir, buildVersion, NODE_REQUIREMENT, nodeSupported, runtimeFiles } from './runtime.ts'
 import { databaseFor, readSettings, writeSettings } from './settings.ts'
 
 async function serve(args: string[]) {
   const home = appDir()
   const saved = readSettings(home)
   const { dataDir, port, asService } = serveOptions(args, process.env, saved)
-  const { version, webDir, migrationsFolder } = runtimeFiles(home)
+  const { version, webDir, migrationsFolder } = runtimeFiles()
   console.log(`Tandem ${version}`)
   const app = await startServer({
     dataDir,
@@ -38,6 +39,12 @@ async function serve(args: string[]) {
   }
   process.on('SIGTERM', () => void stop())
   process.on('SIGINT', () => void stop())
+}
+
+// The installer checks Node's version; this says it to anyone starting tandem.mjs by hand.
+if (!nodeSupported(process.versions.node)) {
+  console.error(`Tandem needs ${NODE_REQUIREMENT}; this is Node ${process.versions.node}.`)
+  process.exit(1)
 }
 
 const [command, ...rest] = process.argv.slice(2)
