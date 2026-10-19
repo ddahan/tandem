@@ -272,7 +272,9 @@ html.dark[data-tone='cool'] {
 .note-editor ul[data-type='taskList'] > li > div {
   flex: 1;
 }
-.note-editor ul[data-type='taskList'] > li[data-checked='true'] > div {
+/* Only the item's own lines: a strike-through reaches everything inside the element it is set
+   on, its sub-items included (unchecked ones too), and they can't undo it. */
+.note-editor ul[data-type='taskList'] > li[data-checked='true'] > div > :not(ul, ol) {
   color: var(--ui-text-muted);
   text-decoration: line-through;
 }

@@ -565,6 +565,19 @@ test('draws numbers nested in a to-do like any numbers', async ({ page, request 
   )
 })
 
+test('strikes a done to-do, not its sub-items', async ({ page, request }) => {
+  const note = await createNote(request, 'Done parent', '- [x] Parent\n  - [ ] Child\n')
+  await openNote(page, note.id)
+  // A strike-through set on an element reaches all its content: it is set on the item's own
+  // lines only, never on the block that also holds its sub-items.
+  const strike = (selector: string) =>
+    page.locator(selector).evaluate((element) => getComputedStyle(element).textDecorationLine)
+  const parent = '.ProseMirror > ul > li[data-checked=true] > div'
+  expect(await strike(`${parent} > p`)).toBe('line-through')
+  expect(await strike(parent)).toBe('none')
+  expect(await strike(`${parent} > ul > li[data-checked=false] > div`)).toBe('none')
+})
+
 test('moves list items level by level, whatever their kinds, and saves what it shows', async ({
   page,
   request,

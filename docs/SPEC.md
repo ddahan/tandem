@@ -102,8 +102,9 @@ inside OneDrive so that it is backed up and synced.
   item and Backspace at the start of an item go one level out, taking that level's kind (the
   items after it become its sub-items; from the top level, a paragraph); Backspace at the start
   of a paragraph after a list joins the list's last line; Delete at the end of a line brings its
-  first sub-item one level up, then joins it. A new to-do is unchecked. Empty items aren't saved
-  (Markdown can't keep them), and what's saved reads back the same, in any nesting.
+  first sub-item one level up, then joins it. A new to-do is unchecked; a done one is struck
+  through, not its sub-items. Empty items aren't saved (Markdown can't keep them), and what's
+  saved reads back the same, in any nesting.
 - **Moving blocks**: a handle (⋮⋮) left of the block under the pointer drags it anywhere in the
   note: paragraphs, headings, tables, code, callouts, and list items one by one (with their
   nested items; into another list, they take its kind). For bullet and numbered items the
