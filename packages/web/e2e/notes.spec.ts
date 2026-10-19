@@ -490,6 +490,20 @@ test('makes any kind of list at any level, typed or from the slash menu', async 
     )
 })
 
+test('draws numbers nested in a to-do like any numbers', async ({ page, request }) => {
+  const note = await createNote(request, 'Nested numbers', '- [ ] Task\n  1. nested\n\n1. top\n')
+  await openNote(page, note.id)
+  // Nuxt UI gives every marker inside a bullet (or to-do) list the bullets' faint color.
+  const color = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((li) => getComputedStyle(li, '::marker').color)
+  expect(await color('.ProseMirror ul[data-type=taskList] ol > li')).toBe(
+    await color('.ProseMirror > ol > li'),
+  )
+})
+
 test('aligns task checkboxes with their text, at any text size', async ({ page, request }) => {
   const note = await createNote(request, 'Tasks note', '- [x] Done task\n- [ ] Open task\n')
   // Distance between the centers of each checkbox and of its first line of text.

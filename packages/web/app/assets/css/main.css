@@ -231,6 +231,12 @@ html.dark[data-tone='cool'] {
   background: var(--ui-bg-accented);
 }
 
+/* Numbers keep their color in any list: Nuxt UI colors every marker inside a bullet (or task)
+   list like the bullets, near-invisible for a numbered list nested in one (in Safari: not drawn). */
+.note-editor ol > li::marker {
+  color: var(--ui-text-muted);
+}
+
 /* Task lists. Their own items only (`> li`): a bullet or numbered list nested in a task keeps
    its markers. */
 .note-editor ul[data-type='taskList'] {
