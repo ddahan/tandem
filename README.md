@@ -185,8 +185,8 @@ Everything goes through `./td` (run it alone for the list):
 Set the version in `packages/standalone/package.json`, then run `./td release`: it builds the
 app (`tandem.mjs`, the web app, the migrations) into `app/tandem/` and checks it on Node 22.16 and
 24 (in Docker). Commit and push `app/tandem/`: that's the release (people install from the
-repository; there are no GitHub releases). Each release adds about 3 MB to the repository's
-history.
+repository). Then tag it (`vX.Y.Z`) and publish a GitHub release for its notes, with no files
+attached: its source ZIP holds `app/`. Each release adds about 3 MB to the repository's history.
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.
