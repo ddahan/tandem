@@ -30,28 +30,28 @@ MCP server or a CLI, and every line remembers who wrote it.
 
 ## Install
 
-Tandem installs from a package: no network needed (it works where GitHub is blocked), no Docker,
-no Node, no admin rights.
+The app is in this repository (`app/`): downloading it is all it takes, with no network needed
+afterwards, no Docker, no Node and no admin rights. It works where GitHub's other downloads are
+blocked.
 
-1. Download the package from the [latest release](https://github.com/ddahan/tandem/releases/latest),
-   on any computer, and copy it to the one where Tandem goes:
-   - macOS (Apple Silicon or Intel): **`tandem-macos.zip`**
-   - Linux (x86-64 or ARM): **`tandem-linux.tar.gz`**
-2. Unpack it (macOS: double-click; Linux: `tar -xzf tandem-linux.tar.gz`).
-3. Run its installer, in Terminal:
+1. Download the repository, on any computer: on GitHub, **Code › Download ZIP** (or
+   `git clone`). Copy it to the computer where Tandem goes if it's another one.
+2. Unzip it (double-click).
+3. Run the installer, in Terminal:
 
    ```bash
-   sh ~/Downloads/tandem-macos/install.sh
+   sh ~/Downloads/tandem-main/app/install.sh
    ```
 
-It checks the app, asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder
-works), starts Tandem at login (all in your home folder) and opens <http://localhost:3000>.
-The package's `README.txt` says it again.
+It unpacks the app for this computer (macOS or Linux, Apple Silicon/ARM or Intel), checks it,
+asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder works), starts
+Tandem at login (all in your home folder) and opens <http://localhost:3000>.
 
 - **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
-- **Update**: the same with the latest package (your notes folder is remembered).
-- **Uninstall**: `sh ~/Downloads/tandem-macos/install.sh --uninstall` (your notes stay).
+- **Update**: the same with a newer download of the repository (your notes folder is
+  remembered).
+- **Uninstall**: `sh ~/Downloads/tandem-main/app/install.sh --uninstall` (your notes stay).
 - Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
@@ -65,15 +65,13 @@ The package's `README.txt` says it again.
 Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 
 1. **Never** use `sudo` or ask for admin rights, and **don't build from source**: building needs
-   Node and ~1,000 npm packages from the network. This repository's `install.sh` doesn't work on
-   its own either: the app isn't in the source code, only in the package.
-2. Find the package (`tandem-macos.zip` or `tandem-linux.tar.gz`) or its unpacked folder:
-   `ls ~/Downloads ~/Desktop`. If it isn't there, download it from
-   `https://github.com/ddahan/tandem/releases/latest/download/<package>` (with `curl -fLO`); if
-   that fails (blocked network), ask the user to download it on any computer and copy it here.
-3. Unpack it (`unzip tandem-macos.zip`, `tar -xzf tandem-linux.tar.gz`), then run its installer
-   with the notes folder chosen by the user (set it, the installer would otherwise ask on the
-   terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <folder>/install.sh`
+   Node and ~1,000 npm packages from the network. The app is ready in `app/`.
+2. Find this repository on the computer (a clone, or the unzipped `tandem-main` folder: `ls
+   ~/Downloads ~/Desktop`). If it isn't there, get it: `git clone
+   https://github.com/ddahan/tandem`; if that fails (blocked network), ask the user to download
+   it (GitHub: Code › Download ZIP) on any computer and copy it here.
+3. Run its installer with the notes folder chosen by the user (set it, the installer would
+   otherwise ask on the terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <repository>/app/install.sh`
 4. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
    in the installer's last lines: 3000, or the next free one when another app uses it).
 5. Tell the user to open Tandem's address and install it as an app (below), and offer to
@@ -172,15 +170,11 @@ Everything goes through `./td` (run it alone for the list):
 
 ### Releasing
 
-`./td release` builds the executables into `packages/standalone/dist` (signed for macOS,
-checked, with `SHA256SUMS`), and the packages people install from: `tandem-macos.zip` and
-`tandem-linux.tar.gz` (`install.sh` with one OS's executables, their checksums and a README).
-Set the version in `packages/standalone/package.json`, then publish the packages as a GitHub
-release (people take the latest one):
-
-```bash
-gh release create v0.3.0 packages/standalone/dist/tandem-macos.zip packages/standalone/dist/tandem-linux.tar.gz
-```
+Set the version in `packages/standalone/package.json`, then run `./td release`: it builds the
+executables (signed for macOS, checked) and puts them in `app/`, gzipped (GitHub takes files up to
+100 MB), with their checksums. Commit and push `app/`: that's the release (people install from
+the repository; there are no GitHub releases). Each release adds ~190 MB to the repository's
+history: release when it's worth it.
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

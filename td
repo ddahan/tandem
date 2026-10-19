@@ -99,26 +99,17 @@ case "$cmd" in
         echo "Warning: $file is unsigned (codesign only exists on macOS)." >&2
       fi
     done
-    (cd "$dist" && rm -f tandem-macos.zip tandem-linux.tar.gz && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
-    # The packages people download (the only way to install): install.sh with the executables
-    # of one OS next to it, their checksums and a README. No network needed to install.
-    for os in macos linux; do
-      platform=darwin
-      [ "$os" = linux ] && platform=linux
-      [ -f "$dist/tandem-$platform-arm64" ] && [ -f "$dist/tandem-$platform-x64" ] || continue
-      staging="$(mktemp -d)"
-      mkdir "$staging/tandem-$os"
-      cp install.sh "$dist/tandem-$platform-arm64" "$dist/tandem-$platform-x64" "$staging/tandem-$os/"
-      grep " tandem-$platform-" "$dist/SHA256SUMS" > "$staging/tandem-$os/SHA256SUMS"
-      cp "packages/standalone/package/README-$os.txt" "$staging/tandem-$os/README.txt"
-      if [ "$os" = macos ]; then
-        (cd "$staging" && zip -qrX - tandem-macos) > "$dist/tandem-macos.zip"
-      else
-        # Without macOS metadata (._ files, extended attributes), which Linux would unpack or warn about.
-        COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -czf "$dist/tandem-linux.tar.gz" -C "$staging" tandem-linux
-      fi
-      rm -rf "$staging"
-    done
+    (cd "$dist" && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
+    # The app people install, committed in app/ (some networks only let a repository's ZIP
+    # through, not releases): the executables gzipped (GitHub takes files up to 100 MB), with
+    # their checksums, next to app/install.sh. Only from a full build: never a mix of versions.
+    if [ "$(ls "$dist"/tandem-darwin-* "$dist"/tandem-linux-* 2> /dev/null | wc -l)" -eq 4 ]; then
+      for file in "$dist"/tandem-darwin-* "$dist"/tandem-linux-*; do
+        gzip -9 -n -c "$file" > "app/$(basename "$file").gz"
+      done
+      cp "$dist/SHA256SUMS" app/SHA256SUMS
+      echo "app/ updated: commit it to publish this version."
+    fi
     # Smoke test: the Linux executable for this machine runs, in the toolchain container.
     linux="tandem-linux-$(dev_compose --progress quiet run --rm --no-deps node uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
     if [ -f "$dist/$linux" ]; then

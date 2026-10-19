@@ -1,17 +1,17 @@
 #!/bin/sh
-# Installs (or updates) Tandem from its package, without Docker, Node, network or admin rights.
-# Unpack the release's package (tandem-macos.zip or tandem-linux.tar.gz, downloaded on any
-# computer), then run the install.sh inside it:
-#   sh ~/Downloads/tandem-macos/install.sh
+# Installs (or updates) Tandem from this repository's app/ folder, without Docker, Node,
+# network or admin rights. Download the repository (GitHub: Code › Download ZIP), unzip it,
+# then run:
+#   sh ~/Downloads/tandem-main/app/install.sh
 #
-# It installs the executable for this computer from the package (after checking it), asks where
-# your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a systemd user
-# service), all in your home folder. Update: the same with a newer package. Uninstall (your
-# notes stay): sh install.sh --uninstall
+# It unpacks the executable for this computer from this folder (tandem-<os>-<cpu>.gz, checked
+# against SHA256SUMS), asks where your notes live, and starts Tandem at login (macOS: a
+# LaunchAgent; Linux: a systemd user service), all in your home folder. Update: the same with
+# a newer download. Uninstall (your notes stay): sh install.sh --uninstall
 #
 # Options (environment): TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
-# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this executable instead of the
-# package's: development), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login
+# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this executable instead of
+# this folder's: development), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login
 # item's name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
 
@@ -52,9 +52,8 @@ bin_dir="${TANDEM_BIN_DIR:-$HOME/.local/bin}"
 bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
 asset="tandem-$platform-$arch"
-package="tandem-macos.zip"
-[ "$platform" = linux ] && package="tandem-linux.tar.gz"
-# The package's folder: this file's.
+# The app's folder (app/ in the repository): this file's. The executables are compressed
+# (GitHub takes files up to 100 MB).
 here="$(cd "$(dirname "$0")" && pwd)"
 
 stop_service() {
@@ -81,11 +80,10 @@ if [ "${1:-}" = --uninstall ]; then
   exit 0
 fi
 
-# --- The package ----------------------------------------------------------------------------
-if [ -z "${TANDEM_BINARY:-}" ] && [ ! -f "$here/$asset" ]; then
-  fail "no $asset next to this installer. Run the install.sh inside Tandem's package: download
-$package from https://github.com/$REPO/releases/latest (on any computer), unpack it, then run
-sh <its folder>/install.sh. (The source code doesn't hold the app.)"
+# --- The app ----------------------------------------------------------------------------
+if [ -z "${TANDEM_BINARY:-}" ] && [ ! -f "$here/$asset.gz" ]; then
+  fail "no $asset.gz next to this installer: download the whole repository again
+(https://github.com/$REPO: Code › Download ZIP), unzip it, then run sh <its folder>/app/install.sh."
 fi
 
 # --- Settings: from the environment, the previous install, or questions -------------------
@@ -174,9 +172,9 @@ if [ -n "${TANDEM_BINARY:-}" ]; then
   cp "$TANDEM_BINARY" "$work/tandem"
 else
   say "Installing Tandem for $platform ($arch)…"
-  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unpack the whole package."
-  cp "$here/$asset" "$work/tandem"
-  check "$here/SHA256SUMS" "the package is corrupted: download and unpack it again"
+  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unzip the whole repository."
+  gunzip -c "$here/$asset.gz" > "$work/tandem" || fail "$asset.gz is damaged: download the repository again."
+  check "$here/SHA256SUMS" "the app is damaged: download the repository again"
 fi
 chmod +x "$work/tandem"
 # A file downloaded with a browser (and what's unzipped from it) is quarantined: macOS would
@@ -261,7 +259,7 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-say "Update:           run install.sh from a newer package ($package)"
+say "Update:           download the repository again and run its app/install.sh"
 say "Uninstall:        sh \"$here/install.sh\" --uninstall"
 
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then

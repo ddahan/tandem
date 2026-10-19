@@ -252,10 +252,10 @@ folders and the versions.
   a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
   (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
   the folder is read-only.
-- `install.sh` (repo root): shipped in the packages `./td release` builds (`tandem-macos.zip`,
-  `tandem-linux.tar.gz`: the script, one OS's executables, `SHA256SUMS`, a README from
-  `packages/standalone/package/`). It installs the executable for this machine from its own
-  folder (never downloads; run from the source code, it says where the package is), checks it,
+- `app/` (committed): the executables gzipped (GitHub takes files up to 100 MB), `SHA256SUMS` and
+  `install.sh`; `./td release` rewrites them (only from a full build of the four targets).
+  `install.sh` unpacks the executable for this machine from its own folder (never downloads),
+  checks it,
   lifts macOS' quarantine (a browser download's; its owner can, without admin rights), picks
   the port (free, or this Tandem's own: `curl` exit 7 means nothing listens; `lsof` names the
   app in the way), writes

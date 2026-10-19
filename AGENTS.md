@@ -7,7 +7,7 @@ changing it) want [docs/agents.md](docs/agents.md).
 
 **Asked to install Tandem** (not to change it)? Follow
 [README › Installing with an AI agent](README.md#installing-with-an-ai-agent): no build from
-source, no admin rights: it installs from the release's package, with no network needed.
+source, no admin rights: `app/install.sh` installs the app in `app/`, with no network needed.
 
 ## Layout
 
@@ -18,7 +18,7 @@ source, no admin rights: it installs from the release's package, with no network
 | `packages/cli`               | The `tandem` CLI                                                               |
 | `packages/web`               | The Nuxt UI single-page app, its editor extensions, its Playwright tests       |
 | `packages/standalone`        | The standalone executable (server + CLI + web app) and its build               |
-| `install.sh`                 | The installer in the standalone app's packages (macOS, Linux)                  |
+| `app/`                       | The app people install: executables (gzipped), checksums, `install.sh`         |
 | `bin/tandem`                 | Runs the CLI in the running container, from the Mac                            |
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
 | `compose.yaml`, `Dockerfile` | The app as the owner runs it                                                   |
@@ -122,7 +122,9 @@ A change is done when:
    so by `./td check`).
 5. If dependencies, the Dockerfile, compose files or entry points changed: `./td start` builds,
    and the app answers on http://localhost:3000. If the server's start-up, the standalone
-   package or `install.sh` changed: `./td release` passes (it runs the Linux executable).
+   package or `app/install.sh` changed: `./td release` passes (it runs the Linux executable).
+   Commit `app/` only for a release (each one adds ~190 MB to the history); otherwise
+   `git restore app/`.
 6. A visible change was checked in a browser (dev servers), in light and dark mode.
 7. The documentation describes the new behavior, and no document describes the old one
    (SPEC for behavior changes, architecture for design changes, agents guide for anything an

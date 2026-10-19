@@ -15,12 +15,12 @@ inside OneDrive so that it is backed up and synced.
 ## Installation
 
 - **Standalone** (the default): one executable per platform (macOS and Linux, arm64 and x64),
-  with neither Docker nor Node needed. It installs from a package, the only way: one per OS
-  in each GitHub release (`tandem-macos.zip`, `tandem-linux.tar.gz`), downloaded on any
-  computer. Its `install.sh` installs the executable next to it with no network access and no
-  admin rights: it checks its SHA-256, asks for the notes folder, starts it at login (a
+  with neither Docker nor Node needed. The executables are in the repository (`app/`), so
+  downloading it (a ZIP from GitHub, on any computer) is the only way, and enough: there are no
+  GitHub releases. `app/install.sh` installs the one for this computer with no network access
+  and no admin rights: it checks its SHA-256, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
-  app. A newer package's installer updates it (the notes folder is remembered); `--uninstall`
+  app. Running it from a newer download updates it (the notes folder is remembered); `--uninstall`
   removes it and never touches the notes. Port 3000 by default, or the next free one when
   another app uses it (said); it then stays (the installed app's address): an update or a
   `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.
