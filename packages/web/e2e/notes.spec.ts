@@ -180,6 +180,67 @@ test('attaches files from the side panel', async ({ page, request }) => {
     .toContain('![pixel.png](Attachments%20note.assets/pixel.png)')
 })
 
+test('shows an image of the Files panel in a modal, other files in a new tab', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Gallery note', 'Files below.')
+  // Larger than the window: the modal scales it down.
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="3000"><rect width="4000" height="3000" fill="teal"/></svg>'
+  for (const file of [
+    { name: 'wide.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) },
+    { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Some text.') },
+  ]) {
+    const response = await request.post(`/api/notes/${note.id}/attachments`, {
+      multipart: { file },
+    })
+    expect(response.ok()).toBe(true)
+  }
+  await openNote(page, note.id)
+  await page.getByRole('tab', { name: 'Files' }).click()
+  const image = page
+    .locator('#tandem-panels-panel-note-side')
+    .getByRole('link', { name: 'wide.svg' })
+  const dialog = page.getByRole('dialog')
+  const preview = dialog.getByTestId('image-preview')
+
+  await image.click()
+  await expect(dialog).toContainText('wide.svg')
+  await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(4000)
+  expect(page.context().pages()).toHaveLength(1)
+  // Inside the modal, itself smaller than the window (not full screen).
+  const viewport = page.viewportSize()!
+  const frame = (await dialog.boundingBox())!
+  const shown = (await preview.boundingBox())!
+  expect(frame.width).toBeLessThan(viewport.width)
+  expect(frame.height).toBeLessThan(viewport.height)
+  expect(shown.x).toBeGreaterThanOrEqual(frame.x)
+  expect(shown.y).toBeGreaterThanOrEqual(frame.y)
+  expect(shown.x + shown.width).toBeLessThanOrEqual(frame.x + frame.width)
+  expect(shown.y + shown.height).toBeLessThanOrEqual(frame.y + frame.height)
+  expect(shown.width / shown.height).toBeCloseTo(4 / 3, 1)
+
+  // Closed with Esc, its close button, or a click outside.
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await image.click()
+  await dialog.getByRole('button', { name: 'Close' }).click()
+  await expect(dialog).toBeHidden()
+  await image.click()
+  await expect(dialog).toBeVisible()
+  await page.mouse.click(5, 5)
+  await expect(dialog).toBeHidden()
+
+  // Other files open in a new tab, as before.
+  const [opened] = await Promise.all([
+    page.context().waitForEvent('page'),
+    page.locator('#tandem-panels-panel-note-side').getByRole('link', { name: 'notes.txt' }).click(),
+  ])
+  await expect(opened).toHaveURL(/\/files\/Gallery%20note\.assets\/notes\.txt$/)
+  await opened.close()
+})
+
 test('moves to the trash, restores, and empties the trash', async ({ page, request }) => {
   const note = await createNote(request, 'Trash me', 'Bye.')
   await openNote(page, note.id)

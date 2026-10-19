@@ -117,6 +117,11 @@ inside OneDrive so that it is backed up and synced.
   in a new tab, as in the Files panel (the browser shows PDFs, images, videos and text, and
   downloads other files). Files over
   10 MB ask for confirmation first. No maximum size.
+- **Files panel** (side panel): the note's attachments, with their size; files dropped or
+  picked there are attached and added at the end of the note. Clicking an image shows it in a
+  modal, scaled to fit, with its name and size; Esc, a click outside or its close button
+  close it, and its new-tab button opens the file. Other files, and ⌘/Ctrl-clicks, open in a
+  new tab.
 - **Links between notes**: `[[Note title]]` (or `[[Folder/Note title]]` when titles are
   ambiguous), with autocomplete when typing `[[`, a backlinks panel, and automatic link
   updates when a note is renamed or moved. A link to a note that doesn't exist yet looks
