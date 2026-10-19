@@ -187,6 +187,8 @@ test('picks dates with a calendar or types them, and filters on them', async ({
   await block.getByRole('button', { name: 'Pick a date: Due' }).first().click()
   await page.getByRole('button', { name: /14 October 2026/ }).click()
   await expect.poll(dueOf).toEqual(['2026-10-14', null])
+  // Working inside the block doesn't frame it (the frame is for selecting it whole).
+  await expect(block).not.toHaveClass(/is-selected/)
 
   // Typed: day, month, year.
   const second = block.getByTestId('database-row').nth(1)

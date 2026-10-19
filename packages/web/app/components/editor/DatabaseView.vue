@@ -22,6 +22,18 @@ const { database, missing, setTitle, setColumns, setSort, setFilters, addRow, se
 const confirm = useConfirm()
 
 const readonly = computed(() => !props.editor.isEditable)
+
+// The frame shows the block selected as a whole (keyboard, handle). Working inside it (a date
+// part, the calendar button) also selects it for the editor: no frame then, until it is no
+// longer selected.
+const touched = ref(false)
+watch(
+  () => props.selected,
+  (selected) => {
+    if (!selected) touched.value = false
+  },
+)
+const framed = computed(() => props.selected && !touched.value)
 const rows = computed(() => (database.value ? viewRows(database.value) : []))
 
 const TYPES: Record<ColumnType, { label: string; icon: string }> = {
@@ -251,9 +263,10 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
 <template>
   <NodeViewWrapper
     class="database-block my-4"
-    :class="selected && 'is-selected'"
+    :class="framed && 'is-selected'"
     :data-database-id="id"
     contenteditable="false"
+    @pointerdown="touched = true"
     data-testid="database"
   >
     <div
