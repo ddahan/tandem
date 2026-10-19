@@ -1,19 +1,18 @@
 #!/bin/sh
-# Installs (or updates) Tandem, without Docker or Node:
-#   curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/install.sh | sh
+# Installs (or updates) Tandem from its package, without Docker, Node, network or admin rights.
+# Unpack the release's package (tandem-macos.zip or tandem-linux.tar.gz, downloaded on any
+# computer), then run the install.sh inside it:
+#   sh ~/Downloads/tandem-macos/install.sh
 #
-# Downloads the app (one executable) for this computer from GitHub Releases, checks it, asks
-# where your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a systemd user
-# service). Run it again to update. Uninstall (your notes stay): … | sh -s -- --uninstall
-#
-# Offline (no network, e.g. GitHub blocked): unzip the release's tandem-offline-macos.zip
-# (downloaded on any computer), then run `sh install.sh` in its folder: it installs the
-# executable next to it, without downloading anything. Never needs admin rights.
+# It installs the executable for this computer from the package (after checking it), asks where
+# your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a systemd user
+# service), all in your home folder. Update: the same with a newer package. Uninstall (your
+# notes stay): sh install.sh --uninstall
 #
 # Options (environment): TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
-# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this file instead of
-# downloading), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login item's
-# name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
+# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this executable instead of the
+# package's: development), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login
+# item's name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
 
 REPO="ddahan/tandem"
@@ -53,16 +52,10 @@ bin_dir="${TANDEM_BIN_DIR:-$HOME/.local/bin}"
 bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
 asset="tandem-$platform-$arch"
-
-# Offline: run from a folder holding the executable (the offline package). With `curl … | sh`,
-# $0 is the shell, not this file.
-here=""
-case "$0" in
-  */install.sh) here="$(cd "$(dirname "$0")" && pwd)" ;;
-  install.sh) here="$(pwd)" ;;
-esac
-offline=""
-[ -n "$here" ] && [ -z "${TANDEM_BINARY:-}" ] && [ -f "$here/$asset" ] && offline=1
+package="tandem-macos.zip"
+[ "$platform" = linux ] && package="tandem-linux.tar.gz"
+# The package's folder: this file's.
+here="$(cd "$(dirname "$0")" && pwd)"
 
 stop_service() {
   if [ "$platform" = darwin ]; then
@@ -88,6 +81,13 @@ if [ "${1:-}" = --uninstall ]; then
   exit 0
 fi
 
+# --- The package ----------------------------------------------------------------------------
+if [ -z "${TANDEM_BINARY:-}" ] && [ ! -f "$here/$asset" ]; then
+  fail "no $asset next to this installer. Run the install.sh inside Tandem's package: download
+$package from https://github.com/$REPO/releases/latest (on any computer), unpack it, then run
+sh <its folder>/install.sh. (The source code doesn't hold the app.)"
+fi
+
 # --- Settings: from the environment, the previous install, or questions -------------------
 data_dir=""
 port=""
@@ -99,7 +99,7 @@ data_dir="${TANDEM_DATA_DIR:-$data_dir}"
 port="${TANDEM_PORT:-${port:-3000}}"
 
 ask() {
-  # Read from the terminal: with `curl … | sh`, standard input is this script.
+  # Read from the terminal (standard input may not be one: an agent running the installer).
   if [ -r /dev/tty ]; then
     printf '%s' "$1" > /dev/tty
     read -r answer < /dev/tty || answer=""
@@ -137,19 +137,11 @@ check() {
 
 if [ -n "${TANDEM_BINARY:-}" ]; then
   cp "$TANDEM_BINARY" "$work/tandem"
-elif [ -n "$offline" ]; then
-  say "Installing Tandem for $platform ($arch) from $here (offline)…"
-  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unzip the whole package."
-  cp "$here/$asset" "$work/tandem"
-  check "$here/SHA256SUMS" "the package is corrupted: download and unzip it again"
 else
-  command -v curl > /dev/null 2>&1 || fail "curl is needed to download Tandem."
-  base="https://github.com/$REPO/releases/latest/download"
-  say "Downloading Tandem for $platform ($arch)…"
-  curl -fSL --progress-bar "$base/$asset" -o "$work/tandem" ||
-    fail "download failed ($base/$asset). Without access to GitHub, use the offline package (see the README)."
-  curl -fsSL "$base/SHA256SUMS" -o "$work/SHA256SUMS" || fail "checksums download failed."
-  check "$work/SHA256SUMS" "the download is corrupted"
+  say "Installing Tandem for $platform ($arch)…"
+  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unpack the whole package."
+  cp "$here/$asset" "$work/tandem"
+  check "$here/SHA256SUMS" "the package is corrupted: download and unpack it again"
 fi
 chmod +x "$work/tandem"
 # A file downloaded with a browser (and what's unzipped from it) is quarantined: macOS would
@@ -237,13 +229,8 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-if [ -n "$offline" ]; then
-  say "Update:           run install.sh from a newer offline package"
-  say "Uninstall:        sh \"$here/install.sh\" --uninstall"
-else
-  say "Update:           run this installer again"
-  say "Uninstall:        curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh -s -- --uninstall"
-fi
+say "Update:           run install.sh from a newer package ($package)"
+say "Uninstall:        sh \"$here/install.sh\" --uninstall"
 
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then
   if [ "$platform" = darwin ]; then open "$url"; elif command -v xdg-open > /dev/null 2>&1; then xdg-open "$url" > /dev/null 2>&1 || true; fi

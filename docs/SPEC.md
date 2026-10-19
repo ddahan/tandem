@@ -15,11 +15,13 @@ inside OneDrive so that it is backed up and synced.
 ## Installation
 
 - **Standalone** (the default): one executable per platform (macOS and Linux, arm64 and x64),
-  with neither Docker nor Node needed. A one-line installer (`install.sh`) downloads it from
-  the latest GitHub release, checks its SHA-256, asks for the notes folder, starts it at login
-  (a LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens
-  the app. Running the installer again updates it (the notes folder is remembered);
-  `--uninstall` removes it and never touches the notes.
+  with neither Docker nor Node needed. It installs from a package, the only way: one per OS
+  in each GitHub release (`tandem-macos.zip`, `tandem-linux.tar.gz`), downloaded on any
+  computer. Its `install.sh` installs the executable next to it with no network access and no
+  admin rights: it checks its SHA-256, asks for the notes folder, starts it at login (a
+  LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
+  app. A newer package's installer updates it (the notes folder is remembered); `--uninstall`
+  removes it and never touches the notes.
 - **Docker**: `./td start` from a clone of the repository (the developer's setup).
 - Both use the same notes folder layout; switching between them only takes pointing the new
   one at the same folder (its database is restored from the folder's backup).

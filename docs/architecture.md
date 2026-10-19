@@ -250,10 +250,11 @@ folders and the versions.
   a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
   (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
   the folder is read-only.
-- `install.sh` (repo root): installs the executable next to it when there is one (the offline
-  package, `tandem-offline-macos.zip`, built by `./td release`; lifts macOS' quarantine, which
-  its owner can do without admin rights), otherwise downloads the latest release for the
-  platform, checks it, writes
+- `install.sh` (repo root): shipped in the packages `./td release` builds (`tandem-macos.zip`,
+  `tandem-linux.tar.gz`: the script, one OS's executables, `SHA256SUMS`, a README from
+  `packages/standalone/package/`). It installs the executable for this machine from its own
+  folder (never downloads; run from the source code, it says where the package is), checks it,
+  lifts macOS' quarantine (a browser download's; its owner can, without admin rights), writes
   `install.env`, and registers the service, which runs `tandem serve` alone
   (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
   `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).

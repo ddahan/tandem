@@ -7,7 +7,7 @@ changing it) want [docs/agents.md](docs/agents.md).
 
 **Asked to install Tandem** (not to change it)? Follow
 [README › Installing with an AI agent](README.md#installing-with-an-ai-agent): no build from
-source, no admin rights, and an offline package when GitHub is blocked.
+source, no admin rights: it installs from the release's package, with no network needed.
 
 ## Layout
 
@@ -18,7 +18,7 @@ source, no admin rights, and an offline package when GitHub is blocked.
 | `packages/cli`               | The `tandem` CLI                                                               |
 | `packages/web`               | The Nuxt UI single-page app, its editor extensions, its Playwright tests       |
 | `packages/standalone`        | The standalone executable (server + CLI + web app) and its build               |
-| `install.sh`                 | The one-line installer of the standalone app (macOS, Linux)                    |
+| `install.sh`                 | The installer in the standalone app's packages (macOS, Linux)                  |
 | `bin/tandem`                 | Runs the CLI in the running container, from the Mac                            |
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
 | `compose.yaml`, `Dockerfile` | The app as the owner runs it                                                   |

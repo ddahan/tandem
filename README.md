@@ -30,58 +30,50 @@ MCP server or a CLI, and every line remembers who wrote it.
 
 ## Install
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/install.sh | sh
-```
+Tandem installs from a package: no network needed (it works where GitHub is blocked), no Docker,
+no Node, no admin rights.
 
-That's all: no Docker, no Node. The installer downloads Tandem (one executable, for macOS or
-Linux, Apple Silicon or Intel), checks it, asks where your notes live (default `~/Tandem`; a
-OneDrive or iCloud folder works), starts it at login, and opens <http://localhost:3000>.
+1. Download the package from the [latest release](https://github.com/ddahan/tandem/releases/latest),
+   on any computer, and copy it to the one where Tandem goes:
+   - macOS (Apple Silicon or Intel): **`tandem-macos.zip`**
+   - Linux (x86-64 or ARM): **`tandem-linux.tar.gz`**
+2. Unpack it (macOS: double-click; Linux: `tar -xzf tandem-linux.tar.gz`).
+3. Run its installer, in Terminal:
+
+   ```bash
+   sh ~/Downloads/tandem-macos/install.sh
+   ```
+
+It checks the app, asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder
+works), starts Tandem at login (all in your home folder) and opens <http://localhost:3000>.
+The package's `README.txt` says it again.
 
 - **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
-- **Update**: run the same command again (your notes folder is remembered).
-- **Uninstall**: `… | sh -s -- --uninstall` (your notes stay).
+- **Update**: the same with the latest package (your notes folder is remembered).
+- **Uninstall**: `sh ~/Downloads/tandem-macos/install.sh --uninstall` (your notes stay).
 - Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
 - With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
-
-### Offline (no network, GitHub blocked)
-
-On any computer, download **`tandem-offline-macos.zip`** from the
-[latest release](https://github.com/ddahan/tandem/releases/latest) and copy it to the Mac. There,
-unzip it and run, in Terminal:
-
-```bash
-sh ~/Downloads/tandem-offline-macos/install.sh
-```
-
-It installs the app from the package (Apple Silicon or Intel), without downloading anything and
-without admin rights; the rest is the same as above. The package's `README.txt` says it again.
 
 ### Installing with an AI agent
 
 Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 
 1. **Never** use `sudo` or ask for admin rights, and **don't build from source**: building needs
-   Node and ~1,000 npm packages from the network. Tandem ships as one executable per platform.
-2. Check whether GitHub is reachable:
-   `curl -fsIL https://github.com/ddahan/tandem/releases/latest/download/SHA256SUMS` (it follows
-   the redirect to the download host, which networks block too).
-3. **Reachable**: run the installer with the notes folder chosen by the user (set it, the
-   installer would otherwise ask on the terminal):
-   `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/install.sh | TANDEM_DATA_DIR="$HOME/Tandem" sh`
-4. **Not reachable** (macOS): look for the offline package, `tandem-offline-macos.zip` or its
-   unzipped folder (`ls ~/Downloads ~/Desktop`). Unzip it if needed (`unzip`), then run
-   `TANDEM_DATA_DIR="$HOME/Tandem" sh <folder>/install.sh`. Running this repository's own
-   `install.sh` doesn't work offline: the executables aren't in the source code. Without the
-   package, ask the user to download `tandem-offline-macos.zip` from the
-   [latest release](https://github.com/ddahan/tandem/releases/latest) on any computer and copy
-   it here.
-5. Check it runs: `curl -fs http://localhost:3000/health` answers `{"ok":true}`. If port 3000
+   Node and ~1,000 npm packages from the network. This repository's `install.sh` doesn't work on
+   its own either: the app isn't in the source code, only in the package.
+2. Find the package (`tandem-macos.zip` or `tandem-linux.tar.gz`) or its unpacked folder:
+   `ls ~/Downloads ~/Desktop`. If it isn't there, download it from
+   `https://github.com/ddahan/tandem/releases/latest/download/<package>` (with `curl -fLO`); if
+   that fails (blocked network), ask the user to download it on any computer and copy it here.
+3. Unpack it (`unzip tandem-macos.zip`, `tar -xzf tandem-linux.tar.gz`), then run its installer
+   with the notes folder chosen by the user (set it, the installer would otherwise ask on the
+   terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <folder>/install.sh`
+4. Check it runs: `curl -fs http://localhost:3000/health` answers `{"ok":true}`. If port 3000
    is taken, run the installer again with `TANDEM_PORT=3001`.
-6. Tell the user to open <http://localhost:3000> and install it as an app (below), and offer to
+5. Tell the user to open <http://localhost:3000> and install it as an app (below), and offer to
    connect Claude to it (see [Agents](#agents)).
 
 ### With Docker instead
@@ -178,15 +170,14 @@ Everything goes through `./td` (run it alone for the list):
 ### Releasing
 
 `./td release` builds the executables into `packages/standalone/dist` (signed for macOS,
-checked, with `SHA256SUMS`). Set the version in `packages/standalone/package.json`, then
-publish them as a GitHub release; the installer always takes the latest one:
+checked, with `SHA256SUMS`), and the packages people install from: `tandem-macos.zip` and
+`tandem-linux.tar.gz` (`install.sh` with one OS's executables, their checksums and a README).
+Set the version in `packages/standalone/package.json`, then publish the packages as a GitHub
+release (people take the latest one):
 
 ```bash
-gh release create v0.1.0 packages/standalone/dist/tandem-* packages/standalone/dist/SHA256SUMS
+gh release create v0.3.0 packages/standalone/dist/tandem-macos.zip packages/standalone/dist/tandem-linux.tar.gz
 ```
-
-`tandem-*` includes `tandem-offline-macos.zip`: `install.sh` with the macOS executables next to
-it, which it installs instead of downloading (for a Mac without network access).
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

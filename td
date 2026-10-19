@@ -99,18 +99,26 @@ case "$cmd" in
         echo "Warning: $file is unsigned (codesign only exists on macOS)." >&2
       fi
     done
-    (cd "$dist" && rm -f tandem-offline-*.zip && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
-    # The offline package (no network when installing: GitHub blocked…): install.sh with the
-    # macOS executables next to it, which it then installs instead of downloading.
-    if [ -f "$dist/tandem-darwin-arm64" ] && [ -f "$dist/tandem-darwin-x64" ]; then
-      offline="$(mktemp -d)/tandem-offline-macos"
-      mkdir -p "$offline"
-      cp install.sh "$dist/tandem-darwin-arm64" "$dist/tandem-darwin-x64" "$offline/"
-      grep ' tandem-darwin-' "$dist/SHA256SUMS" > "$offline/SHA256SUMS"
-      cp packages/standalone/OFFLINE.txt "$offline/README.txt"
-      (cd "$(dirname "$offline")" && zip -qrX - tandem-offline-macos) > "$dist/tandem-offline-macos.zip"
-      rm -rf "$(dirname "$offline")"
-    fi
+    (cd "$dist" && rm -f tandem-macos.zip tandem-linux.tar.gz && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
+    # The packages people download (the only way to install): install.sh with the executables
+    # of one OS next to it, their checksums and a README. No network needed to install.
+    for os in macos linux; do
+      platform=darwin
+      [ "$os" = linux ] && platform=linux
+      [ -f "$dist/tandem-$platform-arm64" ] && [ -f "$dist/tandem-$platform-x64" ] || continue
+      staging="$(mktemp -d)"
+      mkdir "$staging/tandem-$os"
+      cp install.sh "$dist/tandem-$platform-arm64" "$dist/tandem-$platform-x64" "$staging/tandem-$os/"
+      grep " tandem-$platform-" "$dist/SHA256SUMS" > "$staging/tandem-$os/SHA256SUMS"
+      cp "packages/standalone/package/README-$os.txt" "$staging/tandem-$os/README.txt"
+      if [ "$os" = macos ]; then
+        (cd "$staging" && zip -qrX - tandem-macos) > "$dist/tandem-macos.zip"
+      else
+        # Without macOS metadata (._ files, extended attributes), which Linux would unpack or warn about.
+        COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -czf "$dist/tandem-linux.tar.gz" -C "$staging" tandem-linux
+      fi
+      rm -rf "$staging"
+    done
     # Smoke test: the Linux executable for this machine runs, in the toolchain container.
     linux="tandem-linux-$(dev_compose --progress quiet run --rm --no-deps node uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
     if [ -f "$dist/$linux" ]; then
