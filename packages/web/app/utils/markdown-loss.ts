@@ -60,6 +60,8 @@ function tagsOf(line: string): string[] {
 /** The line's words, outside HTML tags (whose names and attributes aren't text). */
 function wordsOf(line: string): string[] {
   const text = line
+    // List markers: the editor renumbers lists (`1.` `1.` `1.` as `1.` `2.` `3.`).
+    .replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/, ' ')
     .replace(/<\/?[a-z][a-z0-9-]*(?=[\s/>])[^>]*>|<!--|-->/gi, ' ')
     // Reference links' labels: the editor writes the links inline, with their URL.
     .replace(/^ {0,3}\[[^\]]+\]:/, ' ')

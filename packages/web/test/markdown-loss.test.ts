@@ -18,6 +18,7 @@ describe('Markdown the editor would lose', () => {
     '[ref link][r] and <https://example.com>\n\n[r]: https://example.com/page',
     '| a | b |\n|---|---|\n| **1** | 2 |\n\n> [!NOTE]\n> A callout',
     'See [[Projects/Roadmap|the roadmap]] :smile:',
+    '1. one\n1. two\n1. three\n\n5) five\n5) six',
   ])('finds nothing in what the editor keeps, rewritten or not: %s', (markdown) => {
     expect(losses(markdown)).toEqual([])
   })
