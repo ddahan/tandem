@@ -55,6 +55,9 @@ The package's `README.txt` says it again.
 - Options, as environment variables: `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
+- **Port**: 3000, or the next free one if another app uses it (the installer says which). It
+  then stays: an update whose port another app took stops and says so, and Tandem started at
+  login waits for its port to be free.
 - With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
 
 ### Installing with an AI agent
@@ -71,9 +74,9 @@ Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 3. Unpack it (`unzip tandem-macos.zip`, `tar -xzf tandem-linux.tar.gz`), then run its installer
    with the notes folder chosen by the user (set it, the installer would otherwise ask on the
    terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <folder>/install.sh`
-4. Check it runs: `curl -fs http://localhost:3000/health` answers `{"ok":true}`. If port 3000
-   is taken, run the installer again with `TANDEM_PORT=3001`.
-5. Tell the user to open <http://localhost:3000> and install it as an app (below), and offer to
+4. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
+   in the installer's last lines: 3000, or the next free one when another app uses it).
+5. Tell the user to open Tandem's address and install it as an app (below), and offer to
    connect Claude to it (see [Agents](#agents)).
 
 ### With Docker instead

@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
 import type { NotesFolderControl } from './folders.ts'
+import { waitForPort } from './port.ts'
 import { openDatabase } from './db/client.ts'
 import { Vault } from './vault/vault.ts'
 import { watchVault } from './watcher.ts'
@@ -48,6 +49,9 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   const { dataDir, dbPath, webDir, port, hostname } = options
   const sessionIdleMs = options.sessionIdleMs ?? 30_000
   const backupPath = join(dataDir, '.tandem', 'tandem.db')
+
+  // Before opening anything: another app may hold the port for a while (see port.ts).
+  await waitForPort(port, hostname)
 
   await mkdir(join(dataDir, '.tandem'), { recursive: true })
   await writeFile(join(dataDir, '.tandem', 'README.md'), README)

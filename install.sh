@@ -96,7 +96,42 @@ if [ -f "$settings" ]; then
   . "$settings"
 fi
 data_dir="${TANDEM_DATA_DIR:-$data_dir}"
-port="${TANDEM_PORT:-${port:-3000}}"
+# Chosen (TANDEM_PORT, or the previous install's), or the default, which may move if taken.
+port_chosen="${TANDEM_PORT:-$port}"
+port="${port_chosen:-3000}"
+
+# --- The port: free, or this very Tandem's (an update) ------------------------------------
+# Something answers on it (curl's 7: nothing listens).
+port_used() {
+  code=0
+  curl -s -o /dev/null -m 2 "http://127.0.0.1:$1/" || code=$?
+  [ "$code" -ne 7 ]
+}
+service_running() {
+  if [ "$platform" = darwin ]; then
+    launchctl print "gui/$(id -u)/$LABEL" > /dev/null 2>&1
+  else
+    command -v systemctl > /dev/null 2>&1 && systemctl --user is-active --quiet tandem.service
+  fi
+}
+# Which app listens on it, when the system says.
+port_user() {
+  name="$(lsof -nP -iTCP:"$1" -sTCP:LISTEN -Fc 2> /dev/null | sed -n 's/^c//p' | head -n 1)"
+  printf '%s' "${name:-another app}"
+}
+if port_used "$port" && ! { service_running && curl -fs -m 2 "http://127.0.0.1:$port/health" > /dev/null 2>&1; }; then
+  if [ -n "$port_chosen" ]; then
+    # Not moved silently: the installed app (PWA) and agents' settings use this address.
+    fail "port $port is used by $(port_user "$port"). Stop it, or choose another port:
+TANDEM_PORT=$((port + 1)) sh \"$here/install.sh\" (then open Tandem at its new address, and install the app again from there)."
+  fi
+  taken="$port"
+  while port_used "$port"; do
+    port=$((port + 1))
+    [ "$port" -gt $((taken + 20)) ] && fail "ports $taken to $port are all used: choose one with TANDEM_PORT=…"
+  done
+  say "Port $taken is used by $(port_user "$taken"): Tandem will use $port."
+fi
 
 ask() {
   # Read from the terminal (standard input may not be one: an agent running the installer).
@@ -154,9 +189,6 @@ fi
 
 # Stop the running version (update), then put the new one in place.
 stop_service
-if curl -fs -m 2 "http://localhost:$port/health" > /dev/null 2>&1; then
-  fail "port $port is taken (another Tandem, maybe the Docker one?). Stop it, or choose another port: TANDEM_PORT=3001."
-fi
 mkdir -p "$bin_dir" "$app_dir"
 mv "$work/tandem" "$bin"
 # The login item runs `tandem serve`, which reads the folder and port from this file (also

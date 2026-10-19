@@ -227,6 +227,8 @@ folders and the versions.
 
 - `src/main.ts`: `tandem serve --data <folder>` runs `startServer` (`packages/server/src/server.ts`,
   which the Docker entry `main.ts` also uses) on 127.0.0.1; any other command is the CLI.
+  `startServer` first waits for its port while another app holds it (`port.ts`): crashing
+  would make the login item restart it every 2 s.
 - `scripts/build.ts` (via `./td release`): esbuild bundles the entry and its dependencies into
   one ES module; the web app and the migrations become embedded assets (with a manifest:
   version, build hash, files); `node --build-sea` turns Node's official binary for each target
@@ -254,7 +256,9 @@ folders and the versions.
   `tandem-linux.tar.gz`: the script, one OS's executables, `SHA256SUMS`, a README from
   `packages/standalone/package/`). It installs the executable for this machine from its own
   folder (never downloads; run from the source code, it says where the package is), checks it,
-  lifts macOS' quarantine (a browser download's; its owner can, without admin rights), writes
+  lifts macOS' quarantine (a browser download's; its owner can, without admin rights), picks
+  the port (free, or this Tandem's own: `curl` exit 7 means nothing listens; `lsof` names the
+  app in the way), writes
   `install.env`, and registers the service, which runs `tandem serve` alone
   (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
   `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).

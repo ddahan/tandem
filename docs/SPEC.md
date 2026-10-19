@@ -21,7 +21,11 @@ inside OneDrive so that it is backed up and synced.
   admin rights: it checks its SHA-256, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
   app. A newer package's installer updates it (the notes folder is remembered); `--uninstall`
-  removes it and never touches the notes.
+  removes it and never touches the notes. Port 3000 by default, or the next free one when
+  another app uses it (said); it then stays (the installed app's address): an update or a
+  `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.
+  Started while another app holds its port, Tandem waits for it (logged once) instead of
+  failing.
 - **Docker**: `./td start` from a clone of the repository (the developer's setup).
 - Both use the same notes folder layout; switching between them only takes pointing the new
   one at the same folder (its database is restored from the folder's backup).
