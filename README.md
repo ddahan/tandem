@@ -60,6 +60,30 @@ sh ~/Downloads/tandem-offline-macos/install.sh
 It installs the app from the package (Apple Silicon or Intel), without downloading anything and
 without admin rights; the rest is the same as above. The package's `README.txt` says it again.
 
+### Installing with an AI agent
+
+Steps for an agent (Claude Code…) asked to install Tandem on this computer:
+
+1. **Never** use `sudo` or ask for admin rights, and **don't build from source**: building needs
+   Node and ~1,000 npm packages from the network. Tandem ships as one executable per platform.
+2. Check whether GitHub is reachable:
+   `curl -fsIL https://github.com/ddahan/tandem/releases/latest/download/SHA256SUMS` (it follows
+   the redirect to the download host, which networks block too).
+3. **Reachable**: run the installer with the notes folder chosen by the user (set it, the
+   installer would otherwise ask on the terminal):
+   `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/install.sh | TANDEM_DATA_DIR="$HOME/Tandem" sh`
+4. **Not reachable** (macOS): look for the offline package, `tandem-offline-macos.zip` or its
+   unzipped folder (`ls ~/Downloads ~/Desktop`). Unzip it if needed (`unzip`), then run
+   `TANDEM_DATA_DIR="$HOME/Tandem" sh <folder>/install.sh`. Running this repository's own
+   `install.sh` doesn't work offline: the executables aren't in the source code. Without the
+   package, ask the user to download `tandem-offline-macos.zip` from the
+   [latest release](https://github.com/ddahan/tandem/releases/latest) on any computer and copy
+   it here.
+5. Check it runs: `curl -fs http://localhost:3000/health` answers `{"ok":true}`. If port 3000
+   is taken, run the installer again with `TANDEM_PORT=3001`.
+6. Tell the user to open <http://localhost:3000> and install it as an app (below), and offer to
+   connect Claude to it (see [Agents](#agents)).
+
 ### With Docker instead
 
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) and a clone of this

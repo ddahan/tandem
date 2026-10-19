@@ -5,6 +5,10 @@ then [docs/SPEC.md](docs/SPEC.md) (what the app must do) and
 [docs/architecture.md](docs/architecture.md) (how it does it). Agents _using_ Tandem (not
 changing it) want [docs/agents.md](docs/agents.md).
 
+**Asked to install Tandem** (not to change it)? Follow
+[README › Installing with an AI agent](README.md#installing-with-an-ai-agent): no build from
+source, no admin rights, and an offline package when GitHub is blocked.
+
 ## Layout
 
 | Path                         | What it is                                                                     |
