@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { etag } from 'hono/etag'
 import { createApi, createFileRoutes, type ApiOptions } from './api/index.ts'
 import { createMcpRoutes } from './api/mcp.ts'
 import type { Vault } from './vault/vault.ts'
@@ -17,18 +18,15 @@ export function createApp(vault: Vault, options: { webDir?: string } & ApiOption
 
   const webDir = options.webDir
   if (webDir && existsSync(webDir)) {
-    // The app's files: versioned ones (`/_nuxt/`, named by their content) are kept for good;
-    // the rest (the shell, the manifest, icons) is checked on each load, so an updated app shows
-    // at once instead of a window keeping an old version.
+    // The app's files are checked on each load (an ETag makes it a 304), so an updated app shows
+    // at once. Even the ones named by their content: Vite writes stylesheet names into scripts
+    // after naming them, so a script can change and keep its name (a browser keeping it for good
+    // mixed versions: a fixed style undone by the old one).
     app.use('/*', async (c, next) => {
       await next()
-      if (!c.res.headers.has('cache-control')) {
-        c.res.headers.set(
-          'cache-control',
-          c.req.path.startsWith('/_nuxt/') ? 'public, max-age=31536000, immutable' : 'no-cache',
-        )
-      }
+      if (!c.res.headers.has('cache-control')) c.res.headers.set('cache-control', 'no-cache')
     })
+    app.use('/*', etag())
     app.use('/*', serveStatic({ root: webDir }))
     // Client-side routes (the app is a single-page app): always the app's shell.
     const shell = readFile(join(webDir, 'index.html'), 'utf8')

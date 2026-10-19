@@ -17,6 +17,11 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   app: {
+    // Not Nuxt's `/_nuxt/`: versions up to 0.3.6 had those files cached for good, and Vite
+    // writes CSS file names into scripts after naming them by their content, so a stylesheet
+    // change kept some names; browsers then mixed old scripts (and their old stylesheet) with
+    // the new ones. A new folder leaves those copies unused (the server now revalidates).
+    buildAssetsDir: '/_app/',
     head: {
       title: 'Tandem',
       htmlAttrs: { lang: 'en' },

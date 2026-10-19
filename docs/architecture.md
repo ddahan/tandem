@@ -158,9 +158,10 @@ folders and the versions.
   SVG scripts from running.
 - `/mcp` (`api/mcp.ts`): MCP over Streamable HTTP, stateless (one MCP server per request,
   carrying the request's author).
-- `/health`, and the web app's static files with a fallback to `index.html`. Versioned files
-  (`/_nuxt/`) are cached for good, everything else revalidated (`no-cache`), so an update shows
-  on the next load.
+- `/health`, and the web app's static files (`/_app/`) with a fallback to `index.html`. All are
+  revalidated (`no-cache`, an ETag answers 304), content-named ones too: Vite writes stylesheet
+  names into scripts after naming them, so a script can change and keep its name. An update
+  shows on the next load.
 
 ## Web app (`packages/web`)
 
