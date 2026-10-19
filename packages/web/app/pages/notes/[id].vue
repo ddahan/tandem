@@ -281,6 +281,13 @@ onBeforeRouteLeave(async () => {
 
 // --- Layout ----------------------------------------------------------------------------------
 
+/** Scrolls to a database block of the note (from the side panel). */
+function goToDatabase(databaseId: string) {
+  document
+    .querySelector(`.note-editor [data-database-id="${CSS.escape(databaseId)}"]`)
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 const fullWidth = useLocalStorage('tandem-full-width', false)
 const panelOpen = useLocalStorage('tandem-side-panel', true)
 const authorshipKey = ref(0)
@@ -626,6 +633,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     :active-heading="activeHeading"
     :content="content"
     @go-to-heading="(pos) => editor?.scrollTo(pos)"
+    @go-to-database="goToDatabase"
     @restored="(restored) => resetEditor(restored)"
     @attach="appendMarkdown"
     @close="panelOpen = false"

@@ -10,6 +10,7 @@ import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
 import { BlockKeys } from './block-keys'
 import { Callout } from './callout'
+import { Database } from './database'
 import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips, FileLink } from './file-chips'
 import { Find } from './find'
@@ -38,6 +39,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     TaskList,
     TaskItem.configure({ nested: true }),
     Callout,
+    Database,
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,

@@ -179,3 +179,5 @@ export type ServerEvent =
   | { type: 'note'; id: string; hash: string; author: string }
   | { type: 'trash' }
   | { type: 'settings' }
+  /** A database changed (its columns, view or rows). */
+  | { type: 'database'; id: string }

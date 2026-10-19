@@ -108,4 +108,39 @@ describe('CLI', () => {
     expect((await cli(['write', 'x'])).code).toBe(1)
     expect((await cli(['--bogus'])).code).toBe(2)
   })
+
+  it('creates databases, adds and changes rows by column name, and reads them', async () => {
+    await setup()
+    await cli(['new', 'Books', 'My books.'])
+    const created = await cli([
+      'database-new',
+      'Books',
+      'Reading list',
+      'Title:text',
+      'Pages:number',
+      'Status:select=To read|Done',
+    ])
+    expect(created.out).toContain('Created Reading list')
+    const listed = await cli(['databases', 'Books'])
+    expect(listed.out).toContain('Title: text · Pages: number · Status: select (To read, Done)')
+    const id = /\(([^,]+), 1 rows\)/.exec(listed.out)?.[1] ?? ''
+
+    const added = await cli(['row-add', id, 'Title=Dune', 'Pages=412', 'status=done'])
+    const rowId = /Added row (\S+)/.exec(added.out)?.[1] ?? ''
+    expect(rowId).not.toBe('')
+    await cli(['row-set', id, rowId, 'Pages=1 234,5'])
+    const read = await cli(['database', id])
+    expect(read.out).toContain('| id | Title | Pages | Status |')
+    expect(read.out).toContain(`| ${rowId} | Dune | 1\u202f234,5 | Done |`)
+
+    const bad = await cli(['row-set', id, rowId, 'Author=Herbert'])
+    expect(bad.code).toBe(1)
+    expect(bad.err).toContain('No column “Author” (columns: Title, Pages, Status)')
+    expect((await cli(['row-set', id, rowId, 'Pages=many'])).err).toContain(
+      'Pages: “many” is not a number',
+    )
+
+    await cli(['row-delete', id, rowId])
+    expect((await cli(['database', id, '--json'])).out).not.toContain('Dune')
+  })
 })

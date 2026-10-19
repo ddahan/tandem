@@ -1,5 +1,6 @@
 // Structured data that doesn't belong in the Markdown files. The files are the source of truth
-// for content and tree shape; these tables add identity, order, tags, history and authorship.
+// for content and tree shape; these tables add identity, order, tags, history and authorship,
+// and hold the databases (a note only has a `database` block naming one).
 // The full-text index (`notes_fts`) is a raw FTS5 table, created in the migrations.
 import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
@@ -93,3 +94,42 @@ export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 })
+
+/**
+ * Databases, shown in their page by a `database` block. Not tied to `nodes` by a foreign key:
+ * a page in the trash has no row there, and its databases wait for it (deleted with it).
+ */
+export const databases = sqliteTable(
+  'databases',
+  {
+    id: text('id').primaryKey(),
+    nodeId: text('node_id').notNull(),
+    title: text('title').notNull().default(''),
+    /** JSON `DatabaseColumn[]`. */
+    columns: text('columns').notNull(),
+    /** JSON `DatabaseSort`, or null. */
+    sort: text('sort'),
+    /** JSON `DatabaseFilter[]`. */
+    filters: text('filters').notNull().default('[]'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('databases_node').on(table.nodeId)],
+)
+
+export const databaseRows = sqliteTable(
+  'database_rows',
+  {
+    id: text('id').primaryKey(),
+    databaseId: text('database_id')
+      .notNull()
+      .references(() => databases.id, { onDelete: 'cascade' }),
+    /** Order in the table when nothing sorts it (ascending). */
+    position: real('position').notNull(),
+    /** JSON: column id → value (`CellValue`). */
+    cells: text('cells').notNull().default('{}'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('database_rows_order').on(table.databaseId, table.position)],
+)

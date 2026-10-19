@@ -5,7 +5,21 @@ import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import { parseArgs } from 'node:util'
 import { createClient, type Client } from '@tandem/server/client'
-import { formatDateTime, formatSize, normalizeAuthor, type TreeNode } from '@tandem/shared'
+import {
+  COLUMN_TYPES,
+  cellText,
+  cellsByName,
+  databaseBlock,
+  databaseIdsIn,
+  formatDateTime,
+  formatSize,
+  normalizeAuthor,
+  rowsByName,
+  viewRows,
+  type ColumnType,
+  type Database,
+  type TreeNode,
+} from '@tandem/shared'
 
 export interface Io {
   stdout: (text: string) => void
@@ -42,6 +56,16 @@ Writing (content from arguments, --file, or standard input)
   delete <note>                 move to the trash
   restore <note> <version-id>   restore a version
   attach <note> <file>          attach a file (--name, --insert to append its link)
+
+Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
+  databases <note>              a note's databases, with their columns
+  database <database>           its rows, as the saved view shows them (--all: every row)
+  database-new <note> <title> <Column:type…>
+                                create one, its block added at the end of the note
+                                (types: text, number, date, checkbox, select=A|B|C)
+  row-add <database> [Column=value…]        add a row
+  row-set <database> <row> <Column=value…>  change values (Column= empties one)
+  row-delete <database> <row>               delete a row
 
 Options
   --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3000)
@@ -85,6 +109,64 @@ async function call<T>(
       (body as { error?: string } | null)?.error ?? `Request failed (${response.status})`,
     )
   return body as T
+}
+
+/** `Column=value` arguments, as values by column name (`Column=` empties it). */
+function namedValues(args: string[]): Record<string, string | null> {
+  const values: Record<string, string | null> = {}
+  for (const arg of args) {
+    const at = arg.indexOf('=')
+    if (at <= 0) throw new CliError(`Expected Column=value, got “${arg}”.`)
+    values[arg.slice(0, at)] = arg.slice(at + 1) || null
+  }
+  return values
+}
+
+/** `Column:type` arguments (`Status:select=To read|Done`) as columns. */
+function columnArgs(args: string[]) {
+  return args.map((arg) => {
+    const at = arg.lastIndexOf(':')
+    const name = at > 0 ? arg.slice(0, at) : arg
+    const [type = 'text', choices] = (at > 0 ? arg.slice(at + 1) : 'text').split('=')
+    if (!COLUMN_TYPES.includes(type as ColumnType)) {
+      throw new CliError(`Unknown column type “${type}” (${COLUMN_TYPES.join(', ')}).`)
+    }
+    return {
+      name,
+      type: type as ColumnType,
+      ...(choices ? { options: choices.split('|') } : {}),
+    }
+  })
+}
+
+/** Text for a Markdown table cell. */
+function escapeCell(text: string): string {
+  return text.replace(/\|/g, '\\|').replace(/\n/g, ' ')
+}
+
+/** A database's rows as a Markdown table, with their ids. */
+function describeRows(database: Database, all: boolean): string {
+  const rows = all ? database.rows : viewRows(database)
+  const header = ['id', ...database.columns.map((c) => escapeCell(c.name))]
+  const lines = [
+    `| ${header.join(' | ')} |`,
+    `| ${header.map(() => '---').join(' | ')} |`,
+    ...rows.map(
+      (row) =>
+        `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c)))].join(' | ')} |`,
+    ),
+  ]
+  const hidden = database.rows.length - rows.length
+  return `${database.title || 'Untitled database'}  (${database.id})\n\n${lines.join('\n')}${hidden ? `\n\n${hidden} more hidden by the view's filters (--all to show them)` : ''}`
+}
+
+/** Values by column name as cells, the error worded for the CLI. */
+function cellsOf(database: Database, values: Record<string, string | null>) {
+  try {
+    return cellsByName(database, values) as Record<string, string | null>
+  } catch (error) {
+    throw new CliError(error instanceof Error ? error.message : String(error))
+  }
 }
 
 function describeTree(nodes: TreeNode[]): string {
@@ -188,6 +270,74 @@ async function execute(
   }
 
   switch (command) {
+    case 'databases': {
+      const node = await resolve(need(0, 'note'))
+      const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))
+      const list: Database[] = []
+      for (const id of databaseIdsIn(note.content)) {
+        list.push(await call(client.databases[':id'].$get({ param: { id } })))
+      }
+      const lines = list.map(
+        (d) =>
+          `${d.title || 'Untitled database'}  (${d.id}, ${d.rows.length} rows)\n  ${d.columns.map((c) => `${c.name}: ${c.type}${c.options ? ` (${c.options.join(', ')})` : ''}`).join(' · ')}`,
+      )
+      return print(
+        lines.join('\n\n') || `No databases in ${node.path}.`,
+        list.map((d) => ({ id: d.id, title: d.title, columns: d.columns, rows: d.rows.length })),
+      )
+    }
+    case 'database': {
+      const database = await call(
+        client.databases[':id'].$get({ param: { id: need(0, 'database id') } }),
+      )
+      return print(describeRows(database, values.all ?? false), {
+        ...database,
+        rows: rowsByName(database, values.all ?? false),
+      })
+    }
+    case 'database-new': {
+      const node = await resolve(need(0, 'note'))
+      const title = need(1, 'title')
+      const columns = columnArgs(args.slice(2))
+      if (!columns.length) throw new CliError('Give its columns: Name:text Pages:number…')
+      const database = await call(
+        client.notes[':id'].databases.$post({ param: { id: node.id }, json: { title, columns } }),
+      )
+      await call(
+        client.notes[':id'].append.$post({
+          param: { id: node.id },
+          json: { content: databaseBlock(database.id) },
+        }),
+      )
+      return print(`Created ${title} (${database.id}) in ${node.path}`, database)
+    }
+    case 'row-add': {
+      const id = need(0, 'database id')
+      const database = await call(client.databases[':id'].$get({ param: { id } }))
+      const cells = cellsOf(database, namedValues(args.slice(1)))
+      const after = await call(
+        client.databases[':id'].rows.$post({ param: { id }, json: { cells } }),
+      )
+      const row = after.rows.find((r) => !database.rows.some((old) => old.id === r.id))
+      return print(`Added row ${row?.id ?? ''}`, row)
+    }
+    case 'row-set': {
+      const id = need(0, 'database id')
+      const rowId = need(1, 'row id')
+      if (args.length < 3) throw new CliError('Give the values: Column=value…')
+      const database = await call(client.databases[':id'].$get({ param: { id } }))
+      const cells = cellsOf(database, namedValues(args.slice(2)))
+      await call(
+        client.databases[':id'].rows[':rowId'].$patch({ param: { id, rowId }, json: { cells } }),
+      )
+      return print(`Saved row ${rowId}`)
+    }
+    case 'row-delete': {
+      const id = need(0, 'database id')
+      const rowId = need(1, 'row id')
+      await call(client.databases[':id'].rows[':rowId'].$delete({ param: { id, rowId } }))
+      return print(`Deleted row ${rowId}`)
+    }
     case 'search': {
       const query = args.join(' ')
       const response = await call(

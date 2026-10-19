@@ -340,6 +340,75 @@ html.dark[data-tone='cool'] {
   pointer-events: none;
 }
 
+/* Databases (DatabaseView): cells are edited in place, their controls fill them */
+.note-editor .database-block.is-selected {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 4px;
+  border-radius: var(--ui-radius);
+}
+.note-editor .database-table :is(td, th) {
+  padding: 0;
+  vertical-align: middle;
+  min-width: 8rem;
+}
+/* The first column usually names the row: more room. */
+.note-editor .database-table :is(td, th):first-child {
+  width: 35%;
+  min-width: 13rem;
+}
+.note-editor .database-table :is(td, th):is(:last-child) {
+  min-width: 0;
+}
+/* The wrapper draws the outer border. */
+.note-editor .database-table tr > :first-child {
+  border-inline-start: 0;
+}
+.note-editor .database-table tr > :last-child {
+  border-inline-end: 0;
+}
+.note-editor .database-table thead tr > * {
+  border-top: 0;
+}
+.note-editor .database-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.database-heading {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.35rem 0.6rem;
+  font-weight: 500;
+  text-align: start;
+}
+.database-heading:hover {
+  background: var(--ui-bg-accented);
+}
+.database-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.6rem;
+  background: transparent;
+  color: var(--ui-text-highlighted);
+  outline: none;
+  font-weight: inherit;
+}
+.database-input:focus {
+  box-shadow: inset 0 0 0 2px var(--ui-primary);
+  border-radius: 2px;
+}
+.database-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+}
+.database-checkbox {
+  display: block;
+  margin: 0.35rem 0.6rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ui-primary);
+}
+
 /* Callouts */
 .callout {
   --callout: var(--ui-info);

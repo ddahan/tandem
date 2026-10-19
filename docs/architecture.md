@@ -60,6 +60,8 @@ The web app and the CLI use the server's API through Hono's typed client
 | `versions`                   | History metadata; contents in `<data>/.tandem/history/`                                                                                                                       |
 | `trash`                      | Deleted items, with the rows needed to restore them                                                                                                                           |
 | `settings`                   | The owner's settings (JSON values)                                                                                                                                            |
+| `databases`                  | Databases: page (`node_id`, no foreign key: a page in the trash has no row), title, columns, sort and filters (JSON)                                                          |
+| `database_rows`              | Their rows: order (`position`), values by column id (JSON); deleted with their database                                                                                       |
 | `nodes.icon`                 | Custom icon of a page or folder: `emoji:<emoji>` or `image:<file>` (in `<data>/.tandem/icons/`, served at `/api/nodes/:id/icon`); the API returns a `NodeIcon`                |
 | `notes_fts`, `notes_trigram` | FTS5 indexes (words; trigrams), filled by the vault                                                                                                                           |
 | `search_rows`                | The rowid of each page in both FTS5 indexes (FTS5 can't index `node_id`): updates and lookups by page go straight to its rows                                                 |
@@ -145,14 +147,25 @@ grow:
 Deleting moves the files into `.tandem/trash/<id>/` and the rows into the `trash` table
 (pending sessions are snapshotted first). Restoring puts both back (renaming to
 `Title (restored)` if the name is taken). Deleting forever removes the files, the history
-folders and the versions.
+folders, the versions and the pages' databases (ids are kept through the trash, so databases
+just wait for their page).
+
+### Databases (`databases.ts`)
+
+`DatabaseStore` keeps databases in SQLite; the vault runs it under its lock and announces each
+change (`database` event). Every change returns the whole database (rows included). Values
+are checked with `toCellValue` (`@tandem/shared`'s `databases.ts`); a column changing type
+converts its values (`convertCell`), and one becoming a `select` takes its values as choices.
+The view (filter, then sort: `viewRows`) is applied by readers, in the same shared code: the
+table, the agents' tools and the CLI show the same rows. Column ids stay when columns are
+renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
 
 ## HTTP
 
 - `/api/*` (`api/index.ts`): internal JSON API; validation with zod (errors → 400), vault
   errors → 404/409/400. The author is the `X-Tandem-Author` header (`owner` from the web app,
   `agent` by default).
-- `/api/events`: Server-Sent Events (`tree`, `note`, `trash`, `settings`), with a ping every
+- `/api/events`: Server-Sent Events (`tree`, `note`, `trash`, `settings`, `database`), with a ping every
   25 s.
 - `/files/<path>`: files of the data folder (never hidden ones), with ETag, and a CSP that keeps
   SVG scripts from running.
@@ -205,6 +218,15 @@ folders and the versions.
   `NoteEditor`'s `readOnly` goes to the TipTap editor (`setEditable`: UEditor reads `editable`
   once). The Markdown view (`MarkdownSource.vue`) numbers its lines: each number is as tall as
   its wrapped line, measured in a hidden copy of the text with the same width and font.
+- Databases: `editor/database.ts` is an atom block read from and written to the fenced block
+  (its own Markdown tokenizer, before code blocks); `components/editor/DatabaseView.vue` draws
+  it (title, sort and filter controls, the table with a menu per column), with
+  `DatabaseCell.vue` (native controls per type, a draft while edited: the table reloads with
+  every change) and `DatabaseFilters.vue`. `useDatabase` loads one, reloads it on its
+  `database` events (only the latest load counts) and changes it through the API. The slash
+  menu creates the database first, then inserts its block where the cursor was.
+  `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles
+  and row counts.
 - Block handle (`UEditorDragHandle`, nested: list items move one by one): its distance from
   the block is computed in Floating UI's `offset` (`handleOptions` in `NoteEditor.vue`), which
   adds the marker margin of bullet and numbered items. TipTap's Vue handle ignores a custom
@@ -295,7 +317,8 @@ folders and the versions.
 
 ## CLI (`packages/cli`)
 
-`cli.ts` parses arguments (`node:util` `parseArgs`) and calls the API with the typed client;
+`cli.ts` parses arguments (`node:util` `parseArgs`) and calls the API with the typed client
+(databases: columns and values by name, through `cellsByName` and `rowsByName`);
 `run()` takes its input and output as parameters, so tests run it against an in-memory app.
 It is part of the standalone app (the `tandem` command). In Docker it is installed as
 `/usr/local/bin/tandem` in the image; `bin/tandem` on the Mac runs it with

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The note's side panel: outline, backlinks, history and attachments.
+// The note's side panel: outline, backlinks, history, attachments and databases.
 import type { TabsItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
@@ -14,6 +14,7 @@ defineProps<{
 }>()
 defineEmits<{
   goToHeading: [pos: number]
+  goToDatabase: [id: string]
   restored: [content: string]
   attach: [markdown: string]
   close: []
@@ -26,6 +27,7 @@ const tabs: TabsItem[] = [
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
   { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
+  { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
 ]
 </script>
 
@@ -76,6 +78,12 @@ const tabs: TabsItem[] = [
         :note-path="notePath"
         :content="content"
         @restored="(c) => $emit('restored', c)"
+      />
+      <SideDatabases
+        v-else-if="tab === 'databases'"
+        :note-id="noteId"
+        :content="content"
+        @go="(id) => $emit('goToDatabase', id)"
       />
       <SideAttachments
         v-else

@@ -11,7 +11,9 @@ import type { TreeNode } from '@tandem/shared'
 import { linkKey } from '@tandem/shared'
 import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
+import DatabaseView from '~/components/editor/DatabaseView.vue'
 import { Callout, type CalloutType } from '~/editor/callout'
+import { Database } from '~/editor/database'
 import { createExtensions, starterKitOptions } from '~/editor/extensions'
 import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
 import { currentHeading, scrollParent } from '~/utils/current-heading'
@@ -108,6 +110,9 @@ const extensions = createExtensions({
   if (extension.name === Callout.name) {
     return Callout.extend({ addNodeView: () => VueNodeViewRenderer(CalloutView) })
   }
+  if (extension.name === Database.name) {
+    return Database.extend({ addNodeView: () => VueNodeViewRenderer(DatabaseView) })
+  }
   return extension
 })
 
@@ -158,6 +163,27 @@ async function uploadFiles(editor: CoreEditor, files: File[], pos: number | null
     showError(error, 'Upload failed')
   } finally {
     toast.remove(uploading.id)
+  }
+}
+
+/** A new database for this note, its block where the cursor was (taken before the request). */
+async function insertDatabase(editor: CoreEditor) {
+  const at = editor.state.selection.from
+  try {
+    const database = await unwrap(
+      api.notes[':id'].databases.$post({ param: { id: props.noteId }, json: {} }),
+    )
+    // Then a line after it, the cursor there (ready to go on writing).
+    editor
+      .chain()
+      .insertContentAt(Math.min(at, editor.state.doc.content.size), [
+        { type: 'database', attrs: { id: database.id } },
+        { type: 'paragraph' },
+      ])
+      .focus()
+      .run()
+  } catch (error) {
+    showError(error, 'Could not create the database')
   }
 }
 
@@ -271,6 +297,14 @@ const handlers = {
       editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
     isActive: (editor: Editor) => editor.isActive('table'),
   },
+  database: {
+    canExecute: () => true,
+    execute: (editor: Editor) => {
+      void insertDatabase(editor)
+      return editor.chain()
+    },
+    isActive: () => false,
+  },
   mermaid: {
     canExecute: () => true,
     execute: (editor: Editor) =>
@@ -330,6 +364,12 @@ const slashItems: EditorSuggestionMenuItem<Handlers>[][] = [
     { type: 'label', label: 'Blocks' },
     { kind: 'codeBlock', label: 'Code block', icon: 'i-lucide-square-code' },
     { kind: 'table', label: 'Table', icon: 'i-lucide-table' },
+    {
+      kind: 'database',
+      label: 'Database',
+      description: 'Rows you can sort and filter',
+      icon: 'i-lucide-database',
+    },
     { kind: 'callout', calloutType: 'note', label: 'Callout: note', icon: 'i-lucide-info' },
     { kind: 'callout', calloutType: 'tip', label: 'Callout: tip', icon: 'i-lucide-lightbulb' },
     {
@@ -729,6 +769,7 @@ defineExpose({
           ({ editor: e, view, state }: any) =>
             !e.isActive('codeBlock') &&
             !e.isActive('image') &&
+            !e.isActive('database') &&
             view.hasFocus() &&
             !state.selection.empty
         "

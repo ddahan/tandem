@@ -14,6 +14,8 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **Rich editor that writes Markdown**: headings, lists, to-dos, tables, code with highlighting,
   Mermaid diagrams, callouts, collapsible sections, emojis, links, resizable images. `/` for
   blocks, `[[` to link a note, `:` for emojis, a raw Markdown mode when you need it.
+- **Databases**: tables with typed columns, sorted and filtered, kept in Tandem (a note shows
+  one with a block); agents read and fill them too.
 - **Autosave** in the background, with conflict detection when an agent edits the same note.
 - **Pages in a tree** (pages can have child pages), with drag and drop, tags, breadcrumbs, and
   icons (an emoji or an image) for any page or folder.

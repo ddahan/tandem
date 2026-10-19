@@ -59,7 +59,8 @@ inside OneDrive so that it is backed up and synced.
 - **Attachments** of `Note.md` live in `Note.assets/`, next to it, and are referenced with
   relative paths (`![](Note.assets/diagram.png)`, `[report.pdf](Note.assets/report.pdf)`).
 - **Structured data lives in SQLite**: stable note ids, tags, creation and update dates, tree
-  order, history metadata, line authorship and settings. The live database is in the app's own
+  order, history metadata, line authorship, settings, and databases (their columns, view and
+  rows: a note only has a block naming one, see Databases). The live database is in the app's own
   folder (`~/Library/Application Support/Tandem/` on macOS) or on a Docker volume, never inside
   OneDrive (SQLite and file sync don't mix). About a minute after
   any change, and on shutdown, a consistent copy is written to `<data>/.tandem/tandem.db`;
@@ -117,6 +118,20 @@ inside OneDrive so that it is backed up and synced.
   in a new tab, as in the Files panel (the browser shows PDFs, images, videos and text, and
   downloads other files). Files over
   10 MB ask for confirmation first. No maximum size.
+- **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
+  whose rows and typed columns (text, number, date, checkbox, choice) are kept in Tandem, not
+  in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
+  data is safe in the database and its backup copy. Cells are edited in place (dates with a
+  date picker, shown `17/10/2026`; numbers French; a value of the wrong type is refused). Each
+  column's menu renames it, changes its type (values converted when they can be; a column
+  becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
+  and deletes it. The sort and the filters (every condition must match) are saved with the
+  database, so everyone, agents included, sees the same view. A page can have any number of
+  databases; they go to the trash with their page and come back with it. Removing a block
+  keeps its database (undo brings it back); pasting a block elsewhere shows the same
+  database, not a copy. A block whose database is gone says so.
+- **Databases panel** (side panel): the databases the note shows, in order, with their row
+  counts; a click scrolls to one.
 - **Files panel** (side panel): the note's attachments, with their size; files dropped or
   picked there are attached and added at the end of the note. Clicking an image shows it in a
   modal, scaled to fit, with its name and size; Esc, a click outside or its close button
@@ -184,7 +199,8 @@ inside OneDrive so that it is backed up and synced.
 
 - **CLI** `tandem` (run in the container; `bin/tandem` wraps `docker compose exec`):
   search, tree, read, create, write, append, replace text, move, delete, tags, history,
-  restore, attach files.
+  restore, attach files, and databases (list a note's, read rows as the saved view shows
+  them, create one, add, change and delete rows; columns by name).
 - **MCP server** over HTTP at `http://localhost:3000/mcp` with the same operations, so any
   MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
@@ -238,4 +254,6 @@ inside OneDrive so that it is backed up and synced.
 ## Out of scope (for now)
 
 Templates, export (PDF/HTML), daily notes, favorites, search inside attachments, multiple
-computers on one data folder, authentication (bound to 127.0.0.1 only), tables beyond GFM.
+computers on one data folder, authentication (bound to 127.0.0.1 only). For databases:
+relations, formulas, other views (board, calendar), per-database history, converting a table
+into a database.

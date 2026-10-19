@@ -27,6 +27,8 @@ import {
   type Attachment,
   type Backlink,
   type BlameRange,
+  type Database as DatabaseData,
+  type DatabaseSummary,
   type HistoryVersion,
   type NodeIcon,
   type NoteDetail,
@@ -41,6 +43,7 @@ import {
 import type { Database, Db } from '../db/client.ts'
 import { links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
+import { DatabaseStore, type ColumnInput, type DatabasePatch } from './databases.ts'
 import { ConflictError, NotFoundError, ValidationError } from './errors.ts'
 import {
   atomicWrite,
@@ -94,6 +97,7 @@ export class Vault {
   private readonly search: SearchIndex
   private readonly now: () => number
   private readonly sessionIdleMs: number
+  private readonly databases: DatabaseStore
 
   constructor(options: VaultOptions) {
     this.dataDir = options.dataDir
@@ -102,6 +106,7 @@ export class Vault {
     this.search = new SearchIndex(options.database.sqlite)
     this.now = options.now ?? Date.now
     this.sessionIdleMs = options.sessionIdleMs ?? 30_000
+    this.databases = new DatabaseStore(this.db, this.now)
   }
 
   // --- Reading -------------------------------------------------------------------------------
@@ -604,6 +609,61 @@ export class Vault {
       for (const item of items) await this.deleteTrashItem(item.id)
       return items.length
     })
+  }
+
+  // --- Databases (see databases.ts) ----------------------------------------------------------
+
+  async getDatabase(id: string): Promise<DatabaseData> {
+    return this.databases.get(id)
+  }
+
+  /** The databases of a page (those its blocks show, and any it no longer shows). */
+  async listDatabases(nodeId: string): Promise<DatabaseSummary[]> {
+    await this.requirePage(nodeId)
+    return this.databases.listForNode(nodeId)
+  }
+
+  /** A new database for a page; the caller adds its block to the page. */
+  async createDatabase(
+    nodeId: string,
+    input: { title?: string; columns?: ColumnInput[] } = {},
+  ): Promise<DatabaseData> {
+    return this.lock.run(async () => {
+      await this.requirePage(nodeId)
+      return this.databaseChanged(await this.databases.create(nodeId, input))
+    })
+  }
+
+  async updateDatabase(id: string, patch: DatabasePatch): Promise<DatabaseData> {
+    return this.lock.run(async () => this.databaseChanged(await this.databases.update(id, patch)))
+  }
+
+  async addDatabaseRow(
+    id: string,
+    input: { cells?: Record<string, unknown>; after?: string | null } = {},
+  ): Promise<DatabaseData> {
+    return this.lock.run(async () => this.databaseChanged(await this.databases.addRow(id, input)))
+  }
+
+  async updateDatabaseRow(
+    id: string,
+    rowId: string,
+    cells: Record<string, unknown>,
+  ): Promise<DatabaseData> {
+    return this.lock.run(async () =>
+      this.databaseChanged(await this.databases.updateRow(id, rowId, cells)),
+    )
+  }
+
+  async deleteDatabaseRow(id: string, rowId: string): Promise<DatabaseData> {
+    return this.lock.run(async () =>
+      this.databaseChanged(await this.databases.deleteRow(id, rowId)),
+    )
+  }
+
+  private databaseChanged(database: DatabaseData): DatabaseData {
+    this.changed({ type: 'database', id: database.id })
+    return database
   }
 
   async setTags(id: string, list: string[]): Promise<string[]> {
@@ -1157,6 +1217,7 @@ export class Vault {
       await this.removeIconFiles(row.id)
       await this.db.delete(versions).where(eq(versions.nodeId, row.id))
     }
+    await this.databases.deleteForNodes(payload.rows.map((row) => row.id))
     await this.db.delete(trash).where(eq(trash.id, trashId))
     this.changed({ type: 'trash' })
   }

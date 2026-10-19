@@ -6,7 +6,18 @@ import { StreamableHTTPTransport } from '@hono/mcp'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { DEFAULT_AGENT, formatDateTime, normalizeAuthor, type TreeNode } from '@tandem/shared'
+import {
+  COLUMN_TYPES,
+  DEFAULT_AGENT,
+  cellsByName,
+  databaseBlock,
+  databaseIdsIn,
+  formatDateTime,
+  normalizeAuthor,
+  rowsByName,
+  type Database,
+  type TreeNode,
+} from '@tandem/shared'
 import type { Vault } from '../vault/vault.ts'
 import { AUTHOR_HEADER } from './index.ts'
 
@@ -14,7 +25,9 @@ const INSTRUCTIONS = `Tandem is the user's note-taking app. Notes are Markdown p
 (a page can have child pages), with tags, history and per-line authorship. Notes are referenced by
 id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]] or
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
-so that the user's lines keep their authorship. Never delete notes unless the user asked.`
+so that the user's lines keep their authorship. Never delete notes unless the user asked.
+Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
+Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.`
 
 type Text = { content: { type: 'text'; text: string }[]; isError?: boolean }
 
@@ -51,6 +64,15 @@ function describeTree(nodes: TreeNode[]): string {
   }
   walk(null, 0)
   return lines.join('\n') || '(no notes yet)'
+}
+
+/** A database's columns for agents (choices of `select` columns). */
+function describeColumns(database: Database) {
+  return database.columns.map((c) => ({
+    name: c.name,
+    type: c.type,
+    ...(c.options ? { choices: c.options } : {}),
+  }))
 }
 
 export function createMcpServer(vault: Vault, author: string): McpServer {
@@ -354,6 +376,142 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
           : `[${attachment.name}](${attachment.markdownPath})`
         if (insert) await vault.appendContent(node.id, markdown, author)
         return text(markdown)
+      }),
+  )
+
+  // --- Databases -------------------------------------------------------------------------------
+
+  const database = z.string().describe('Database id (from list_databases)')
+  const values = z
+    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .describe(
+      'Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name, null to empty a cell.',
+    )
+
+  server.registerTool(
+    'list_databases',
+    {
+      title: 'List the databases of a note',
+      description:
+        'The databases a note shows (its database blocks, in order), with their columns.',
+      inputSchema: { note: ref },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ note }) =>
+      attempt(async () => {
+        const node = await vault.resolveRef(note)
+        const { content } = await vault.getNote(node.id)
+        const list = []
+        for (const id of databaseIdsIn(content)) {
+          const d = await vault.getDatabase(id).catch(() => null)
+          if (d) list.push({ id, title: d.title, columns: describeColumns(d), rows: d.rows.length })
+        }
+        return json(list)
+      }),
+  )
+
+  server.registerTool(
+    'read_database',
+    {
+      title: 'Read a database',
+      description:
+        "Its columns and rows (with their ids, values by column name), as the user's saved view shows them (sorted, filtered); all: true for every row in table order.",
+      inputSchema: { database, all: z.boolean().optional() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ database: id, all }) =>
+      attempt(async () => {
+        const d = await vault.getDatabase(id)
+        return json({
+          id: d.id,
+          title: d.title,
+          columns: describeColumns(d),
+          rows: rowsByName(d, all ?? false),
+          ...(all ? {} : { hiddenByFilters: d.rows.length - rowsByName(d).length }),
+        })
+      }),
+  )
+
+  server.registerTool(
+    'create_database',
+    {
+      title: 'Create a database',
+      description:
+        'Creates a database in a note (its block is added at the end of the note), with columns and optional first rows. Returns its id.',
+      inputSchema: {
+        note: ref,
+        title: z.string(),
+        columns: z
+          .array(
+            z.object({
+              name: z.string(),
+              type: z.enum(COLUMN_TYPES),
+              choices: z.array(z.string()).optional().describe('For select columns'),
+            }),
+          )
+          .min(1),
+        rows: z.array(values).optional(),
+      },
+    },
+    async ({ note, title, columns, rows }) =>
+      attempt(async () => {
+        const node = await vault.resolveRef(note)
+        let d = await vault.createDatabase(node.id, {
+          title,
+          columns: columns.map((c) => ({ name: c.name, type: c.type, options: c.choices })),
+        })
+        const [first, ...others] = rows ?? []
+        if (first) d = await vault.updateDatabaseRow(d.id, d.rows[0]!.id, cellsByName(d, first))
+        for (const row of others)
+          d = await vault.addDatabaseRow(d.id, { cells: cellsByName(d, row) })
+        await vault.appendContent(node.id, databaseBlock(d.id), author)
+        return json({ id: d.id, rows: d.rows.length })
+      }),
+  )
+
+  server.registerTool(
+    'add_database_rows',
+    {
+      title: 'Add rows to a database',
+      description: 'Adds rows at the end. Returns their ids.',
+      inputSchema: { database, rows: z.array(values).min(1) },
+    },
+    async ({ database: id, rows }) =>
+      attempt(async () => {
+        let d = await vault.getDatabase(id)
+        const before = new Set(d.rows.map((row) => row.id))
+        for (const row of rows) d = await vault.addDatabaseRow(id, { cells: cellsByName(d, row) })
+        return json({ added: d.rows.filter((row) => !before.has(row.id)).map((row) => row.id) })
+      }),
+  )
+
+  server.registerTool(
+    'update_database_row',
+    {
+      title: 'Change a row of a database',
+      description: 'Sets some values of a row (the others are kept).',
+      inputSchema: { database, row: z.string().describe('Row id (from read_database)'), values },
+    },
+    async ({ database: id, row, values: given }) =>
+      attempt(async () => {
+        const d = await vault.getDatabase(id)
+        await vault.updateDatabaseRow(id, row, cellsByName(d, given))
+        return text('Saved')
+      }),
+  )
+
+  server.registerTool(
+    'delete_database_row',
+    {
+      title: 'Delete a row of a database',
+      description: 'Deletes a row for good. Only when the user asked.',
+      inputSchema: { database, row: z.string().describe('Row id (from read_database)') },
+      annotations: { destructiveHint: true },
+    },
+    async ({ database: id, row }) =>
+      attempt(async () => {
+        await vault.deleteDatabaseRow(id, row)
+        return text('Deleted')
       }),
   )
 

@@ -12,7 +12,14 @@ import { Hono, type Context } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
-import { CODE_THEMES, DEFAULT_AGENT, normalizeAuthor, type ServerEvent } from '@tandem/shared'
+import {
+  CODE_THEMES,
+  COLUMN_TYPES,
+  DEFAULT_AGENT,
+  FILTER_OPERATORS,
+  normalizeAuthor,
+  type ServerEvent,
+} from '@tandem/shared'
 import {
   createFolder,
   DEFAULT_READ_ONLY_REASON,
@@ -59,6 +66,36 @@ const settingsPatch = z
     codeTheme: z.enum(CODE_THEMES),
   })
   .partial()
+
+const cellValue = z.union([z.string().max(10_000), z.number(), z.boolean(), z.null()])
+const cells = z.record(z.string(), cellValue)
+const columnInput = z.object({
+  id: z.string().optional(),
+  name: z.string().max(80),
+  type: z.enum(COLUMN_TYPES),
+  options: z.array(z.string().max(80)).max(100).optional(),
+})
+const databaseInput = z.object({
+  title: z.string().max(200).optional(),
+  columns: z.array(columnInput).max(50).optional(),
+})
+const databasePatch = databaseInput.extend({
+  sort: z
+    .object({ column: z.string(), direction: z.enum(['asc', 'desc']) })
+    .nullable()
+    .optional(),
+  filters: z
+    .array(
+      z.object({
+        column: z.string(),
+        operator: z.enum(FILTER_OPERATORS),
+        value: cellValue.optional(),
+      }),
+    )
+    .max(20)
+    .optional(),
+})
+const rowParam = z.object({ id: z.string().min(1), rowId: z.string().min(1) })
 
 export interface ApiOptions {
   /** How the notes folder can change (default: it can't, from the app). */
@@ -294,6 +331,50 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       return c.json({ ok: true })
     })
     .delete('/trash', async (c) => c.json({ deleted: await vault.emptyTrash() }))
+
+    // --- Databases ---------------------------------------------------------------------------
+    .get('/notes/:id/databases', zValidator('param', idParam), async (c) =>
+      c.json(await vault.listDatabases(c.req.valid('param').id)),
+    )
+    .post(
+      '/notes/:id/databases',
+      zValidator('param', idParam),
+      zValidator('json', databaseInput),
+      async (c) =>
+        c.json(await vault.createDatabase(c.req.valid('param').id, c.req.valid('json')), 201),
+    )
+    .get('/databases/:id', zValidator('param', idParam), async (c) =>
+      c.json(await vault.getDatabase(c.req.valid('param').id)),
+    )
+    .patch(
+      '/databases/:id',
+      zValidator('param', idParam),
+      zValidator('json', databasePatch),
+      async (c) => c.json(await vault.updateDatabase(c.req.valid('param').id, c.req.valid('json'))),
+    )
+    .post(
+      '/databases/:id/rows',
+      zValidator('param', idParam),
+      zValidator(
+        'json',
+        z.object({ cells: cells.optional(), after: z.string().nullable().optional() }),
+      ),
+      async (c) =>
+        c.json(await vault.addDatabaseRow(c.req.valid('param').id, c.req.valid('json')), 201),
+    )
+    .patch(
+      '/databases/:id/rows/:rowId',
+      zValidator('param', rowParam),
+      zValidator('json', z.object({ cells })),
+      async (c) => {
+        const { id, rowId } = c.req.valid('param')
+        return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid('json').cells))
+      },
+    )
+    .delete('/databases/:id/rows/:rowId', zValidator('param', rowParam), async (c) => {
+      const { id, rowId } = c.req.valid('param')
+      return c.json(await vault.deleteDatabaseRow(id, rowId))
+    })
 
     // --- Settings ----------------------------------------------------------------------------
     // --- Notes folder (Settings › Notes folder) ----------------------------------------------

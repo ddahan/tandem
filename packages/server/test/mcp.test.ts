@@ -96,4 +96,73 @@ describe('MCP server', () => {
     expect(response.result.isError).toBe(true)
     expect(textOf(response)).toContain('No note or folder matches')
   })
+
+  it('creates, reads and changes databases by column name', async () => {
+    const { vault } = await createTestVault()
+    const app = createApp(vault)
+    const tool = (name: string, args: Record<string, unknown>) =>
+      call(app, 'tools/call', { name, arguments: args })
+    await vault.createPage({ title: 'Books', content: 'My books.', author: 'owner' })
+
+    const created = await tool('create_database', {
+      note: 'Books',
+      title: 'Reading list',
+      columns: [
+        { name: 'Title', type: 'text' },
+        { name: 'Pages', type: 'number' },
+        { name: 'Status', type: 'select', choices: ['To read', 'Done'] },
+      ],
+      rows: [
+        { Title: 'Dune', Pages: 412, Status: 'Done' },
+        { title: 'Solaris', pages: '204' },
+      ],
+    })
+    const { id } = JSON.parse(textOf(created)) as { id: string }
+    // The block is in the note; the data is not.
+    const note = await vault.getNote((await vault.resolveRef('Books')).id)
+    expect(note.content).toBe(`My books.\n\n\`\`\`database\nid: ${id}\n\`\`\`\n`)
+    expect(note.lastAuthor).toBe('claude')
+
+    const listed = JSON.parse(textOf(await tool('list_databases', { note: 'Books' })))
+    expect(listed).toEqual([
+      {
+        id,
+        title: 'Reading list',
+        columns: [
+          { name: 'Title', type: 'text' },
+          { name: 'Pages', type: 'number' },
+          { name: 'Status', type: 'select', choices: ['To read', 'Done'] },
+        ],
+        rows: 2,
+      },
+    ])
+
+    const added = JSON.parse(
+      textOf(await tool('add_database_rows', { database: id, rows: [{ Title: 'Ubik' }] })),
+    ) as { added: string[] }
+    expect(added.added).toHaveLength(1)
+    await tool('update_database_row', {
+      database: id,
+      row: added.added[0],
+      values: { Status: 'to read', Pages: '1 234' },
+    })
+    const read = JSON.parse(textOf(await tool('read_database', { database: id })))
+    expect(read.rows).toEqual([
+      { id: expect.any(String), Title: 'Dune', Pages: 412, Status: 'Done' },
+      { id: expect.any(String), Title: 'Solaris', Pages: 204, Status: null },
+      { id: added.added[0], Title: 'Ubik', Pages: 1234, Status: 'To read' },
+    ])
+
+    const bad = await tool('update_database_row', {
+      database: id,
+      row: added.added[0],
+      values: { Author: 'Dick' },
+    })
+    expect(bad.result.isError).toBe(true)
+    expect(textOf(bad)).toBe('No column “Author” (columns: Title, Pages, Status)')
+
+    await tool('delete_database_row', { database: id, row: added.added[0] })
+    const after = JSON.parse(textOf(await tool('read_database', { database: id, all: true })))
+    expect(after.rows).toHaveLength(2)
+  })
 })

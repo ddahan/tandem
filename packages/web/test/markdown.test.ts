@@ -82,6 +82,18 @@ describe('Markdown round-trip', () => {
     })
   })
 
+  it('keeps databases as their block, apart from code blocks', () => {
+    const markdown =
+      'Books:\n\n```database\nid: Kx3fq9P2mZ0a\n```\n\n```yaml\nid: not-a-database\n```'
+    expect(roundTrip(markdown)).toBe(markdown)
+    expect(editor!.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'database',
+      'codeBlock',
+    ])
+    expect(editor!.getJSON().content?.[1]?.attrs).toEqual({ id: 'Kx3fq9P2mZ0a' })
+  })
+
   it('keeps plain quotes apart from callouts', () => {
     expect(roundTrip('> just a quote')).toBe('> just a quote')
     expect(editor!.getJSON().content?.[0]?.type).toBe('blockquote')

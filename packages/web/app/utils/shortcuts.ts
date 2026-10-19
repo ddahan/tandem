@@ -205,7 +205,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       {
         typed: '/',
         label: 'Block menu',
-        description: 'Headings, lists, tables, callouts, diagrams, files…',
+        description: 'Headings, lists, tables, databases, callouts, diagrams, files…',
       },
       { typed: '[[', label: 'Link to a note' },
       { typed: ':smile', label: 'Emoji' },
