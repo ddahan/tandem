@@ -42509,7 +42509,10 @@ function createApp(vault, options = {}) {
   if (webDir && existsSync3(webDir)) {
     app.use("/*", async (c, next) => {
       await next();
-      if (!c.res.headers.has("cache-control")) c.res.headers.set("cache-control", "no-cache");
+      if (!c.res.headers.has("cache-control")) {
+        const page = c.res.headers.get("content-type")?.startsWith("text/html");
+        c.res.headers.set("cache-control", page ? "no-store" : "no-cache");
+      }
     });
     app.use("/*", etag());
     app.use("/*", serveStatic({ root: webDir }));
