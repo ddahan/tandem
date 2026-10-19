@@ -201,7 +201,8 @@ folders and the versions.
   or HTML tags (except those with their own node) are missing afterwards are losses. The note
   page checks on load, on agents' changes and while the Markdown view is typed in (debounced);
   `NoteEditor`'s `readOnly` goes to the TipTap editor (`setEditable`: UEditor reads `editable`
-  once).
+  once). The Markdown view (`MarkdownSource.vue`) numbers its lines: each number is as tall as
+  its wrapped line, measured in a hidden copy of the text with the same width and font.
 - Block handle (`UEditorDragHandle`, nested: list items move one by one): its distance from
   the block is computed in Floating UI's `offset` (`handleOptions` in `NoteEditor.vue`), which
   adds the marker margin of bullet and numbered items. TipTap's Vue handle ignores a custom

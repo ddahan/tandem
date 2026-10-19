@@ -227,7 +227,19 @@ test('keeps Markdown the editor would lose: read-only, then edit anyway', async 
   const banner = page.getByTestId('markdown-loss')
   await expect(banner).toContainText('line 3 (an HTML comment)')
   await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'false')
-  await banner.getByRole('button', { name: 'Edit anyway' }).click()
+  // Its line number leads to the line, in the Markdown view.
+  await banner.getByRole('button', { name: 'line 3' }).click()
+  const source = page.getByRole('textbox', { name: 'Markdown source' })
+  await expect(source).toBeFocused()
+  expect(
+    await source.evaluate((t: HTMLTextAreaElement) =>
+      t.value.slice(t.selectionStart, t.selectionEnd),
+    ),
+  ).toBe('<!-- for agents: keep this -->')
+  // The editor stays closed, unless asked.
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(source).toBeVisible()
+  await banner.getByRole('button', { name: 'Open the editor anyway' }).click()
   await expect(banner).toHaveCount(0)
   await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true')
   // Nothing saved until an edit.
@@ -245,6 +257,11 @@ test('won’t switch to the editor while it would lose Markdown, unless asked', 
   await source.fill('# Title\n\nPress <kbd>Ctrl</kbd>\n')
   const message = page.getByTestId('markdown-loss')
   await expect(message).toContainText('line 3 (HTML <kbd>)')
+  // Numbered lines, the lost one in red.
+  const number = (line: number) => page.locator(`[data-source-line="${line}"]`)
+  await expect(number(3)).toHaveText('3')
+  await expect(number(3)).toHaveClass(/text-error/)
+  await expect(number(1)).not.toHaveClass(/text-error/)
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(source).toBeVisible()
   // Fixed: the editor opens.

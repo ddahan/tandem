@@ -73,15 +73,17 @@ inside OneDrive so that it is backed up and synced.
 ## Editing
 
 - WYSIWYG editor (Nuxt UI Editor, built on TipTap) that reads and writes Markdown; a raw
-  Markdown mode is available but secondary; hovering it shows a small copy button (top right),
-  as on code blocks.
+  Markdown mode is available but secondary: numbered lines (wrapped lines keep one number);
+  hovering it shows a small copy button (top right), as on code blocks.
 - **Markdown the editor can't show** (HTML comments; raw HTML other than `<br>`, `<img>`,
   `<details>`/`<summary>`: its tags go, its text stays) would be lost at the first edit in the
   editor. So a note containing some opens read-only, with a red message naming the lines and
   two choices: "Edit Markdown" (the Markdown view) or "Edit anyway" (the loss accepted for
-  this content). In the Markdown view, the same message and a red border appear as it is
+  this content). The message's line numbers are links to the lines in the Markdown view, where
+  their numbers are red. In the Markdown view, the same message and a red border appear as it is
   typed, and the view won't switch to the editor ("Open the editor anyway" does). Rewrites
-  that keep everything (`*` bullets as `-`, `__` as `**`, padded tables) don't count.
+  that keep everything (`*` bullets as `-`, `__` as `**`, padded tables, renumbered lists) don't
+  count.
 - **Autosave** in the background, about half a second after typing stops; a discreet status
   shows "Saving… / Saved". Nothing to click.
 - Formatting: headings, bold/italic/strike/inline code, links, lists, task lists, quotes,

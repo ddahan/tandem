@@ -124,6 +124,15 @@ function acceptLoss() {
   acceptedLoss.value = content.value
 }
 
+const source = useTemplateRef<{ goToLine(line: number): void }>('source')
+
+/** Shows a line in the Markdown view (from a loss message). */
+async function goToLine(line: number) {
+  setMode('source')
+  await nextTick()
+  source.value?.goToLine(line)
+}
+
 function openAnyway() {
   acceptLoss()
   setMode('edit')
@@ -519,7 +528,6 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           variant="subtle"
           icon="i-lucide-triangle-alert"
           title="Read-only: the editor can't show all of this note's Markdown"
-          :description="`Edited here, the note would lose ${lossSummary}. Change it in the Markdown view, or edit anyway.`"
           :actions="[
             {
               label: 'Edit anyway',
@@ -532,7 +540,13 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           orientation="horizontal"
           class="mb-6"
           data-testid="markdown-loss"
-        />
+        >
+          <template #description>
+            Edited here, the note would lose
+            <MarkdownLossLines :losses="losses" @go="goToLine" />. Change it in the Markdown view,
+            or edit anyway.
+          </template>
+        </UAlert>
 
         <NoteEditor
           v-if="mode === 'edit'"
@@ -554,7 +568,6 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             variant="subtle"
             icon="i-lucide-triangle-alert"
             title="The editor can't show all of this Markdown"
-            :description="`It would lose ${lossSummary}: the editor stays closed until that's changed.`"
             :actions="[
               {
                 label: 'Open the editor anyway',
@@ -566,19 +579,18 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             orientation="horizontal"
             class="mb-4"
             data-testid="markdown-loss"
-          />
+          >
+            <template #description>
+              It would lose <MarkdownLossLines :losses="losses" @go="goToLine" />: the editor stays
+              closed until that's changed.
+            </template>
+          </UAlert>
           <div class="group/source relative">
-            <UTextarea
+            <MarkdownSource
+              ref="source"
               :model-value="content"
-              autoresize
-              :rows="20"
-              variant="soft"
-              :color="lossBlocks ? 'error' : 'primary'"
-              :highlight="lossBlocks"
-              class="w-full"
-              :ui="{ base: 'pe-12 font-mono text-sm leading-6 [font-variant-ligatures:none]' }"
-              aria-label="Markdown source"
-              @update:model-value="(value) => onSourceChange(String(value))"
+              :error-lines="lossBlocks ? losses.map((loss) => loss.line) : []"
+              @update:model-value="onSourceChange"
             />
             <UTooltip :text="copied ? 'Copied' : 'Copy Markdown'">
               <UButton
