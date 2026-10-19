@@ -153,3 +153,58 @@ test('says when a database no longer exists', async ({ page, request }) => {
   await openNote(page, note.id)
   await expect(page.getByText("This database doesn't exist anymore.")).toBeVisible()
 })
+
+test('picks dates with a calendar or types them, and filters on them', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Dated table', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      { name: 'Due', type: 'date' },
+    ],
+  })
+  const [task, due] = database.columns
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'Report', [due!.id]: '2026-10-12' },
+  })
+  await api(request, 'POST', `/databases/${database.id}/rows`, {
+    cells: { [task!.id]: 'Taxes' },
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  const dueOf = async () => {
+    const latest = await api<Database>(request, 'GET', `/databases/${database.id}`)
+    return latest.rows.map((row) => row.cells[due!.id] ?? null)
+  }
+
+  // Shown day first; a day picked in the calendar (it opens on the cell's month).
+  await expect(block.getByTestId('database-row').first()).toContainText('12/10/2026')
+  await block.getByRole('button', { name: 'Pick a date: Due' }).first().click()
+  await page.getByRole('button', { name: /14 October 2026/ }).click()
+  await expect.poll(dueOf).toEqual(['2026-10-14', null])
+
+  // Typed: day, month, year.
+  const second = block.getByTestId('database-row').nth(1)
+  await second.getByRole('spinbutton', { name: 'day' }).click()
+  await page.keyboard.type('03112026')
+  await expect.poll(dueOf).toEqual(['2026-10-14', '2026-11-03'])
+
+  // A filter on dates: before 01/11/2026.
+  await block.getByRole('button', { name: 'Filter' }).click()
+  await page.getByRole('button', { name: 'Add a filter' }).click()
+  const filters = page.getByTestId('database-filters')
+  await filters.getByRole('combobox', { name: 'Column' }).click()
+  await page.getByRole('option', { name: 'Due' }).click()
+  await filters.getByRole('combobox', { name: 'Condition' }).click()
+  await page.getByRole('option', { name: 'is before' }).click()
+  await filters.getByRole('spinbutton', { name: 'day' }).click()
+  await page.keyboard.type('01112026')
+  await page.keyboard.press('Escape')
+  await expect(block.getByTestId('database-row')).toHaveCount(1)
+  await expect(block.getByRole('textbox', { name: 'Task' })).toHaveValue('Report')
+})

@@ -16,6 +16,10 @@ describe('databases', () => {
     const database = await vault.createDatabase(page.id, { title: 'Reading list' })
     expect(database.columns).toEqual([{ id: expect.any(String), name: 'Name', type: 'text' }])
     expect(database.rows).toHaveLength(1)
+    // Ids are typed in commands: never one that reads as an option ("-…").
+    for (const id of [database.id, database.columns[0]!.id, database.rows[0]!.id]) {
+      expect(id).toMatch(/^[A-Za-z0-9]+$/)
+    }
     expect(await vault.listDatabases(page.id)).toEqual([
       { id: database.id, title: 'Reading list', rowCount: 1 },
     ])

@@ -121,8 +121,9 @@ inside OneDrive so that it is backed up and synced.
 - **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
   whose rows and typed columns (text, number, date, checkbox, choice) are kept in Tandem, not
   in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
-  data is safe in the database and its backup copy. Cells are edited in place (dates with a
-  date picker, shown `17/10/2026`; numbers French; a value of the wrong type is refused). Each
+  data is safe in the database and its backup copy. Cells are edited in place (dates typed day,
+  month, year, or picked in a calendar whose weeks start on Monday, shown `17/10/2026`; numbers
+  French; a value of the wrong type is refused). Each
   column's menu renames it, changes its type (values converted when they can be; a column
   becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
   and deletes it. The sort and the filters (every condition must match) are saved with the

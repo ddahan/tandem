@@ -222,7 +222,8 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   (its own Markdown tokenizer, before code blocks); `components/editor/DatabaseView.vue` draws
   it (title, sort and filter controls, the table with a menu per column), with
   `DatabaseCell.vue` (native controls per type, a draft while edited: the table reloads with
-  every change) and `DatabaseFilters.vue`. `useDatabase` loads one, reloads it on its
+  every change; dates: `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
+  locale `en-GB` for day-first dates and English words) and `DatabaseFilters.vue`. `useDatabase` loads one, reloads it on its
   `database` events (only the latest load counts) and changes it through the API. The slash
   menu creates the database first, then inserts its block where the cursor was.
   `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles

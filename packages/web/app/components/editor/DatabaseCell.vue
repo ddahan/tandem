@@ -5,6 +5,7 @@
 // edited it keeps what is typed: the table reloads with every change (yours, an agent's),
 // which would otherwise put the saved value back under the cursor.
 import { cellText, type CellValue, type DatabaseColumn } from '@tandem/shared'
+import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
 const props = defineProps<{
   column: DatabaseColumn
@@ -14,10 +15,8 @@ const props = defineProps<{
   save: (value: CellValue) => Promise<boolean>
 }>()
 
-// Dates stay `2026-10-17` (the date input shows them in French); numbers are French.
-const shown = computed(() =>
-  props.column.type === 'date' ? String(props.value ?? '') : cellText(props.value, props.column),
-)
+// Numbers are French (dates have their own field, DatabaseDate).
+const shown = computed(() => cellText(props.value, props.column))
 
 const draft = ref(shown.value)
 const editing = ref(false)
@@ -83,14 +82,18 @@ const label = computed(() => props.column.name)
     <!-- A value that is no longer a choice (renamed or removed): shown as it is. -->
     <option v-if="draft && !column.options?.includes(draft)" :value="draft">{{ draft }}</option>
   </select>
+  <DatabaseDate
+    v-else-if="column.type === 'date'"
+    :model-value="typeof value === 'string' ? value : null"
+    :label="label"
+    :readonly="readonly"
+    @update:model-value="save"
+  />
   <input
     v-else
-    :type="column.type === 'date' ? 'date' : 'text'"
+    type="text"
     class="database-input"
-    :class="[
-      column.type === 'number' && 'text-end tabular-nums',
-      column.type === 'date' && !draft && 'text-dimmed',
-    ]"
+    :class="column.type === 'number' && 'text-end tabular-nums'"
     :inputmode="column.type === 'number' ? 'decimal' : undefined"
     :value="draft"
     :readonly="readonly"
@@ -98,7 +101,6 @@ const label = computed(() => props.column.name)
     @focus="editing = true"
     @input="onInput"
     @blur="onBlur"
-    @change="column.type === 'date' && commit(draft)"
     @keydown="onKey"
   />
 </template>

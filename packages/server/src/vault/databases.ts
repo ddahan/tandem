@@ -2,7 +2,7 @@
 // these under its lock and announces the changes. Values are checked against their column's
 // type (`toCellValue`); changing a type converts the column's values (`convertCell`).
 import { asc, eq, inArray } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
+import { customAlphabet } from 'nanoid'
 import {
   COLUMN_TYPES,
   FILTER_OPERATORS,
@@ -38,6 +38,11 @@ export interface DatabasePatch {
 }
 
 const DEFAULT_COLUMNS: ColumnInput[] = [{ name: 'Name', type: 'text' }]
+// Letters and digits only: ids are typed in commands (`tandem row-set <db> <row>`), where one
+// starting with "-" would read as an option.
+const ALPHANUMERIC = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+const newId = customAlphabet(ALPHANUMERIC, 12)
+const newColumnId = customAlphabet(ALPHANUMERIC, 8)
 /** Choices made from a column's values when it becomes a `select` (at most). */
 const MAX_OPTIONS = 50
 
@@ -58,7 +63,7 @@ export class DatabaseStore {
     nodeId: string,
     input: { title?: string; columns?: ColumnInput[] } = {},
   ): Promise<Database> {
-    const id = nanoid(12)
+    const id = newId()
     const now = this.now()
     const columns = checkColumns(input.columns?.length ? input.columns : DEFAULT_COLUMNS, [])
     await this.db.insert(databases).values({
@@ -70,7 +75,7 @@ export class DatabaseStore {
       updatedAt: now,
     })
     await this.db.insert(databaseRows).values({
-      id: nanoid(12),
+      id: newId(),
       databaseId: id,
       position: 1,
       createdAt: now,
@@ -154,7 +159,7 @@ export class DatabaseStore {
     }
     const now = this.now()
     await this.db.insert(databaseRows).values({
-      id: nanoid(12),
+      id: newId(),
       databaseId: id,
       position,
       cells: JSON.stringify(checkCells(input.cells ?? {}, columns, {})),
@@ -285,7 +290,7 @@ function checkColumns(input: ColumnInput[], before: DatabaseColumn[]): DatabaseC
       throw new ValidationError(`${name}: unknown type “${column.type}”`)
     }
     if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`)
-    const result: DatabaseColumn = { id: column.id ?? nanoid(8), name, type: column.type }
+    const result: DatabaseColumn = { id: column.id ?? newColumnId(), name, type: column.type }
     if (column.type === 'select') {
       const options = [
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean)),

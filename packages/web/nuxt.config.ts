@@ -89,7 +89,15 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: ['lowlight', 'diff', 'marked', '@tiptap/extension-emoji', 'mermaid'],
+      include: [
+        'lowlight',
+        'diff',
+        'marked',
+        '@tiptap/extension-emoji',
+        'mermaid',
+        'hono/client',
+        '@internationalized/date',
+      ],
     },
   },
 

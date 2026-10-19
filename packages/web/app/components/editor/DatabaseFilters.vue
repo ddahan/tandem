@@ -8,6 +8,7 @@ import type {
   DatabaseFilter,
   FilterOperator,
 } from '@tandem/shared'
+import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
 const props = defineProps<{
   columns: DatabaseColumn[]
@@ -152,12 +153,21 @@ defineExpose({ add })
               aria-label="Value"
               @update:model-value="(value) => setValue(index, String(value))"
             />
+            <DatabaseDate
+              v-else-if="columnOf(filter)!.type === 'date'"
+              :model-value="typeof filter.value === 'string' ? filter.value : null"
+              label="Value"
+              :readonly="readonly"
+              size="xs"
+              variant="outline"
+              class="min-w-0 flex-1"
+              @update:model-value="(value) => setValue(index, value)"
+            />
             <!-- Holds what is typed (the filters reload with every change): set on change. -->
             <UInput
               v-else
               :key="`${index}-${filter.column}-${filter.operator}`"
               :default-value="String(filter.value ?? '')"
-              :type="columnOf(filter)!.type === 'date' ? 'date' : 'text'"
               size="xs"
               class="min-w-0 flex-1"
               :disabled="readonly"

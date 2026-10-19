@@ -17,6 +17,7 @@
     "@fontsource-variable/inter": "catalog:",
     "@fontsource-variable/jetbrains-mono": "catalog:",
     "@fontsource-variable/literata": "catalog:",
+    "@internationalized/date": "catalog:",
     "@nuxt/ui": "catalog:",
     "@tandem/server": "workspace:*",
     "@tandem/shared": "workspace:*",
