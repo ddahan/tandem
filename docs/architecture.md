@@ -314,7 +314,9 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   app in the way), writes
   `install.env`, and registers the service, which runs `tandem serve` alone
   (`~/Library/LaunchAgents/app.tandem.plist`, or `~/.config/systemd/user/tandem.service`).
-  `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).
+  On macOS, when that login item is registered and its plist unchanged (an update), it stays:
+  the files are swapped and `launchctl kickstart -k` restarts the app, since each
+  `bootstrap` makes macOS notify a new login item. `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).
 
 ## CLI (`packages/cli`)
 

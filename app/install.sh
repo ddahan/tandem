@@ -259,31 +259,18 @@ rm -rf "$app_dir/app.new"
 cp -R "$here/tandem" "$app_dir/app.new"
 "$node_bin" "$app_dir/app.new/tandem.mjs" version > /dev/null || fail "the app doesn't run with Node $node_version ($node_bin)."
 
-# Stop the running version (update), then put the new one in place.
-stop_service
-rm -rf "$app_dir/app" "$app_dir/runtime"
-mv "$app_dir/app.new" "$app_dir/app"
-# The `tandem` command: the app, run by this Node (SQLite's "experimental" warning silenced on
-# Node 22).
-cat > "$bin" << LAUNCHER
-#!/bin/sh
-# Tandem, written by its installer (app/install.sh): the app run by Node $node_version.
-exec "$node_bin" --disable-warning=ExperimentalWarning "$app_dir/app/tandem.mjs" "\$@"
-LAUNCHER
-chmod +x "$bin"
-# The login item runs `tandem serve`, which reads the folder and port from this file (also
-# written by Settings › Notes folder).
-printf 'data_dir=%s\nport=%s\n' "'$(printf '%s' "$data_dir" | sed "s/'/'\\\\''/g")'" "$port" > "$settings"
-
-# --- Start at login -------------------------------------------------------------------------
-home_env=""
+# The login item (macOS): written out below; when it is already registered as it is, an update
+# keeps it and only restarts the app (registering it again makes macOS show a "Login Items"
+# notification each time).
 if [ "$platform" = darwin ]; then
   env_entries=""
   [ -n "${TANDEM_HOME:-}" ] && env_entries="$env_entries<key>TANDEM_HOME</key><string>$TANDEM_HOME</string>"
   [ "$LABEL" = app.tandem ] || env_entries="$env_entries<key>TANDEM_SERVICE_LABEL</key><string>$LABEL</string>"
+  home_env=""
   [ -n "$env_entries" ] && home_env="<key>EnvironmentVariables</key><dict>$env_entries</dict>"
-  mkdir -p "$(dirname "$service_file")" "$(dirname "$log_file")"
-  cat > "$service_file" << PLIST
+  mkdir -p "$app_dir"
+  plist="$app_dir/service.plist.new"
+  cat > "$plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -301,8 +288,40 @@ if [ "$platform" = darwin ]; then
 </dict>
 </plist>
 PLIST
+fi
+keep_service=false
+if [ "$platform" = darwin ] && service_running && [ -f "$service_file" ] &&
+  cmp -s "$service_file" "$plist"; then
+  keep_service=true
+fi
+
+# Put the new version in place: the running one is stopped first, or, when its login item
+# stays, restarted right after (it has its code loaded; the swap takes an instant).
+[ "$keep_service" = true ] || stop_service
+rm -rf "$app_dir/app" "$app_dir/runtime"
+mv "$app_dir/app.new" "$app_dir/app"
+# The `tandem` command: the app, run by this Node (SQLite's "experimental" warning silenced on
+# Node 22).
+cat > "$bin" << LAUNCHER
+#!/bin/sh
+# Tandem, written by its installer (app/install.sh): the app run by Node $node_version.
+exec "$node_bin" --disable-warning=ExperimentalWarning "$app_dir/app/tandem.mjs" "\$@"
+LAUNCHER
+chmod +x "$bin"
+# The login item runs `tandem serve`, which reads the folder and port from this file (also
+# written by Settings › Notes folder).
+printf 'data_dir=%s\nport=%s\n' "'$(printf '%s' "$data_dir" | sed "s/'/'\\\\''/g")'" "$port" > "$settings"
+
+# --- Start at login -------------------------------------------------------------------------
+if [ "$keep_service" = true ]; then
+  rm -f "$plist"
+  launchctl kickstart -k "gui/$(id -u)/$LABEL"
+elif [ "$platform" = darwin ]; then
+  mkdir -p "$(dirname "$service_file")" "$(dirname "$log_file")"
+  mv "$plist" "$service_file"
   launchctl bootstrap "gui/$(id -u)" "$service_file"
 elif command -v systemctl > /dev/null 2>&1; then
+  home_env=""
   [ -n "${TANDEM_HOME:-}" ] && home_env="Environment=TANDEM_HOME=$TANDEM_HOME"
   mkdir -p "$(dirname "$service_file")"
   cat > "$service_file" << UNIT
