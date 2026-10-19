@@ -1,11 +1,19 @@
 // The web app: a single-page app (no server rendering), built to static files that the
 // Tandem server serves. In development, `/api`, `/files` and `/mcp` go to the dev server.
+import { readFileSync } from 'node:fs'
+
 const apiUrl = process.env.TANDEM_API_URL ?? 'http://localhost:3011'
+// Tandem's version (the standalone package holds it, see README › Releasing), shown in Settings.
+// The web app is built with the server it ships with: its version is the app's.
+const { version } = JSON.parse(
+  readFileSync(new URL('../standalone/package.json', import.meta.url), 'utf8'),
+) as { version: string }
 
 export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   ssr: false,
   devtools: { enabled: false },
+  runtimeConfig: { public: { version } },
   css: ['~/assets/css/main.css'],
 
   app: {

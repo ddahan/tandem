@@ -218,6 +218,8 @@ test('edits the Markdown source directly', async ({ page, request }) => {
 
 test('changes the theme and the settings', async ({ page, request }) => {
   await page.goto('/settings')
+  // The version, from the standalone package (the app's).
+  await expect(page.getByTestId('app-version')).toHaveText(/^\d+\.\d+\.\d+$/)
   await page.getByRole('button', { name: 'emerald' }).click()
   await expect
     .poll(

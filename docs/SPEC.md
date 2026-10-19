@@ -186,7 +186,7 @@ inside OneDrive so that it is backed up and synced.
   and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
   Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, and the workspace name (next to the logo and in the browser tab; Tandem by
-  default).
+  default). Settings start with the app's version (read-only).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes
