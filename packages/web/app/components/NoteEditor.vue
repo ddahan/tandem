@@ -204,7 +204,48 @@ function tableHandlers() {
   >
 }
 
+/**
+ * Lists from the slash menu and the toolbar: TipTap's toggles, as ⌘⇧7/8/9 and typed markers.
+ * They change the kind of the level the cursor is in (each level has one, any kind at any
+ * level), or remove the list at that kind. Nuxt UI's own lifted the item out of its list first,
+ * and lost its text inside a list.
+ */
+function listHandlers() {
+  const toggles = {
+    bulletList: 'toggleBulletList',
+    orderedList: 'toggleOrderedList',
+    taskList: 'toggleTaskList',
+  } as const
+  /** The kind of the level the cursor is in. */
+  const level = (editor: Editor) => {
+    const { $from } = editor.state.selection
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const name = $from.node(depth).type.name
+      if (name in toggles) return name
+    }
+    return null
+  }
+  return Object.fromEntries(
+    Object.entries(toggles).map(([kind, toggle]) => [
+      kind,
+      {
+        canExecute: (editor: Editor) => editor.can()[toggle](),
+        execute: (editor: Editor) => editor.chain().focus()[toggle](),
+        isActive: (editor: Editor) => level(editor) === kind,
+      },
+    ]),
+  ) as Record<
+    keyof typeof toggles,
+    {
+      canExecute: (editor: Editor) => boolean
+      execute: (editor: Editor) => ReturnType<Editor['chain']>
+      isActive: (editor: Editor) => boolean
+    }
+  >
+}
+
 const handlers = {
+  ...listHandlers(),
   callout: {
     canExecute: (editor: Editor) => editor.can().setCallout(),
     execute: (editor: Editor, item: { calloutType?: CalloutType }) =>

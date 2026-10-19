@@ -454,20 +454,40 @@ test('draws the logo and the tab icon in the accent color', async ({ page, reque
   await api(request, 'PATCH', '/settings', { primaryColor: 'indigo' })
 })
 
-test('nests a to-do list under a bullet item, typed', async ({ page, request }) => {
+test('makes any kind of list at any level, typed or from the slash menu', async ({
+  page,
+  request,
+}) => {
   const note = await createNote(request, 'Mixed lists', '')
   await openNote(page, note.id)
   await focusEnd(page)
-  await page.keyboard.type('- Groceries')
+  const steps = [
+    // Enter on an empty item outdents it, then leaves the list.
+    ['- Groceries', 'Enter', 'Tab', '[] Milk', 'Enter', 'Bread', 'Enter', 'Enter', 'Enter'],
+    ['[ ] Errands', 'Enter', 'Tab', 'Bank', 'Enter', '/bullet'],
+  ].flat()
+  for (const step of steps) {
+    if (step === 'Enter' || step === 'Tab') await page.keyboard.press(step)
+    else await page.keyboard.type(step)
+  }
+  await expect(page.getByText('Bullet list', { exact: true })).toBeVisible()
   await page.keyboard.press('Enter')
-  await page.keyboard.press('Tab')
-  await page.keyboard.type('[ ] Milk')
-  await page.keyboard.press('Enter')
-  await page.keyboard.type('Bread')
+  await page.keyboard.type('Post')
   await waitSaved(page)
-  expect((await noteContent(request, note.id)).trim()).toBe(
-    '- Groceries\n  - [ ] Milk\n  - [ ] Bread',
-  )
+  // Each level has one kind; the slash menu changes the level, keeping its text.
+  await expect
+    .poll(async () => (await noteContent(request, note.id)).trim())
+    .toBe(
+      [
+        '- Groceries',
+        '  - [ ] Milk',
+        '  - [ ] Bread',
+        '',
+        '- [ ] Errands',
+        '  - Bank',
+        '  - Post',
+      ].join('\n'),
+    )
 })
 
 test('aligns task checkboxes with their text, at any text size', async ({ page, request }) => {

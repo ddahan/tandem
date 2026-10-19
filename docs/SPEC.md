@@ -76,10 +76,11 @@ inside OneDrive so that it is backed up and synced.
   the diagram only; edit mode, toggled per diagram, adds its code above it), callouts
   (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`…), collapsible sections (`<details>`), horizontal
   rules, emojis (`:shortcode:` and a picker), tables (GFM: no merged cells, inline content
-  only), a `/` slash menu and a floating toolbar. Lists nest in lists of any kind (a to-do list
-  under a bullet item…): a list marker (`- `, `1. `, `[ ] `) typed at the start of an item of
-  another kind turns that item's list into its kind, as the slash menu does (a Markdown list has
-  one kind, so its other items change too).
+  only), a `/` slash menu and a floating toolbar. Each level of a list has one kind, and any
+  level can have any kind (a to-do list under a bullet item, bullets under a to-do…): a list
+  marker (`- `, `1. `, `[ ] ` or `[] `) typed at the start of an item, the slash menu, the
+  toolbar or ⌘⇧7/8/9 change the kind of the cursor's level, keeping its text; the same kind
+  again turns the item back into a paragraph.
 - **Moving blocks**: a handle (⋮⋮) left of the block under the pointer drags it anywhere in the
   note: paragraphs, headings, tables, code, callouts, and list items one by one (with their
   nested items; into another list, they take its kind). For bullet and numbered items the
