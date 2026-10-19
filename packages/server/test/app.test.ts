@@ -11,7 +11,7 @@ afterEach(async () => {
 })
 
 describe('the web app', () => {
-  it('is checked on each load, its unchanged files answered with a 304', async () => {
+  it('is never stored, its files checked on each load (304 when unchanged)', async () => {
     const webDir = await mkdtemp(join(tmpdir(), 'tandem-web-'))
     temporary.push(webDir)
     await mkdir(join(webDir, '_app'))
@@ -20,17 +20,23 @@ describe('the web app', () => {
     const { vault } = await createTestVault()
     const app = createApp(vault, { webDir })
 
-    for (const path of ['/', '/notes/some-id', '/_app/entry.abc123.css']) {
+    // Pages: never stored (a reopened window must not show an old version).
+    for (const path of ['/', '/notes/some-id']) {
       const response = await app.request(path)
       expect(response.status).toBe(200)
-      expect(response.headers.get('cache-control')).toBe('no-cache')
-      const tag = response.headers.get('etag')
-      expect(tag).toBeTruthy()
-      const again = await app.request(path, { headers: { 'If-None-Match': tag! } })
-      expect(again.status).toBe(304)
+      expect(response.headers.get('cache-control')).toBe('no-store')
     }
+    // Their files: checked on each load, a 304 when unchanged.
+    const response = await app.request('/_app/entry.abc123.css')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('cache-control')).toBe('no-cache')
+    const before = response.headers.get('etag')
+    expect(before).toBeTruthy()
+    const again = await app.request('/_app/entry.abc123.css', {
+      headers: { 'If-None-Match': before! },
+    })
+    expect(again.status).toBe(304)
     // Content-named files too: a script can change and keep its name (see app.ts).
-    const before = (await app.request('/_app/entry.abc123.css')).headers.get('etag')
     await writeFile(join(webDir, '_app', 'entry.abc123.css'), 'b{}')
     const changed = await app.request('/_app/entry.abc123.css', {
       headers: { 'If-None-Match': before! },

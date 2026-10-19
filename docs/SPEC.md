@@ -27,7 +27,8 @@ inside OneDrive so that it is backed up and synced.
   with no admin rights (macOS and Linux), and with no network when Node is there: it finds
   Node, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
-  app. Running it from a newer download updates it (the notes folder is remembered); `--uninstall`
+  app. Running it from a newer download updates it (the notes folder is remembered), and open
+  windows switch to the new version by themselves (after saving what's being typed); `--uninstall`
   removes it (with a Node it downloaded) and never touches the notes. Port 3000 by default, or the next free one when
   another app uses it (said); it then stays (the installed app's address): an update or a
   `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.

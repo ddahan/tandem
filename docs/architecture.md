@@ -158,10 +158,11 @@ folders and the versions.
   SVG scripts from running.
 - `/mcp` (`api/mcp.ts`): MCP over Streamable HTTP, stateless (one MCP server per request,
   carrying the request's author).
-- `/health`, and the web app's static files (`/_app/`) with a fallback to `index.html`. All are
-  revalidated (`no-cache`, an ETag answers 304), content-named ones too: Vite writes stylesheet
-  names into scripts after naming them, so a script can change and keep its name. An update
-  shows on the next load.
+- `/health`, and the web app's static files (`/_app/`) with a fallback to `index.html`. Pages
+  are never stored (`no-store`: Safari's Dock apps reopened a stored page, so the old version);
+  the other files are revalidated (`no-cache`, an ETag answers 304), content-named ones too:
+  Vite writes stylesheet names into scripts after naming them, so a script can change and keep
+  its name.
 
 ## Web app (`packages/web`)
 
@@ -230,6 +231,11 @@ folders and the versions.
   the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
   app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the
   user agent (it has no install API); `display-mode: standalone` means installed.
+- Updates reach open windows (`utils/app-update.ts`, plugin `app-update.client.ts`): the app
+  compares its Nuxt build id with `/_app/builds/latest.json` at start, on `pageshow` from the
+  browser's cache, when the window becomes visible and when the event stream reconnects (an
+  update restarts the server), and reloads when they differ, once per build (sessionStorage)
+  and after open notes are saved (`useNoteDocument` holds it while changes are pending).
 - Landing page (`pages/landing.vue`, `layout: false`, demos in `components/landing/`): CSS
   animations (classes prefixed `landing-`), `v-reveal` (`utils/reveal.ts`) for scroll reveals,
   and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,

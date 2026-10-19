@@ -565,6 +565,38 @@ test('draws numbers nested in a to-do like any numbers', async ({ page, request 
   )
 })
 
+test('reloads once, after saving, when the server has a newer build of the app', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Updated app', 'Before')
+  await openNote(page, note.id)
+  // Tandem reinstalled while the window was open: another build on the server.
+  await page.route('**/_app/builds/latest.json', (route) =>
+    route.fulfill({ json: { id: 'newer', timestamp: 0 } }),
+  )
+  const loads: string[] = []
+  page.on('load', () => loads.push(page.url()))
+  const prompts: string[] = []
+  page.on('dialog', (dialog) => {
+    prompts.push(dialog.type())
+    void dialog.accept()
+  })
+  await focusEnd(page)
+  await page.keyboard.type(' and after')
+  // The window comes back into view while the typing still waits to be saved: saved first (a
+  // reload with unsaved changes would ask to leave), then reloaded.
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await expect.poll(() => loads.length).toBe(1)
+  expect(prompts).toEqual([])
+  expect((await noteContent(request, note.id)).trim()).toBe('Before and after')
+  await expect(page.locator('.ProseMirror')).toContainText('Before and after')
+  // Once: the new build is the one shown now (here the server keeps answering "newer").
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+  await page.waitForTimeout(1500)
+  expect(loads).toHaveLength(1)
+})
+
 test('strikes a done to-do, not its sub-items', async ({ page, request }) => {
   const note = await createNote(request, 'Done parent', '- [x] Parent\n  - [ ] Child\n')
   await openNote(page, note.id)

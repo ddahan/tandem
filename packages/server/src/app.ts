@@ -21,10 +21,14 @@ export function createApp(vault: Vault, options: { webDir?: string } & ApiOption
     // The app's files are checked on each load (an ETag makes it a 304), so an updated app shows
     // at once. Even the ones named by their content: Vite writes stylesheet names into scripts
     // after naming them, so a script can change and keep its name (a browser keeping it for good
-    // mixed versions: a fixed style undone by the old one).
+    // mixed versions: a fixed style undone by the old one). Pages are never stored: a browser
+    // reopening a window (Safari's Dock apps) showed a stored page, so the old version.
     app.use('/*', async (c, next) => {
       await next()
-      if (!c.res.headers.has('cache-control')) c.res.headers.set('cache-control', 'no-cache')
+      if (!c.res.headers.has('cache-control')) {
+        const page = c.res.headers.get('content-type')?.startsWith('text/html')
+        c.res.headers.set('cache-control', page ? 'no-store' : 'no-cache')
+      }
     })
     app.use('/*', etag())
     app.use('/*', serveStatic({ root: webDir }))

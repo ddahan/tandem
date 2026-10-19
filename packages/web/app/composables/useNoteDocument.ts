@@ -154,9 +154,15 @@ export function useNoteDocument(id: Ref<string>) {
     event.preventDefault()
   }
 
-  onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+  // A newer app waits for this note to be saved (see utils/app-update).
+  let releaseReloads: (() => void) | null = null
+  onMounted(() => {
+    window.addEventListener('beforeunload', onBeforeUnload)
+    releaseReloads = holdReloads(hasUnsavedChanges)
+  })
   onBeforeUnmount(() => {
     window.removeEventListener('beforeunload', onBeforeUnload)
+    releaseReloads?.()
     if (retry) clearTimeout(retry)
   })
 
