@@ -1,8 +1,9 @@
 #!/bin/sh
-# Installs (or updates) Tandem from this repository's app/ folder, without Docker, network or
-# admin rights. Needs Node 22.16 or later (not 23), already on the computer: Tandem is
-# JavaScript (app/tandem/), run by it. Download the repository (GitHub: Code › Download ZIP),
-# unzip it, then run:
+# Installs (or updates) Tandem from this repository's app/ folder, without Docker or admin
+# rights. Tandem is JavaScript (app/tandem/), run by Node 22.16 or later (not 23): the computer's
+# own, when it has one (then no network is needed); otherwise the installer offers to download
+# one for Tandem only (app/node.env: version and checksums). Download the repository (GitHub:
+# Code › Download ZIP), unzip it, then run:
 #   sh ~/Downloads/tandem-main/app/install.sh
 #
 # It copies the app into your home folder, writes the `tandem` command (the app run by this
@@ -10,10 +11,11 @@
 # systemd user service). Update: the same with a newer download, or after changing Node.
 # Uninstall (your notes stay): sh install.sh --uninstall
 #
-# Options (environment): TANDEM_NODE (the Node to use, default: `node` on the PATH),
-# TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000), TANDEM_BIN_DIR (default
-# ~/.local/bin), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login item's
-# name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
+# Options (environment): TANDEM_NODE (the Node to use), TANDEM_INSTALL_NODE (1: download Node
+# without asking when none fits, e.g. for an agent with no terminal; 0: never), TANDEM_NODE_MIRROR
+# (a copy of nodejs.org/dist), TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
+# TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL
+# (the login item's name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
 
 REPO="ddahan/tandem"
@@ -68,7 +70,7 @@ stop_service() {
 if [ "${1:-}" = --uninstall ]; then
   stop_service
   rm -f "$service_file" "$bin"
-  rm -rf "$app_dir/app"
+  rm -rf "$app_dir/app" "$app_dir/node"
   [ "$platform" = linux ] && command -v systemctl > /dev/null 2>&1 && systemctl --user daemon-reload || true
   say "Tandem is uninstalled. Your notes are untouched; the app's own folder (database copy,"
   say "settings) is kept in: $app_dir"
@@ -81,19 +83,112 @@ if [ ! -f "$here/tandem/tandem.mjs" ]; then
 (https://github.com/$REPO: Code › Download ZIP), unzip it, then run sh <its folder>/app/install.sh."
 fi
 # Tandem needs node:sqlite with setReturnArrays: Node 22.16 or later, never 23 (the app's
-# nodeSupported says the same).
-node_bin="${TANDEM_NODE:-$(command -v node || true)}"
-node_version=""
-[ -n "$node_bin" ] && node_version="$("$node_bin" -p process.versions.node 2> /dev/null || true)"
-major="${node_version%%.*}"
-minor="${node_version#*.}"
-minor="${minor%%.*}"
-if [ -z "$node_version" ] || ! { [ "$major" -ge 24 ] || { [ "$major" -eq 22 ] && [ "$minor" -ge 16 ]; }; }; then
-  found="none"
-  [ -n "$node_version" ] && found="Node $node_version ($node_bin)"
-  fail "Tandem needs Node 22.16 or later (not 23); found $found.
-Install it (https://nodejs.org, or nvm, Volta, Homebrew…), then run this installer again; or use
-another one: TANDEM_NODE=/path/to/node sh \"$here/install.sh\""
+# nodeSupported says the same). The first that fits: TANDEM_NODE (only it, when set), the one
+# the installed version runs on (an update), `node` on the PATH, Tandem's own (downloaded by an
+# earlier install). None: Tandem's own is downloaded, if the user agrees (see below).
+node_fits() {
+  node_version="$("$1" -p process.versions.node 2> /dev/null || true)"
+  major="${node_version%%.*}"
+  minor="${node_version#*.}"
+  minor="${minor%%.*}"
+  [ -n "$node_version" ] && { [ "$major" -ge 24 ] || { [ "$major" -eq 22 ] && [ "$minor" -ge 16 ]; }; }
+}
+# A terminal to ask in (none for an agent running the installer, or in the background).
+has_terminal() { [ -r /dev/tty ] && { : < /dev/tty; } 2> /dev/null; }
+ask() {
+  # Read from the terminal (standard input may not be one: an agent running the installer).
+  if has_terminal; then
+    printf '%s' "$1" > /dev/tty
+    # Ctrl-D (the input ends): no answer, unlike Enter (the default).
+    read -r answer < /dev/tty || answer="-"
+  else
+    answer=""
+  fi
+  printf '%s' "$answer"
+}
+own_node="$app_dir/node/bin/node"
+node_help="Install Node 22.16 or later (not 23) yourself: https://nodejs.org (its .tar.gz needs no
+admin rights: unpack it anywhere), nvm, Volta or Homebrew. Then run this installer again, with
+TANDEM_NODE=/path/to/node in front if it isn't on your PATH:
+  TANDEM_NODE=/path/to/node sh \"$here/install.sh\""
+
+# Downloads Tandem's own Node (app/node.env: version and checksums) into the app folder: only
+# the node program, never on the PATH (other Node setups are untouched).
+download_node() {
+  # shellcheck disable=SC1091
+  . "$here/node.env"
+  case "$platform-$(uname -m)" in
+    darwin-arm64) build=darwin-arm64 ;;
+    darwin-x86_64) build=darwin-x64 ;;
+    linux-x86_64) build=linux-x64 ;;
+    linux-aarch64 | linux-arm64) build=linux-arm64 ;;
+    *) return 1 ;;
+  esac
+  expected=""
+  eval "expected=\${NODE_SHA256_$(echo "$build" | tr - _)}"
+  # shellcheck disable=SC2153 # NODE_VERSION: from node.env.
+  name="node-v$NODE_VERSION-$build"
+  # TANDEM_NODE_MIRROR: a copy of nodejs.org/dist (some companies have one).
+  url="${TANDEM_NODE_MIRROR:-https://nodejs.org/dist}/v$NODE_VERSION/$name.tar.gz"
+  say "Downloading Node $NODE_VERSION ($url)…"
+  tmp="$(mktemp -d)"
+  if ! curl -fL --progress-bar --connect-timeout 15 -o "$tmp/node.tar.gz" "$url"; then
+    rm -rf "$tmp"
+    say "The download failed (no network, or a proxy blocks it)."
+    return 1
+  fi
+  if command -v shasum > /dev/null 2>&1; then
+    actual="$(shasum -a 256 "$tmp/node.tar.gz" | cut -d ' ' -f 1)"
+  else
+    actual="$(sha256sum "$tmp/node.tar.gz" | cut -d ' ' -f 1)"
+  fi
+  if [ "$actual" != "$expected" ]; then
+    rm -rf "$tmp"
+    say "The download isn't Node $NODE_VERSION as published by nodejs.org (its checksum differs):"
+    say "refused. A proxy may have changed it."
+    return 1
+  fi
+  tar -xzf "$tmp/node.tar.gz" -C "$tmp" "$name/bin/node" "$name/LICENSE" || {
+    rm -rf "$tmp"
+    return 1
+  }
+  mkdir -p "$app_dir"
+  rm -rf "$app_dir/node"
+  mv "$tmp/$name" "$app_dir/node"
+  rm -rf "$tmp"
+}
+
+node_bin=""
+if [ -n "${TANDEM_NODE:-}" ]; then
+  node_fits "$TANDEM_NODE" || fail "TANDEM_NODE=$TANDEM_NODE isn't Node 22.16 or later (not 23)${node_version:+: it is $node_version}."
+  node_bin="$TANDEM_NODE"
+else
+  previous=""
+  [ -f "$bin" ] && previous="$(sed -n 's/^exec "\([^"]*\)".*/\1/p' "$bin" | head -n 1)"
+  for candidate in "$previous" "$(command -v node || true)" "$own_node"; do
+    if [ -n "$candidate" ] && [ -x "$candidate" ] && node_fits "$candidate"; then
+      node_bin="$candidate"
+      break
+    fi
+  done
+fi
+if [ -z "$node_bin" ]; then
+  # Tandem's own Node, too old for this version: replaced without asking (it is Tandem's).
+  # Otherwise asked (no terminal: TANDEM_INSTALL_NODE=1 says yes).
+  if [ -x "$own_node" ] || [ "${TANDEM_INSTALL_NODE:-}" = 1 ]; then
+    answer=y
+  elif [ "${TANDEM_INSTALL_NODE:-}" = 0 ]; then
+    answer=n
+  else
+    say "Tandem runs on Node (22.16 or later, not 23), which this computer doesn't have."
+    answer="$(ask "Download it now, for Tandem only (about 50 MB from nodejs.org, no admin rights)? [Y/n] ")"
+    has_terminal || answer=n
+  fi
+  case "$answer" in
+    "" | y | Y | yes | Yes | o | O | oui) download_node && node_fits "$own_node" && node_bin="$own_node" ;;
+  esac
+  [ -n "$node_bin" ] || fail "no Node to run on. $node_help
+(Or let this installer download it: TANDEM_INSTALL_NODE=1 sh \"$here/install.sh\")"
 fi
 # Its full path: the login item doesn't get your shell's PATH (nvm, Volta…).
 node_bin="$(cd "$(dirname "$node_bin")" && pwd)/$(basename "$node_bin")"
@@ -143,20 +238,11 @@ TANDEM_PORT=$((port + 1)) sh \"$here/install.sh\" (then open Tandem at its new a
   say "Port $taken is used by $(port_user "$taken"): Tandem will use $port."
 fi
 
-ask() {
-  # Read from the terminal (standard input may not be one: an agent running the installer).
-  if [ -r /dev/tty ]; then
-    printf '%s' "$1" > /dev/tty
-    read -r answer < /dev/tty || answer=""
-  else
-    answer=""
-  fi
-  printf '%s' "$answer"
-}
 
 if [ -z "$data_dir" ]; then
   say "Where should your notes live? Any folder works, also a synced one (OneDrive, iCloud…)."
   answer="$(ask "Notes folder [$HOME/Tandem]: ")"
+  [ "$answer" = - ] && answer=""
   data_dir="${answer:-$HOME/Tandem}"
 fi
 case "$data_dir" in

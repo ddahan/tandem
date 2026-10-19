@@ -42,7 +42,8 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 | Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
 | The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3000)                           |
 | Rebuild the toolchain image       | `./td setup` (after changing `compose.dev.yaml`)                                           |
-| The app people install            | `./td release`, into `app/tandem/` (checked on Node 22.16 and 24)                          |
+| The app people install            | `./td release`, into `app/tandem/` (checked on Node 22.16 and `app/node.env`'s)            |
+| The Node the installer downloads  | `./td node-pin <version>` (`app/node.env`: version and checksums)                          |
 
 The owner's app (port 3000) and the dev servers (3010/3011) can run at the same time; they use
 different data folders. **Never point the dev servers or tests at the owner's data folder.**
@@ -123,7 +124,7 @@ A change is done when:
 5. If dependencies, the Dockerfile, compose files or entry points changed: `./td start` builds,
    and the app answers on http://localhost:3000. If the server's start-up, the standalone
    package or `app/install.sh` changed: `./td release` passes (it checks the app on Node 22.16
-   and 24). Commit `app/tandem/` only for a release; otherwise `git restore app/tandem`.
+   and `app/node.env`'s). Commit `app/tandem/` only for a release; otherwise `git restore app/tandem`.
 6. A visible change was checked in a browser (dev servers), in light and dark mode.
 7. The documentation describes the new behavior, and no document describes the old one
    (SPEC for behavior changes, architecture for design changes, agents guide for anything an

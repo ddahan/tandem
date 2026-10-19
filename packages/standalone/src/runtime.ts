@@ -23,7 +23,7 @@ export const NODE_REQUIREMENT = 'Node 22.16 or later (not 23)'
 /**
  * Whether this Node runs Tandem: it needs node:sqlite with `setReturnArrays`, which came in
  * 22.16 and 24.0, never in 23 (tried on 22.13 to 22.23, 23.11 and 24 to 26; `./td release`
- * checks 22.16 and 24 with scripts/smoke.mjs).
+ * checks 22.16 and app/node.env's, the one the installer downloads, with scripts/smoke.mjs).
  */
 export function nodeSupported(version: string): boolean {
   const [major = 0, minor = 0] = version.split('.').map(Number)

@@ -232,9 +232,10 @@ folders and the versions.
 - `scripts/build.ts` (via `./td release`): esbuild bundles the entry and its dependencies into
   one ES module, `tandem.mjs` (syntax for Node 22), next to the web app (`web/`), the migrations
   (`drizzle/`) and `manifest.json` (version, build hash): `dist/tandem/`, which `./td release`
-  copies to `app/tandem/` and checks with `scripts/smoke.mjs` on Node 22.16 and 24 (Docker
-  images): start, create a note, search it, load the web app. No Node inside (it was ~45 MB per
-  platform): the computer's runs it. `nodeSupported` (`runtime.ts`) is the requirement, Node
+  copies to `app/tandem/` and checks with `scripts/smoke.mjs` on Node 22.16 and the version
+  in `app/node.env` (Docker images): start, create a note, search it, load the web app. No Node
+  inside (it was ~45 MB per platform): the computer's runs it, or one the installer downloads.
+  `nodeSupported` (`runtime.ts`) is the requirement, Node
   22.16+ but not 23 (`setReturnArrays` in node:sqlite); `main.ts` refuses others, and
   `install.sh` checks the same.
 - `src/runtime.ts`: the app folder (`~/Library/Application Support/Tandem/`, `~/.local/share/tandem/`,
@@ -253,9 +254,15 @@ folders and the versions.
   a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
   (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
   the folder is read-only.
-- `app/` (committed): `tandem/` (the built app, rewritten by `./td release`) and `install.sh`. It
-  never downloads: it checks Node (`TANDEM_NODE` or the `PATH`'s, kept by full path since the
-  login item has no shell `PATH`), copies the app into the app folder (`app.new`, swapped in
+- `app/` (committed): `tandem/` (the built app, rewritten by `./td release`), `install.sh` and
+  `node.env` (the Node it may download: version and SHA-256 of the four builds, from
+  nodejs.org's `SHASUMS256.txt`, written by `./td node-pin`). The installer picks Node
+  (`TANDEM_NODE`, the installed launcher's, the `PATH`'s, then its own in `<app folder>/node/`;
+  kept by full path since the login item has no shell `PATH`); with none, it asks on the
+  terminal (`/dev/tty`: Enter is yes, Ctrl-D no) or follows `TANDEM_INSTALL_NODE`, then
+  downloads with `curl` (which honors `HTTPS_PROXY`; `TANDEM_NODE_MIRROR` replaces nodejs.org),
+  checks the SHA-256 and keeps `bin/node` and its `LICENSE` only (about 117 MB on macOS). Then
+  it copies the app into the app folder (`app.new`, swapped in
   once the running version stops), writes the `tandem` command (a launcher: that Node, with
   SQLite's experimental warning silenced on 22, running `tandem.mjs`), picks the port (free, or this Tandem's own: `curl` exit 7 means nothing listens; `lsof` names the
   app in the way), writes

@@ -18,7 +18,9 @@ Usage: ./td <command> [args]
   typecheck         type checks
   build             production builds
   release           the app people install (JavaScript, run by their Node), into app/tandem,
-                    checked on the oldest supported Nodes (publish: commit it, see README)
+                    checked on the oldest supported Node and the pinned one (publish: commit it,
+                    see README)
+  node-pin <ver>    the Node the installer downloads when there is none (app/node.env)
   format            format every file (Oxfmt)
   lint              lint every file (Oxlint)
   pnpm <args>       any pnpm command, in the toolchain container
@@ -92,13 +94,30 @@ case "$cmd" in
     # ZIP through): JavaScript and the web app, run by the computer's own Node.
     rm -rf app/tandem
     cp -R packages/standalone/dist/tandem app/tandem
-    # Checked on the oldest Nodes it supports (see nodeSupported), in Docker.
-    for node in 22.16 24; do
+    # Checked on the oldest Node it supports (see nodeSupported) and on the one the installer
+    # downloads (app/node.env), in Docker.
+    for node in 22.16 "$(sed -n 's/^NODE_VERSION=//p' app/node.env)"; do
       docker run --rm -v "$PWD/app/tandem:/app:ro" \
         -v "$PWD/packages/standalone/scripts/smoke.mjs:/smoke.mjs:ro" \
         "node:$node-slim" node /smoke.mjs /app
     done
     echo "app/tandem updated ($(du -sh app/tandem | cut -f 1)): commit it to publish this version."
+    ;;
+  node-pin)
+    # The checksums of the four builds the installer can download, from nodejs.org.
+    version="${1:?Usage: ./td node-pin <version>, e.g. 24.22.0}"
+    sums="$(curl -fsS "https://nodejs.org/dist/v$version/SHASUMS256.txt")"
+    {
+      sed -n '/^NODE_VERSION=/q;p' app/node.env
+      echo "NODE_VERSION=$version"
+      for build in darwin-arm64 darwin-x64 linux-arm64 linux-x64; do
+        sum="$(printf '%s\n' "$sums" | awk -v f="node-v$version-$build.tar.gz" '$2 == f { print $1 }')"
+        [ -n "$sum" ] || { echo "No $build build for Node $version." >&2; exit 1; }
+        echo "NODE_SHA256_$(echo "$build" | tr - _)=$sum"
+      done
+    } > app/node.env.new
+    mv app/node.env.new app/node.env
+    echo "app/node.env: Node $version. Run ./td release to check the app on it."
     ;;
   setup)
     dev_compose build node

@@ -14,15 +14,21 @@ inside OneDrive so that it is backed up and synced.
 
 ## Installation
 
-- **Standalone** (the default): a JavaScript app (about 11 MB) run by the computer's Node,
-  **22.16 or later, not 23: a hard requirement** (no Node is bundled; the installer refuses
-  others, naming the Node it found). The app is in the repository (`app/tandem/`), so
-  downloading it (a ZIP from GitHub, on any computer) is the only way, and enough: there are no
-  GitHub releases. `app/install.sh` installs it with no network access and no admin rights
-  (macOS and Linux): it checks Node, asks for the notes folder, starts it at login (a
+- **Standalone** (the default): a JavaScript app (about 11 MB) run by Node **22.16 or later,
+  not 23** (none is bundled in the repository). The installer uses the computer's when it fits
+  (`TANDEM_NODE`, then the one the installed version runs on, then the `PATH`'s), asking
+  nothing; otherwise it asks whether to download one for Tandem only (nodejs.org, the version
+  and checksums of `app/node.env`, into the app folder, never on the `PATH`): a download that
+  fails or doesn't match the checksum is refused, and the installer says how to install Node by
+  hand (behind a company proxy). Without a terminal (an agent), it downloads only with
+  `TANDEM_INSTALL_NODE=1`; a Node it downloaded and that no longer fits is replaced without
+  asking. The app is in the repository (`app/tandem/`), so downloading it (a ZIP from GitHub,
+  on any computer) is enough; GitHub releases only carry notes. `app/install.sh` installs it
+  with no admin rights (macOS and Linux), and with no network when Node is there: it finds
+  Node, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
   app. Running it from a newer download updates it (the notes folder is remembered); `--uninstall`
-  removes it and never touches the notes. Port 3000 by default, or the next free one when
+  removes it (with a Node it downloaded) and never touches the notes. Port 3000 by default, or the next free one when
   another app uses it (said); it then stays (the installed app's address): an update or a
   `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.
   Started while another app holds its port, Tandem waits for it (logged once) instead of
