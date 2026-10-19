@@ -47,6 +47,19 @@ OneDrive or iCloud folder works), starts it at login, and opens <http://localhos
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
 - With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
 
+### Offline (no network, GitHub blocked)
+
+On any computer, download **`tandem-offline-macos.zip`** from the
+[latest release](https://github.com/ddahan/tandem/releases/latest) and copy it to the Mac. There,
+unzip it and run, in Terminal:
+
+```bash
+sh ~/Downloads/tandem-offline-macos/install.sh
+```
+
+It installs the app from the package (Apple Silicon or Intel), without downloading anything and
+without admin rights; the rest is the same as above. The package's `README.txt` says it again.
+
 ### With Docker instead
 
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/) and a clone of this
@@ -147,6 +160,9 @@ publish them as a GitHub release; the installer always takes the latest one:
 ```bash
 gh release create v0.1.0 packages/standalone/dist/tandem-* packages/standalone/dist/SHA256SUMS
 ```
+
+`tandem-*` includes `tandem-offline-macos.zip`: `install.sh` with the macOS executables next to
+it, which it installs instead of downloading (for a Mac without network access).
 
 Read [AGENTS.md](AGENTS.md) before changing the code, and [docs/](docs) for the specification
 and the architecture.

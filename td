@@ -99,7 +99,18 @@ case "$cmd" in
         echo "Warning: $file is unsigned (codesign only exists on macOS)." >&2
       fi
     done
-    (cd "$dist" && shasum -a 256 tandem-* > SHA256SUMS)
+    (cd "$dist" && rm -f tandem-offline-*.zip && shasum -a 256 $(ls tandem-darwin-* tandem-linux-* 2> /dev/null) > SHA256SUMS)
+    # The offline package (no network when installing: GitHub blocked…): install.sh with the
+    # macOS executables next to it, which it then installs instead of downloading.
+    if [ -f "$dist/tandem-darwin-arm64" ] && [ -f "$dist/tandem-darwin-x64" ]; then
+      offline="$(mktemp -d)/tandem-offline-macos"
+      mkdir -p "$offline"
+      cp install.sh "$dist/tandem-darwin-arm64" "$dist/tandem-darwin-x64" "$offline/"
+      grep ' tandem-darwin-' "$dist/SHA256SUMS" > "$offline/SHA256SUMS"
+      cp packages/standalone/OFFLINE.txt "$offline/README.txt"
+      (cd "$(dirname "$offline")" && zip -qrX - tandem-offline-macos) > "$dist/tandem-offline-macos.zip"
+      rm -rf "$(dirname "$offline")"
+    fi
     # Smoke test: the Linux executable for this machine runs, in the toolchain container.
     linux="tandem-linux-$(dev_compose --progress quiet run --rm --no-deps node uname -m | sed 's/aarch64/arm64/;s/x86_64/x64/')"
     if [ -f "$dist/$linux" ]; then

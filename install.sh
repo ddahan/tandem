@@ -6,6 +6,10 @@
 # where your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a systemd user
 # service). Run it again to update. Uninstall (your notes stay): … | sh -s -- --uninstall
 #
+# Offline (no network, e.g. GitHub blocked): unzip the release's tandem-offline-macos.zip
+# (downloaded on any computer), then run `sh install.sh` in its folder: it installs the
+# executable next to it, without downloading anything. Never needs admin rights.
+#
 # Options (environment): TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
 # TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_BINARY (install this file instead of
 # downloading), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL (the login item's
@@ -48,6 +52,17 @@ esac
 bin_dir="${TANDEM_BIN_DIR:-$HOME/.local/bin}"
 bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
+asset="tandem-$platform-$arch"
+
+# Offline: run from a folder holding the executable (the offline package). With `curl … | sh`,
+# $0 is the shell, not this file.
+here=""
+case "$0" in
+  */install.sh) here="$(cd "$(dirname "$0")" && pwd)" ;;
+  install.sh) here="$(pwd)" ;;
+esac
+offline=""
+[ -n "$here" ] && [ -z "${TANDEM_BINARY:-}" ] && [ -f "$here/$asset" ] && offline=1
 
 stop_service() {
   if [ "$platform" = darwin ]; then
@@ -106,27 +121,43 @@ mkdir -p "$data_dir"
 data_dir="$(cd "$data_dir" && pwd)"
 
 # --- The app --------------------------------------------------------------------------------
-asset="tandem-$platform-$arch"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-if [ -n "${TANDEM_BINARY:-}" ]; then
-  cp "$TANDEM_BINARY" "$work/tandem"
-else
-  command -v curl > /dev/null 2>&1 || fail "curl is needed to download Tandem."
-  base="https://github.com/$REPO/releases/latest/download"
-  say "Downloading Tandem for $platform ($arch)…"
-  curl -fSL --progress-bar "$base/$asset" -o "$work/tandem" || fail "download failed ($base/$asset)."
-  curl -fsSL "$base/SHA256SUMS" -o "$work/SHA256SUMS" || fail "checksums download failed."
-  expected="$(grep " $asset\$" "$work/SHA256SUMS" | cut -d ' ' -f 1)"
+# The executable must match its line in SHA256SUMS (a corrupted download or copy).
+check() {
+  expected="$(grep " $asset\$" "$1" | cut -d ' ' -f 1)"
   if command -v sha256sum > /dev/null 2>&1; then
     actual="$(sha256sum "$work/tandem" | cut -d ' ' -f 1)"
   else
     actual="$(shasum -a 256 "$work/tandem" | cut -d ' ' -f 1)"
   fi
-  [ -n "$expected" ] && [ "$expected" = "$actual" ] || fail "the download is corrupted (checksum mismatch)."
+  [ -n "$expected" ] && [ "$expected" = "$actual" ] || fail "$2 (checksum mismatch)."
+}
+
+if [ -n "${TANDEM_BINARY:-}" ]; then
+  cp "$TANDEM_BINARY" "$work/tandem"
+elif [ -n "$offline" ]; then
+  say "Installing Tandem for $platform ($arch) from $here (offline)…"
+  [ -f "$here/SHA256SUMS" ] || fail "SHA256SUMS is missing next to install.sh: unzip the whole package."
+  cp "$here/$asset" "$work/tandem"
+  check "$here/SHA256SUMS" "the package is corrupted: download and unzip it again"
+else
+  command -v curl > /dev/null 2>&1 || fail "curl is needed to download Tandem."
+  base="https://github.com/$REPO/releases/latest/download"
+  say "Downloading Tandem for $platform ($arch)…"
+  curl -fSL --progress-bar "$base/$asset" -o "$work/tandem" ||
+    fail "download failed ($base/$asset). Without access to GitHub, use the offline package (see the README)."
+  curl -fsSL "$base/SHA256SUMS" -o "$work/SHA256SUMS" || fail "checksums download failed."
+  check "$work/SHA256SUMS" "the download is corrupted"
 fi
 chmod +x "$work/tandem"
+# A file downloaded with a browser (and what's unzipped from it) is quarantined: macOS would
+# refuse to run this executable (signed without an Apple certificate), and allowing it may take
+# an administrator. Its owner can lift the quarantine, no admin rights needed.
+if [ "$platform" = darwin ]; then
+  xattr -d com.apple.quarantine "$work/tandem" 2> /dev/null || true
+fi
 "$work/tandem" version > /dev/null || fail "the app doesn't run on this computer."
 
 # Stop the running version (update), then put the new one in place.
@@ -206,8 +237,13 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-say "Update:           run this installer again"
-say "Uninstall:        curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh -s -- --uninstall"
+if [ -n "$offline" ]; then
+  say "Update:           run install.sh from a newer offline package"
+  say "Uninstall:        sh \"$here/install.sh\" --uninstall"
+else
+  say "Update:           run this installer again"
+  say "Uninstall:        curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | sh -s -- --uninstall"
+fi
 
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then
   if [ "$platform" = darwin ]; then open "$url"; elif command -v xdg-open > /dev/null 2>&1; then xdg-open "$url" > /dev/null 2>&1 || true; fi
