@@ -2794,11 +2794,11 @@ var require_validate = __commonJS({
         jsonPointer = $data;
         data = names_1.default.rootData;
       } else {
-        const matches = RELATIVE_JSON_POINTER.exec($data);
-        if (!matches)
+        const matches2 = RELATIVE_JSON_POINTER.exec($data);
+        if (!matches2)
           throw new Error(`Invalid JSON-pointer: ${$data}`);
-        const up = +matches[1];
-        jsonPointer = matches[2];
+        const up = +matches2[1];
+        jsonPointer = matches2[2];
         if (jsonPointer === "#") {
           if (up >= dataLevel)
             throw new Error(errorMsg("property/index", up));
@@ -3685,11 +3685,11 @@ var require_schemes = __commonJS({
         urnComponent.error = "URN can not be parsed";
         return urnComponent;
       }
-      const matches = urnComponent.path.match(URN_REG);
-      if (matches && matches[0] === urnComponent.path) {
+      const matches2 = urnComponent.path.match(URN_REG);
+      if (matches2 && matches2[0] === urnComponent.path) {
         const scheme = options.scheme || urnComponent.scheme || "urn";
-        urnComponent.nid = matches[1].toLowerCase();
-        urnComponent.nss = matches[2];
+        urnComponent.nid = matches2[1].toLowerCase();
+        urnComponent.nss = matches2[2];
         const urnScheme = `${scheme}:${options.nid || urnComponent.nid}`;
         const schemeHandler = getSchemeHandler(urnScheme);
         urnComponent.path = void 0;
@@ -4003,8 +4003,8 @@ var require_fast_uri = __commonJS({
     var URI_PARSE = /^(?:([^#/:?]+):)?(?:\/\/((?:([^#/?@]*)@)?(\[[^#/?\]]+\]|[^#/:?]*)(?::(\d*))?))?([^#?]*)(?:\?([^#]*))?(?:#((?:.|[\n\r])*))?/u;
     var AUTHORITY_PREFIX = /^(?:[^#/:?]+:)?\/\/([^/?#]*)/;
     var AUTHORITY_INTRODUCER_REGION = /^(?:[^#/:?]+:)?([/\\\t\n\r]*)/;
-    function getParseError(parsed, matches) {
-      if (matches[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
+    function getParseError(parsed, matches2) {
+      if (matches2[2] !== void 0 && parsed.path && parsed.path[0] !== "/") {
         return 'URI path must start with "/" when authority is present.';
       }
       if (typeof parsed.port === "number" && (parsed.port < 0 || parsed.port > 65535)) {
@@ -4026,9 +4026,9 @@ var require_fast_uri = __commonJS({
     function isIPLiteral(host) {
       return host[0] === "[" && host[host.length - 1] === "]";
     }
-    function hasMalformedComponentPercentEncoding(matches) {
-      const host = matches[4];
-      return hasMalformedPercentEncoding(matches[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches[6]) || hasMalformedPercentEncoding(matches[7]) || hasMalformedPercentEncoding(matches[8]);
+    function hasMalformedComponentPercentEncoding(matches2) {
+      const host = matches2[4];
+      return hasMalformedPercentEncoding(matches2[3]) || host !== void 0 && !isIPLiteral(host) && hasMalformedPercentEncoding(host) || hasMalformedPercentEncoding(matches2[6]) || hasMalformedPercentEncoding(matches2[7]) || hasMalformedPercentEncoding(matches2[8]);
     }
     function canonicalizeHost(parsed, options, schemeHandler, isIP) {
       if (!options.unicodeSupport && (!schemeHandler || !schemeHandler.unicodeSupport) && parsed.host && !isIPLiteral(parsed.host) && (options.domainHost || schemeHandler && schemeHandler.domainHost) && isIP === false && nonSimpleDomain(parsed.host)) {
@@ -4085,15 +4085,15 @@ var require_fast_uri = __commonJS({
           }
         }
       }
-      const matches = uri.match(URI_PARSE);
-      if (matches) {
-        parsed.scheme = matches[1];
-        parsed.userinfo = matches[3];
-        parsed.host = matches[4];
-        parsed.port = parseInt(matches[5], 10);
-        parsed.path = matches[6] || "";
-        parsed.query = matches[7];
-        parsed.fragment = matches[8];
+      const matches2 = uri.match(URI_PARSE);
+      if (matches2) {
+        parsed.scheme = matches2[1];
+        parsed.userinfo = matches2[3];
+        parsed.host = matches2[4];
+        parsed.port = parseInt(matches2[5], 10);
+        parsed.path = matches2[6] || "";
+        parsed.query = matches2[7];
+        parsed.fragment = matches2[8];
         if (parsed.scheme !== void 0) {
           const decodedScheme = unescape(parsed.scheme);
           if (VALID_SCHEME.test(decodedScheme)) {
@@ -4103,14 +4103,14 @@ var require_fast_uri = __commonJS({
             malformedScheme = true;
           }
         }
-        malformedPercentEncoding = hasMalformedComponentPercentEncoding(matches);
+        malformedPercentEncoding = hasMalformedComponentPercentEncoding(matches2);
         if (malformedPercentEncoding) {
           parsed.error = parsed.error || "URI contains malformed percent-encoding.";
         }
         if (isNaN(parsed.port)) {
-          parsed.port = matches[5];
+          parsed.port = matches2[5];
         }
-        const parseError = getParseError(parsed, matches);
+        const parseError = getParseError(parsed, matches2);
         if (parseError !== void 0) {
           parsed.error = parsed.error || parseError;
           malformedAuthorityOrPort = true;
@@ -6888,8 +6888,8 @@ var require_formats = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.formatNames = exports.fastFormats = exports.fullFormats = void 0;
-    function fmtDef(validate2, compare) {
-      return { validate: validate2, compare };
+    function fmtDef(validate2, compare2) {
+      return { validate: validate2, compare: compare2 };
     }
     exports.fullFormats = {
       // date: http://tools.ietf.org/html/rfc3339#section-5.6
@@ -6957,15 +6957,15 @@ var require_formats = __commonJS({
     function isLeapYear(year) {
       return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
     }
-    var DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
+    var DATE2 = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
     var DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     function date5(str) {
-      const matches = DATE.exec(str);
-      if (!matches)
+      const matches2 = DATE2.exec(str);
+      if (!matches2)
         return false;
-      const year = +matches[1];
-      const month = +matches[2];
-      const day = +matches[3];
+      const year = +matches2[1];
+      const month = +matches2[2];
+      const day = +matches2[3];
       return month >= 1 && month <= 12 && day >= 1 && day <= (month === 2 && isLeapYear(year) ? 29 : DAYS[month]);
     }
     function compareDate(d1, d2) {
@@ -6980,16 +6980,16 @@ var require_formats = __commonJS({
     var TIME = /^(\d\d):(\d\d):(\d\d(?:\.\d+)?)(z|([+-])(\d\d)(?::?(\d\d))?)?$/i;
     function getTime(strictTimeZone) {
       return function time3(str) {
-        const matches = TIME.exec(str);
-        if (!matches)
+        const matches2 = TIME.exec(str);
+        if (!matches2)
           return false;
-        const hr = +matches[1];
-        const min = +matches[2];
-        const sec = +matches[3];
-        const tz = matches[4];
-        const tzSign = matches[5] === "-" ? -1 : 1;
-        const tzH = +(matches[6] || 0);
-        const tzM = +(matches[7] || 0);
+        const hr = +matches2[1];
+        const min = +matches2[2];
+        const sec = +matches2[3];
+        const tz = matches2[4];
+        const tzSign = matches2[5] === "-" ? -1 : 1;
+        const tzH = +(matches2[6] || 0);
+        const tzM = +(matches2[7] || 0);
         if (tzH > 23 || tzM > 59 || strictTimeZone && !tz)
           return false;
         if (hr <= 23 && min <= 59 && sec < 60)
@@ -7783,6 +7783,9 @@ var numberFormat = new Intl.NumberFormat(LOCALE);
 function formatDateTime(ms) {
   return `${dateFormat.format(ms)} ${timeFormat.format(ms)}`;
 }
+function formatNumber(value) {
+  return numberFormat.format(value);
+}
 function formatSize(bytes) {
   const units = ["o", "Ko", "Mo", "Go"];
   let value = bytes;
@@ -7793,6 +7796,177 @@ function formatSize(bytes) {
   }
   const digits = unit === 0 || value >= 10 ? 0 : 1;
   return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: digits }).format(value)} ${units[unit]}`;
+}
+
+// ../shared/src/databases.ts
+var COLUMN_TYPES = ["text", "number", "date", "checkbox", "select"];
+var FILTER_OPERATORS = [
+  "contains",
+  "is",
+  "is-not",
+  "gt",
+  "lt",
+  "empty",
+  "not-empty"
+];
+var DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+var FRENCH_DATE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+var TRUE = /* @__PURE__ */ new Set(["true", "yes", "oui", "x", "1", "done", "\u2713"]);
+var FALSE = /* @__PURE__ */ new Set(["false", "no", "non", "0", ""]);
+function toCellValue(value, column) {
+  if (value === null || value === void 0) return null;
+  if (typeof value === "string" && !value.trim() && column.type !== "text") return null;
+  switch (column.type) {
+    case "text":
+      return typeof value === "string" ? value : String(value);
+    case "number": {
+      if (typeof value === "number") return Number.isFinite(value) ? value : void 0;
+      if (typeof value !== "string") return void 0;
+      const number4 = Number(
+        value.trim().replace(/[\s ]/g, "").replace(",", ".")
+      );
+      return Number.isFinite(number4) ? number4 : void 0;
+    }
+    case "date": {
+      if (typeof value !== "string") return void 0;
+      const text3 = value.trim();
+      const iso = DATE.exec(text3);
+      const french = FRENCH_DATE.exec(text3);
+      const [year, month, day] = iso ? [iso[1], iso[2], iso[3]] : french ? [french[3], french[2], french[1]] : [];
+      if (!year) return void 0;
+      const date5 = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+      const check2 = /* @__PURE__ */ new Date(`${date5}T00:00:00Z`);
+      return Number.isNaN(check2.getTime()) || check2.toISOString().slice(0, 10) !== date5 ? void 0 : date5;
+    }
+    case "checkbox": {
+      if (typeof value === "boolean") return value;
+      const text3 = String(value).trim().toLowerCase();
+      if (TRUE.has(text3)) return true;
+      if (FALSE.has(text3)) return false;
+      return void 0;
+    }
+    case "select": {
+      const text3 = (typeof value === "string" ? value : String(value)).trim();
+      if (!text3) return null;
+      return column.options?.find((option) => option.toLowerCase() === text3.toLowerCase());
+    }
+  }
+}
+function convertCell(value, from, to) {
+  if (value === null || value === void 0) return null;
+  if (to.type === "text") return cellText(value, from) || null;
+  return toCellValue(from.type === "date" ? value : cellText(value, from), to) ?? null;
+}
+function formatCellDate(value) {
+  const match2 = DATE.exec(value);
+  return match2 ? `${match2[3]}/${match2[2]}/${match2[1]}` : value;
+}
+function cellText(value, column) {
+  if (value === null || value === void 0) return "";
+  if (column.type === "checkbox") return value ? "\u2713" : "";
+  if (column.type === "date" && typeof value === "string") return formatCellDate(value);
+  if (column.type === "number" && typeof value === "number") return formatNumber(value);
+  return String(value);
+}
+var isEmpty = (value) => value === null || value === void 0 || value === "" || value === false;
+function compare(a, b, column) {
+  if (column.type === "number") return Number(a) - Number(b);
+  if (column.type === "checkbox") return Number(Boolean(a)) - Number(Boolean(b));
+  if (column.type === "select" && column.options) {
+    return column.options.indexOf(String(a)) - column.options.indexOf(String(b));
+  }
+  return String(a).localeCompare(String(b), "fr", { numeric: true, sensitivity: "base" });
+}
+function matches(value, filter, column) {
+  switch (filter.operator) {
+    case "empty":
+      return isEmpty(value);
+    case "not-empty":
+      return !isEmpty(value);
+    case "contains":
+      return cellText(value, column).toLowerCase().includes(String(filter.value ?? "").toLowerCase());
+    case "is":
+    case "is-not": {
+      const wanted = toCellValue(filter.value, column) ?? null;
+      const same = column.type === "checkbox" ? Boolean(value) === Boolean(wanted) : column.type === "text" || column.type === "select" ? String(value ?? "").toLowerCase() === String(wanted ?? "").toLowerCase() : (value ?? null) === wanted;
+      return filter.operator === "is" ? same : !same;
+    }
+    case "gt":
+    case "lt": {
+      const wanted = toCellValue(filter.value, column);
+      if (isEmpty(value) || wanted === null || wanted === void 0) return false;
+      const order2 = compare(value, wanted, column);
+      return filter.operator === "gt" ? order2 > 0 : order2 < 0;
+    }
+  }
+}
+function viewRows(database) {
+  const columns = new Map(database.columns.map((column2) => [column2.id, column2]));
+  const filters = database.filters.filter(
+    (filter) => columns.has(filter.column) && (filter.operator === "empty" || filter.operator === "not-empty" || filter.value !== null && filter.value !== void 0 && filter.value !== "")
+  );
+  let rows = database.rows.filter(
+    (row) => filters.every(
+      (filter) => matches(row.cells[filter.column], filter, columns.get(filter.column))
+    )
+  );
+  const sort = database.sort;
+  const column = sort && columns.get(sort.column);
+  if (sort && column) {
+    const sign = sort.direction === "asc" ? 1 : -1;
+    rows = rows.map((row, index2) => ({ row, index: index2 })).toSorted((a, b) => {
+      const x = a.row.cells[column.id];
+      const y = b.row.cells[column.id];
+      if (column.type !== "checkbox" && (isEmpty(x) || isEmpty(y))) {
+        return isEmpty(x) === isEmpty(y) ? a.index - b.index : isEmpty(x) ? 1 : -1;
+      }
+      return sign * compare(x, y, column) || a.index - b.index;
+    }).map(({ row }) => row);
+  }
+  return rows;
+}
+function requiresValue(column) {
+  return column.type === "select" && column.allowEmpty === false && Boolean(column.options?.length);
+}
+function defaultCells(columns) {
+  const cells2 = {};
+  for (const column of columns) {
+    if (requiresValue(column)) cells2[column.id] = column.options[0];
+  }
+  return cells2;
+}
+function databaseIdsIn(markdown) {
+  const ids = [];
+  for (const match2 of markdown.matchAll(/^```database[ \t]*\n([\s\S]*?)^```[ \t]*$/gm)) {
+    const id = /^id:[ \t]*(\S+)/m.exec(match2[1] ?? "")?.[1];
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+function databaseBlock(id) {
+  return `\`\`\`database
+id: ${id}
+\`\`\``;
+}
+function rowsByName(database, all = false) {
+  return (all ? database.rows : viewRows(database)).map((row) => {
+    const named = { id: row.id };
+    for (const column of database.columns) named[column.name] = row.cells[column.id] ?? null;
+    return named;
+  });
+}
+function cellsByName(database, values) {
+  const cells2 = {};
+  for (const [name, value] of Object.entries(values)) {
+    const column = database.columns.find((c) => c.name.toLowerCase() === name.trim().toLowerCase());
+    if (!column) {
+      throw new Error(
+        `No column \u201C${name}\u201D (columns: ${database.columns.map((c) => c.name).join(", ")})`
+      );
+    }
+    cells2[column.id] = value;
+  }
+  return cells2;
 }
 
 // ../cli/src/cli.ts
@@ -7821,6 +7995,17 @@ Writing (content from arguments, --file, or standard input)
   restore <note> <version-id>   restore a version
   attach <note> <file>          attach a file (--name, --insert to append its link)
 
+Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
+  databases <note>              a note's databases, with their columns
+  database <database>           its rows, as the saved view shows them (--all: every row)
+  database-new <note> <title> <Column:type\u2026>
+                                create one, its block added at the end of the note
+                                (types: text, number, date, checkbox, select=A|B|C;
+                                select!=A|B: a value required, the first by default)
+  row-add <database> [Column=value\u2026]        add a row
+  row-set <database> <row> <Column=value\u2026>  change values (Column= empties one)
+  row-delete <database> <row>               delete a row
+
 Options
   --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3000)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
@@ -7841,6 +8026,60 @@ async function call(request) {
       body?.error ?? `Request failed (${response.status})`
     );
   return body;
+}
+function namedValues(args) {
+  const values = {};
+  for (const arg of args) {
+    const at = arg.indexOf("=");
+    if (at <= 0) throw new CliError(`Expected Column=value, got \u201C${arg}\u201D.`);
+    values[arg.slice(0, at)] = arg.slice(at + 1) || null;
+  }
+  return values;
+}
+function columnArgs(args) {
+  return args.map((arg) => {
+    const at = arg.lastIndexOf(":");
+    const name = at > 0 ? arg.slice(0, at) : arg;
+    const [given = "text", choices] = (at > 0 ? arg.slice(at + 1) : "text").split("=");
+    const required2 = given.endsWith("!");
+    const type = required2 ? given.slice(0, -1) : given;
+    if (!COLUMN_TYPES.includes(type)) {
+      throw new CliError(`Unknown column type \u201C${type}\u201D (${COLUMN_TYPES.join(", ")}).`);
+    }
+    return {
+      name,
+      type,
+      ...choices ? { options: choices.split("|") } : {},
+      ...required2 ? { allowEmpty: false } : {}
+    };
+  });
+}
+function escapeCell(text3) {
+  return text3.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+function describeRows(database, all) {
+  const rows = all ? database.rows : viewRows(database);
+  const header = ["id", ...database.columns.map((c) => escapeCell(c.name))];
+  const lines = [
+    `| ${header.join(" | ")} |`,
+    `| ${header.map(() => "---").join(" | ")} |`,
+    ...rows.map(
+      (row) => `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c)))].join(" | ")} |`
+    )
+  ];
+  const hidden = database.rows.length - rows.length;
+  return `${database.title || "Untitled database"}  (${database.id})
+
+${lines.join("\n")}${hidden ? `
+
+${hidden} more hidden by the view's filters (--all to show them)` : ""}`;
+}
+function cellsOf(database, values) {
+  try {
+    return cellsByName(database, values);
+  } catch (error62) {
+    throw new CliError(error62 instanceof Error ? error62.message : String(error62));
+  }
 }
 function describeTree(nodes2) {
   const children = /* @__PURE__ */ new Map();
@@ -7930,6 +8169,74 @@ async function execute(command2, args, values, client, io, print) {
     return input2;
   };
   switch (command2) {
+    case "databases": {
+      const node2 = await resolve5(need(0, "note"));
+      const note = await call(client.notes[":id"].$get({ param: { id: node2.id } }));
+      const list = [];
+      for (const id of databaseIdsIn(note.content)) {
+        list.push(await call(client.databases[":id"].$get({ param: { id } })));
+      }
+      const lines = list.map(
+        (d) => `${d.title || "Untitled database"}  (${d.id}, ${d.rows.length} rows)
+  ${d.columns.map((c) => `${c.name}: ${c.type}${c.options ? ` (${c.options.join(", ")}${c.allowEmpty === false ? "; required" : ""})` : ""}`).join(" \xB7 ")}`
+      );
+      return print(
+        lines.join("\n\n") || `No databases in ${node2.path}.`,
+        list.map((d) => ({ id: d.id, title: d.title, columns: d.columns, rows: d.rows.length }))
+      );
+    }
+    case "database": {
+      const database = await call(
+        client.databases[":id"].$get({ param: { id: need(0, "database id") } })
+      );
+      return print(describeRows(database, values.all ?? false), {
+        ...database,
+        rows: rowsByName(database, values.all ?? false)
+      });
+    }
+    case "database-new": {
+      const node2 = await resolve5(need(0, "note"));
+      const title = need(1, "title");
+      const columns = columnArgs(args.slice(2));
+      if (!columns.length) throw new CliError("Give its columns: Name:text Pages:number\u2026");
+      const database = await call(
+        client.notes[":id"].databases.$post({ param: { id: node2.id }, json: { title, columns } })
+      );
+      await call(
+        client.notes[":id"].append.$post({
+          param: { id: node2.id },
+          json: { content: databaseBlock(database.id) }
+        })
+      );
+      return print(`Created ${title} (${database.id}) in ${node2.path}`, database);
+    }
+    case "row-add": {
+      const id = need(0, "database id");
+      const database = await call(client.databases[":id"].$get({ param: { id } }));
+      const cells2 = cellsOf(database, namedValues(args.slice(1)));
+      const after = await call(
+        client.databases[":id"].rows.$post({ param: { id }, json: { cells: cells2 } })
+      );
+      const row = after.rows.find((r) => !database.rows.some((old) => old.id === r.id));
+      return print(`Added row ${row?.id ?? ""}`, row);
+    }
+    case "row-set": {
+      const id = need(0, "database id");
+      const rowId = need(1, "row id");
+      if (args.length < 3) throw new CliError("Give the values: Column=value\u2026");
+      const database = await call(client.databases[":id"].$get({ param: { id } }));
+      const cells2 = cellsOf(database, namedValues(args.slice(2)));
+      await call(
+        client.databases[":id"].rows[":rowId"].$patch({ param: { id, rowId }, json: { cells: cells2 } })
+      );
+      return print(`Saved row ${rowId}`);
+    }
+    case "row-delete": {
+      const id = need(0, "database id");
+      const rowId = need(1, "row id");
+      await call(client.databases[":id"].rows[":rowId"].$delete({ param: { id, rowId } }));
+      return print(`Deleted row ${rowId}`);
+    }
     case "search": {
       const query = args.join(" ");
       const response = await call(
@@ -15543,16 +15850,16 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
   };
 });
 function handleExclusiveUnionResults(results, final, inst, ctx) {
-  const matches = [];
+  const matches2 = [];
   for (let i = 0; i < results.length; i++) {
     if (results[i].issues.length === 0)
-      matches.push(i);
+      matches2.push(i);
   }
-  if (matches.length === 1) {
-    final.value = results[matches[0]].value;
+  if (matches2.length === 1) {
+    final.value = results[matches2[0]].value;
     return final;
   }
-  if (matches.length === 0) {
+  if (matches2.length === 0) {
     final.issues.push({
       code: "invalid_union",
       input: final.value,
@@ -15566,7 +15873,7 @@ function handleExclusiveUnionResults(results, final, inst, ctx) {
       inst,
       errors: [],
       inclusive: false,
-      matches
+      matches: matches2
     });
   }
   return final;
@@ -30775,20 +31082,20 @@ function checkArrayGuards(arraySchema, guards) {
     if (guards.containsSchema) {
       const minContains = guards.minContains ?? 1;
       const ceiling = guards.maxContains !== void 0 ? guards.maxContains + 1 : Number.POSITIVE_INFINITY;
-      let matches = 0;
+      let matches2 = 0;
       for (const item of items) {
-        if (guards.containsSchema.safeParse(item).success && ++matches >= ceiling)
+        if (guards.containsSchema.safeParse(item).success && ++matches2 >= ceiling)
           break;
       }
-      if (matches < minContains) {
+      if (matches2 < minContains) {
         payload.issues.push({
           code: "custom",
-          message: `Array must contain at least ${minContains} matching ${plural(minContains)}; found ${matches}`,
+          message: `Array must contain at least ${minContains} matching ${plural(minContains)}; found ${matches2}`,
           input: items,
           continue: true
         });
       }
-      if (guards.maxContains !== void 0 && matches > guards.maxContains) {
+      if (guards.maxContains !== void 0 && matches2 > guards.maxContains) {
         payload.issues.push({
           code: "custom",
           message: `Array must contain at most ${guards.maxContains} matching ${plural(guards.maxContains)}`,
@@ -31616,6 +31923,30 @@ var settingsPatch = external_exports.object({
   backgroundTone: external_exports.enum(["white", "paper", "sepia", "cool"]),
   codeTheme: external_exports.enum(CODE_THEMES)
 }).partial();
+var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
+var cells = external_exports.record(external_exports.string(), cellValue);
+var columnInput = external_exports.object({
+  id: external_exports.string().optional(),
+  name: external_exports.string().max(80),
+  type: external_exports.enum(COLUMN_TYPES),
+  options: external_exports.array(external_exports.string().max(80)).max(100).optional(),
+  allowEmpty: external_exports.boolean().optional()
+});
+var databaseInput = external_exports.object({
+  title: external_exports.string().max(200).optional(),
+  columns: external_exports.array(columnInput).max(50).optional()
+});
+var databasePatch = databaseInput.extend({
+  sort: external_exports.object({ column: external_exports.string(), direction: external_exports.enum(["asc", "desc"]) }).nullable().optional(),
+  filters: external_exports.array(
+    external_exports.object({
+      column: external_exports.string(),
+      operator: external_exports.enum(FILTER_OPERATORS),
+      value: cellValue.optional()
+    })
+  ).max(20).optional()
+});
+var rowParam = external_exports.object({ id: external_exports.string().min(1), rowId: external_exports.string().min(1) });
 function createApi(vault, options = {}) {
   const notesFolder = options.notesFolder ?? {
     readOnlyReason: DEFAULT_READ_ONLY_REASON,
@@ -31813,6 +32144,43 @@ function createApi(vault, options = {}) {
     await vault.deleteFromTrash(c.req.valid("param").id);
     return c.json({ ok: true });
   }).delete("/trash", async (c) => c.json({ deleted: await vault.emptyTrash() })).get(
+    "/notes/:id/databases",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.listDatabases(c.req.valid("param").id))
+  ).post(
+    "/notes/:id/databases",
+    zValidator2("param", idParam),
+    zValidator2("json", databaseInput),
+    async (c) => c.json(await vault.createDatabase(c.req.valid("param").id, c.req.valid("json")), 201)
+  ).get(
+    "/databases/:id",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.getDatabase(c.req.valid("param").id))
+  ).patch(
+    "/databases/:id",
+    zValidator2("param", idParam),
+    zValidator2("json", databasePatch),
+    async (c) => c.json(await vault.updateDatabase(c.req.valid("param").id, c.req.valid("json")))
+  ).post(
+    "/databases/:id/rows",
+    zValidator2("param", idParam),
+    zValidator2(
+      "json",
+      external_exports.object({ cells: cells.optional(), after: external_exports.string().nullable().optional() })
+    ),
+    async (c) => c.json(await vault.addDatabaseRow(c.req.valid("param").id, c.req.valid("json")), 201)
+  ).patch(
+    "/databases/:id/rows/:rowId",
+    zValidator2("param", rowParam),
+    zValidator2("json", external_exports.object({ cells })),
+    async (c) => {
+      const { id, rowId } = c.req.valid("param");
+      return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid("json").cells));
+    }
+  ).delete("/databases/:id/rows/:rowId", zValidator2("param", rowParam), async (c) => {
+    const { id, rowId } = c.req.valid("param");
+    return c.json(await vault.deleteDatabaseRow(id, rowId));
+  }).get(
     "/notes-folder",
     (c) => c.json({ path: vault.dataDir, readOnlyReason: notesFolder.readOnlyReason })
   ).put("/notes-folder", zValidator2("json", external_exports.object({ path: external_exports.string().min(1) })), async (c) => {
@@ -42195,7 +42563,9 @@ var INSTRUCTIONS = `Tandem is the user's note-taking app. Notes are Markdown pag
 (a page can have child pages), with tags, history and per-line authorship. Notes are referenced by
 id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]] or
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
-so that the user's lines keep their authorship. Never delete notes unless the user asked.`;
+so that the user's lines keep their authorship. Never delete notes unless the user asked.
+Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
+Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
@@ -42225,6 +42595,14 @@ function describeTree2(nodes2) {
   };
   walk(null, 0);
   return lines.join("\n") || "(no notes yet)";
+}
+function describeColumns(database) {
+  return database.columns.map((c) => ({
+    name: c.name,
+    type: c.type,
+    ...c.options ? { choices: c.options } : {},
+    ...c.allowEmpty === false ? { allowEmpty: false } : {}
+  }));
 }
 function createMcpServer(vault, author) {
   const server = new McpServer({ name: "tandem", version: "1.0.0" }, { instructions: INSTRUCTIONS });
@@ -42485,6 +42863,128 @@ ${detail.content}`);
       const markdown = attachment.isImage ? `![${attachment.name}](${attachment.markdownPath})` : `[${attachment.name}](${attachment.markdownPath})`;
       if (insert) await vault.appendContent(node2.id, markdown, author);
       return text(markdown);
+    })
+  );
+  const database = external_exports.string().describe("Database id (from list_databases)");
+  const values = external_exports.record(external_exports.string(), external_exports.union([external_exports.string(), external_exports.number(), external_exports.boolean(), external_exports.null()])).describe(
+    "Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name, null to empty a cell."
+  );
+  server.registerTool(
+    "list_databases",
+    {
+      title: "List the databases of a note",
+      description: "The databases a note shows (its database blocks, in order), with their columns.",
+      inputSchema: { note: ref },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ note }) => attempt(async () => {
+      const node2 = await vault.resolveRef(note);
+      const { content } = await vault.getNote(node2.id);
+      const list = [];
+      for (const id of databaseIdsIn(content)) {
+        const d = await vault.getDatabase(id).catch(() => null);
+        if (d) list.push({ id, title: d.title, columns: describeColumns(d), rows: d.rows.length });
+      }
+      return json3(list);
+    })
+  );
+  server.registerTool(
+    "read_database",
+    {
+      title: "Read a database",
+      description: "Its columns and rows (with their ids, values by column name), as the user's saved view shows them (sorted, filtered); all: true for every row in table order.",
+      inputSchema: { database, all: external_exports.boolean().optional() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ database: id, all }) => attempt(async () => {
+      const d = await vault.getDatabase(id);
+      return json3({
+        id: d.id,
+        title: d.title,
+        columns: describeColumns(d),
+        rows: rowsByName(d, all ?? false),
+        ...all ? {} : { hiddenByFilters: d.rows.length - rowsByName(d).length }
+      });
+    })
+  );
+  server.registerTool(
+    "create_database",
+    {
+      title: "Create a database",
+      description: "Creates a database in a note (its block is added at the end of the note), with columns and optional first rows. Returns its id.",
+      inputSchema: {
+        note: ref,
+        title: external_exports.string(),
+        columns: external_exports.array(
+          external_exports.object({
+            name: external_exports.string(),
+            type: external_exports.enum(COLUMN_TYPES),
+            choices: external_exports.array(external_exports.string()).optional().describe("For select columns"),
+            allowEmpty: external_exports.boolean().optional().describe(
+              "Select columns: false to require a value (new rows get the first choice). Default true."
+            )
+          })
+        ).min(1),
+        rows: external_exports.array(values).optional()
+      }
+    },
+    async ({ note, title, columns, rows }) => attempt(async () => {
+      const node2 = await vault.resolveRef(note);
+      let d = await vault.createDatabase(node2.id, {
+        title,
+        columns: columns.map((c) => ({
+          name: c.name,
+          type: c.type,
+          options: c.choices,
+          allowEmpty: c.allowEmpty
+        }))
+      });
+      const [first, ...others] = rows ?? [];
+      if (first) d = await vault.updateDatabaseRow(d.id, d.rows[0].id, cellsByName(d, first));
+      for (const row of others)
+        d = await vault.addDatabaseRow(d.id, { cells: cellsByName(d, row) });
+      await vault.appendContent(node2.id, databaseBlock(d.id), author);
+      return json3({ id: d.id, rows: d.rows.length });
+    })
+  );
+  server.registerTool(
+    "add_database_rows",
+    {
+      title: "Add rows to a database",
+      description: "Adds rows at the end. Returns their ids.",
+      inputSchema: { database, rows: external_exports.array(values).min(1) }
+    },
+    async ({ database: id, rows }) => attempt(async () => {
+      let d = await vault.getDatabase(id);
+      const before = new Set(d.rows.map((row) => row.id));
+      for (const row of rows) d = await vault.addDatabaseRow(id, { cells: cellsByName(d, row) });
+      return json3({ added: d.rows.filter((row) => !before.has(row.id)).map((row) => row.id) });
+    })
+  );
+  server.registerTool(
+    "update_database_row",
+    {
+      title: "Change a row of a database",
+      description: "Sets some values of a row (the others are kept).",
+      inputSchema: { database, row: external_exports.string().describe("Row id (from read_database)"), values }
+    },
+    async ({ database: id, row, values: given }) => attempt(async () => {
+      const d = await vault.getDatabase(id);
+      await vault.updateDatabaseRow(id, row, cellsByName(d, given));
+      return text("Saved");
+    })
+  );
+  server.registerTool(
+    "delete_database_row",
+    {
+      title: "Delete a row of a database",
+      description: "Deletes a row for good. Only when the user asked.",
+      inputSchema: { database, row: external_exports.string().describe("Row id (from read_database)") },
+      annotations: { destructiveHint: true }
+    },
+    async ({ database: id, row }) => attempt(async () => {
+      await vault.deleteDatabaseRow(id, row);
+      return text("Deleted");
     })
   );
   return server;
@@ -48130,6 +48630,8 @@ async function migrate(db, callback, config2) {
 // ../server/src/db/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
+  databaseRows: () => databaseRows,
+  databases: () => databases,
   links: () => links,
   nodes: () => nodes,
   settings: () => settings,
@@ -48214,6 +48716,37 @@ var settings = sqliteTable("settings", {
   key: text2("key").primaryKey(),
   value: text2("value").notNull()
 });
+var databases = sqliteTable(
+  "databases",
+  {
+    id: text2("id").primaryKey(),
+    nodeId: text2("node_id").notNull(),
+    title: text2("title").notNull().default(""),
+    /** JSON `DatabaseColumn[]`. */
+    columns: text2("columns").notNull(),
+    /** JSON `DatabaseSort`, or null. */
+    sort: text2("sort"),
+    /** JSON `DatabaseFilter[]`. */
+    filters: text2("filters").notNull().default("[]"),
+    createdAt: integer2("created_at").notNull(),
+    updatedAt: integer2("updated_at").notNull()
+  },
+  (table) => [index("databases_node").on(table.nodeId)]
+);
+var databaseRows = sqliteTable(
+  "database_rows",
+  {
+    id: text2("id").primaryKey(),
+    databaseId: text2("database_id").notNull().references(() => databases.id, { onDelete: "cascade" }),
+    /** Order in the table when nothing sorts it (ascending). */
+    position: real("position").notNull(),
+    /** JSON: column id → value (`CellValue`). */
+    cells: text2("cells").notNull().default("{}"),
+    createdAt: integer2("created_at").notNull(),
+    updatedAt: integer2("updated_at").notNull()
+  },
+  (table) => [index("database_rows_order").on(table.databaseId, table.position)]
+);
 
 // ../server/src/db/client.ts
 async function openDatabase(path, restoreFrom, options = {}) {
@@ -48705,6 +49238,275 @@ function parseBlame(json4) {
   }
 }
 
+// ../server/src/vault/databases.ts
+var DEFAULT_COLUMNS = [{ name: "Name", type: "text" }];
+var ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+var newId = customAlphabet(ALPHANUMERIC, 12);
+var newColumnId = customAlphabet(ALPHANUMERIC, 8);
+var MAX_OPTIONS = 50;
+var DatabaseStore = class {
+  db;
+  now;
+  constructor(db, now) {
+    this.db = db;
+    this.now = now;
+  }
+  /** A new database for page `nodeId`, with one empty row. */
+  async create(nodeId, input2 = {}) {
+    const id = newId();
+    const now = this.now();
+    const columns = checkColumns(input2.columns?.length ? input2.columns : DEFAULT_COLUMNS, []);
+    await this.db.insert(databases).values({
+      id,
+      nodeId,
+      title: input2.title?.trim() ?? "",
+      columns: JSON.stringify(columns),
+      createdAt: now,
+      updatedAt: now
+    });
+    await this.db.insert(databaseRows).values({
+      id: newId(),
+      databaseId: id,
+      position: 1,
+      cells: JSON.stringify(defaultCells(columns)),
+      createdAt: now,
+      updatedAt: now
+    });
+    return this.get(id);
+  }
+  async get(id) {
+    const record2 = await this.record(id);
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+    return toDatabase(record2, rows);
+  }
+  /** The databases of a page, oldest first. */
+  async listForNode(nodeId) {
+    const records = await this.db.select().from(databases).where(eq(databases.nodeId, nodeId)).orderBy(asc(databases.createdAt));
+    const result = [];
+    for (const record2 of records) {
+      const rows = await this.db.select({ id: databaseRows.id }).from(databaseRows).where(eq(databaseRows.databaseId, record2.id));
+      result.push({ id: record2.id, title: record2.title, rowCount: rows.length });
+    }
+    return result;
+  }
+  async update(id, patch) {
+    const record2 = await this.record(id);
+    const before = JSON.parse(record2.columns);
+    const changes = { updatedAt: this.now() };
+    if (patch.title !== void 0) changes.title = patch.title.trim();
+    let columns = before;
+    if (patch.columns) {
+      columns = checkColumns(await this.withChoices(id, patch.columns, before), before);
+      await this.convertRows(id, before, columns);
+      await this.fillRequired(id, columns);
+      changes.columns = JSON.stringify(columns);
+    }
+    const known = new Set(columns.map((column) => column.id));
+    const sort = patch.sort !== void 0 ? patch.sort : JSON.parse(record2.sort ?? "null");
+    if (sort && !known.has(sort.column)) {
+      if (patch.sort) throw new ValidationError("sort: no such column");
+    }
+    changes.sort = JSON.stringify(sort && known.has(sort.column) ? sort : null);
+    const filters = patch.filters ?? JSON.parse(record2.filters);
+    changes.filters = JSON.stringify(checkFilters(filters, columns, patch.filters !== void 0));
+    await this.db.update(databases).set(changes).where(eq(databases.id, id));
+    return this.get(id);
+  }
+  /** A row (after row `after`, or last), with `cells` by column id. */
+  async addRow(id, input2 = {}) {
+    const record2 = await this.record(id);
+    const columns = JSON.parse(record2.columns);
+    const rows = await this.db.select({ id: databaseRows.id, position: databaseRows.position }).from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+    let position = (rows.at(-1)?.position ?? 0) + 1;
+    if (input2.after) {
+      const index2 = rows.findIndex((row) => row.id === input2.after);
+      if (index2 < 0) throw new NotFoundError("No such row");
+      const next = rows[index2 + 1];
+      position = next ? (rows[index2].position + next.position) / 2 : rows[index2].position + 1;
+    }
+    const now = this.now();
+    await this.db.insert(databaseRows).values({
+      id: newId(),
+      databaseId: id,
+      position,
+      cells: JSON.stringify(checkCells(input2.cells ?? {}, columns, defaultCells(columns))),
+      createdAt: now,
+      updatedAt: now
+    });
+    await this.touch(id, now);
+    return this.get(id);
+  }
+  /** Changes some cells of a row (by column id; null empties one). */
+  async updateRow(id, rowId, cells2) {
+    const record2 = await this.record(id);
+    const row = await this.row(id, rowId);
+    const columns = JSON.parse(record2.columns);
+    const next = checkCells(cells2, columns, JSON.parse(row.cells));
+    const now = this.now();
+    await this.db.update(databaseRows).set({ cells: JSON.stringify(next), updatedAt: now }).where(eq(databaseRows.id, rowId));
+    await this.touch(id, now);
+    return this.get(id);
+  }
+  async deleteRow(id, rowId) {
+    await this.row(id, rowId);
+    await this.db.delete(databaseRows).where(eq(databaseRows.id, rowId));
+    await this.touch(id, this.now());
+    return this.get(id);
+  }
+  /** Deletes the databases of these pages (deleted for good). */
+  async deleteForNodes(nodeIds) {
+    if (nodeIds.length) await this.db.delete(databases).where(inArray(databases.nodeId, nodeIds));
+  }
+  async record(id) {
+    const record2 = await this.db.select().from(databases).where(eq(databases.id, id)).get();
+    if (!record2) throw new NotFoundError("No such database");
+    return record2;
+  }
+  async row(id, rowId) {
+    const row = await this.db.select().from(databaseRows).where(eq(databaseRows.id, rowId)).get();
+    if (!row || row.databaseId !== id) throw new NotFoundError("No such row");
+    return row;
+  }
+  async touch(id, now) {
+    await this.db.update(databases).set({ updatedAt: now }).where(eq(databases.id, id));
+  }
+  /** Empty cells of columns that require a value take its default (the first choice). */
+  async fillRequired(id, columns) {
+    const defaults = defaultCells(columns);
+    if (!Object.keys(defaults).length) return;
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
+    for (const row of rows) {
+      const cells2 = JSON.parse(row.cells);
+      const missing = Object.keys(defaults).filter(
+        (columnId) => cells2[columnId] === null || cells2[columnId] === void 0
+      );
+      if (!missing.length) continue;
+      for (const columnId of missing) cells2[columnId] = defaults[columnId];
+      await this.db.update(databaseRows).set({ cells: JSON.stringify(cells2) }).where(eq(databaseRows.id, row.id));
+    }
+  }
+  /** Columns becoming a `select` without choices: their values become the choices. */
+  async withChoices(id, input2, before) {
+    const previous = new Map(before.map((column) => [column.id, column]));
+    const turning = input2.filter((column) => {
+      const old = column.id ? previous.get(column.id) : void 0;
+      return column.type === "select" && !column.options?.length && old && old.type !== "select";
+    });
+    if (!turning.length) return input2;
+    const database = await this.get(id);
+    return input2.map(
+      (column) => turning.includes(column) ? { ...column, options: distinctTexts(database, previous.get(column.id)) } : column
+    );
+  }
+  /** Values of a column whose type changed are converted; those of removed columns go. */
+  async convertRows(id, before, after) {
+    const previous = new Map(before.map((column) => [column.id, column]));
+    const kept = new Set(after.map((column) => column.id));
+    const changed = after.filter((column) => {
+      const old = previous.get(column.id);
+      return old && old.type !== column.type;
+    });
+    const removed = before.some((column) => !kept.has(column.id));
+    if (!changed.length && !removed) return;
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
+    for (const row of rows) {
+      const cells2 = JSON.parse(row.cells);
+      const next = {};
+      for (const [columnId, value] of Object.entries(cells2)) {
+        if (kept.has(columnId)) next[columnId] = value;
+      }
+      for (const column of changed) {
+        next[column.id] = convertCell(cells2[column.id], previous.get(column.id), column);
+      }
+      await this.db.update(databaseRows).set({ cells: JSON.stringify(next) }).where(eq(databaseRows.id, row.id));
+    }
+  }
+};
+function toDatabase(record2, rows) {
+  return {
+    id: record2.id,
+    nodeId: record2.nodeId,
+    title: record2.title,
+    columns: JSON.parse(record2.columns),
+    sort: JSON.parse(record2.sort ?? "null"),
+    filters: JSON.parse(record2.filters),
+    rows: rows.map((row) => ({
+      id: row.id,
+      cells: JSON.parse(row.cells),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    })),
+    createdAt: record2.createdAt,
+    updatedAt: record2.updatedAt
+  };
+}
+function checkColumns(input2, before) {
+  if (!input2.length) throw new ValidationError("A database needs at least one column");
+  const names = /* @__PURE__ */ new Set();
+  const previous = new Map(before.map((column) => [column.id, column]));
+  return input2.map((column) => {
+    const name = column.name.trim();
+    if (!name) throw new ValidationError("A column needs a name");
+    if (names.has(name.toLowerCase())) throw new ValidationError(`Two columns named \u201C${name}\u201D`);
+    names.add(name.toLowerCase());
+    if (!COLUMN_TYPES.includes(column.type)) {
+      throw new ValidationError(`${name}: unknown type \u201C${column.type}\u201D`);
+    }
+    if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`);
+    const result = { id: column.id ?? newColumnId(), name, type: column.type };
+    if (column.type === "select") {
+      const options = [
+        ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean))
+      ];
+      result.options = options;
+      if (column.allowEmpty === false) {
+        if (!options.length) {
+          throw new ValidationError(`${name}: a value is required, so it needs a choice`);
+        }
+        result.allowEmpty = false;
+      }
+    }
+    return result;
+  });
+}
+function checkFilters(filters, columns, strict) {
+  const known = new Set(columns.map((column) => column.id));
+  return filters.filter((filter) => {
+    const ok = known.has(filter.column) && FILTER_OPERATORS.includes(filter.operator);
+    if (!ok && strict) throw new ValidationError("filters: no such column or operator");
+    return ok;
+  });
+}
+function checkCells(cells2, columns, current) {
+  const byId = new Map(columns.map((column) => [column.id, column]));
+  const next = { ...current };
+  for (const [columnId, value] of Object.entries(cells2)) {
+    const column = byId.get(columnId);
+    if (!column) throw new ValidationError(`No column \u201C${columnId}\u201D`);
+    const cell = toCellValue(value, column);
+    if (cell === void 0) {
+      throw new ValidationError(
+        column.type === "select" ? `${column.name}: \u201C${String(value)}\u201D is not one of ${column.options?.join(", ") || "its choices (none yet)"}` : `${column.name}: \u201C${String(value)}\u201D is not a ${column.type === "checkbox" ? "yes or no" : column.type}`
+      );
+    }
+    if (cell === null && requiresValue(column)) {
+      throw new ValidationError(`${column.name} can't be empty`);
+    }
+    if (cell === null) delete next[columnId];
+    else next[columnId] = cell;
+  }
+  return next;
+}
+function distinctTexts(database, column) {
+  const values = /* @__PURE__ */ new Set();
+  for (const row of database.rows) {
+    const text3 = cellText(row.cells[column.id], column).trim();
+    if (text3) values.add(text3);
+    if (values.size >= MAX_OPTIONS) break;
+  }
+  return [...values];
+}
+
 // ../server/src/vault/files.ts
 import { createHash } from "node:crypto";
 import { existsSync as existsSync5 } from "node:fs";
@@ -49081,6 +49883,7 @@ var Vault = class {
   search;
   now;
   sessionIdleMs;
+  databases;
   constructor(options) {
     this.dataDir = options.dataDir;
     this.metaDir = join7(options.dataDir, ".tandem");
@@ -49088,6 +49891,7 @@ var Vault = class {
     this.search = new SearchIndex(options.database.sqlite);
     this.now = options.now ?? Date.now;
     this.sessionIdleMs = options.sessionIdleMs ?? 3e4;
+    this.databases = new DatabaseStore(this.db, this.now);
   }
   // --- Reading -------------------------------------------------------------------------------
   async tree() {
@@ -49505,6 +50309,42 @@ var Vault = class {
       for (const item of items) await this.deleteTrashItem(item.id);
       return items.length;
     });
+  }
+  // --- Databases (see databases.ts) ----------------------------------------------------------
+  async getDatabase(id) {
+    return this.databases.get(id);
+  }
+  /** The databases of a page (those its blocks show, and any it no longer shows). */
+  async listDatabases(nodeId) {
+    await this.requirePage(nodeId);
+    return this.databases.listForNode(nodeId);
+  }
+  /** A new database for a page; the caller adds its block to the page. */
+  async createDatabase(nodeId, input2 = {}) {
+    return this.lock.run(async () => {
+      await this.requirePage(nodeId);
+      return this.databaseChanged(await this.databases.create(nodeId, input2));
+    });
+  }
+  async updateDatabase(id, patch) {
+    return this.lock.run(async () => this.databaseChanged(await this.databases.update(id, patch)));
+  }
+  async addDatabaseRow(id, input2 = {}) {
+    return this.lock.run(async () => this.databaseChanged(await this.databases.addRow(id, input2)));
+  }
+  async updateDatabaseRow(id, rowId, cells2) {
+    return this.lock.run(
+      async () => this.databaseChanged(await this.databases.updateRow(id, rowId, cells2))
+    );
+  }
+  async deleteDatabaseRow(id, rowId) {
+    return this.lock.run(
+      async () => this.databaseChanged(await this.databases.deleteRow(id, rowId))
+    );
+  }
+  databaseChanged(database) {
+    this.changed({ type: "database", id: database.id });
+    return database;
   }
   async setTags(id, list) {
     return this.lock.run(async () => {
@@ -49939,6 +50779,7 @@ var Vault = class {
       await this.removeIconFiles(row.id);
       await this.db.delete(versions2).where(eq(versions2.nodeId, row.id));
     }
+    await this.databases.deleteForNodes(payload.rows.map((row) => row.id));
     await this.db.delete(trash).where(eq(trash.id, trashId));
     this.changed({ type: "trash" });
   }
