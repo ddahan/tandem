@@ -969,3 +969,22 @@ test('colors code blocks with the code theme chosen in Settings, light and dark'
   await expect(block.locator('.hljs-comment')).toHaveCSS('color', 'rgb(153, 153, 153)')
   await api(request, 'PATCH', '/settings', { codeTheme: 'tandem' })
 })
+
+test('shows the landing page over the app, from the sidebar', async ({ page, request }) => {
+  const note = await createNote(request, 'About note', 'Text.')
+  await openNote(page, note.id)
+  await page.getByRole('button', { name: 'About Tandem' }).click()
+  const frame = page.frameLocator('[data-testid="landing-frame"]')
+  await expect(frame.getByRole('heading', { level: 1 })).toBeVisible()
+
+  // Escape closes it, even with the focus in the page.
+  await frame.getByRole('heading', { level: 1 }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('landing-frame')).toHaveCount(0)
+  await page.getByRole('button', { name: 'About Tandem' }).click()
+
+  // Its links into the app close the modal and go there, instead of opening the app inside.
+  await frame.getByRole('link', { name: 'Open the app' }).first().click()
+  await expect(page.getByTestId('landing-frame')).toHaveCount(0)
+  await expect(page).toHaveURL(/\/$/)
+})

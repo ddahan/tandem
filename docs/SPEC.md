@@ -165,7 +165,8 @@ inside OneDrive so that it is backed up and synced.
 - A landing page at `/landing` presents Tandem (full width, without the sidebar): a note
   written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
   shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
-  shows its final state.
+  shows its final state. The sidebar's "About Tandem" button (ⓘ, next to the collapse button)
+  shows it fullscreen over the app; its links into the app close it and go there, Escape closes.
 - A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
   the tree's menu shows the shortcuts of its actions.
 - Light, dark or system color mode, switched from one button at the bottom of the sidebar (it

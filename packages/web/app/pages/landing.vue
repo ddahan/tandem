@@ -11,6 +11,31 @@ useHead({ title: 'Tandem — notes you write with your agents', titleTemplate: n
 const headerLogo = logoSvg(accentShade, 'landing-logo')
 const ctaLogo = logoSvg(accentShade, 'landing-logo-cta')
 
+// Shown in the app's "About Tandem" modal (a frame): links into the app ask the app to close
+// the modal and go there (LandingModal), instead of opening the app inside the frame.
+function onClickInFrame(event: MouseEvent) {
+  if (window.self === window.top || event.defaultPrevented || event.button !== 0) return
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  const link = (event.target as Element | null)?.closest?.('a[href]')
+  const href = link?.getAttribute('href')
+  if (!href || !href.startsWith('/') || href.startsWith('/landing')) return
+  event.preventDefault()
+  window.parent.postMessage({ type: 'tandem:open', to: href }, window.location.origin)
+}
+// Escape closes the modal there, as it would with the focus outside the frame.
+function onKeydownInFrame(event: KeyboardEvent) {
+  if (window.self === window.top || event.key !== 'Escape') return
+  window.parent.postMessage({ type: 'tandem:close' }, window.location.origin)
+}
+onMounted(() => {
+  document.addEventListener('click', onClickInFrame, true)
+  document.addEventListener('keydown', onKeydownInFrame)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onClickInFrame, true)
+  document.removeEventListener('keydown', onKeydownInFrame)
+})
+
 // The header gets its border once the page scrolls.
 const scrolled = ref(false)
 const onScroll = () => (scrolled.value = window.scrollY > 8)

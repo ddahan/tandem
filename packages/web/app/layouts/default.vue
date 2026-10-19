@@ -12,6 +12,9 @@ const navigation = computed<NavigationMenuItem[]>(() => [
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },
 ])
 
+// The landing page, over the app (LandingModal).
+const aboutOpen = ref(false)
+
 const colorModes = [
   { value: 'light', icon: 'i-lucide-sun', label: 'Light' },
   { value: 'dark', icon: 'i-lucide-moon', label: 'Dark' },
@@ -112,12 +115,25 @@ defineShortcuts({
               :ui="{ trailingIcon: 'size-3.5 text-dimmed' }"
             />
           </UDropdownMenu>
-          <UDashboardSidebarCollapse />
+          <div class="flex items-center gap-1" :class="collapsed && 'flex-col'">
+            <UTooltip text="About Tandem">
+              <UButton
+                icon="i-lucide-info"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                aria-label="About Tandem"
+                @click="aboutOpen = true"
+              />
+            </UTooltip>
+            <UDashboardSidebarCollapse />
+          </div>
         </div>
       </template>
     </UDashboardSidebar>
 
     <NoteSearch />
+    <LazyLandingModal v-if="aboutOpen" v-model:open="aboutOpen" />
 
     <slot />
   </UDashboardGroup>
