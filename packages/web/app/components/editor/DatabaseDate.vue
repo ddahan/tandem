@@ -49,6 +49,10 @@ function pick(date: unknown) {
     :disabled="readonly"
     :aria-label="label"
     class="database-date w-full"
+    :ui="{
+      base: 'gap-0',
+      segment: 'data-[segment=day]:w-6 data-[segment=month]:w-6 data-[segment=year]:w-9',
+    }"
   >
     <template #trailing>
       <UPopover v-model:open="open" :disabled="readonly">
