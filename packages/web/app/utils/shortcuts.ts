@@ -130,7 +130,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description: 'A new item, in a list.',
       },
       { keys: [['meta', 'shift', 'enter']], label: 'Insert a line above' },
-      { keys: [['tab'], ['shift', 'tab']], label: 'Indent or outdent a list item' },
+      {
+        keys: [['tab'], ['shift', 'tab']],
+        label: 'Indent or outdent a list item',
+        description:
+          'One level, taking that level’s kind. Enter in an empty item and Backspace at its start outdent too.',
+      },
       {
         keys: [['shift', 'enter']],
         label: 'Line break',

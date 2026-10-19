@@ -29,16 +29,26 @@ export function fromEditorMarkdown(markdown: string, notePath: string): string {
   )
 }
 
+// A list item with nothing in it (the editor writes its marker alone).
+const EMPTY_LIST_ITEM = /^[ \t]*(?:[-*+]|\d+[.)])(?: \[[ xX]\])?[ \t]*$\n?/gm
+
 /**
  * Tidies the editor's Markdown before saving: no blank lines at the start, at most one blank
  * line between blocks (the editor adds some around tables and empty paragraphs), one final
- * newline. Fenced code and trailing spaces (hard line breaks) are left untouched.
+ * newline, no empty list items (Markdown can't keep them: an empty sub-item right under its
+ * parent's text reads back as a heading, an empty numbered item disappears). Fenced code and
+ * trailing spaces (hard line breaks) are left untouched.
  */
 export function normalizeMarkdown(markdown: string): string {
   const parts = markdown.split(/(^(?:```|~~~)[^\n]*\n[\s\S]*?^(?:```|~~~)[ \t]*$)/m)
   const tidy = parts
     .map((part, index) =>
-      index % 2 === 1 ? part : part.replace(/^[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n'),
+      index % 2 === 1
+        ? part
+        : part
+            .replace(EMPTY_LIST_ITEM, '')
+            .replace(/^[ \t]+$/gm, '')
+            .replace(/\n{3,}/g, '\n\n'),
     )
     .join('')
     .replace(/^\n+/, '')

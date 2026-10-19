@@ -89,11 +89,19 @@ inside OneDrive so that it is backed up and synced.
   the diagram only; edit mode, toggled per diagram, adds its code above it), callouts
   (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`…), collapsible sections (`<details>`), horizontal
   rules, emojis (`:shortcode:` and a picker), tables (GFM: no merged cells, inline content
-  only), a `/` slash menu and a floating toolbar. Each level of a list has one kind, and any
-  level can have any kind (a to-do list under a bullet item, bullets under a to-do…): a list
-  marker (`- `, `1. `, `[ ] ` or `[] `) typed at the start of an item, the slash menu, the
-  toolbar or ⌘⇧7/8/9 change the kind of the cursor's level, keeping its text; the same kind
-  again turns the item back into a paragraph.
+  only), a `/` slash menu and a floating toolbar.
+- **Lists**: each level of a list has one kind, and any level can have any kind (a to-do list
+  under a bullet item, bullets under a to-do…). A list marker (`- `, `1. `, `[ ] ` or `[] `)
+  typed at the start of an item, the slash menu, the toolbar or ⌘⇧7/8/9 change the kind of the
+  cursor's level, keeping its text (the same kind again turns the item back into a paragraph);
+  the level's own marker typed there is absorbed, and `[x] ` / `[ ] ` set a to-do's box. Keys
+  move an item one level at a time, the same whatever the kinds: Tab goes under the item above
+  (into its sub-items, taking their kind; a first item stays); Shift+Tab, Enter in an empty
+  item and Backspace at the start of an item go one level out, taking that level's kind (the
+  items after it become its sub-items; from the top level, a paragraph); Backspace at the start
+  of a paragraph after a list joins the list's last line; Delete at the end of a line brings its
+  first sub-item one level up, then joins it. A new to-do is unchecked. Empty items aren't saved
+  (Markdown can't keep them), and what's saved reads back the same, in any nesting.
 - **Moving blocks**: a handle (⋮⋮) left of the block under the pointer drags it anywhere in the
   note: paragraphs, headings, tables, code, callouts, and list items one by one (with their
   nested items; into another list, they take its kind). For bullet and numbered items the

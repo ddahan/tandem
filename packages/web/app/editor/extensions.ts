@@ -14,6 +14,8 @@ import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips, FileLink } from './file-chips'
 import { Find } from './find'
 import { JoinLists } from './join-lists'
+import { ListKeys } from './list-keys'
+import { NestedOrderedList } from './ordered-list'
 import { ListMarkers } from './list-markers'
 import { Occurrences } from './occurrences'
 import { ResizableImage } from './image'
@@ -32,6 +34,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
   return [
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
     TableKit.configure({ table: { resizable: false } }),
+    NestedOrderedList,
     TaskList,
     TaskItem.configure({ nested: true }),
     Callout,
@@ -47,6 +50,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     FileChips,
     JoinLists,
     ListMarkers,
+    ListKeys,
     BlockKeys,
     Occurrences,
     Find,
@@ -61,9 +65,11 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
   ]
 }
 
-/** UEditor's starter kit options: our code block and link (FileLink) replace its own. */
+/** UEditor's starter kit options: our code block, link (FileLink) and numbered list replace its own. */
 export const starterKitOptions: Partial<StarterKitOptions> = {
   codeBlock: false,
   link: false,
+  // NestedOrderedList replaces it (its Markdown parser).
+  orderedList: false,
   heading: { levels: [1, 2, 3, 4] },
 }

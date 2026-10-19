@@ -548,6 +548,47 @@ test('draws numbers nested in a to-do like any numbers', async ({ page, request 
   )
 })
 
+test('moves list items level by level, whatever their kinds, and saves what it shows', async ({
+  page,
+  request,
+}) => {
+  const keys = async (...steps: string[]) => {
+    for (const step of steps) {
+      if (/^(Enter|Tab|Shift\+Tab|Backspace)$/.test(step)) await page.keyboard.press(step)
+      else await page.keyboard.type(step)
+    }
+  }
+  const newNote = async (title: string) => {
+    const note = await createNote(request, title, '')
+    await openNote(page, note.id)
+    await focusEnd(page)
+    return note
+  }
+
+  // A numbered list in a to-do in a numbered list; Backspace on an empty item steps out one
+  // level at a time (no going back and forth), then joins the line above.
+  const nested = await newNote('List keys')
+  await keys('1. dq', 'Enter', 'Tab', '[ ] Hello', 'Enter', 'Tab', '1. TADA', 'Enter')
+  await keys('Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace')
+  await waitSaved(page)
+  expect(await noteContent(request, nested.id)).toBe('1. dq\n   - [ ] Hello\n     1. TAD\n')
+  // Read back the same: TAD stays under Hello.
+  await openNote(page, nested.id)
+  await expect(page.locator('.ProseMirror ul[data-type=taskList] ol li')).toHaveText('TAD')
+
+  // Shift+Tab on a bullet under a to-do moves the bullet, not the to-do.
+  const outdent = await newNote('List outdent')
+  await keys('[ ] Parent', 'Enter', 'Tab', '- Child', 'Shift+Tab')
+  await waitSaved(page)
+  expect(await noteContent(request, outdent.id)).toBe('- [ ] Parent\n- [ ] Child\n')
+
+  // Tab on a first item keeps the focus in the note.
+  const first = await newNote('List first item')
+  await keys('- a', 'Tab', 'b')
+  await waitSaved(page)
+  expect(await noteContent(request, first.id)).toBe('- ab\n')
+})
+
 test('aligns task checkboxes with their text, at any text size', async ({ page, request }) => {
   const note = await createNote(request, 'Tasks note', '- [x] Done task\n- [ ] Open task\n')
   // Distance between the centers of each checkbox and of its first line of text.

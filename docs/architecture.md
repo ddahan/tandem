@@ -187,6 +187,15 @@ folders and the versions.
 - Attachment paths: notes use paths relative to themselves; the editor gets `/files/…` URLs
   (`utils/markdown-paths.ts`), converted back on save, and `normalizeMarkdown` tidies blank
   lines the serializer adds.
+- Lists: `editor/list-keys.ts` takes Tab, Shift+Tab, Enter in an empty item, Backspace and
+  Delete before TipTap's list keys, which look for the nearest item of their own type (in a
+  bullet nested in a to-do, Shift+Tab lifted the to-do) and lose the kind across levels:
+  moving between a to-do level and a bullet or numbered one changes the item's type.
+  `editor/list-markers.ts` handles typed markers, `editor/join-lists.ts` merges adjacent lists
+  of a kind. `editor/ordered-list.ts` replaces TipTap's numbered-list Markdown parser (a copy
+  with two fixes: a numbered line under a bullet or to-do line of an item is that list's, and
+  an item's content starts after its whole marker). `normalizeMarkdown` drops empty items.
+  `test/lists.test.ts` holds the rules, for every pair and triple of kinds.
 - Markdown the editor would lose (`utils/markdown-loss.ts`): a headless TipTap editor with the
   same extensions parses the note and saves it again (`editorRoundTrip`); the lines whose words
   or HTML tags (except those with their own node) are missing afterwards are losses. The note
