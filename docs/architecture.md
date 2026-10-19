@@ -187,6 +187,12 @@ folders and the versions.
 - Attachment paths: notes use paths relative to themselves; the editor gets `/files/…` URLs
   (`utils/markdown-paths.ts`), converted back on save, and `normalizeMarkdown` tidies blank
   lines the serializer adds.
+- Markdown the editor would lose (`utils/markdown-loss.ts`): a headless TipTap editor with the
+  same extensions parses the note and saves it again (`editorRoundTrip`); the lines whose words
+  or HTML tags (except those with their own node) are missing afterwards are losses. The note
+  page checks on load, on agents' changes and while the Markdown view is typed in (debounced);
+  `NoteEditor`'s `readOnly` goes to the TipTap editor (`setEditable`: UEditor reads `editable`
+  once).
 - Block handle (`UEditorDragHandle`, nested: list items move one by one): its distance from
   the block is computed in Floating UI's `offset` (`handleOptions` in `NoteEditor.vue`), which
   adds the marker margin of bullet and numbered items. TipTap's Vue handle ignores a custom

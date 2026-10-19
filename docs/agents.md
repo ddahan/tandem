@@ -58,5 +58,8 @@ GitHub-flavored Markdown, plus:
   to the note, URL-encoded (`My%20note.assets/a%20b.png`). `attach_file` / `tandem attach`
   store the file and return the Markdown to use.
 - Tables are GFM tables: no merged cells, only inline content in cells.
+- No HTML comments and no other raw HTML (only `<img>`, `<br>` and `<details>`): the editor
+  can't show them, so such a note opens read-only in the app, until the owner removes them or
+  accepts losing them.
 - No front matter: tags are set with `set_tags` / `tandem tags <note> <tag…>`, icons with
   `set_icon` / `tandem icon <note> <emoji>`.

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
-import { useLocalStorage } from '@vueuse/core'
+import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import { OWNER, authorLabel, formatDateTime } from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
+import { markdownLosses, type Loss } from '~/utils/markdown-loss'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
 
 definePageMeta({ key: (route) => String(route.params.id) })
@@ -85,13 +86,64 @@ const activeHeading = ref(-1)
 
 function resetEditor(markdown: string) {
   content.value = markdown
+  checkLosses()
   editorContent.value = toEditorMarkdown(markdown, notePath.value)
   editorKey.value++
 }
 
 function onEditorChange(markdown: string) {
   content.value = normalizeMarkdown(fromEditorMarkdown(markdown, notePath.value))
+  // The editor's own Markdown: nothing in it the editor can't show.
+  losses.value = []
   doc.change(content.value)
+}
+
+// --- Markdown the editor can't show ----------------------------------------------------------
+// (HTML comments, raw HTML: see markdown-loss.) It would go at the first edit in the editor:
+// the Markdown view says so and won't switch to the editor, and the editor opens read-only,
+// unless the owner accepts the loss for this content ("Edit anyway").
+
+const losses = ref<Loss[]>([])
+const acceptedLoss = ref<string | null>(null)
+const lossBlocks = computed(() => losses.value.length > 0 && acceptedLoss.value !== content.value)
+const lossSummary = computed(() =>
+  losses.value
+    .slice(0, 3)
+    .map((loss) => `line ${loss.line} (${loss.what})`)
+    .join(', ')
+    .concat(losses.value.length > 3 ? `, and ${losses.value.length - 3} more` : ''),
+)
+
+function checkLosses() {
+  losses.value = markdownLosses(content.value, notePath.value)
+}
+checkLosses()
+watchDebounced(content, () => mode.value === 'source' && checkLosses(), { debounce: 400 })
+
+function acceptLoss() {
+  acceptedLoss.value = content.value
+}
+
+function openAnyway() {
+  acceptLoss()
+  setMode('edit')
+}
+
+/** Switches the view; from the Markdown view, not to the editor while it would lose some. */
+function setMode(next: Mode) {
+  if (mode.value === 'source' && next === 'edit') {
+    checkLosses()
+    if (lossBlocks.value) {
+      toast.add({
+        title: "The editor can't show all of this Markdown",
+        description: `Fix ${lossSummary.value}, or open the editor anyway.`,
+        color: 'error',
+        icon: 'i-lucide-triangle-alert',
+      })
+      return
+    }
+  }
+  mode.value = next
 }
 
 function appendMarkdown(markdown: string) {
@@ -193,6 +245,7 @@ async function applyExternal(hash: string, author: string) {
   const updated = await doc.externalChange(hash)
   if (updated === null) return
   content.value = updated
+  checkLosses()
   if (mode.value === 'edit') editor.value?.setContent(toEditorMarkdown(updated, notePath.value))
   toast.add({
     title: `Updated by ${authorLabel(author, settings.value.displayName)}`,
@@ -297,7 +350,7 @@ defineShortcuts({
   // usingInput: these work while typing in the note too.
   meta_shift_e: {
     usingInput: true,
-    handler: () => (mode.value = mode.value === 'source' ? 'edit' : 'source'),
+    handler: () => setMode(mode.value === 'source' ? 'edit' : 'source'),
   },
   meta_backslash: { usingInput: true, handler: () => (panelOpen.value = !panelOpen.value) },
 })
@@ -334,7 +387,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
                 :aria-label="m.label"
                 color="neutral"
                 :variant="mode === m.value ? 'soft' : 'ghost'"
-                @click="mode = m.value"
+                @click="setMode(m.value)"
               />
             </UTooltip>
           </UFieldGroup>
@@ -460,10 +513,32 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           />
         </div>
 
+        <UAlert
+          v-if="mode === 'edit' && lossBlocks"
+          color="error"
+          variant="subtle"
+          icon="i-lucide-triangle-alert"
+          title="Read-only: the editor can't show all of this note's Markdown"
+          :description="`Edited here, the note would lose ${lossSummary}. Change it in the Markdown view, or edit anyway.`"
+          :actions="[
+            {
+              label: 'Edit anyway',
+              color: 'neutral',
+              variant: 'outline',
+              onClick: acceptLoss,
+            },
+            { label: 'Edit Markdown', color: 'error', onClick: () => setMode('source') },
+          ]"
+          orientation="horizontal"
+          class="mb-6"
+          data-testid="markdown-loss"
+        />
+
         <NoteEditor
           v-if="mode === 'edit'"
           ref="editor"
           :key="editorKey"
+          :read-only="lossBlocks"
           :content="editorContent"
           :note-id="id"
           :note-path="notePath"
@@ -472,29 +547,52 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @active-heading="activeHeading = $event"
         />
 
-        <div v-else-if="mode === 'source'" class="group/source relative">
-          <UTextarea
-            :model-value="content"
-            autoresize
-            :rows="20"
-            variant="soft"
-            class="w-full"
-            :ui="{ base: 'pe-12 font-mono text-sm leading-6' }"
-            aria-label="Markdown source"
-            @update:model-value="(value) => onSourceChange(String(value))"
+        <div v-else-if="mode === 'source'">
+          <UAlert
+            v-if="lossBlocks"
+            color="error"
+            variant="subtle"
+            icon="i-lucide-triangle-alert"
+            title="The editor can't show all of this Markdown"
+            :description="`It would lose ${lossSummary}: the editor stays closed until that's changed.`"
+            :actions="[
+              {
+                label: 'Open the editor anyway',
+                color: 'neutral',
+                variant: 'outline',
+                onClick: openAnyway,
+              },
+            ]"
+            orientation="horizontal"
+            class="mb-4"
+            data-testid="markdown-loss"
           />
-          <UTooltip :text="copied ? 'Copied' : 'Copy Markdown'">
-            <UButton
-              :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
-              size="xs"
-              color="neutral"
+          <div class="group/source relative">
+            <UTextarea
+              :model-value="content"
+              autoresize
+              :rows="20"
               variant="soft"
-              aria-label="Copy Markdown"
-              class="absolute top-2 right-2 opacity-0 transition-opacity group-hover/source:opacity-100 focus-visible:opacity-100"
-              :class="copied && 'opacity-100'"
-              @click="copyMarkdown"
+              :color="lossBlocks ? 'error' : 'primary'"
+              :highlight="lossBlocks"
+              class="w-full"
+              :ui="{ base: 'pe-12 font-mono text-sm leading-6 [font-variant-ligatures:none]' }"
+              aria-label="Markdown source"
+              @update:model-value="(value) => onSourceChange(String(value))"
             />
-          </UTooltip>
+            <UTooltip :text="copied ? 'Copied' : 'Copy Markdown'">
+              <UButton
+                :icon="copied ? 'i-lucide-check' : 'i-lucide-copy'"
+                size="xs"
+                color="neutral"
+                variant="soft"
+                aria-label="Copy Markdown"
+                class="absolute top-2 right-2 opacity-0 transition-opacity group-hover/source:opacity-100 focus-visible:opacity-100"
+                :class="copied && 'opacity-100'"
+                @click="copyMarkdown"
+              />
+            </UTooltip>
+          </div>
         </div>
 
         <AuthorshipView

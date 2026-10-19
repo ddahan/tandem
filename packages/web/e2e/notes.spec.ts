@@ -216,6 +216,50 @@ test('edits the Markdown source directly', async ({ page, request }) => {
   await expect(page.locator('.ProseMirror table')).toBeVisible()
 })
 
+test('keeps Markdown the editor would lose: read-only, then edit anyway', async ({
+  page,
+  request,
+}) => {
+  // As an agent would write it: a comment the editor can't show.
+  const markdown = 'Intro\n\n<!-- for agents: keep this -->\n\nBody\n'
+  const note = await createNote(request, 'Lossy note', markdown)
+  await openNote(page, note.id)
+  const banner = page.getByTestId('markdown-loss')
+  await expect(banner).toContainText('line 3 (an HTML comment)')
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'false')
+  await banner.getByRole('button', { name: 'Edit anyway' }).click()
+  await expect(banner).toHaveCount(0)
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true')
+  // Nothing saved until an edit.
+  expect(await noteContent(request, note.id)).toBe(markdown)
+})
+
+test('won’t switch to the editor while it would lose Markdown, unless asked', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Lossy source', '# Title\n')
+  await openNote(page, note.id)
+  await page.getByRole('button', { name: 'Markdown source' }).click()
+  const source = page.getByRole('textbox', { name: 'Markdown source' })
+  await source.fill('# Title\n\nPress <kbd>Ctrl</kbd>\n')
+  const message = page.getByTestId('markdown-loss')
+  await expect(message).toContainText('line 3 (HTML <kbd>)')
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(source).toBeVisible()
+  // Fixed: the editor opens.
+  await source.fill('# Title\n\nPress `Ctrl`\n')
+  await expect(message).toHaveCount(0)
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(page.locator('.ProseMirror code')).toHaveText('Ctrl')
+  // Or opened anyway.
+  await page.getByRole('button', { name: 'Markdown source' }).click()
+  await source.fill('# Title\n\n<span>x</span>\n')
+  await message.getByRole('button', { name: 'Open the editor anyway' }).click()
+  await expect(page.locator('.ProseMirror')).toHaveAttribute('contenteditable', 'true')
+  await waitSaved(page)
+})
+
 test('changes the theme and the settings', async ({ page, request }) => {
   await page.goto('/settings')
   // The version, from the standalone package (the app's).

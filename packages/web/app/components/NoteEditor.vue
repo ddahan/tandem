@@ -22,6 +22,8 @@ const props = defineProps<{
   content: string
   noteId: string
   notePath: string
+  /** Shown, not edited (Markdown it can't show: see markdown-loss). */
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -43,6 +45,11 @@ const toast = useToast()
 const showError = useApiErrorToast()
 const editorRef = useTemplateRef<{ editor: Editor | undefined }>('editorRef')
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
+// UEditor reads `editable` once, at its start: later changes go to the editor itself.
+watch(
+  () => props.readOnly,
+  (readOnly) => editorRef.value?.editor?.setEditable(!readOnly),
+)
 
 // --- Extensions ----------------------------------------------------------------------------
 
@@ -701,6 +708,7 @@ defineExpose({
       ref="editorRef"
       v-slot="{ editor }"
       :model-value="content"
+      :editable="!readOnly"
       content-type="markdown"
       :starter-kit="starterKitOptions"
       :image="false"
