@@ -14,6 +14,7 @@ import { Details, DetailsContent, DetailsSummary } from './details'
 import { FileChips, FileLink } from './file-chips'
 import { Find } from './find'
 import { JoinLists } from './join-lists'
+import { ListMarkers } from './list-markers'
 import { Occurrences } from './occurrences'
 import { ResizableImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
@@ -45,6 +46,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     }),
     FileChips,
     JoinLists,
+    ListMarkers,
     BlockKeys,
     Occurrences,
     Find,

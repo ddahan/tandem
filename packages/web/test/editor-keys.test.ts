@@ -207,3 +207,40 @@ describe('find and replace (⌘F)', () => {
     expect(e.view.dom.querySelectorAll('.find-match')).toHaveLength(0)
   })
 })
+
+describe('list markers typed in an item of another kind', () => {
+  it('turns a nested bullet list into a to-do list with [ ] or [x]', () => {
+    const e = setup('- one\n  - sub\n- two')
+    cursorAt(e, 'sub')
+    type(e, '[x] ')
+    expect(markdown(e)).toBe('- one\n  - [x] sub\n- two')
+  })
+
+  it('turns a nested to-do list into a bullet or numbered list', () => {
+    const e = setup('- [ ] task\n  - [ ] sub')
+    cursorAt(e, 'sub')
+    type(e, '- ')
+    expect(markdown(e)).toBe('- [ ] task\n  - sub')
+    cursorAt(e, 'sub')
+    type(e, '1. ')
+    expect(markdown(e)).toBe('- [ ] task\n  1. sub')
+  })
+
+  it('changes the whole list it is in (a Markdown list has one kind)', () => {
+    const e = setup('- a\n- b')
+    cursorAt(e, 'b')
+    type(e, '[ ] ')
+    expect(markdown(e)).toBe('- [ ] a\n- [ ] b')
+  })
+
+  it('leaves markers alone in a list of the same kind, and in the middle of an item', () => {
+    const e = setup('- a\n  - sub')
+    cursorAt(e, 'sub')
+    type(e, '- ')
+    expect(e.getJSON().content?.[0]?.type).toBe('bulletList')
+    expect(e.state.doc.textContent).toContain('- sub')
+    cursorAt(e, 'a', 1)
+    type(e, '[ ] ')
+    expect(e.getJSON().content?.[0]?.type).toBe('bulletList')
+  })
+})

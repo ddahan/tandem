@@ -207,7 +207,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { typed: '# ', label: 'Heading', description: '## and ### for smaller ones.' },
       { typed: '- ', label: 'Bullet list' },
       { typed: '1. ', label: 'Numbered list' },
-      { typed: '[ ] ', label: 'To-do' },
+      {
+        typed: '[ ] ',
+        label: 'To-do',
+        description:
+          'Also in a bullet or numbered item (an indented one…): its list becomes a to-do list. - and 1. do the same.',
+      },
       { typed: '> ', label: 'Quote' },
       { typed: '``` ', label: 'Code block', description: 'Or ```ts and a space, for a language.' },
       { typed: '---', label: 'Divider' },
