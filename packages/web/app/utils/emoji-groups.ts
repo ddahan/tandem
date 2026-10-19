@@ -11,28 +11,31 @@ export interface PickerEmoji {
 export interface EmojiGroup {
   id: string
   label: string
+  /** A line icon for the group's tab: not an emoji, which would look like one to pick. */
+  icon: string
   emojis: PickerEmoji[]
 }
 
 // The list's own group names, in order; smileys have no group name in it.
-const GROUPS: [string, string][] = [
-  ['', 'Smileys'],
-  ['people & body', 'People'],
-  ['animals & nature', 'Nature'],
-  ['food & drink', 'Food'],
-  ['activities', 'Activities'],
-  ['travel & places', 'Travel'],
-  ['objects', 'Objects'],
-  ['symbols', 'Symbols'],
-  ['flags', 'Flags'],
+const GROUPS: [string, string, string][] = [
+  ['', 'Smileys', 'i-lucide-smile'],
+  ['people & body', 'People', 'i-lucide-hand'],
+  ['animals & nature', 'Nature', 'i-lucide-leaf'],
+  ['food & drink', 'Food', 'i-lucide-apple'],
+  ['activities', 'Activities', 'i-lucide-trophy'],
+  ['travel & places', 'Travel', 'i-lucide-car'],
+  ['objects', 'Objects', 'i-lucide-lamp'],
+  ['symbols', 'Symbols', 'i-lucide-heart'],
+  ['flags', 'Flags', 'i-lucide-flag'],
 ]
 
 let groups: EmojiGroup[] | null = null
 
 export function emojiGroups(): EmojiGroup[] {
-  groups ??= GROUPS.map(([id, label]) => ({
+  groups ??= GROUPS.map(([id, label, icon]) => ({
     id: id || 'smileys',
     label,
+    icon,
     emojis: gitHubEmojis
       .filter((e) => e.emoji && e.group === id && !e.name.startsWith('regional_indicator'))
       .map((e) => ({

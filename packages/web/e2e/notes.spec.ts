@@ -611,6 +611,11 @@ test('gives a page an emoji or an image icon, after its creation', async ({ page
   // Emoji, from the page itself.
   await page.getByRole('button', { name: 'Change icon' }).click()
   const picker = page.getByTestId('icon-picker')
+  // Groups are tabs, named above the emojis.
+  await expect(picker.getByTestId('emoji-group-name')).toHaveText('Smileys')
+  await picker.getByRole('tab', { name: 'Nature' }).click()
+  await expect(picker.getByRole('tab', { name: 'Nature' })).toHaveAttribute('aria-selected', 'true')
+  await expect(picker.getByTestId('emoji-group-name')).toHaveText('Nature')
   await picker.getByLabel('Search emojis').fill('rocket')
   await picker.getByRole('button', { name: 'rocket', exact: true }).click()
   await expect(row.getByTestId('node-icon')).toHaveText('🚀')

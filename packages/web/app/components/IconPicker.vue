@@ -100,16 +100,29 @@ function remove() {
       />
     </div>
 
-    <div v-if="!query.trim()" class="flex justify-between border-b border-default pb-1">
+    <!-- Emoji groups, as tabs: line icons and an underline, so that they read as places to go
+         rather than emojis to pick. The open group's name heads the grid. -->
+    <div
+      v-if="!query.trim()"
+      role="tablist"
+      aria-label="Emoji groups"
+      class="flex justify-between border-b border-default"
+    >
       <UTooltip v-for="group in groups" :key="group.id" :text="group.label">
         <button
           type="button"
-          class="grid size-7 place-items-center rounded-md text-base transition-colors hover:bg-elevated"
-          :class="activeGroup === group.id && 'bg-elevated'"
+          role="tab"
+          :aria-selected="activeGroup === group.id"
           :aria-label="group.label"
+          class="-mb-px grid h-8 w-8 place-items-center border-b-2 transition-colors"
+          :class="
+            activeGroup === group.id
+              ? 'border-primary text-primary'
+              : 'border-transparent text-dimmed hover:text-default'
+          "
           @click="activeGroup = group.id"
         >
-          {{ group.emojis[0]?.emoji }}
+          <UIcon :name="group.icon" class="size-4" />
         </button>
       </UTooltip>
     </div>
@@ -129,6 +142,9 @@ function remove() {
           </button>
         </div>
       </template>
+      <p v-if="!query.trim()" class="px-1 pb-1 text-xs text-dimmed" data-testid="emoji-group-name">
+        {{ groups.find((group) => group.id === activeGroup)?.label }}
+      </p>
       <div class="grid grid-cols-8">
         <button
           v-for="item in visible"
