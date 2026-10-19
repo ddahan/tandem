@@ -211,7 +211,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         typed: '[ ] ',
         label: 'To-do',
         description:
-          'Also in a bullet or numbered item (an indented one…): its list becomes a to-do list. - and 1. do the same.',
+          'Or [] . At the start of a list item, - 1. and [ ] change its level’s kind: any kind at any level.',
       },
       { typed: '> ', label: 'Quote' },
       { typed: '``` ', label: 'Code block', description: 'Or ```ts and a space, for a language.' },

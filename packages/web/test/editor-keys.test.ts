@@ -226,11 +226,24 @@ describe('list markers typed in an item of another kind', () => {
     expect(markdown(e)).toBe('- [ ] task\n  1. sub')
   })
 
-  it('changes the whole list it is in (a Markdown list has one kind)', () => {
-    const e = setup('- a\n- b')
-    cursorAt(e, 'b')
-    type(e, '[ ] ')
-    expect(markdown(e)).toBe('- [ ] a\n- [ ] b')
+  it('accepts [] without a space', () => {
+    const e = setup('- one\n  - sub')
+    cursorAt(e, 'sub')
+    type(e, '[] ')
+    expect(markdown(e)).toBe('- one\n  - [ ] sub')
+  })
+
+  it('changes the whole level: one kind per level, any kind at any level', () => {
+    const e = setup('- [ ] Task\n  - [ ] first\n  - [ ] second\n- [ ] Other')
+    cursorAt(e, 'second')
+    type(e, '- ')
+    expect(markdown(e)).toBe('- [ ] Task\n  - first\n  - second\n- [ ] Other')
+    // The cursor stays at the start of the item's text.
+    expect(e.state.selection.$from.parent.textContent).toBe('second')
+    expect(e.state.selection.$from.parentOffset).toBe(0)
+    cursorAt(e, 'first')
+    type(e, '1. ')
+    expect(markdown(e)).toBe('- [ ] Task\n  1. first\n  2. second\n- [ ] Other')
   })
 
   it('leaves markers alone in a list of the same kind, and in the middle of an item', () => {
