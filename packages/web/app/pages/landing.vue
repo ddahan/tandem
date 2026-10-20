@@ -728,7 +728,7 @@ teams by the end of the month.
         <span class="font-semibold text-highlighted">tandem</span>
         <span>Notes for one person and their agents.</span>
         <div class="ms-auto flex gap-5">
-          <NuxtLink to="/shortcuts" class="hover:text-highlighted">Shortcuts</NuxtLink>
+          <NuxtLink to="/docs" class="hover:text-highlighted">Docs</NuxtLink>
           <NuxtLink to="/settings" class="hover:text-highlighted">Settings</NuxtLink>
           <NuxtLink to="/" class="hover:text-highlighted">Open the app</NuxtLink>
         </div>

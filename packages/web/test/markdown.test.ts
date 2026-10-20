@@ -6,6 +6,7 @@ import { Markdown } from '@tiptap/markdown'
 import { StarterKit } from '@tiptap/starter-kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createExtensions, starterKitOptions } from '../app/editor/extensions'
+import { DOCS_BLOCK_GROUPS } from '../app/utils/docs-blocks'
 import {
   fromEditorMarkdown,
   normalizeMarkdown,
@@ -33,6 +34,14 @@ function roundTrip(markdown: string): string {
 }
 
 describe('Markdown round-trip', () => {
+  // Docs › Blocks shows this Markdown as what notes hold: the editor must write it back as is.
+  it.each(DOCS_BLOCK_GROUPS.flatMap((group) => group.blocks.map((b) => [b.title, b.markdown])))(
+    'the Docs example of %s',
+    (_title, markdown) => {
+      expect(roundTrip(markdown)).toBe(markdown)
+    },
+  )
+
   it.each([
     ['headings and paragraphs', '# Title\n\nSome **bold**, *italic*, ~~strike~~ and `code`.'],
     ['lists', '- one\n- two\n  - nested\n\n1. first\n2. second'],

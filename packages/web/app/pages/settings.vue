@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { DEFAULT_SETTINGS, type NotesFolder, type Settings } from '@tandem/shared'
 import { EDITOR_FONT_SIZES } from '~/composables/useSettings'
-import { accentShade, logoSvg } from '~/utils/logo'
 
 const { settings, update } = useSettings()
 const colorMode = useColorMode()
@@ -75,9 +74,6 @@ const WINDOWS = [
   { background: '#ffffff', sidebar: '#f4f4f5', text: '#a1a1aa', line: '#e4e4e7' },
   { background: '#18181b', sidebar: '#27272a', text: '#71717a', line: '#3f3f46' },
 ] as const
-
-const install = useInstallApp()
-const installLogo = logoSvg(accentShade, 'install-settings-logo')
 
 const api = useApi()
 const notesFolder = ref<NotesFolder | null>(null)
@@ -399,53 +395,11 @@ async function set(patch: Partial<Settings>) {
 
         <USeparator />
 
-        <section>
-          <h2 class="font-semibold text-highlighted">App</h2>
-          <p class="mb-4 text-sm text-muted">
-            Install Tandem to open it from your Dock, in its own window.
-          </p>
-          <div class="flex items-start gap-4" data-testid="install-settings">
-            <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
-            <span
-              class="size-12 shrink-0 overflow-hidden rounded-[22%] shadow-sm [&_svg]:size-full"
-              v-html="installLogo"
-            />
-            <p
-              v-if="install.installed.value"
-              class="flex items-center gap-1.5 pt-3 text-sm text-default"
-            >
-              <UIcon name="i-lucide-circle-check" class="size-4 text-primary" /> Installed: you're
-              using the app.
-            </p>
-            <UButton
-              v-else-if="install.method.value === 'prompt'"
-              label="Install Tandem"
-              icon="i-lucide-download"
-              class="mt-2"
-              @click="install.install()"
-            />
-            <InstallSteps
-              v-else-if="install.method.value"
-              :platform="install.method.value"
-              class="pt-1"
-            />
-            <p v-else class="pt-1 text-sm text-muted">
-              Your browser isn't offering to install Tandem (it may be installed already). Chrome,
-              Edge and Safari can install it.
-            </p>
-          </div>
-        </section>
-
-        <USeparator />
-
-        <section class="space-y-2 text-sm text-muted">
-          <h2 class="font-semibold text-highlighted">For agents</h2>
-          <p>Agents can use Tandem through its MCP server:</p>
-          <pre
-            class="overflow-x-auto rounded-md border border-muted bg-muted p-3 text-xs"
-          ><code>claude mcp add --transport http tandem http://localhost:3864/mcp --header "X-Tandem-Author: claude"</code></pre>
-          <p>Or with the <code>bin/tandem</code> CLI of the repository. See the README.</p>
-        </section>
+        <p class="text-sm text-muted">
+          To install Tandem as an app or connect an agent, see
+          <ULink to="/docs/install" class="text-primary">Docs › Install</ULink> and
+          <ULink to="/docs/agents" class="text-primary">Agents</ULink>.
+        </p>
       </div>
     </template>
   </UDashboardPanel>

@@ -127,6 +127,23 @@ html.dark[data-tone='cool'] {
   min-height: 0;
   padding-bottom: 0;
 }
+/* An example in Docs › Blocks: read-only, no drag handle; its links and files lead nowhere. */
+.note-editor.docs-example {
+  margin-inline-start: 0;
+}
+.note-editor.docs-example .ProseMirror {
+  min-height: 0;
+  padding: 0;
+}
+.note-editor.docs-example .ProseMirror > :first-child {
+  margin-top: 0;
+}
+.note-editor.docs-example .ProseMirror > :last-child {
+  margin-bottom: 0;
+}
+.note-editor.docs-example .ProseMirror a {
+  pointer-events: none;
+}
 
 /* Room for the block drag handle inside the editor: it is drawn left of each block, and the
    pointer must not leave the editor on its way there (the handle hides when it does). The
@@ -576,6 +593,15 @@ html.dark[data-tone='cool'] {
 .note-editor [data-resize-container]:hover [data-resize-handle],
 .note-editor .ProseMirror-selectednode [data-resize-handle] {
   opacity: 1;
+}
+/* Read-only (a note it can't show, Docs › Blocks): nothing to resize, and the cursor ProseMirror
+   still puts in the first block doesn't show it selected. */
+.note-editor .ProseMirror[contenteditable='false'] [data-resize-handle] {
+  display: none;
+}
+.note-editor .ProseMirror[contenteditable='false'] .ProseMirror-selectednode {
+  background: none;
+  outline: none;
 }
 .note-editor [data-resize-handle='bottom-right'] {
   right: -0.35rem;

@@ -252,8 +252,14 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   insert blocks, on `NodeRange`s so list items move within their list) and
   `editor/find.ts` with `FindBar.vue` (⌘F: query, matches and current match in plugin state,
   decorations, replace), `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
-  drawn as decorations; typing, Backspace and Delete apply to all of them). The Shortcuts page
-  (`pages/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
+  drawn as decorations; typing, Backspace and Delete apply to all of them). Docs › Shortcuts
+  (`pages/docs/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
+- Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old
+  `/shortcuts` redirecting with `definePageMeta`). Blocks shows each entry of
+  `utils/docs-blocks.ts` in `DocsExample.vue`: a read-only UEditor with the note editor's
+  extensions and node views, so the tour can't drift from what notes show; a unit test checks
+  each example's Markdown round-trips unchanged. A database's data isn't in its Markdown, so its
+  example is drawn.
 - Startup bundle: large, rarely needed code loads on demand. The emoji list (~500 KB) loads
   with the icon picker (`LazyIconPicker`) or after a note opens (the `:` menu), Mermaid when a
   diagram shows. Check what a change adds to the startup files (`index.html`'s scripts) after
@@ -263,7 +269,7 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
 - Title bar color: `useThemeColor` sets `theme-color` to the page's background (as #rrggbb,
   via a canvas: the palette is oklch) whenever the tone, neutral color or mode changes, and
   remembers it; a head script creates the tag with that color before the first paint.
-- Install offer (`useInstallApp`, `InstallAppBanner`, Settings › App): an inline script in
+- Install offer (`useInstallApp`, `InstallAppBanner`, Docs › Install): an inline script in
   the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
   app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the
   user agent (it has no install API); `display-mode: standalone` means installed.

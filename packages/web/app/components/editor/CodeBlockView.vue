@@ -59,8 +59,9 @@ function cursorInside(): boolean {
   return from >= start && to <= start + props.node.nodeSize
 }
 
-// Diagrams open in read mode, unless they are empty or being written.
-const editing = ref(!props.node.textContent.trim() || cursorInside())
+// Diagrams open in read mode, unless they are empty or being written (never in a read-only
+// editor, whose cursor sits in its first block all the same).
+const editing = ref(props.editor.isEditable && (!props.node.textContent.trim() || cursorInside()))
 
 function toggleEditing() {
   editing.value = !editing.value

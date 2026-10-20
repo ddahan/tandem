@@ -961,7 +961,7 @@ test('shows diagrams alone in read mode, with their code in edit mode', async ({
   )
 })
 
-test('edits with VS Code shortcuts, listed on the Shortcuts page', async ({ page, request }) => {
+test('edits with VS Code shortcuts, listed in Docs › Shortcuts', async ({ page, request }) => {
   const note = await createNote(request, 'Keys note', 'One\n\nTwo\n\nThree\n')
   await openNote(page, note.id)
   const paragraph = (text: string) => page.locator('.ProseMirror p', { hasText: text })
@@ -986,7 +986,7 @@ test('edits with VS Code shortcuts, listed on the Shortcuts page', async ({ page
 
   // ⌘/ opens the page listing them.
   await page.keyboard.press('ControlOrMeta+/')
-  await expect(page).toHaveURL(/\/shortcuts$/)
+  await expect(page).toHaveURL(/\/docs\/shortcuts$/)
   await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toHaveCount(2)
   await expect(
     page.getByTestId('shortcut').filter({ hasText: 'Select all occurrences' }),

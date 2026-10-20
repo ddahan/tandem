@@ -16,7 +16,7 @@ const navigation = computed<NavigationMenuItem[]>(() => [
   },
   { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
-  { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },
+  { label: 'Docs', icon: 'i-lucide-book-open', to: '/docs' },
 ])
 
 /** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
@@ -28,7 +28,7 @@ const aboutOpen = ref(false)
 defineShortcuts({
   meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
-  'meta_/': { usingInput: true, handler: () => void navigateTo('/shortcuts') },
+  'meta_/': { usingInput: true, handler: () => void navigateTo('/docs/shortcuts') },
   // Search in every note (as in VS Code); the selected text, if any, is the query.
   meta_shift_f: {
     usingInput: true,

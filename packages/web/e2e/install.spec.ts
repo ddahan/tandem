@@ -1,4 +1,4 @@
-// Installing Tandem as an app: the sidebar banner and Settings, driven by the browser's
+// Installing Tandem as an app: the sidebar banner and Docs › Install, driven by the browser's
 // install prompt (sent by the test: Playwright's Chromium doesn't send one by itself).
 import { expect, test, type Page } from '@playwright/test'
 
@@ -32,7 +32,7 @@ test('offers to install the app when the browser can, with its icon', async ({ p
   await expect(banner).toHaveCount(0)
 })
 
-test('hides the banner for good once closed; Settings still offers to install', async ({
+test('hides the banner for good once closed; Docs › Install still offers to install', async ({
   page,
 }) => {
   await page.goto('/')
@@ -48,8 +48,9 @@ test('hides the banner for good once closed; Settings still offers to install', 
   await expect(page.getByTestId('workspace-name')).toBeVisible()
   await expect(page.getByTestId('install-banner')).toHaveCount(0)
 
-  await page.getByRole('link', { name: 'Settings', exact: true }).first().click()
+  await page.getByRole('link', { name: 'Docs', exact: true }).first().click()
+  await expect(page).toHaveURL(/\/docs\/install$/)
   await page.getByRole('button', { name: 'Install Tandem' }).click()
   expect(await page.evaluate(() => (window as Window & { prompted?: boolean }).prompted)).toBe(true)
-  await expect(page.getByTestId('install-settings')).toContainText("isn't offering")
+  await expect(page.getByTestId('install-app')).toContainText("isn't offering")
 })

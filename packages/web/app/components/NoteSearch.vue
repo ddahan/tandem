@@ -98,11 +98,12 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         },
         { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
         { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
+        { label: 'Docs', icon: 'i-lucide-book-open', to: '/docs' },
         {
           label: 'Keyboard shortcuts',
           icon: 'i-lucide-keyboard',
           kbds: ['meta', '/'],
-          to: '/shortcuts',
+          to: '/docs/shortcuts',
         },
         {
           label: colorMode.value === 'dark' ? 'Light mode' : 'Dark mode',

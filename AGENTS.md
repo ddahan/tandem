@@ -74,9 +74,10 @@ different data folders. **Never point the dev servers or tests at the owner's da
   public method from inside the lock (deadlock).
 - **Markdown**: anything the editor writes must survive a round-trip (add a case to
   `packages/web/test/markdown.test.ts`), and new syntax must be documented in
-  [docs/agents.md](docs/agents.md).
+  [docs/agents.md](docs/agents.md) and shown in Docs › Blocks
+  (`packages/web/app/utils/docs-blocks.ts`).
 - **Shortcuts**: a new or changed keyboard shortcut or typing rule goes in
-  `packages/web/app/utils/shortcuts.ts` too: the Shortcuts page shows that list.
+  `packages/web/app/utils/shortcuts.ts` too: Docs › Shortcuts shows that list.
 - **Security**: the app has no authentication and binds to 127.0.0.1; notes can be written by
   anyone, so rendered HTML is sanitized and `/files` never serves hidden files.
 

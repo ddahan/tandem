@@ -234,7 +234,7 @@ inside OneDrive so that it is backed up and synced.
 
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Shortcuts at the
+- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Docs at the
   bottom, then the app's version, About and collapse; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
   named by tooltips), resizable from its left
@@ -258,8 +258,21 @@ inside OneDrive so that it is backed up and synced.
   shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
   shows its final state. The sidebar's "About Tandem" button (ⓘ, next to the collapse button)
   shows it fullscreen over the app; its links into the app close it and go there, Escape closes.
-- A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
-  the tree's menu shows the shortcuts of its actions.
+- Docs (sidebar, ⌘⇧F palette), in tabs with their own addresses (`/docs/<tab>`):
+  - **Install**: installing Tandem as an app (the browser's install button, or Safari's steps;
+    "Installed" in the app), removing it, and where Tandem runs (this address, local only).
+  - **Concepts**: pages and folders, Markdown on disk, autosave and conflicts, authorship,
+    history, links, files, databases, tags and icons, search, TODOs, trash, agents; each says
+    where it is in the app.
+  - **Blocks**: every block and inline element the editor writes, grouped (text, lists,
+    blocks, files), each shown by the editor itself (read-only) next to its Markdown, as saved,
+    with how to add it (`/` menu item, typed Markdown, keys). Links and files there lead
+    nowhere; a database's example is a drawing (its rows aren't in the Markdown).
+  - **Agents**: the MCP command at Tandem's own address and the CLI, both with a copy button,
+    what agents can do, and their guide (`docs/agents.md`).
+  - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
+    menu shows the shortcuts of its actions.
+    `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
 - Light, dark or system color mode, chosen in Settings › Appearance (a small preview of each).
   Settings page: color mode, background tone
   (white, paper, sepia or cool, each with a light and a dark variant), primary and neutral colors,
@@ -269,14 +282,15 @@ inside OneDrive so that it is backed up and synced.
   Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, the workspace name (next to the logo and in the browser tab; Tandem by
   default), and spell check (the browser's, while typing in notes, titles and fields; off by
-  default; never in the Markdown source).
+  default; never in the Markdown source). Its end links to Docs › Install and Agents (installing
+  the app, connecting agents).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes
   the page's background color (tone, light or dark: `theme-color`), from the first frame. In a browser tab
   that can install it, the sidebar offers to (the logo, "Install Tandem"): Chrome and Edge
   show their install dialog; Safari, which has none, gets the steps (File › Add to Dock…, or
-  Share › Add to Home Screen on iOS). Closing the offer hides it for good; Settings › App still
+  Share › Add to Home Screen on iOS). Closing the offer hides it for good; Docs › Install still
   offers to install, or says it's installed. Hidden in the installed app and in browsers that
   can't install.
 - English interface; French formats for dates, times and numbers (`17/10/2026 14:32`).
