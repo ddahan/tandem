@@ -215,7 +215,8 @@ inside OneDrive so that it is backed up and synced.
 
 - `TODO:` in capitals, not glued to a word before it (`myTODO:`, `todo:` and `TODO` without
   the colon aren't TODOs), starts a TODO: it and the rest of its line (or block, in the
-  editor), up to the next TODO, are highlighted in yellow. None in code (blocks or inline).
+  editor), up to the next TODO, are highlighted in yellow, the `TODO:` marker in the monospace
+  font, semibold, as on the TODOs page. None in code (blocks or inline).
 - The sidebar's TODOs page lists them by page (pages by title, TODOs in order, with their
   line), with their count next to it in the sidebar. It follows changes live (a note saved,
   renamed or trashed). Clicking a TODO opens its note in edit mode at that TODO: scrolled to,

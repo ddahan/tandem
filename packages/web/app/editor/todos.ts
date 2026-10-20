@@ -65,9 +65,11 @@ interface TodosState {
 const key = new PluginKey<TodosState>('todos')
 
 function decorate(doc: ProseMirrorNode, flash: TodoRange | null): DecorationSet {
-  const decorations = todoPositions(doc).map(({ from, to }) =>
+  const decorations = todoPositions(doc).flatMap(({ from, to }) => [
     Decoration.inline(from, to, { class: 'todo-highlight' }),
-  )
+    // The marker itself, as the TODOs page shows it.
+    Decoration.inline(from, from + 'TODO:'.length, { class: 'todo-marker' }),
+  ])
   if (flash) decorations.push(Decoration.inline(flash.from, flash.to, { class: 'todo-flash' }))
   return DecorationSet.create(doc, decorations)
 }

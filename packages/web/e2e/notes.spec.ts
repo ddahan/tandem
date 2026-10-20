@@ -1297,9 +1297,18 @@ test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ pa
   )
   await openNote(page, note.id)
   // The marker and the rest of its line, only in capitals and not glued to a word.
+  // (Split in pieces: the marker has its own span.)
+  const joined = (selector: string) =>
+    page.locator(selector).evaluateAll((spans) => spans.map((span) => span.textContent).join(''))
+  await expect
+    .poll(() => joined('.ProseMirror .todo-highlight'))
+    .toBe('TODO: please remind to do this.TODO: far below')
   const highlights = page.locator('.ProseMirror .todo-highlight')
-  await expect(highlights).toHaveText(['TODO: please remind to do this.', 'TODO: far below'])
   await expect(highlights.first()).toHaveCSS('background-color', /rgba\(253, 224, 71/)
+  // The marker in the TODOs page's font.
+  const markers = page.locator('.ProseMirror .todo-marker')
+  await expect(markers).toHaveText(['TODO:', 'TODO:'])
+  await expect(markers.first()).toHaveCSS('font-family', /JetBrains Mono/)
 
   // Listed by page, from the sidebar (with their count).
   const link = page.getByRole('link', { name: /TODOs/ })
@@ -1314,9 +1323,8 @@ test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ pa
   // One click: the note, at that TODO (scrolled to, flashed, the cursor at its end).
   await section.getByTestId('todo-item').nth(1).click()
   await expect(page).toHaveURL(`/notes/${note.id}`)
-  const flashed = page.locator('.ProseMirror .todo-flash')
-  await expect(flashed).toHaveText('TODO: far below')
-  await expect(flashed).toBeInViewport()
+  await expect.poll(() => joined('.ProseMirror .todo-flash')).toBe('TODO: far below')
+  await expect(page.locator('.ProseMirror .todo-flash').first()).toBeInViewport()
   await page.keyboard.type(' now')
   await waitSaved(page)
   expect(await noteContent(request, note.id)).toContain('- item TODO: far below now')

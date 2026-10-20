@@ -290,7 +290,15 @@ html.dark[data-tone='cool'] {
 .dark .note-editor .todo-highlight {
   background: rgb(250 204 21 / 0.24);
 }
-/* The TODO marker on the TODOs page, as the notes show it. */
+/* The `TODO:` marker, in the notes and on the TODOs page alike. */
+.note-editor .todo-marker {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--ui-text-highlighted);
+  /* Smaller than the text: as tall a yellow band as the rest of the TODO. */
+  padding-top: 0.15em;
+}
 .todo-chip {
   border-radius: 0.25rem;
   background: rgb(253 224 71 / 0.5);
