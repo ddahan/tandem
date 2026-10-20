@@ -348,7 +348,7 @@ test('changes the theme and the settings', async ({ page, request }) => {
       async () => (await api<{ primaryColor: string }>(request, 'GET', '/settings')).primaryColor,
     )
     .toBe('emerald')
-  await page.getByRole('button', { name: 'Dark', exact: true }).first().click()
+  await chooseTheme(page, 'Dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   // The workspace name: next to the logo and in the tab.
@@ -377,23 +377,18 @@ test('colors the title bar like the background (theme-color)', async ({ page, re
   await api(request, 'PATCH', '/settings', { backgroundTone: 'white' })
 })
 
-test('switches the color mode from one theme button', async ({ page }) => {
+test('switches the color mode in Settings, not from the sidebar', async ({ page }) => {
   await page.goto('/')
-  const button = page.getByRole('button', { name: /^Theme: / })
-  await expect(button).toHaveCount(1)
-  await expect(button).toHaveAccessibleName('Theme: System')
+  await expect(page.getByRole('button', { name: /^Theme: / })).toHaveCount(0)
+  await page.goto('/settings')
+  const card = (mode: string) => page.getByRole('button', { name: `Theme: ${mode}` })
+  await expect(card('System')).toHaveAttribute('aria-pressed', 'true')
   await chooseTheme(page, 'Dark')
   await expect(page.locator('html')).toHaveClass(/dark/)
-  await expect(button).toHaveAccessibleName('Theme: Dark')
-  // The menu marks the current choice.
-  await button.click()
-  await expect(page.getByRole('menuitemcheckbox', { name: 'Dark' })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  )
-  await page.getByRole('menuitemcheckbox', { name: 'Light' }).click()
+  await expect(card('Dark')).toHaveAttribute('aria-pressed', 'true')
+  await expect(card('System')).toHaveAttribute('aria-pressed', 'false')
+  await chooseTheme(page, 'Light')
   await expect(page.locator('html')).not.toHaveClass(/dark/)
-  await expect(button).toHaveAccessibleName('Theme: Light')
 })
 
 test('shows the chosen theme at once on reload, before the settings load', async ({
@@ -530,7 +525,7 @@ test('changes the text size of notes only', async ({ page, request }) => {
 
 test('tints the background, in light and dark mode', async ({ page, request }) => {
   await page.goto('/settings')
-  await page.getByRole('button', { name: 'Light', exact: true }).first().click()
+  await chooseTheme(page, 'Light')
   await page.getByRole('button', { name: 'Background: Paper' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-tone', 'paper')
   const background = () =>
@@ -538,7 +533,7 @@ test('tints the background, in light and dark mode', async ({ page, request }) =
       getComputedStyle(document.documentElement).getPropertyValue('--ui-bg').trim(),
     )
   await expect.poll(background).toBe('#fbf8f1')
-  await page.getByRole('button', { name: 'Dark', exact: true }).first().click()
+  await chooseTheme(page, 'Dark')
   await expect.poll(background).toBe('#1e1c19')
   expect((await api<{ backgroundTone: string }>(request, 'GET', '/settings')).backgroundTone).toBe(
     'paper',
@@ -1139,7 +1134,6 @@ test('shows a pointer on everything clickable', async ({ page, request }) => {
   await createNote(request, 'Pointer note')
   await page.goto('/')
   for (const clickable of [
-    page.getByRole('button', { name: /^Theme: / }),
     page.getByRole('button', { name: 'New page', exact: true }).first(),
     page.getByTestId('tree-Pointer note'),
     page.getByRole('link', { name: 'Trash' }),

@@ -73,6 +73,11 @@ const modes = [
   { value: 'dark', label: 'Dark', icon: 'i-lucide-moon' },
   { value: 'system', label: 'System', icon: 'i-lucide-monitor' },
 ]
+/** The colors of the theme previews: a light window, then a dark one. */
+const WINDOWS = [
+  { background: '#ffffff', sidebar: '#f4f4f5', text: '#a1a1aa', line: '#e4e4e7' },
+  { background: '#18181b', sidebar: '#27272a', text: '#71717a', line: '#3f3f46' },
+] as const
 
 const install = useInstallApp()
 const installLogo = logoSvg(accentShade, 'install-settings-logo')
@@ -184,17 +189,43 @@ async function set(patch: Partial<Settings>) {
             <p class="text-sm text-muted">Saved with your notes, so it follows the data folder.</p>
           </div>
 
-          <UFormField label="Theme">
-            <div class="flex gap-2">
-              <UButton
+          <UFormField label="Theme" description="Light, dark, or as the computer is set.">
+            <div class="grid grid-cols-3 gap-2 sm:max-w-md">
+              <button
                 v-for="mode in modes"
                 :key="mode.value"
-                :label="mode.label"
-                :icon="mode.icon"
-                color="neutral"
-                :variant="colorMode.preference === mode.value ? 'soft' : 'outline'"
+                type="button"
+                class="rounded-lg border border-default p-1.5 text-start transition-colors hover:bg-elevated"
+                :class="colorMode.preference === mode.value && 'border-primary ring-1 ring-primary'"
+                :aria-label="`Theme: ${mode.label}`"
+                :aria-pressed="colorMode.preference === mode.value"
                 @click="colorMode.preference = mode.value"
-              />
+              >
+                <!-- A tiny window in that mode (System: half each). -->
+                <span class="flex h-14 overflow-hidden rounded-md border border-default">
+                  <span
+                    v-for="side in mode.value === 'system'
+                      ? WINDOWS
+                      : mode.value === 'dark'
+                        ? [WINDOWS[1]]
+                        : [WINDOWS[0]]"
+                    :key="side.background"
+                    class="flex flex-1 gap-1 p-1.5"
+                    :style="{ background: side.background }"
+                  >
+                    <span class="w-1/4 rounded-sm" :style="{ background: side.sidebar }" />
+                    <span class="flex flex-1 flex-col gap-1 pt-0.5">
+                      <span class="h-1.5 w-3/4 rounded-full" :style="{ background: side.text }" />
+                      <span class="h-1 w-full rounded-full" :style="{ background: side.line }" />
+                      <span class="h-1 w-5/6 rounded-full" :style="{ background: side.line }" />
+                    </span>
+                  </span>
+                </span>
+                <span class="mt-1.5 flex items-center gap-1.5 px-0.5 text-xs text-muted">
+                  <UIcon :name="mode.icon" class="size-3.5" />
+                  {{ mode.label }}
+                </span>
+              </button>
             </div>
           </UFormField>
 

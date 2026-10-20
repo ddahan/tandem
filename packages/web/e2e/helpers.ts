@@ -59,8 +59,8 @@ export async function waitSaved(page: Page) {
   await expect(page.getByTestId('save-status')).toContainText('Saved')
 }
 
-/** Picks a color mode from the sidebar's theme menu. */
+/** Picks a color mode in Settings › Appearance (going there if needed). */
 export async function chooseTheme(page: Page, mode: 'Light' | 'Dark' | 'System') {
-  await page.getByRole('button', { name: /^Theme: / }).click()
-  await page.getByRole('menuitemcheckbox', { name: mode }).click()
+  if (!page.url().endsWith('/settings')) await page.goto('/settings')
+  await page.getByRole('button', { name: `Theme: ${mode}` }).click()
 }

@@ -236,8 +236,8 @@ inside OneDrive so that it is backed up and synced.
   shows it fullscreen over the app; its links into the app close it and go there, Escape closes.
 - A Keyboard shortcuts page (sidebar, ⌘⇧F palette, ⌘/) lists every shortcut and typing rule;
   the tree's menu shows the shortcuts of its actions.
-- Light, dark or system color mode, switched from one button at the bottom of the sidebar (it
-  shows the current mode; its menu offers the three). Settings page: color mode, background tone
+- Light, dark or system color mode, chosen in Settings › Appearance (a small preview of each).
+  Settings page: color mode, background tone
   (white, paper, sepia or cool, each with a light and a dark variant), primary and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
   code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a light
