@@ -7680,7 +7680,8 @@ var DEFAULT_SETTINGS = {
   editorWidth: "medium",
   editorFontSize: "medium",
   backgroundTone: "white",
-  codeTheme: "tandem"
+  codeTheme: "tandem",
+  spellcheck: false
 };
 
 // ../shared/src/titles.ts
@@ -7967,6 +7968,32 @@ function cellsByName(database, values) {
     cells2[column.id] = value;
   }
   return cells2;
+}
+
+// ../shared/src/todos.ts
+var MARKER = /(?<![\p{L}\p{N}_])TODO:/gu;
+function todoRanges(text3) {
+  const starts = [...text3.matchAll(MARKER)].map((match2) => match2.index);
+  return starts.map((start, i) => {
+    const lineEnd = text3.indexOf("\n", start);
+    let end = Math.min(lineEnd < 0 ? text3.length : lineEnd, starts[i + 1] ?? text3.length);
+    while (end > start && /\s/.test(text3[end - 1])) end--;
+    return { start, end };
+  });
+}
+function findTodos(markdown) {
+  if (!markdown.includes("TODO:")) return [];
+  const masked = maskCode(markdown);
+  return todoRanges(masked).map(({ start, end }) => ({
+    text: plainText(markdown.slice(start + "TODO:".length, end)),
+    line: markdown.slice(0, start).split("\n").length
+  }));
+}
+function plainText(markdown) {
+  return markdown.replace(
+    /\[\[([^[\]|\n]+?)(?:#[^[\]|\n]*)?(?:\|([^[\]\n]*))?\]\]/g,
+    (_, target, label) => (label ?? target).trim()
+  ).replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, "$1").replace(/(\*\*|__|~~|`+)/g, "").replace(/(^|[^\p{L}\p{N}])[*_](\S(?:.*?\S)?)[*_](?![\p{L}\p{N}])/gu, "$1$2").replace(/\\([\\`*_{}[\]()#+\-.!|<>~])/g, "$1").replace(/\s+/g, " ").trim();
 }
 
 // ../cli/src/cli.ts
@@ -31921,7 +31948,8 @@ var settingsPatch = external_exports.object({
   editorWidth: external_exports.enum(["narrow", "medium", "wide", "full"]),
   editorFontSize: external_exports.enum(["small", "medium", "large", "xlarge"]),
   backgroundTone: external_exports.enum(["white", "paper", "sepia", "cool"]),
-  codeTheme: external_exports.enum(CODE_THEMES)
+  codeTheme: external_exports.enum(CODE_THEMES),
+  spellcheck: external_exports.boolean()
 }).partial();
 var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
 var cells = external_exports.record(external_exports.string(), cellValue);
@@ -32075,7 +32103,7 @@ function createApi(vault, options = {}) {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     c.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
     return c.body(Readable3.toWeb(createReadStream2(path)));
-  }).get("/tags", async (c) => c.json(await vault.listTags())).put(
+  }).get("/tags", async (c) => c.json(await vault.listTags())).get("/todos", async (c) => c.json(await vault.listTodos())).put(
     "/notes/:id/tags",
     zValidator2("param", idParam),
     zValidator2("json", external_exports.object({ tags: external_exports.array(external_exports.string().max(60)).max(50) })),
@@ -49961,6 +49989,16 @@ var Vault = class {
     const keys = [linkKey(titleFromPath(row.path)), linkKey(row.path)];
     const sources = await this.db.selectDistinct({ id: nodes.id, path: nodes.path }).from(links).innerJoin(nodes, eq(nodes.id, links.sourceId)).where(inArray(links.target, keys));
     return sources.filter((source) => source.id !== id).map((source) => ({ id: source.id, path: source.path, title: titleFromPath(source.path) })).toSorted((a, b) => a.title.localeCompare(b.title));
+  }
+  /** Pages with TODOs, by title, each with its TODOs in order. */
+  async listTodos() {
+    const rows = await this.db.select({ id: nodes.id, path: nodes.path, content: nodes.content }).from(nodes).where(sql`${nodes.kind} = 'page' and instr(${nodes.content}, 'TODO:') > 0`);
+    return rows.map((row) => ({
+      id: row.id,
+      path: row.path,
+      title: titleFromPath(row.path),
+      todos: findTodos(row.content ?? "")
+    })).filter((note) => note.todos.length).toSorted((a, b) => a.title.localeCompare(b.title));
   }
   async listTags() {
     const rows = await this.db.select({ tag: tags.tag }).from(tags);
