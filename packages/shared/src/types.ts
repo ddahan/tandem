@@ -167,6 +167,8 @@ export interface Settings {
   backgroundTone: 'white' | 'paper' | 'sepia' | 'cool'
   /** Colors of code blocks (syntax highlighting and background). */
   codeTheme: CodeTheme
+  /** The browser's spell checking while typing (notes, titles, fields). */
+  spellcheck: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -180,6 +182,7 @@ export const DEFAULT_SETTINGS: Settings = {
   editorFontSize: 'medium',
   backgroundTone: 'white',
   codeTheme: 'tandem',
+  spellcheck: false,
 }
 
 /** Server-sent events, on `/api/events`. */

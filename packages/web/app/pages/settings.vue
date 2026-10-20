@@ -389,6 +389,12 @@ async function set(patch: Partial<Settings>) {
               </button>
             </div>
           </UFormField>
+          <USwitch
+            :model-value="settings.spellcheck"
+            label="Spell check"
+            description="Underline misspelled words while typing, with the browser's checker."
+            @update:model-value="(value) => set({ spellcheck: value })"
+          />
         </section>
 
         <USeparator />

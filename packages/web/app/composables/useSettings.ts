@@ -72,6 +72,8 @@ export function useSettings() {
     document.documentElement.dataset.tone = value.backgroundTone
     // Code themes too (see main.css).
     document.documentElement.dataset.codeTheme = value.codeTheme
+    // Inherited by every text field and the editor (the Markdown source never checks: code).
+    document.documentElement.spellcheck = value.spellcheck
     remember(value)
     void nextTick(() => requestAnimationFrame(updateFavicon))
   }

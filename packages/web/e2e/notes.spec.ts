@@ -1393,3 +1393,25 @@ test('resizes the side panel from its left edge, remembered', async ({ page, req
   await page.mouse.dblclick(after.x + after.width / 2, after.y + 200)
   expect(Math.round(await width())).toBe(21 * 16)
 })
+
+test('checks spelling only when Settings turn it on', async ({ page, request }) => {
+  const note = await createNote(request, 'Spelling', 'Text')
+  await openNote(page, note.id)
+  // Off by default: the editor and the title inherit it from the page.
+  const spellcheck = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((element: HTMLElement) => element.spellcheck)
+  expect(await spellcheck('.ProseMirror')).toBe(false)
+  expect(await spellcheck('input[aria-label="Title"]')).toBe(false)
+
+  await page.goto('/settings')
+  await page.getByRole('switch', { name: 'Spell check' }).click()
+  await expect
+    .poll(async () => (await api<{ spellcheck: boolean }>(request, 'GET', '/settings')).spellcheck)
+    .toBe(true)
+  await openNote(page, note.id)
+  expect(await spellcheck('.ProseMirror')).toBe(true)
+  await api(request, 'PATCH', '/settings', { spellcheck: false })
+})
