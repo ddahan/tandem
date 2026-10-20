@@ -1415,3 +1415,35 @@ test('checks spelling only when Settings turn it on', async ({ page, request }) 
   expect(await spellcheck('.ProseMirror')).toBe(true)
   await api(request, 'PATCH', '/settings', { spellcheck: false })
 })
+
+test('scrolls to the match found in a long note, and to the next one', async ({
+  page,
+  request,
+}) => {
+  const filler = Array.from({ length: 60 }, (_, i) => `Filler paragraph ${i}.`).join('\n\n')
+  const note = await createNote(
+    request,
+    'Long find',
+    `${filler}\n\nA zebra here.\n\n${filler}\n\nAnother zebra there.\n`,
+  )
+  await openNote(page, note.id)
+  // The cursor at the top of the note.
+  await page.locator('.ProseMirror p').first().click()
+  await page.keyboard.press('ControlOrMeta+F')
+  const bar = page.getByTestId('find-bar')
+  await bar.getByLabel('Find in the note').fill('zebra')
+  const count = page.getByTestId('find-count')
+  const current = page.locator('.ProseMirror .find-match--current')
+  // The first match, far below the top: shown.
+  await expect(count).toHaveText('1 of 2')
+  await expect(current).toHaveText('zebra')
+  await expect(current).toBeInViewport()
+  // ↵ (and the button): the next one, further down, shown too; then back to the first.
+  await bar.getByLabel('Find in the note').press('Enter')
+  await expect(count).toHaveText('2 of 2')
+  await expect(current).toBeInViewport()
+  await expect(current.locator('xpath=..')).toContainText('Another zebra')
+  await bar.getByRole('button', { name: 'Next match' }).click()
+  await expect(count).toHaveText('1 of 2')
+  await expect(current).toBeInViewport()
+})

@@ -3,7 +3,8 @@
 // current match, replace all every match. The find bar (FindBar.vue) drives it.
 import { Extension, type CommandProps } from '@tiptap/core'
 import { Plugin, PluginKey, TextSelection, type EditorState } from '@tiptap/pm/state'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import { scrollParent } from '../utils/current-heading'
 import { findOccurrences, type Range } from './occurrences'
 
 declare module '@tiptap/core' {
@@ -39,6 +40,27 @@ type FindMeta = Partial<Pick<FindState, 'query' | 'caseSensitive' | 'current'>> 
   recompute?: boolean
 }
 
+/**
+ * Scrolls the note to a match that is out of sight (a third down the view). ProseMirror's own
+ * scroll to the selection does nothing while the find bar has the focus (it follows the
+ * browser's selection, then in the find field).
+ */
+function reveal(view: EditorView, pos: number) {
+  if (!view.dom.isConnected) return
+  let coords: { top: number; bottom: number }
+  try {
+    coords = view.coordsAtPos(pos)
+  } catch {
+    return
+  }
+  const scroller = scrollParent(view.dom)
+  if (!scroller) return
+  const box = scroller.getBoundingClientRect()
+  // Some room at the top: the find bar floats over the note there.
+  const visible = coords.top >= box.top + 72 && coords.bottom <= box.bottom - 24
+  if (!visible) scroller.scrollBy({ top: coords.top - (box.top + box.height / 3) })
+}
+
 /** The first match at or after `pos` (the cursor), wrapping around. */
 function matchFrom(matches: Range[], pos: number): number {
   if (!matches.length) return -1
@@ -50,7 +72,7 @@ function matchFrom(matches: Range[], pos: number): number {
 const go =
   (step: 1 | -1) =>
   () =>
-  ({ state, tr, dispatch }: CommandProps) => {
+  ({ state, tr, dispatch, view }: CommandProps) => {
     const { matches, current } = findState(state)
     if (!matches.length) return false
     const next = (current + step + matches.length) % matches.length
@@ -59,6 +81,7 @@ const go =
       tr.setMeta(findKey, { current: next } satisfies FindMeta)
       tr.setSelection(TextSelection.create(tr.doc, match.from, match.to))
       dispatch(tr.scrollIntoView())
+      reveal(view, match.from)
     }
     return true
   }
@@ -70,7 +93,7 @@ export const Find = Extension.create({
     return {
       setFind:
         (query, options = {}) =>
-        ({ state, tr, dispatch }) => {
+        ({ state, tr, dispatch, view }) => {
           if (dispatch) {
             const caseSensitive = options.caseSensitive ?? findState(state).caseSensitive
             const matches = findOccurrences(state.doc, query, { caseSensitive })
@@ -86,6 +109,7 @@ export const Find = Extension.create({
             if (match)
               tr.setSelection(TextSelection.create(tr.doc, match.from, match.to)).scrollIntoView()
             dispatch(tr)
+            if (match) reveal(view, match.from)
           }
           return true
         },
@@ -93,7 +117,7 @@ export const Find = Extension.create({
       findPrevious: go(-1),
       replaceMatch:
         (replacement) =>
-        ({ state, tr, dispatch }) => {
+        ({ state, tr, dispatch, view }) => {
           const { matches, current } = findState(state)
           const match = matches[current]
           if (!match) return false
@@ -102,6 +126,9 @@ export const Find = Extension.create({
             // The next match takes the replaced one's index.
             tr.setMeta(findKey, { recompute: true, current } satisfies FindMeta)
             dispatch(tr)
+            const following = findState(view.state)
+            const next = following.matches[following.current]
+            if (next) reveal(view, next.from)
           }
           return true
         },

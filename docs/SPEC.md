@@ -238,8 +238,9 @@ inside OneDrive so that it is backed up and synced.
   word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once (Esc goes back to one
   selection; pasting into several isn't supported).
 - Find in the note (⌘F, ⌘⌥F with replace), as in VS Code: highlighted matches, count, next /
-  previous, match case, replace and replace all. ⌘⇧F opens the search across all notes, with
-  the selected text.
+  previous, match case, replace and replace all. The current match is always scrolled into view
+  (a third down the note), however far it is. ⌘⇧F opens the search across all notes, with the
+  selected text.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
