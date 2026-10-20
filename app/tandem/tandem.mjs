@@ -8012,7 +8012,6 @@ Reading
 
 Writing (content from arguments, --file, or standard input)
   new <title> [content]         create a page (--parent <note>, --tags a,b)
-  folder <title>                create a folder (--parent <note>)
   write <note> [content]        replace the whole content
   append <note> [content]       add a block at the end
   replace <note> --find <text> --with <text> [--all]
@@ -8034,7 +8033,7 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-delete <database> <row>               delete a row
 
 Options
-  --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3000)
+  --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3864)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
   --json             machine-readable output
   -h, --help         this help
@@ -8163,7 +8162,7 @@ ${USAGE}`);
     io.stdout(USAGE);
     return command2 || values.help ? 0 : 2;
   }
-  const client = createClient(values.url ?? env.TANDEM_URL ?? "http://localhost:3000", {
+  const client = createClient(values.url ?? env.TANDEM_URL ?? "http://localhost:3864", {
     author: normalizeAuthor(values.author ?? env.TANDEM_AUTHOR)
   });
   const print = (text3, data) => io.stdout(
@@ -8360,11 +8359,6 @@ ${note.content.replace(/\n$/, "")}`);
         client.notes.$post({ json: { title, content: body, parentId, tags: tags2 } })
       );
       return print(`Created ${node2.path} (${node2.id})`, node2);
-    }
-    case "folder": {
-      const parentId = values.parent ? (await resolve5(values.parent)).id : null;
-      const node2 = await call(client.folders.$post({ json: { title: need(0, "title"), parentId } }));
-      return print(`Created ${node2.path}/ (${node2.id})`, node2);
     }
     case "write": {
       const node2 = await resolve5(need(0, "note"));
@@ -32009,13 +32003,6 @@ function createApi(vault, options = {}) {
       })
     ),
     async (c) => c.json(await vault.createPage({ ...c.req.valid("json"), author: authorOf(c) }), 201)
-  ).post(
-    "/folders",
-    zValidator2(
-      "json",
-      external_exports.object({ parentId: external_exports.string().nullish(), title: external_exports.string().default("New folder") })
-    ),
-    async (c) => c.json(await vault.createFolder(c.req.valid("json")), 201)
   ).get(
     "/notes/:id",
     zValidator2("param", idParam),
@@ -42588,7 +42575,8 @@ var EMPTY_COMPLETION_RESULT = {
 
 // ../server/src/api/mcp.ts
 var INSTRUCTIONS = `Tandem is the user's note-taking app. Notes are Markdown pages in a tree
-(a page can have child pages), with tags, history and per-line authorship. Notes are referenced by
+(a page can have child pages; one with child pages and no content is shown as a folder, and
+writing in it makes it a page), with tags, history and per-line authorship. Notes are referenced by
 id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]] or
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
@@ -42699,29 +42687,17 @@ ${detail.content}`);
     "create_note",
     {
       title: "Create a note",
-      description: "Creates a page (optionally under a parent page or folder). Returns its id and path.",
+      description: "Creates a page (optionally under a parent page). Returns its id and path. A page without content but with child pages is a folder: there is nothing else to create.",
       inputSchema: {
         title: external_exports.string(),
         content: external_exports.string().optional().describe("Markdown (GFM)"),
-        parent: ref.optional().describe("Parent page or folder; omit for the root"),
+        parent: ref.optional().describe("Parent page; omit for the root"),
         tags: external_exports.array(external_exports.string()).optional()
       }
     },
     async ({ title, content, parent, tags: tags2 }) => attempt(async () => {
       const parentId = parent ? (await vault.resolveRef(parent)).id : null;
       return json3(await vault.createPage({ title, content, parentId, tags: tags2, author }));
-    })
-  );
-  server.registerTool(
-    "create_folder",
-    {
-      title: "Create a folder",
-      description: "Creates a folder (a tree node without content).",
-      inputSchema: { title: external_exports.string(), parent: ref.optional() }
-    },
-    async ({ title, parent }) => attempt(async () => {
-      const parentId = parent ? (await vault.resolveRef(parent)).id : null;
-      return json3(await vault.createFolder({ title, parentId }));
     })
   );
   server.registerTool(
@@ -45920,14 +45896,14 @@ var SQLiteDialect = class {
     return sql`${withSql}delete from ${table}${whereSql}${returningSql}${orderBySql}${limitSql}`;
   }
   buildUpdateSet(table, set2) {
-    const tableColumns = table[Table.Symbol.Columns];
-    const columnNames = Object.keys(tableColumns).filter(
-      (colName) => set2[colName] !== void 0 || tableColumns[colName]?.onUpdateFn !== void 0
+    const tableColumns2 = table[Table.Symbol.Columns];
+    const columnNames = Object.keys(tableColumns2).filter(
+      (colName) => set2[colName] !== void 0 || tableColumns2[colName]?.onUpdateFn !== void 0
     );
     const setSize2 = columnNames.length;
     return sql.join(
       columnNames.flatMap((colName, i) => {
-        const col = tableColumns[colName];
+        const col = tableColumns2[colName];
         const onUpdateFnResult = col.onUpdateFn?.();
         const value = set2[colName] ?? (is(onUpdateFnResult, SQL) ? onUpdateFnResult : sql.param(onUpdateFnResult, col));
         const res = sql`${sql.identifier(this.casing.getColumnCasing(col))} = ${value}`;
@@ -49898,7 +49874,14 @@ function rebuildQuery(query, original, replaced) {
 }
 
 // ../server/src/vault/vault.ts
-var { content: _content, blame: _blame, ...metaColumns } = getTableColumns(nodes);
+var { content: _content, blame: _blame, ...tableColumns } = getTableColumns(nodes);
+var metaColumns = {
+  ...tableColumns,
+  empty: sql`(${nodes.content} is null or trim(${nodes.content}, ' ' || char(9) || char(10) || char(13)) = '')`
+};
+function isBlank(content) {
+  return content.trim() === "";
+}
 var DAY = 864e5;
 var Vault = class {
   events = new EventEmitter();
@@ -49933,7 +49916,17 @@ var Vault = class {
   }
   async getNote(id) {
     return this.lock.run(async () => {
-      let row = await this.requirePage(id);
+      let row = await this.requireRow(id);
+      if (row.kind === "folder") {
+        return {
+          node: toTreeNode(row, ownersByDir(await this.allRows())),
+          content: "",
+          hash: hashContent(""),
+          tags: await this.tagsOf(row.id),
+          attachments: [],
+          lastAuthor: row.lastAuthor
+        };
+      }
       const content = await readFile3(this.abs(row.path), "utf8").catch(() => null);
       if (content === null)
         throw new NotFoundError(`The file of "${titleFromPath(row.path)}" is missing`);
@@ -49980,12 +49973,11 @@ var Vault = class {
   async resolveLink(target) {
     const key = linkKey(target);
     const rows = await this.allRows();
-    const pages = rows.filter((row) => row.kind === "page");
-    const match2 = pages.find((row) => linkKey(row.path) === key) ?? pages.filter((row) => linkKey(titleFromPath(row.path)) === key).toSorted((a, b) => a.path.length - b.path.length)[0];
+    const match2 = rows.find((row) => linkKey(row.path) === key) ?? rows.filter((row) => linkKey(titleFromPath(row.path)) === key).toSorted((a, b) => a.path.length - b.path.length)[0];
     return match2 ? toTreeNode(match2, ownersByDir(rows)) : null;
   }
   async backlinks(id) {
-    const row = await this.requirePage(id);
+    const row = await this.requireRow(id);
     const keys = [linkKey(titleFromPath(row.path)), linkKey(row.path)];
     const sources = await this.db.selectDistinct({ id: nodes.id, path: nodes.path }).from(links).innerJoin(nodes, eq(nodes.id, links.sourceId)).where(inArray(links.target, keys));
     return sources.filter((source) => source.id !== id).map((source) => ({ id: source.id, path: source.path, title: titleFromPath(source.path) })).toSorted((a, b) => a.title.localeCompare(b.title));
@@ -50066,11 +50058,11 @@ var Vault = class {
     };
   }
   async blame(id) {
-    const row = await this.requirePage(id);
-    return runsToRanges(parseBlame(row.blame) ?? []);
+    const row = await this.requireRow(id);
+    return row.kind === "folder" ? [] : runsToRanges(parseBlame(row.blame) ?? []);
   }
   async history(id) {
-    await this.requirePage(id);
+    await this.requireRow(id);
     const rows = await this.db.select().from(versions2).where(eq(versions2.nodeId, id)).orderBy(desc(versions2.createdAt));
     return rows.map(({ id: versionId, nodeId, createdAt, author, size }) => ({
       id: versionId,
@@ -50096,7 +50088,8 @@ var Vault = class {
     };
   }
   async attachments(id) {
-    return this.listAttachments(await this.requirePage(id));
+    const row = await this.requireRow(id);
+    return row.kind === "folder" ? [] : this.listAttachments(row);
   }
   async trashList() {
     const rows = await this.db.select().from(trash).orderBy(desc(trash.deletedAt));
@@ -50173,10 +50166,11 @@ var Vault = class {
    */
   async saveContent(id, content, options) {
     return this.lock.run(async () => {
-      let row = await this.requirePage(id);
-      const onDisk = await readFile3(this.abs(row.path), "utf8");
+      let row = await this.requireRow(id);
+      const folder = row.kind === "folder";
+      const onDisk = folder ? "" : await readFile3(this.abs(row.path), "utf8");
       const diskHash = hashContent(onDisk);
-      if (diskHash !== row.hash)
+      if (!folder && diskHash !== row.hash)
         row = await this.saveInternal(row, onDisk, EXTERNAL, { write: false });
       if (options.baseHash && options.baseHash !== diskHash) {
         throw new ConflictError("The note changed since it was opened", {
@@ -50184,15 +50178,17 @@ var Vault = class {
           hash: diskHash
         });
       }
-      if (content !== onDisk)
-        row = await this.saveInternal(row, content, options.author, { write: true });
-      return { hash: row.hash, updatedAt: row.updatedAt };
+      if (content === onDisk || folder && isBlank(content))
+        return { hash: row.hash ?? diskHash, updatedAt: row.updatedAt };
+      if (folder) row = await this.folderToPage(row, options.author);
+      row = await this.saveOrFold(row, content, options.author);
+      return { hash: row.hash ?? hashContent(""), updatedAt: row.updatedAt };
     });
   }
   /** Appends Markdown at the end of a page, as a new block. */
   async appendContent(id, text3, author) {
     return this.lock.run(async () => {
-      const row = await this.freshPage(id);
+      const row = await this.writablePage(id, author);
       const current = row.content ?? "";
       const separator = current === "" ? "" : current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
       const next = await this.saveInternal(
@@ -50210,8 +50206,8 @@ var Vault = class {
   async replaceText(id, find, replacement, options) {
     return this.lock.run(async () => {
       if (!find) throw new ValidationError("The text to find is empty");
-      const row = await this.freshPage(id);
-      const current = row.content ?? "";
+      const row = (await this.requireRow(id)).kind === "folder" ? null : await this.freshPage(id);
+      const current = row?.content ?? "";
       const count = current.split(find).length - 1;
       if (count === 0) throw new ValidationError("The text to find was not found in the note");
       if (count > 1 && !options.all) {
@@ -50219,13 +50215,12 @@ var Vault = class {
           `The text to find occurs ${count} times; add context to make it unique, or replace all`
         );
       }
-      const next = await this.saveInternal(
+      const next = await this.saveOrFold(
         row,
         current.split(find).join(replacement),
-        options.author,
-        { write: true }
+        options.author
       );
-      return { hash: next.hash, count };
+      return { hash: next.hash ?? hashContent(""), count };
     });
   }
   async rename(id, title, author) {
@@ -50354,13 +50349,13 @@ var Vault = class {
   }
   /** The databases of a page (those its blocks show, and any it no longer shows). */
   async listDatabases(nodeId) {
-    await this.requirePage(nodeId);
+    await this.requireRow(nodeId);
     return this.databases.listForNode(nodeId);
   }
   /** A new database for a page; the caller adds its block to the page. */
   async createDatabase(nodeId, input2 = {}) {
     return this.lock.run(async () => {
-      await this.requirePage(nodeId);
+      await this.requireRow(nodeId);
       return this.databaseChanged(await this.databases.create(nodeId, input2));
     });
   }
@@ -50396,7 +50391,7 @@ var Vault = class {
     const { content, version: version3 } = await this.readVersion(versionId);
     if (version3.noteId !== id) throw new ValidationError("This version belongs to another note");
     return this.lock.run(async () => {
-      const row = await this.freshPage(id);
+      const row = await this.writablePage(id, author);
       if (row.pendingSnapshot) await this.snapshot(row);
       const next = await this.saveInternal(await this.requirePage(id), content, author, {
         write: true
@@ -50406,7 +50401,7 @@ var Vault = class {
   }
   async addAttachment(id, fileName, data) {
     return this.lock.run(async () => {
-      const row = await this.requirePage(id);
+      const row = await this.writablePage(id, EXTERNAL);
       const dir = assetsDirOf(row.path);
       await mkdir3(this.abs(dir), { recursive: true });
       const dot = fileName.lastIndexOf(".");
@@ -50570,6 +50565,71 @@ var Vault = class {
     if (hashContent(onDisk) === row.hash) return row;
     return this.saveInternal(row, onDisk, EXTERNAL, { write: false });
   }
+  /** A page to write to: a folder becomes one first (its `.md`, empty). */
+  async writablePage(id, author) {
+    const row = await this.requireRow(id);
+    return row.kind === "folder" ? this.folderToPage(row, author) : this.freshPage(id);
+  }
+  /** Whether a page or folder has nodes under it. */
+  async hasChildren(row) {
+    const prefix = `${row.kind === "page" ? childrenDirOf(row.path) : row.path}/`;
+    const child = await this.db.select({ id: nodes.id }).from(nodes).where(sql`substr(${nodes.path}, 1, ${prefix.length}) = ${prefix}`).get();
+    return !!child;
+  }
+  /** Saves a page, or makes it a folder again when it is left blank with child pages. */
+  async saveOrFold(row, content, author) {
+    if (isBlank(content) && await this.hasChildren(row)) return this.pageToFolder(row, author);
+    return this.saveInternal(row, content, author, { write: true });
+  }
+  /** Typing in a folder: its `.md` is created (empty), same node (id, icon, place, history). */
+  async folderToPage(row, author) {
+    const path = `${row.path}.md`;
+    await atomicWrite(this.abs(path), "");
+    const info = await statFile(this.abs(path));
+    const now = this.now();
+    await this.db.update(nodes).set({
+      kind: "page",
+      path,
+      content: "",
+      hash: hashContent(""),
+      mtime: info?.mtime ?? null,
+      size: info?.size ?? null,
+      blame: JSON.stringify(initialBlame("", author, now)),
+      pendingSnapshot: false,
+      updatedAt: now,
+      lastAuthor: author,
+      lastSaveAt: now
+    }).where(eq(nodes.id, row.id));
+    this.changed({ type: "tree" });
+    return this.requireRow(row.id);
+  }
+  /**
+   * A page with child pages left blank: a folder again (its `.md` deleted), same node. The text
+   * it had is kept in its history.
+   */
+  async pageToFolder(row, author) {
+    if (row.pendingSnapshot) await this.snapshot(row);
+    await rm2(this.abs(row.path), { force: true });
+    const now = this.now();
+    await this.db.update(nodes).set({
+      kind: "folder",
+      path: childrenDirOf(row.path),
+      content: null,
+      hash: null,
+      mtime: null,
+      size: null,
+      blame: null,
+      pendingSnapshot: false,
+      updatedAt: now,
+      lastAuthor: author,
+      lastSaveAt: now
+    }).where(eq(nodes.id, row.id));
+    this.search.remove(row.id);
+    await this.db.delete(links).where(eq(links.sourceId, row.id));
+    this.changed({ type: "tree" });
+    this.changed({ type: "note", id: row.id, hash: hashContent(""), author });
+    return this.requireRow(row.id);
+  }
   async nodeOf(row) {
     return toTreeNode(row, ownersByDir(await this.allRows()));
   }
@@ -50677,6 +50737,7 @@ var Vault = class {
     }).where(eq(nodes.id, row.id));
     await this.indexPage(next);
     this.changed({ type: "note", id: row.id, hash: next.hash, author });
+    if (isBlank(row.content ?? "") !== isBlank(content)) this.changed({ type: "tree" });
     return next;
   }
   /** Writes the page's current content (as last saved) as a history version. */
@@ -50905,7 +50966,9 @@ function ownersByDir(rows) {
   return owners;
 }
 function toTreeNode(row, owners) {
+  const empty = row.kind === "folder" || ("content" in row ? isBlank(row.content ?? "") : Boolean(row.empty));
   return {
+    empty,
     id: row.id,
     kind: row.kind,
     title: titleFromPath(row.path),
@@ -52846,7 +52909,7 @@ import { parseArgs as parseArgs2 } from "node:util";
 var SERVE_USAGE = `Running the app
   serve [--data <folder>]       run Tandem on a notes folder (TANDEM_DATA_DIR, or the one
                                 saved by the installer or in Settings), at
-                                http://localhost:3000 (--port, TANDEM_PORT)
+                                http://localhost:3864 (--port, TANDEM_PORT)
   version                       this app's version
 `;
 var SERVICE_LABEL = "app.tandem";
@@ -52859,7 +52922,7 @@ function serveOptions(args, env = process.env, saved = {}) {
   const data = asService ? saved.dataDir ?? values.data ?? env.TANDEM_DATA_DIR : values.data ?? env.TANDEM_DATA_DIR ?? saved.dataDir;
   if (!data) throw new Error("Which notes folder? Use: tandem serve --data <folder>");
   const rawPort = asService ? saved.port ?? values.port ?? env.TANDEM_PORT : values.port ?? env.TANDEM_PORT ?? saved.port;
-  const port = Number(rawPort ?? 3e3);
+  const port = Number(rawPort ?? 3864);
   if (!Number.isInteger(port) || port <= 0) throw new Error(`Invalid port: ${rawPort}`);
   return { dataDir: resolve4(data), port, asService };
 }

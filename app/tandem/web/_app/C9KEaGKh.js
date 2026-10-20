@@ -1,0 +1,1 @@
+import{F as e,W as t,kt as n}from"./CypcBDzw.js";import{t as r}from"./VUKtrNkc.js";var i=t({__name:`index`,setup(t){return r({redirect:`/docs/install`}),(t,r)=>(n(),e(`div`))}});export{i as default};

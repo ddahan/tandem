@@ -1,0 +1,1 @@
+import{t as e}from"./vW-TAY-y.js";function t(){let t=e(`search:open`,()=>!1),n=e(`search:term`,()=>``);function r(e=``){n.value=e,t.value=!0}return{open:t,term:n,openSearch:r}}export{t};
