@@ -327,6 +327,25 @@ describe('tags, links and attachments', () => {
     ])
   })
 
+  it('lists TODOs by page, updated with the content, without trashed pages', async () => {
+    const { vault } = await createTestVault()
+    const b = await vault.createPage({ title: 'B', content: 'TODO: second\n', author: OWNER })
+    const a = await vault.createPage({
+      title: 'A',
+      content: 'Intro\n\nTODO: first\n\n`TODO: code`\n',
+      author: OWNER,
+    })
+    await vault.createPage({ title: 'C', content: 'todo: lowercase\n', author: OWNER })
+    expect(await vault.listTodos()).toEqual([
+      { id: a.id, title: 'A', path: 'A.md', todos: [{ text: 'first', line: 3 }] },
+      { id: b.id, title: 'B', path: 'B.md', todos: [{ text: 'second', line: 1 }] },
+    ])
+    const note = await vault.getNote(a.id)
+    await vault.saveContent(a.id, 'Done\n', { baseHash: note.hash, author: OWNER })
+    await vault.remove(b.id)
+    expect(await vault.listTodos()).toEqual([])
+  })
+
   it('resolves wiki links by path, then by title', async () => {
     const { vault } = await createTestVault()
     const folder = await vault.createFolder({ title: 'Deep' })

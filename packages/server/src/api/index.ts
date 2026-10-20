@@ -256,6 +256,7 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
 
     // --- Tags, links, attachments ----------------------------------------------------------
     .get('/tags', async (c) => c.json(await vault.listTags()))
+    .get('/todos', async (c) => c.json(await vault.listTodos()))
     .put(
       '/notes/:id/tags',
       zValidator('param', idParam),

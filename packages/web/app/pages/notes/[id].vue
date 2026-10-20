@@ -39,6 +39,7 @@ const editor = useTemplateRef<{
   setContent(markdown: string): void
   scrollTo(pos: number): void
   focus(position?: 'start' | 'end'): void
+  revealTodo(index: number, text?: string): void
 }>('editor')
 
 // --- Find in the note (⌘F, ⌘⌥F with replace) ---------------------------------------------------
@@ -222,6 +223,25 @@ onMounted(() => {
     void router.replace({ query: {} })
   }
 })
+
+// Opened from the TODOs page (`?todo=<n>`): to that TODO, once the editor is there. Its text
+// (from the list) picks the right one if the note changed since.
+const todos = useTodos()
+if (route.query.todo !== undefined) {
+  const index = Number(route.query.todo) || 0
+  const text = todos.notes.value.find((note) => note.id === id.value)?.todos[index]?.text
+  mode.value = 'edit'
+  const stop = watch(
+    () => editor.value?.editor,
+    (ready) => {
+      if (!ready) return
+      queueMicrotask(() => stop())
+      void nextTick(() => editor.value?.revealTodo(index, text))
+      void router.replace({ query: {} })
+    },
+    { immediate: true },
+  )
+}
 
 // --- Tags ------------------------------------------------------------------------------------
 

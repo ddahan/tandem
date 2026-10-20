@@ -279,6 +279,49 @@ html.dark[data-tone='cool'] {
   text-decoration: line-through;
 }
 
+/* TODOs (editor/todos.ts): `TODO:` and the rest of its line, in yellow. One picked on the
+   TODOs page flashes when the note opens on it. */
+.note-editor .todo-highlight {
+  background: rgb(253 224 71 / 0.5);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.dark .note-editor .todo-highlight {
+  background: rgb(250 204 21 / 0.24);
+}
+/* The TODO marker on the TODOs page, as the notes show it. */
+.todo-chip {
+  border-radius: 0.25rem;
+  background: rgb(253 224 71 / 0.5);
+  padding: 0 0.3rem;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ui-text-highlighted);
+}
+.dark .todo-chip {
+  background: rgb(250 204 21 / 0.24);
+}
+.note-editor .todo-flash {
+  animation: todo-flash 1.6s ease-out;
+}
+@keyframes todo-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px rgb(234 179 8 / 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgb(234 179 8 / 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-editor .todo-flash {
+    animation: none;
+    box-shadow: 0 0 0 3px rgb(234 179 8 / 0.9);
+  }
+}
+
 /* Extra selections (⌘D, ⌘⇧L): drawn like the selection, with blinking cursors */
 .note-editor .occurrence-selection {
   background: color-mix(in oklab, var(--ui-primary) 28%, transparent);

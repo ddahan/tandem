@@ -3,9 +3,17 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const tree = useTree()
 const { openSearch } = useSearchPalette()
+const todos = useTodos()
+todos.follow()
 
 // At the bottom of the sidebar; the logo leads Home.
 const navigation = computed<NavigationMenuItem[]>(() => [
+  {
+    label: 'TODOs',
+    icon: 'i-lucide-list-todo',
+    to: '/todos',
+    badge: todos.count.value ? String(todos.count.value) : undefined,
+  },
   { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },

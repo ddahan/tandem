@@ -150,6 +150,14 @@ Deleting moves the files into `.tandem/trash/<id>/` and the rows into the `trash
 folders, the versions and the pages' databases (ids are kept through the trash, so databases
 just wait for their page).
 
+### TODOs
+
+`findTodos` (shared, `todos.ts`) reads a note's TODOs from its Markdown, code masked as for wiki
+links. `listTodos` runs it on the pages whose stored content has `TODO:` (`instr`, case
+sensitive): no table to keep in sync. The editor (`editor/todos.ts`) decorates the same
+ranges (`todoRanges`, on each text block's text, inline code blanked), so both agree; its
+`revealTodo` command goes to the n-th one (or the first with the same text) and flashes it.
+
 ### Databases (`databases.ts`)
 
 `DatabaseStore` keeps databases in SQLite; the vault runs it under its lock and announces each

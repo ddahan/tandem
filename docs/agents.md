@@ -50,6 +50,7 @@ GitHub-flavored Markdown, plus:
 | Callout             | `> [!NOTE]` (or `TIP`, `IMPORTANT`, `WARNING`, `CAUTION`) then `> text` lines           |
 | Collapsible section | `<details>`, `<summary>Title</summary>`, blank line, Markdown, blank line, `</details>` |
 | Task                | `- [ ] to do`, `- [x] done`                                                             |
+| TODO                | `TODO: what to do` (capitals; highlighted, and listed on the owner's TODOs page)        |
 | Diagram             | a ` ```mermaid ` code block                                                             |
 | Database            | a ` ```database ` block with `id: …` (from `create_database`; see Databases)            |
 | Image with a width  | `<img src="Note.assets/a.png" alt="…" width="320">`                                     |

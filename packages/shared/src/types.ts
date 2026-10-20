@@ -1,4 +1,5 @@
 // Shapes of the data the API returns. Dates are epoch milliseconds.
+import type { Todo } from './todos.ts'
 
 export type NodeKind = 'page' | 'folder'
 
@@ -80,6 +81,14 @@ export interface SearchResponse {
   results: SearchResult[]
   /** Set when unknown words were replaced by close ones ("Showing results for …"). */
   correctedQuery: string | null
+}
+
+/** A page's TODOs (see todos.ts), for the TODOs page. */
+export interface NoteTodos {
+  id: string
+  title: string
+  path: string
+  todos: Todo[]
 }
 
 export interface TagCount {

@@ -25,6 +25,8 @@ MCP server or a CLI, and every line remembers who wrote it.
   `tag:x`, `in:Folder`, attachment names.
 - **History** of every note (a version per editing session and per author), with diffs and
   restore; **authorship** of each line (you, an agent, or an external edit).
+- **TODOs**: write `TODO:` in a note; it is highlighted, and the TODOs page lists them all,
+  one click away from each.
 - **Trash** with restore and permanent delete.
 - **For agents**: an MCP server and a CLI with the same operations.
 - Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.

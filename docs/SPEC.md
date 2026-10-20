@@ -211,9 +211,19 @@ inside OneDrive so that it is backed up and synced.
   MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
 
+## TODOs
+
+- `TODO:` in capitals, not glued to a word before it (`myTODO:`, `todo:` and `TODO` without
+  the colon aren't TODOs), starts a TODO: it and the rest of its line (or block, in the
+  editor), up to the next TODO, are highlighted in yellow. None in code (blocks or inline).
+- The sidebar's TODOs page lists them by page (pages by title, TODOs in order, with their
+  line), with their count next to it in the sidebar. It follows changes live (a note saved,
+  renamed or trashed). Clicking a TODO opens its note in edit mode at that TODO: scrolled to,
+  flashed, the cursor at its end; if the note changed since, the TODO with the same text.
+
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, tree; Trash, Settings and Shortcuts at the
+- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Shortcuts at the
   bottom; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
   collapsible right panel (outline, backlinks, history, attachments). Full-width toggle.
   The outline highlights the heading being read; one picked in it stays highlighted until the

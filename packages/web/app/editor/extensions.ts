@@ -18,6 +18,7 @@ import { JoinLists } from './join-lists'
 import { ListKeys } from './list-keys'
 import { NestedOrderedList } from './ordered-list'
 import { ListMarkers } from './list-markers'
+import { Todos } from './todos'
 import { Occurrences } from './occurrences'
 import { ResizableImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
@@ -52,6 +53,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     FileChips,
     JoinLists,
     ListMarkers,
+    Todos,
     ListKeys,
     BlockKeys,
     Occurrences,

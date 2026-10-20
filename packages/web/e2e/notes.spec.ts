@@ -1287,3 +1287,42 @@ test('shows the landing page over the app, from the sidebar', async ({ page, req
   await expect(page.getByTestId('landing-frame')).toHaveCount(0)
   await expect(page).toHaveURL(/\/$/)
 })
+
+test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ page, request }) => {
+  const filler = Array.from({ length: 40 }, (_, i) => `Paragraph ${i}.`).join('\n\n')
+  const note = await createNote(
+    request,
+    'Todo source',
+    `TODO: please remind to do this.\n\ntodo: not one, nor myTODO: this\n\n${filler}\n\n- item TODO: far below\n`,
+  )
+  await openNote(page, note.id)
+  // The marker and the rest of its line, only in capitals and not glued to a word.
+  const highlights = page.locator('.ProseMirror .todo-highlight')
+  await expect(highlights).toHaveText(['TODO: please remind to do this.', 'TODO: far below'])
+  await expect(highlights.first()).toHaveCSS('background-color', /rgba\(253, 224, 71/)
+
+  // Listed by page, from the sidebar (with their count).
+  const link = page.getByRole('link', { name: /TODOs/ })
+  await expect(link).toContainText('2')
+  await link.click()
+  const section = page.getByTestId('todo-note').filter({ hasText: 'Todo source' })
+  await expect(section.getByTestId('todo-item')).toHaveText([
+    /please remind to do this\./,
+    /far below/,
+  ])
+
+  // One click: the note, at that TODO (scrolled to, flashed, the cursor at its end).
+  await section.getByTestId('todo-item').nth(1).click()
+  await expect(page).toHaveURL(`/notes/${note.id}`)
+  const flashed = page.locator('.ProseMirror .todo-flash')
+  await expect(flashed).toHaveText('TODO: far below')
+  await expect(flashed).toBeInViewport()
+  await page.keyboard.type(' now')
+  await waitSaved(page)
+  expect(await noteContent(request, note.id)).toContain('- item TODO: far below now')
+
+  // A TODO typed in a note shows up at once.
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('TODO: one more')
+  await expect(link).toContainText('3')
+})

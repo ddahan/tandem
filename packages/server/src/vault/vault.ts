@@ -24,6 +24,7 @@ import {
   rewriteWikiLinks,
   sanitizeTitle,
   titleFromPath,
+  findTodos,
   type Attachment,
   type Backlink,
   type BlameRange,
@@ -37,6 +38,7 @@ import {
   type ServerEvent,
   type Settings,
   type TagCount,
+  type NoteTodos,
   type TrashItem,
   type TreeNode,
 } from '@tandem/shared'
@@ -194,6 +196,23 @@ export class Vault {
     return sources
       .filter((source) => source.id !== id)
       .map((source) => ({ id: source.id, path: source.path, title: titleFromPath(source.path) }))
+      .toSorted((a, b) => a.title.localeCompare(b.title))
+  }
+
+  /** Pages with TODOs, by title, each with its TODOs in order. */
+  async listTodos(): Promise<NoteTodos[]> {
+    const rows = await this.db
+      .select({ id: nodes.id, path: nodes.path, content: nodes.content })
+      .from(nodes)
+      .where(sql`${nodes.kind} = 'page' and instr(${nodes.content}, 'TODO:') > 0`)
+    return rows
+      .map((row) => ({
+        id: row.id,
+        path: row.path,
+        title: titleFromPath(row.path),
+        todos: findTodos(row.content ?? ''),
+      }))
+      .filter((note) => note.todos.length)
       .toSorted((a, b) => a.title.localeCompare(b.title))
   }
 

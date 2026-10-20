@@ -739,6 +739,14 @@ defineExpose({
   focus(position: 'start' | 'end' = 'start') {
     editorRef.value?.editor?.commands.focus(position)
   },
+  /** Goes to a TODO picked on the TODOs page (see editor/todos.ts). */
+  revealTodo(index: number, text?: string) {
+    editorRef.value?.editor
+      ?.chain()
+      .focus(null, { scrollIntoView: false })
+      .revealTodo(index, text)
+      .run()
+  },
 })
 </script>
 
