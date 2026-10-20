@@ -1,6 +1,5 @@
 <script setup lang="ts">
 // The note's side panel: outline, backlinks, history, attachments and databases.
-import type { TabsItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
@@ -60,13 +59,13 @@ function startResize(event: PointerEvent) {
   handle.addEventListener('pointercancel', end)
 }
 
-const tabs: TabsItem[] = [
+const tabs = [
   { label: 'Outline', value: 'outline', icon: 'i-lucide-list-tree' },
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
   { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
   { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
-]
+] as const
 </script>
 
 <template>
@@ -91,15 +90,25 @@ const tabs: TabsItem[] = [
       <div
         class="flex h-(--ui-header-height) shrink-0 items-center gap-1 border-b border-default px-2"
       >
-        <UTabs
-          v-model="tab"
-          :items="tabs"
-          :content="false"
-          variant="link"
-          size="xs"
-          class="min-w-0 flex-1"
-          :ui="{ list: 'border-0', trigger: 'px-1.5', label: 'hidden xl:inline' }"
-        />
+        <!-- Icons only, named by their tooltip, as the note's mode buttons. -->
+        <div
+          role="tablist"
+          aria-label="Side panel"
+          class="flex min-w-0 flex-1 items-center gap-0.5"
+        >
+          <UTooltip v-for="item in tabs" :key="item.value" :text="item.label">
+            <UButton
+              role="tab"
+              :aria-selected="tab === item.value"
+              :aria-label="item.label"
+              :icon="item.icon"
+              color="neutral"
+              :variant="tab === item.value ? 'soft' : 'ghost'"
+              size="sm"
+              @click="tab = item.value"
+            />
+          </UTooltip>
+        </div>
         <UButton
           icon="i-lucide-x"
           color="neutral"

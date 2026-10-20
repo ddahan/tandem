@@ -1335,6 +1335,24 @@ test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ pa
   await expect(link).toContainText('3')
 })
 
+test('names the side panel tabs by tooltips, icons only', async ({ page, request }) => {
+  const note = await createNote(request, 'Panel tabs', 'Text')
+  await openNote(page, note.id)
+  const panel = page.locator('#tandem-panels-panel-note-side')
+  if (!(await panel.isVisible()))
+    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+  const files = panel.getByRole('tab', { name: 'Files' })
+  await expect(files).toHaveText('')
+  await files.hover()
+  await expect(page.getByRole('tooltip')).toHaveText('Files')
+  await files.click()
+  await expect(files).toHaveAttribute('aria-selected', 'true')
+  await expect(panel.getByRole('tab', { name: 'Outline' })).toHaveAttribute(
+    'aria-selected',
+    'false',
+  )
+})
+
 test('resizes the side panel from its left edge, remembered', async ({ page, request }) => {
   const note = await createNote(request, 'Wide panel', 'Text')
   await openNote(page, note.id)
