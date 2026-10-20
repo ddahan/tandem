@@ -226,7 +226,7 @@ inside OneDrive so that it is backed up and synced.
 ## Interface
 
 - Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Shortcuts at the
-  bottom; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
+  bottom, then the app's version, About and collapse; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
   named by tooltips), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
@@ -258,7 +258,7 @@ inside OneDrive so that it is backed up and synced.
   and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
   Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, and the workspace name (next to the logo and in the browser tab; Tandem by
-  default). Settings start with the app's version (read-only).
+  default).
 - The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
   icon is the default (indigo) logo: macOS keeps the image it got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes

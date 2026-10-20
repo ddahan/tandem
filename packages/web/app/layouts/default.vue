@@ -19,6 +19,9 @@ const navigation = computed<NavigationMenuItem[]>(() => [
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/shortcuts' },
 ])
 
+/** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
+const version = `${useRuntimeConfig().public.version}${import.meta.dev ? ' (dev)' : ''}`
+
 // The landing page, over the app (LandingModal).
 const aboutOpen = ref(false)
 
@@ -83,7 +86,17 @@ defineShortcuts({
       </template>
 
       <template #footer="{ collapsed }">
-        <div class="flex w-full items-center gap-1" :class="collapsed ? 'flex-col' : 'justify-end'">
+        <div
+          class="flex w-full items-center gap-1"
+          :class="collapsed ? 'flex-col' : 'justify-between'"
+        >
+          <span
+            v-if="!collapsed"
+            class="ps-2.5 font-mono text-xs text-dimmed"
+            data-testid="app-version"
+            :title="`Tandem ${version}`"
+            >v{{ version }}</span
+          >
           <div class="flex items-center gap-1" :class="collapsed && 'flex-col'">
             <UTooltip text="About Tandem">
               <UButton

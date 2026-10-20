@@ -6,9 +6,6 @@ import { accentShade, logoSvg } from '~/utils/logo'
 const { settings, update } = useSettings()
 const colorMode = useColorMode()
 const showError = useApiErrorToast()
-/** This build's version (nuxt.config.ts); the dev servers say so. */
-const version = useRuntimeConfig().public.version
-const dev = import.meta.dev
 useHead({ title: 'Settings' })
 
 const PRIMARY = [
@@ -112,17 +109,6 @@ async function set(patch: Partial<Settings>) {
 
     <template #body>
       <div class="mx-auto w-full max-w-2xl space-y-10 py-4">
-        <section>
-          <h2 class="font-semibold text-highlighted">Version</h2>
-          <p class="text-sm text-muted">
-            Tandem
-            <span class="font-mono text-default" data-testid="app-version">{{ version }}</span
-            ><template v-if="dev"> (development)</template>
-          </p>
-        </section>
-
-        <USeparator />
-
         <section>
           <h2 class="font-semibold text-highlighted">Workspace</h2>
           <p class="mb-4 text-sm text-muted">Shown next to the logo and in the browser tab.</p>

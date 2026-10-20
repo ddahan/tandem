@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs'
 
 const apiUrl = process.env.TANDEM_API_URL ?? 'http://localhost:3011'
-// Tandem's version (the standalone package holds it, see README › Releasing), shown in Settings.
+// Tandem's version (the standalone package holds it, see README › Releasing), shown at the bottom of the sidebar.
 // The web app is built with the server it ships with: its version is the app's.
 const { version } = JSON.parse(
   readFileSync(new URL('../standalone/package.json', import.meta.url), 'utf8'),

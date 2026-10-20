@@ -342,8 +342,8 @@ test('won’t switch to the editor while it would lose Markdown, unless asked', 
 
 test('changes the theme and the settings', async ({ page, request }) => {
   await page.goto('/settings')
-  // The version, from the standalone package (the app's).
-  await expect(page.getByTestId('app-version')).toHaveText(/^\d+\.\d+\.\d+$/)
+  // The version, from the standalone package (the app's): at the bottom of the sidebar.
+  await expect(page.getByTestId('app-version')).toHaveText(/^v\d+\.\d+\.\d+$/)
   await page.getByRole('button', { name: 'emerald' }).click()
   await expect
     .poll(
