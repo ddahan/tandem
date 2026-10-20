@@ -22,6 +22,44 @@ defineEmits<{
 
 const tab = useLocalStorage('tandem-side-tab', 'outline')
 
+// --- Width -----------------------------------------------------------------------------------
+// Resizable from its left edge, as the sidebar is from its right one. Nuxt UI's resizable panel
+// puts its handle on the right, which for this panel is the window's edge: the handle is Nuxt
+// UI's, the dragging ours. In rem, remembered; double-click goes back to the default.
+const MIN_WIDTH = 16
+const MAX_WIDTH = 34
+const DEFAULT_WIDTH = 21
+const width = useLocalStorage('tandem-side-width', () => {
+  // The width Nuxt UI's panel kept before.
+  const previous = Number(globalThis.localStorage?.getItem('tandem-panels-panel-note-side'))
+  return previous >= MIN_WIDTH && previous <= MAX_WIDTH ? previous : DEFAULT_WIDTH
+})
+const dragging = ref(false)
+
+function startResize(event: PointerEvent) {
+  if (event.button !== 0) return
+  event.preventDefault()
+  const handle = event.currentTarget as HTMLElement
+  handle.setPointerCapture(event.pointerId)
+  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+  const startX = event.clientX
+  const startWidth = width.value
+  dragging.value = true
+  const move = (moved: PointerEvent) => {
+    const next = startWidth + (startX - moved.clientX) / rem
+    width.value = Math.round(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, next)) * 100) / 100
+  }
+  const end = () => {
+    dragging.value = false
+    handle.removeEventListener('pointermove', move)
+    handle.removeEventListener('pointerup', end)
+    handle.removeEventListener('pointercancel', end)
+  }
+  handle.addEventListener('pointermove', move)
+  handle.addEventListener('pointerup', end)
+  handle.addEventListener('pointercancel', end)
+}
+
 const tabs: TabsItem[] = [
   { label: 'Outline', value: 'outline', icon: 'i-lucide-list-tree' },
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
@@ -32,13 +70,22 @@ const tabs: TabsItem[] = [
 </script>
 
 <template>
+  <UDashboardResizeHandle
+    aria-label="Resize the side panel"
+    aria-controls="tandem-panels-panel-note-side"
+    :aria-valuenow="width"
+    :aria-valuemin="MIN_WIDTH"
+    :aria-valuemax="MAX_WIDTH"
+    data-testid="side-panel-resize"
+    @pointerdown="startResize"
+    @dblclick="width = DEFAULT_WIDTH"
+  />
   <UDashboardPanel
     id="note-side"
-    resizable
-    :min-size="16"
-    :default-size="21"
-    :max-size="34"
-    :ui="{ body: 'gap-2 p-3 sm:p-3' }"
+    data-testid="side-panel"
+    :data-dragging="dragging || undefined"
+    :style="{ '--side-width': `${width}rem` }"
+    :ui="{ root: 'w-full flex-none lg:w-(--side-width)', body: 'gap-2 p-3 sm:p-3' }"
   >
     <template #header>
       <div

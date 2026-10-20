@@ -1334,3 +1334,30 @@ test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ pa
   await page.keyboard.type('TODO: one more')
   await expect(link).toContainText('3')
 })
+
+test('resizes the side panel from its left edge, remembered', async ({ page, request }) => {
+  const note = await createNote(request, 'Wide panel', 'Text')
+  await openNote(page, note.id)
+  const panel = page.locator('#tandem-panels-panel-note-side')
+  if (!(await panel.isVisible()))
+    await page.getByRole('button', { name: 'Toggle side panel' }).click()
+  const width = async () => (await panel.boundingBox())!.width
+  const before = await width()
+  const handle = page.getByTestId('side-panel-resize')
+  const box = (await handle.boundingBox())!
+  const y = box.y + 200
+  await page.mouse.move(box.x + box.width / 2, y)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width / 2 - 80, y, { steps: 5 })
+  await page.mouse.up()
+  // Dragged left: wider by as much.
+  expect(Math.round((await width()) - before)).toBe(80)
+  await page.reload()
+  await expect(panel).toBeVisible()
+  expect(Math.round((await width()) - before)).toBe(80)
+  // Double-click: the default width (21rem).
+  // (The handle is a 0-wide line; its grab area is a pseudo-element: by coordinates.)
+  const after = (await page.getByTestId('side-panel-resize').boundingBox())!
+  await page.mouse.dblclick(after.x + after.width / 2, after.y + 200)
+  expect(Math.round(await width())).toBe(21 * 16)
+})
