@@ -82,7 +82,7 @@ function closeFind() {
 }
 watch(mode, closeFind)
 const headings = ref<Heading[]>([])
-/** The heading the reader is in (an index in `headings`), highlighted in the outline. */
+/** The heading the reader is in (an index in `headings`), highlighted in the Headings panel. */
 const activeHeading = ref(-1)
 
 function resetEditor(markdown: string) {

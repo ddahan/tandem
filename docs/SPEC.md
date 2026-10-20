@@ -226,10 +226,10 @@ inside OneDrive so that it is backed up and synced.
 
 - Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Shortcuts at the
   bottom; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
-  collapsible right panel (outline, backlinks, history, attachments, databases: icon tabs
+  collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
   named by tooltips), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
-  The outline highlights the heading being read; one picked in it stays highlighted until the
+  The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
   Keyboard shortcuts throughout.
 - VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),

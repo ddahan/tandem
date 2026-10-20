@@ -33,7 +33,7 @@ watch(
 )
 useResizeObserver(list, placeIndicator)
 
-// Keeps the highlighted heading in sight in a long outline. By hand: a smooth scrollIntoView
+// Keeps the highlighted heading in sight in a long list of headings. By hand: a smooth scrollIntoView
 // would stop the note's own smooth scroll (Chromium runs one at a time).
 watch(
   () => props.active,
@@ -54,7 +54,7 @@ watch(
   <nav
     v-if="headings.length"
     ref="list"
-    aria-label="Outline"
+    aria-label="Headings"
     class="relative ms-1 border-s border-default"
   >
     <div

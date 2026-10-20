@@ -547,14 +547,14 @@ function collectHeadings(editor: Editor) {
   scheduleActiveHeading()
 }
 
-// --- Current heading (the outline's highlight) -------------------------------------------------
+// --- Current heading (highlighted in the Headings panel) -------------------------------------------------
 
 let headingPositions: number[] = []
 /** The note's scrolling area (the page panel's body), found on mount. */
 let scroller: HTMLElement | null = null
 /** The heading chosen in the outline: it stays current until the reader scrolls. */
 let pinned = -1
-/** While the outline's jump scrolls (smoothly), its scroll events don't unpin. */
+/** While a jump from the Headings panel scrolls (smoothly), its scroll events don't unpin. */
 let jumping: ReturnType<typeof setTimeout> | undefined
 let reportedActive = -2
 let frame = 0
@@ -609,7 +609,7 @@ function onScroll() {
   scheduleActiveHeading()
 }
 
-/** Pins a heading chosen in the outline (see `pinned`). */
+/** Pins a heading chosen in the Headings panel (see `pinned`). */
 function pinHeading(pos: number) {
   const index = headingPositions.indexOf(pos)
   if (index < 0) return

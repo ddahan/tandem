@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The note's side panel: outline, backlinks, history, attachments and databases.
+// The note's side panel: headings, links, history, files and databases.
 import { useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
@@ -19,7 +19,9 @@ defineEmits<{
   close: []
 }>()
 
-const tab = useLocalStorage('tandem-side-tab', 'outline')
+const tab = useLocalStorage('tandem-side-tab', 'headings')
+// Its old name.
+if (tab.value === 'outline') tab.value = 'headings'
 
 // --- Width -----------------------------------------------------------------------------------
 // Resizable from its left edge, as the sidebar is from its right one. Nuxt UI's resizable panel
@@ -60,7 +62,7 @@ function startResize(event: PointerEvent) {
 }
 
 const tabs = [
-  { label: 'Outline', value: 'outline', icon: 'i-lucide-list-tree' },
+  { label: 'Headings', value: 'headings', icon: 'i-lucide-list-tree' },
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
   { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
@@ -121,8 +123,8 @@ const tabs = [
     </template>
 
     <template #body>
-      <SideOutline
-        v-if="tab === 'outline'"
+      <SideHeadings
+        v-if="tab === 'headings'"
         :headings="headings"
         :active="activeHeading"
         @go="(pos) => $emit('goToHeading', pos)"

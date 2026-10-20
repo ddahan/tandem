@@ -191,7 +191,7 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   Nitro's dev proxy forwards `/api`, `/files` and `/mcp` to the dev server.
 - Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree`, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
-  and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (outline, links,
+  and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
   history, files). The editor reports the heading being read (`currentHeading`: measured on
   scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at

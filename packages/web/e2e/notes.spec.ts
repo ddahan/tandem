@@ -1167,18 +1167,18 @@ test('copies the Markdown from a button shown on hover in the Markdown view', as
   )
 })
 
-test('highlights the heading being read in the outline', async ({ page, request }) => {
+test('highlights the heading being read in the Headings panel', async ({ page, request }) => {
   const long = Array.from({ length: 30 }, (_, i) => `Paragraph ${i} of a long section.`).join(
     '\n\n',
   )
   const note = await createNote(
     request,
-    'Outline note',
+    'Headings note',
     `# Alpha\n\n${long}\n\n## Beta\n\n${long}\n\n## Gamma\n\nShort.\n\n## Delta\n\nShort.\n`,
   )
   await openNote(page, note.id)
-  const outline = page.getByRole('navigation', { name: 'Outline' })
-  const current = outline.locator('[aria-current="location"]')
+  const headings = page.getByRole('navigation', { name: 'Headings' })
+  const current = headings.locator('[aria-current="location"]')
   const indicator = page.getByTestId('outline-indicator')
   const heading = (name: string) => page.locator('.ProseMirror').getByRole('heading', { name })
 
@@ -1194,8 +1194,8 @@ test('highlights the heading being read in the outline', async ({ page, request 
   await page.mouse.wheel(0, 10_000)
   await expect(current).toHaveText('Delta')
 
-  // A heading picked in the outline stays current, until the reader scrolls.
-  await outline.getByRole('button', { name: 'Gamma' }).click()
+  // A heading picked in the panel stays current, until the reader scrolls.
+  await headings.getByRole('button', { name: 'Gamma' }).click()
   await expect(current).toHaveText('Gamma')
   await page.waitForTimeout(800)
   await expect(current).toHaveText('Gamma')
@@ -1208,18 +1208,18 @@ test('highlights the heading being read in the outline', async ({ page, request 
   await expect(current).toHaveText('Alpha')
 })
 
-test('scrolls smoothly to a heading picked in the outline, down and up', async ({
+test('scrolls smoothly to a heading picked in the Headings panel, down and up', async ({
   page,
   request,
 }) => {
   const long = Array.from({ length: 30 }, (_, i) => `Paragraph ${i}.`).join('\n\n')
   const note = await createNote(
     request,
-    'Outline jumps',
+    'Heading jumps',
     `# One\n\n${long}\n\n## Two\n\n${long}\n\n## Three\n\n${long}\n`,
   )
   await openNote(page, note.id)
-  const outline = page.getByRole('navigation', { name: 'Outline' })
+  const headings = page.getByRole('navigation', { name: 'Headings' })
   /** Whether the heading is at the top of the note (below its 5rem scroll margin), or the note
    * at its very top (the first heading is under the title). */
   const atTop = (name: string) =>
@@ -1232,7 +1232,7 @@ test('scrolls smoothly to a heading picked in the outline, down and up', async (
         return scroller.scrollTop === 0 || Math.abs(offset - 80) < 4
       })
   for (const name of ['Three', 'One', 'Two', 'One']) {
-    await outline.getByRole('button', { name }).click()
+    await headings.getByRole('button', { name }).click()
     await expect.poll(() => atTop(name)).toBe(true)
     await expect(page.locator('.ProseMirror')).toBeFocused()
   }
@@ -1347,10 +1347,11 @@ test('names the side panel tabs by tooltips, icons only', async ({ page, request
   await expect(page.getByRole('tooltip')).toHaveText('Files')
   await files.click()
   await expect(files).toHaveAttribute('aria-selected', 'true')
-  await expect(panel.getByRole('tab', { name: 'Outline' })).toHaveAttribute(
+  await expect(panel.getByRole('tab', { name: 'Headings' })).toHaveAttribute(
     'aria-selected',
     'false',
   )
+
 })
 
 test('resizes the side panel from its left edge, remembered', async ({ page, request }) => {

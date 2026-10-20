@@ -37,7 +37,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       {
         keys: [['meta', '\\']],
         label: 'Show or hide the side panel',
-        description: 'In a note: outline, links, history, files.',
+        description: 'In a note: headings, links, history, files, databases.',
       },
       {
         keys: [['meta', 'shift', 'e']],

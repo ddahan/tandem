@@ -1,4 +1,4 @@
-// Which heading the reader is in, for the outline's highlight: the editor measures, this decides.
+// Which heading the reader is in, for its highlight in the Headings panel: the editor measures, this decides.
 
 export interface ScrollView {
   /** Top of the scrolling area, on screen. */
