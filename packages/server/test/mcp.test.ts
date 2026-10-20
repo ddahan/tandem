@@ -49,7 +49,7 @@ describe('MCP server', () => {
     const tool = (name: string, args: Record<string, unknown>) =>
       call(app, 'tools/call', { name, arguments: args })
 
-    await tool('create_folder', { title: 'Inbox' })
+    await tool('create_note', { title: 'Inbox' })
     const created = JSON.parse(
       textOf(
         await tool('create_note', {

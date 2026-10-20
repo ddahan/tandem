@@ -19,6 +19,11 @@ export interface TreeNode {
   updatedAt: number
   /** Null: the default page or folder icon. */
   icon: NodeIcon | null
+  /**
+   * No content: a folder on disk (no `.md`), or a blank page. Every node is a page to the user;
+   * one with no content and child pages shows as a folder, and is one on disk once saved so.
+   */
+  empty: boolean
 }
 
 export interface Attachment {

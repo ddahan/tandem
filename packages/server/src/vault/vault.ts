@@ -63,9 +63,21 @@ import { markdownToText } from './text.ts'
 
 export type NodeRow = typeof nodes.$inferSelect
 /** A row without the page's content and authorship: what listings need (much smaller). */
-export type NodeMeta = Omit<NodeRow, 'content' | 'blame'>
+export type NodeMeta = Omit<NodeRow, 'content' | 'blame'> & {
+  /** 1 when the node has no content (a folder, or a blank page): see `TreeNode.empty`. */
+  empty?: number
+}
 
-const { content: _content, blame: _blame, ...metaColumns } = getTableColumns(nodes)
+const { content: _content, blame: _blame, ...tableColumns } = getTableColumns(nodes)
+const metaColumns = {
+  ...tableColumns,
+  empty: sql<number>`(${nodes.content} is null or trim(${nodes.content}, ' ' || char(9) || char(10) || char(13)) = '')`,
+}
+
+/** Blank content: nothing but spaces and line breaks. */
+function isBlank(content: string): boolean {
+  return content.trim() === ''
+}
 
 export interface VaultOptions {
   dataDir: string
@@ -126,7 +138,18 @@ export class Vault {
 
   async getNote(id: string): Promise<NoteDetail> {
     return this.lock.run(async () => {
-      let row = await this.requirePage(id)
+      let row = await this.requireRow(id)
+      // A folder is a page without content (typing in it makes it one: saveContent).
+      if (row.kind === 'folder') {
+        return {
+          node: toTreeNode(row, ownersByDir(await this.allRows())),
+          content: '',
+          hash: hashContent(''),
+          tags: await this.tagsOf(row.id),
+          attachments: [],
+          lastAuthor: row.lastAuthor,
+        }
+      }
       // An external edit the watcher hasn't processed yet: take it now.
       const content = await readFile(this.abs(row.path), 'utf8').catch(() => null)
       if (content === null)
@@ -175,18 +198,18 @@ export class Vault {
   /** The page a wiki link points to: by path first, then by title (shortest path wins). */
   async resolveLink(target: string): Promise<TreeNode | null> {
     const key = linkKey(target)
+    // Folders too: they are pages without content.
     const rows = await this.allRows()
-    const pages = rows.filter((row) => row.kind === 'page')
     const match =
-      pages.find((row) => linkKey(row.path) === key) ??
-      pages
+      rows.find((row) => linkKey(row.path) === key) ??
+      rows
         .filter((row) => linkKey(titleFromPath(row.path)) === key)
         .toSorted((a, b) => a.path.length - b.path.length)[0]
     return match ? toTreeNode(match, ownersByDir(rows)) : null
   }
 
   async backlinks(id: string): Promise<Backlink[]> {
-    const row = await this.requirePage(id)
+    const row = await this.requireRow(id)
     const keys = [linkKey(titleFromPath(row.path)), linkKey(row.path)]
     const sources = await this.db
       .selectDistinct({ id: nodes.id, path: nodes.path })
@@ -294,12 +317,13 @@ export class Vault {
   }
 
   async blame(id: string): Promise<BlameRange[]> {
-    const row = await this.requirePage(id)
-    return runsToRanges(parseBlame(row.blame) ?? [])
+    const row = await this.requireRow(id)
+    return row.kind === 'folder' ? [] : runsToRanges(parseBlame(row.blame) ?? [])
   }
 
   async history(id: string): Promise<HistoryVersion[]> {
-    await this.requirePage(id)
+    // A folder keeps the versions of when it had content.
+    await this.requireRow(id)
     const rows = await this.db
       .select()
       .from(versions)
@@ -331,7 +355,8 @@ export class Vault {
   }
 
   async attachments(id: string): Promise<Attachment[]> {
-    return this.listAttachments(await this.requirePage(id))
+    const row = await this.requireRow(id)
+    return row.kind === 'folder' ? [] : this.listAttachments(row)
   }
 
   async trashList(): Promise<TrashItem[]> {
@@ -424,10 +449,11 @@ export class Vault {
     options: { author: string; baseHash?: string },
   ): Promise<{ hash: string; updatedAt: number }> {
     return this.lock.run(async () => {
-      let row = await this.requirePage(id)
-      const onDisk = await readFile(this.abs(row.path), 'utf8')
+      let row = await this.requireRow(id)
+      const folder = row.kind === 'folder'
+      const onDisk = folder ? '' : await readFile(this.abs(row.path), 'utf8')
       const diskHash = hashContent(onDisk)
-      if (diskHash !== row.hash)
+      if (!folder && diskHash !== row.hash)
         row = await this.saveInternal(row, onDisk, EXTERNAL, { write: false })
       if (options.baseHash && options.baseHash !== diskHash) {
         throw new ConflictError('The note changed since it was opened', {
@@ -435,16 +461,18 @@ export class Vault {
           hash: diskHash,
         })
       }
-      if (content !== onDisk)
-        row = await this.saveInternal(row, content, options.author, { write: true })
-      return { hash: row.hash!, updatedAt: row.updatedAt }
+      if (content === onDisk || (folder && isBlank(content)))
+        return { hash: row.hash ?? diskHash, updatedAt: row.updatedAt }
+      if (folder) row = await this.folderToPage(row, options.author)
+      row = await this.saveOrFold(row, content, options.author)
+      return { hash: row.hash ?? hashContent(''), updatedAt: row.updatedAt }
     })
   }
 
   /** Appends Markdown at the end of a page, as a new block. */
   async appendContent(id: string, text: string, author: string): Promise<{ hash: string }> {
     return this.lock.run(async () => {
-      const row = await this.freshPage(id)
+      const row = await this.writablePage(id, author)
       const current = row.content ?? ''
       const separator =
         current === '' ? '' : current.endsWith('\n\n') ? '' : current.endsWith('\n') ? '\n' : '\n\n'
@@ -469,8 +497,9 @@ export class Vault {
   ): Promise<{ hash: string; count: number }> {
     return this.lock.run(async () => {
       if (!find) throw new ValidationError('The text to find is empty')
-      const row = await this.freshPage(id)
-      const current = row.content ?? ''
+      // A folder has no text to replace.
+      const row = (await this.requireRow(id)).kind === 'folder' ? null : await this.freshPage(id)
+      const current = row?.content ?? ''
       const count = current.split(find).length - 1
       if (count === 0) throw new ValidationError('The text to find was not found in the note')
       if (count > 1 && !options.all) {
@@ -478,13 +507,12 @@ export class Vault {
           `The text to find occurs ${count} times; add context to make it unique, or replace all`,
         )
       }
-      const next = await this.saveInternal(
-        row,
+      const next = await this.saveOrFold(
+        row!,
         current.split(find).join(replacement),
         options.author,
-        { write: true },
       )
-      return { hash: next.hash!, count }
+      return { hash: next.hash ?? hashContent(''), count }
     })
   }
 
@@ -638,7 +666,7 @@ export class Vault {
 
   /** The databases of a page (those its blocks show, and any it no longer shows). */
   async listDatabases(nodeId: string): Promise<DatabaseSummary[]> {
-    await this.requirePage(nodeId)
+    await this.requireRow(nodeId)
     return this.databases.listForNode(nodeId)
   }
 
@@ -648,7 +676,7 @@ export class Vault {
     input: { title?: string; columns?: ColumnInput[] } = {},
   ): Promise<DatabaseData> {
     return this.lock.run(async () => {
-      await this.requirePage(nodeId)
+      await this.requireRow(nodeId)
       return this.databaseChanged(await this.databases.create(nodeId, input))
     })
   }
@@ -698,7 +726,7 @@ export class Vault {
     const { content, version } = await this.readVersion(versionId)
     if (version.noteId !== id) throw new ValidationError('This version belongs to another note')
     return this.lock.run(async () => {
-      const row = await this.freshPage(id)
+      const row = await this.writablePage(id, author)
       // The current state goes into history first, so restoring can be undone.
       if (row.pendingSnapshot) await this.snapshot(row)
       const next = await this.saveInternal(await this.requirePage(id), content, author, {
@@ -710,7 +738,8 @@ export class Vault {
 
   async addAttachment(id: string, fileName: string, data: Uint8Array): Promise<Attachment> {
     return this.lock.run(async () => {
-      const row = await this.requirePage(id)
+      // A folder becomes a page: its attachments live next to its file.
+      const row = await this.writablePage(id, EXTERNAL)
       const dir = assetsDirOf(row.path)
       await mkdir(this.abs(dir), { recursive: true })
       const dot = fileName.lastIndexOf('.')
@@ -919,6 +948,86 @@ export class Vault {
     return this.saveInternal(row, onDisk, EXTERNAL, { write: false })
   }
 
+  /** A page to write to: a folder becomes one first (its `.md`, empty). */
+  private async writablePage(id: string, author: string): Promise<NodeRow> {
+    const row = await this.requireRow(id)
+    return row.kind === 'folder' ? this.folderToPage(row, author) : this.freshPage(id)
+  }
+
+  /** Whether a page or folder has nodes under it. */
+  private async hasChildren(row: NodeMeta): Promise<boolean> {
+    const prefix = `${row.kind === 'page' ? childrenDirOf(row.path) : row.path}/`
+    const child = await this.db
+      .select({ id: nodes.id })
+      .from(nodes)
+      .where(sql`substr(${nodes.path}, 1, ${prefix.length}) = ${prefix}`)
+      .get()
+    return !!child
+  }
+
+  /** Saves a page, or makes it a folder again when it is left blank with child pages. */
+  private async saveOrFold(row: NodeRow, content: string, author: string): Promise<NodeRow> {
+    if (isBlank(content) && (await this.hasChildren(row))) return this.pageToFolder(row, author)
+    return this.saveInternal(row, content, author, { write: true })
+  }
+
+  /** Typing in a folder: its `.md` is created (empty), same node (id, icon, place, history). */
+  private async folderToPage(row: NodeRow, author: string): Promise<NodeRow> {
+    const path = `${row.path}.md`
+    await atomicWrite(this.abs(path), '')
+    const info = await statFile(this.abs(path))
+    const now = this.now()
+    await this.db
+      .update(nodes)
+      .set({
+        kind: 'page',
+        path,
+        content: '',
+        hash: hashContent(''),
+        mtime: info?.mtime ?? null,
+        size: info?.size ?? null,
+        blame: JSON.stringify(initialBlame('', author, now)),
+        pendingSnapshot: false,
+        updatedAt: now,
+        lastAuthor: author,
+        lastSaveAt: now,
+      })
+      .where(eq(nodes.id, row.id))
+    this.changed({ type: 'tree' })
+    return this.requireRow(row.id)
+  }
+
+  /**
+   * A page with child pages left blank: a folder again (its `.md` deleted), same node. The text
+   * it had is kept in its history.
+   */
+  private async pageToFolder(row: NodeRow, author: string): Promise<NodeRow> {
+    if (row.pendingSnapshot) await this.snapshot(row)
+    await rm(this.abs(row.path), { force: true })
+    const now = this.now()
+    await this.db
+      .update(nodes)
+      .set({
+        kind: 'folder',
+        path: childrenDirOf(row.path),
+        content: null,
+        hash: null,
+        mtime: null,
+        size: null,
+        blame: null,
+        pendingSnapshot: false,
+        updatedAt: now,
+        lastAuthor: author,
+        lastSaveAt: now,
+      })
+      .where(eq(nodes.id, row.id))
+    this.search.remove(row.id)
+    await this.db.delete(links).where(eq(links.sourceId, row.id))
+    this.changed({ type: 'tree' })
+    this.changed({ type: 'note', id: row.id, hash: hashContent(''), author })
+    return this.requireRow(row.id)
+  }
+
   private async nodeOf(row: NodeRow): Promise<TreeNode> {
     return toTreeNode(row, ownersByDir(await this.allRows()))
   }
@@ -1055,6 +1164,8 @@ export class Vault {
       .where(eq(nodes.id, row.id))
     await this.indexPage(next)
     this.changed({ type: 'note', id: row.id, hash: next.hash!, author })
+    // Blank or not shows in the tree (a blank page with child pages looks like a folder).
+    if (isBlank(row.content ?? '') !== isBlank(content)) this.changed({ type: 'tree' })
     return next
   }
 
@@ -1345,8 +1456,12 @@ function ownersByDir(rows: NodeMeta[]): Map<string, NodeMeta> {
   return owners
 }
 
-function toTreeNode(row: NodeMeta, owners: Map<string, NodeMeta>): TreeNode {
+function toTreeNode(row: NodeMeta | NodeRow, owners: Map<string, NodeMeta>): TreeNode {
+  const empty =
+    row.kind === 'folder' ||
+    ('content' in row ? isBlank(row.content ?? '') : Boolean((row as NodeMeta).empty))
   return {
+    empty,
     id: row.id,
     kind: row.kind,
     title: titleFromPath(row.path),

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// The sidebar tree: pages and folders, with drag and drop (before, after or inside a node),
+// The sidebar tree of pages (a page without content but with child pages shows as a folder),
+// with drag and drop (before, after or inside a node),
 // inline renaming and a menu on each row (its ⋯ button, or a right-click).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
@@ -27,9 +28,9 @@ watch(
   { immediate: true },
 )
 
+// Every row opens its page (a folder too: writing in it makes it a note); the arrow expands.
 function open(item: TreeItem) {
-  if (item.node.kind === 'page') void navigateTo(`/notes/${item.id}`)
-  else toggle(item.id)
+  void navigateTo(`/notes/${item.id}`)
 }
 
 function toggle(id: string) {
@@ -98,13 +99,9 @@ function onRowKeydown(event: KeyboardEvent, item: TreeItem) {
 
 // --- Menu ------------------------------------------------------------------------------------
 
-async function createInside(item: TreeItem | null, kind: 'page' | 'folder') {
+async function createInside(item: TreeItem | null) {
   if (item && !expanded.value.includes(item.id)) expanded.value = [...expanded.value, item.id]
-  if (kind === 'page') await tree.createPage(item?.id ?? null)
-  else {
-    const folder = await tree.createFolder(item?.id ?? null)
-    if (folder) startRename({ id: folder.id, label: folder.title, node: folder, icon: '' })
-  }
+  await tree.createPage(item?.id ?? null)
 }
 
 function menu(item: TreeItem): DropdownMenuItem[][] {
@@ -113,12 +110,7 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
       {
         label: 'New page inside',
         icon: 'i-lucide-file-plus',
-        onSelect: () => void createInside(item, 'page'),
-      },
-      {
-        label: 'New folder inside',
-        icon: 'i-lucide-folder-plus',
-        onSelect: () => void createInside(item, 'folder'),
+        onSelect: () => void createInside(item),
       },
     ],
     [
@@ -140,16 +132,12 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
         icon: 'i-lucide-smile-plus',
         onSelect: () => (iconFor.value = item),
       },
-      ...(item.node.kind === 'page'
-        ? [
-            {
-              label: 'Copy link',
-              icon: 'i-lucide-link',
-              onSelect: () =>
-                void navigator.clipboard.writeText(`[[${item.node.path.replace(/\.md$/, '')}]]`),
-            },
-          ]
-        : []),
+      {
+        label: 'Copy link',
+        icon: 'i-lucide-link',
+        onSelect: () =>
+          void navigator.clipboard.writeText(`[[${item.node.path.replace(/\.md$/, '')}]]`),
+      },
     ],
     [
       {
@@ -168,12 +156,7 @@ const rootMenu: DropdownMenuItem[] = [
     label: 'New page',
     icon: 'i-lucide-file-plus',
     kbds: ['meta', 'alt', 'n'],
-    onSelect: () => void createInside(null, 'page'),
-  },
-  {
-    label: 'New folder',
-    icon: 'i-lucide-folder-plus',
-    onSelect: () => void createInside(null, 'folder'),
+    onSelect: () => void createInside(null),
   },
 ]
 
@@ -277,15 +260,16 @@ function rowClass(item: TreeItem) {
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between px-2.5 pb-1">
       <span class="text-xs font-medium text-muted">Pages</span>
-      <UDropdownMenu :items="rootMenu" :content="{ align: 'start', ...keepMovedFocus }">
+      <UTooltip text="New page" :kbds="['meta', 'alt', 'n']">
         <UButton
           icon="i-lucide-plus"
           size="xs"
           color="neutral"
           variant="ghost"
-          aria-label="New page or folder"
+          aria-label="New page"
+          @click="createInside(null)"
         />
-      </UDropdownMenu>
+      </UTooltip>
     </div>
 
     <div
@@ -339,7 +323,7 @@ function rowClass(item: TreeItem) {
                   />
                 </button>
                 <span v-else class="size-5 shrink-0" />
-                <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
+                <NodeIcon :icon="item.node.icon" :kind="tree.kindOf(item.node)" />
 
                 <UInput
                   v-if="renamingId === item.id"
@@ -380,7 +364,7 @@ function rowClass(item: TreeItem) {
                     color="neutral"
                     variant="ghost"
                     aria-label="New page inside"
-                    @click="createInside(item, 'page')"
+                    @click="createInside(item)"
                   />
                 </div>
               </div>

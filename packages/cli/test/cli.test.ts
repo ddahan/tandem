@@ -38,7 +38,7 @@ describe('CLI', () => {
 
   it('creates, appends, replaces and reads notes, as the given author', async () => {
     const { vault } = await setup()
-    expect((await cli(['folder', 'Inbox'])).out).toContain('Created Inbox/')
+    expect((await cli(['new', 'Inbox'])).out).toContain('Created Inbox.md')
     expect(
       (await cli(['new', 'Plan', 'Step one', '--parent', 'Inbox', '--tags', 'ai,todo'])).out,
     ).toContain('Created Inbox/Plan.md')
@@ -66,7 +66,7 @@ describe('CLI', () => {
   it('renames, moves, deletes and attaches', async () => {
     const { vault } = await setup()
     await cli(['new', 'A', 'x'])
-    await cli(['folder', 'F'])
+    await cli(['new', 'F'])
     expect((await cli(['rename', 'A', 'B'])).out).toBe('Renamed to B.md\n')
     expect((await cli(['move', 'B', '--to', 'F'])).out).toBe('Moved to F/B.md\n')
     expect((await cli(['attach', 'B', '/tmp/report.pdf', '--insert'])).out).toBe(

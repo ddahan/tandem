@@ -22,7 +22,7 @@ async function restore(item: TrashItem) {
     toast.add({
       title: `“${node.title}” restored`,
       icon: 'i-lucide-undo-2',
-      actions: node.kind === 'page' ? [{ label: 'Open', to: `/notes/${node.id}` }] : undefined,
+      actions: [{ label: 'Open', to: `/notes/${node.id}` }],
     })
     await load()
   } catch (error) {

@@ -90,7 +90,8 @@ await json(
   }),
 )
 
-const ideas = await json(owner.folders.$post({ json: { title: 'Ideas' } }))
+// No content, a child page: shown as a folder.
+const ideas = await json(owner.notes.$post({ json: { title: 'Ideas' } }))
 await json(
   owner.notes.$post({
     json: {

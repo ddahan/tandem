@@ -37,6 +37,9 @@ precisely. Prefer MCP or the CLI.
   re-attributes every changed line to you. Moving lines unchanged (reordering) keeps their
   authors.
 - Reference notes by id, path (`Projects/Roadmap`, without `.md`) or title.
+- Everything is a page: there are no folders to create. A page without content but with child
+  pages shows as a folder (and is a plain folder on disk); writing in it makes it a page, and
+  erasing all of a page that has child pages makes it a folder again.
 - Never delete notes unless the owner asked; deleted notes go to the trash.
 - Dates in notes are French-formatted (`17/10/2026`), the interface is in English.
 

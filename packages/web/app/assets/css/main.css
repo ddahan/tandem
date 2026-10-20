@@ -122,6 +122,11 @@ html.dark[data-tone='cool'] {
   min-height: 50vh;
   padding-bottom: 30vh;
 }
+/* A folder (a page without content, with child pages): its pages are listed right below. */
+.note-editor--folder .ProseMirror {
+  min-height: 0;
+  padding-bottom: 0;
+}
 
 /* Room for the block drag handle inside the editor: it is drawn left of each block, and the
    pointer must not leave the editor on its way there (the handle hides when it does). The

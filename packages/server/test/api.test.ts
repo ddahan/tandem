@@ -40,10 +40,10 @@ describe('API', () => {
   })
 
   it('maps errors to statuses', async () => {
-    const { client } = await setup()
+    const { client, app } = await setup()
     expect((await client.notes[':id'].$get({ param: { id: 'missing' } })).status).toBe(404)
-    const folder = await (await client.folders.$post({ json: { title: 'F' } })).json()
-    expect((await client.notes[':id'].$get({ param: { id: folder.id } })).status).toBe(400)
+    // No folder to create any more: a page without content and with child pages is one.
+    expect((await app.request('/api/folders', { method: 'POST', body: '{}' })).status).toBe(404)
     expect((await client.notes.$post({ json: { title: 3 as unknown as string } })).status).toBe(400)
   })
 

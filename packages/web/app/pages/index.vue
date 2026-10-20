@@ -21,7 +21,7 @@ useServerEvents((event) => {
   if (event.type !== 'settings') void load()
 })
 
-const pageCount = computed(() => tree.nodes.value.filter((n) => n.kind === 'page').length)
+const pageCount = computed(() => tree.nodes.value.length)
 const greeting = computed(() => {
   const hour = new Date().getHours()
   const name =

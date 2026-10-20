@@ -20,7 +20,7 @@ useServerEvents((event) => {
 })
 
 const outgoing = computed(() => {
-  const pages = tree.nodes.value.filter((n) => n.kind === 'page')
+  const pages = tree.nodes.value
   const seen = new Set<string>()
   return parseWikiLinks(props.content)
     .map((link) => {

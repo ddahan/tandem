@@ -313,11 +313,15 @@ const panelOpen = useLocalStorage('tandem-side-panel', true)
 const authorshipKey = ref(0)
 const iconPickerOpen = ref(false)
 
+// A page without content but with child pages shows as a folder: they are listed under it.
+const isFolder = computed(() => !!node.value && tree.kindOf(node.value) === 'folder')
+const subPages = computed(() => (isFolder.value ? (tree.childrenOf.value.get(id.value) ?? []) : []))
+
 const breadcrumb = computed<BreadcrumbItem[]>(() =>
   tree.ancestors(id.value).map((n, index, all) => ({
     label: n.title,
     node: n,
-    to: n.kind === 'page' && index < all.length - 1 ? `/notes/${n.id}` : undefined,
+    to: index < all.length - 1 ? `/notes/${n.id}` : undefined,
   })),
 )
 
@@ -410,7 +414,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             }"
           >
             <template #item-leading="{ item }">
-              <NodeIcon :icon="item.node.icon" :kind="item.node.kind" />
+              <NodeIcon :icon="item.node.icon" :kind="tree.kindOf(item.node)" />
             </template>
           </UBreadcrumb>
         </template>
@@ -506,7 +510,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               class="-ms-[0.1em] shrink-0 rounded-lg p-[0.05em] transition-colors hover:bg-elevated"
               aria-label="Change icon"
             >
-              <NodeIcon :icon="node.icon" :kind="node.kind" size="title" />
+              <NodeIcon :icon="node.icon" :kind="tree.kindOf(node)" size="title" />
             </button>
             <template #content>
               <LazyIconPicker
@@ -641,6 +645,26 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           :content="content"
           :note-path="notePath"
         />
+
+        <!-- After the modes' v-if chain: inside it, it would take their v-else-if. -->
+        <nav
+          v-if="mode === 'edit' && subPages.length"
+          aria-label="Pages in this folder"
+          class="mt-6"
+          data-testid="sub-pages"
+        >
+          <ul class="divide-y divide-default rounded-lg border border-default">
+            <li v-for="child in subPages" :key="child.id">
+              <NuxtLink
+                :to="`/notes/${child.id}`"
+                class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-default transition-colors hover:bg-elevated/60"
+              >
+                <NodeIcon :icon="child.icon" :kind="tree.kindOf(child)" />
+                <span class="min-w-0 flex-1 truncate">{{ child.title }}</span>
+              </NuxtLink>
+            </li>
+          </ul>
+        </nav>
       </div>
     </template>
   </UDashboardPanel>

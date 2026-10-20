@@ -55,10 +55,31 @@ watch(
 
 // --- Extensions ----------------------------------------------------------------------------
 
+// Read on each redraw (a function): a page turning into a folder (or back) changes it. One
+// object for the editor's lifetime: a new one per render would reconfigure the editor each time.
+const placeholder = {
+  placeholder: () =>
+    isFolder.value
+      ? 'Write here to turn this folder into a note.'
+      : 'Type / for commands, [[ to link a note…',
+  mode: 'firstLine' as const,
+}
+// The page shows as a folder (no content, child pages): its placeholder says so.
+const isFolder = computed(() => {
+  const node = tree.byId.value.get(props.noteId)
+  return !!node && tree.kindOf(node) === 'folder'
+})
+// Redrawn when the folder state changes without an edit (the save made it a folder).
+watch(isFolder, () => {
+  const editor = editorRef.value?.editor
+  if (editor && !editor.isDestroyed) editor.view.dispatch(editor.state.tr)
+})
+
 /** The page a wiki link points to: by path first, then by title (as the server resolves it). */
 function linkedPage(target: string) {
   const key = linkKey(target)
-  const pages = tree.nodes.value.filter((n) => n.kind === 'page')
+  // Folders too: pages without content.
+  const pages = tree.nodes.value
   return (
     pages.find((n) => linkKey(n.path) === key) ??
     pages
@@ -491,7 +512,7 @@ const tableItems: EditorToolbarItem<Handlers>[][] = [
 ]
 
 const wikiItems = computed<EditorSuggestionMenuItem<Handlers>[]>(() => {
-  const pages = tree.nodes.value.filter((n) => n.kind === 'page' && n.id !== props.noteId)
+  const pages = tree.nodes.value.filter((n) => n.id !== props.noteId)
   const titleCounts = new Map<string, number>()
   for (const page of pages)
     titleCounts.set(linkKey(page.title), (titleCounts.get(linkKey(page.title)) ?? 0) + 1)
@@ -751,7 +772,7 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="root" class="note-editor">
+  <div ref="root" class="note-editor" :class="isFolder && 'note-editor--folder'">
     <UEditor
       ref="editorRef"
       v-slot="{ editor }"
@@ -763,7 +784,7 @@ defineExpose({
       :mention="false"
       :extensions="extensions"
       :handlers="handlers"
-      :placeholder="{ placeholder: 'Type / for commands, [[ to link a note…', mode: 'firstLine' }"
+      :placeholder="placeholder"
       class="w-full"
       :ui="{ base: '*:my-4 sm:px-0' }"
       @update:model-value="onUpdate"

@@ -22,7 +22,8 @@ import type { Vault } from '../vault/vault.ts'
 import { AUTHOR_HEADER } from './index.ts'
 
 const INSTRUCTIONS = `Tandem is the user's note-taking app. Notes are Markdown pages in a tree
-(a page can have child pages), with tags, history and per-line authorship. Notes are referenced by
+(a page can have child pages; one with child pages and no content is shown as a folder, and
+writing in it makes it a page), with tags, history and per-line authorship. Notes are referenced by
 id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]] or
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
@@ -151,11 +152,11 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
     {
       title: 'Create a note',
       description:
-        'Creates a page (optionally under a parent page or folder). Returns its id and path.',
+        'Creates a page (optionally under a parent page). Returns its id and path. A page without content but with child pages is a folder: there is nothing else to create.',
       inputSchema: {
         title: z.string(),
         content: z.string().optional().describe('Markdown (GFM)'),
-        parent: ref.optional().describe('Parent page or folder; omit for the root'),
+        parent: ref.optional().describe('Parent page; omit for the root'),
         tags: z.array(z.string()).optional(),
       },
     },
@@ -163,20 +164,6 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
       attempt(async () => {
         const parentId = parent ? (await vault.resolveRef(parent)).id : null
         return json(await vault.createPage({ title, content, parentId, tags, author }))
-      }),
-  )
-
-  server.registerTool(
-    'create_folder',
-    {
-      title: 'Create a folder',
-      description: 'Creates a folder (a tree node without content).',
-      inputSchema: { title: z.string(), parent: ref.optional() },
-    },
-    async ({ title, parent }) =>
-      attempt(async () => {
-        const parentId = parent ? (await vault.resolveRef(parent)).id : null
-        return json(await vault.createFolder({ title, parentId }))
       }),
   )
 

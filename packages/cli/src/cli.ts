@@ -47,7 +47,6 @@ Reading
 
 Writing (content from arguments, --file, or standard input)
   new <title> [content]         create a page (--parent <note>, --tags a,b)
-  folder <title>                create a folder (--parent <note>)
   write <note> [content]        replace the whole content
   append <note> [content]       add a block at the end
   replace <note> --find <text> --with <text> [--all]
@@ -448,11 +447,6 @@ async function execute(
         client.notes.$post({ json: { title, content: body, parentId, tags } }),
       )
       return print(`Created ${node.path} (${node.id})`, node)
-    }
-    case 'folder': {
-      const parentId = values.parent ? (await resolve(values.parent)).id : null
-      const node = await call(client.folders.$post({ json: { title: need(0, 'title'), parentId } }))
-      return print(`Created ${node.path}/ (${node.id})`, node)
     }
     case 'write': {
       const node = await resolve(need(0, 'note'))

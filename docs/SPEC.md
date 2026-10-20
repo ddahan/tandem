@@ -56,8 +56,14 @@ inside OneDrive so that it is backed up and synced.
 
 - **Notes are plain Markdown files** (GFM), without front matter: nothing in a file that a
   human or an agent did not write. The tree in the app is the folder tree on disk.
-- **A page can have child pages** (Confluence style): `Projects.md` and its children in
-  `Projects/`. A plain folder (without a `.md` of the same name) is a folder in the tree.
+- **Everything is a page; a page can have child pages** (Confluence style): `Projects.md` and
+  its children in `Projects/`. There are no folders to create: a page without content but with
+  child pages shows as a folder (folder icon, unless it has its own), and is one on disk (a
+  plain `Projects/`, no `.md`). Writing in it makes it a page (its `.md` is created); erasing all
+  of a page that has child pages makes it a folder again (its `.md` deleted, its text kept in
+  history). A blank page without child pages stays a page (an empty `.md`). Opening a folder
+  shows "Write here to turn this folder into a note." and the list of its pages. Any plain
+  folder on disk is such a page.
 - **Attachments** of `Note.md` live in `Note.assets/`, next to it, and are referenced with
   relative paths (`![](Note.assets/diagram.png)`, `[report.pdf](Note.assets/report.pdf)`).
 - **Structured data lives in SQLite**: stable note ids, tags, creation and update dates, tree
@@ -169,15 +175,16 @@ inside OneDrive so that it is backed up and synced.
 
 ## Organization
 
-- Sidebar tree of pages and folders, with drag and drop to reorder and move, and the usual
-  actions (new page, new child page, new folder, rename, delete) in each row's menu: its ⋯
-  button, or a right-click on the row. A new page opens with its title selected, however it was
+- Sidebar tree of pages, with drag and drop to reorder and move, and the usual actions (new
+  page, new page inside, rename, delete) in each row's menu: its ⋯
+  button, or a right-click on the row. A row opens its page (a folder too); its arrow expands
+  it. The "+" above the tree makes a page. A new page opens with its title selected, however it was
   created (button, menu, shortcut): typing replaces it.
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
 - Icons: every page has one, the default page icon until it is given an emoji or an image
   (from the computer): from the note page (click the icon left of the title) or the tree's
-  menu (folders too); "Use the default icon" goes back. The picker searches emojis or shows
+  menu; "Use the default icon" goes back. The picker searches emojis or shows
   one group at a time, chosen from tabs (line icons, not emojis), its name above its emojis.
   Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in

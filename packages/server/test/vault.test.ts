@@ -314,6 +314,71 @@ describe('history', () => {
   })
 })
 
+describe('folders, pages without content', () => {
+  it('reads a folder as an empty page, and writing in it makes it one (same node)', async () => {
+    const { vault, dataDir } = await createTestVault()
+    const folder = await vault.createFolder({ title: 'Projects' })
+    const child = await vault.createPage({ parentId: folder.id, title: 'Plan', author: OWNER })
+    expect((await vault.getNode(folder.id)).empty).toBe(true)
+    const note = await vault.getNote(folder.id)
+    expect(note.content).toBe('')
+    // Blank: still a folder, no file.
+    await vault.saveContent(folder.id, '\n', { baseHash: note.hash, author: OWNER })
+    expect(existsSync(join(dataDir, 'Projects.md'))).toBe(false)
+
+    await vault.saveContent(folder.id, 'Goals\n', { baseHash: note.hash, author: OWNER })
+    expect(await readFile(join(dataDir, 'Projects.md'), 'utf8')).toBe('Goals\n')
+    const page = await vault.getNode(folder.id)
+    expect(page).toMatchObject({ kind: 'page', path: 'Projects.md', empty: false })
+    expect((await vault.getNode(child.id)).parentId).toBe(folder.id)
+    expect((await vault.searchNotes('goals')).results.map((r) => r.id)).toEqual([folder.id])
+    // The watcher's next pass agrees.
+    await vault.reconcile()
+    expect((await vault.getNode(folder.id)).kind).toBe('page')
+  })
+
+  it('makes a page with child pages a folder again when left blank, keeping its text in history', async () => {
+    const { vault, dataDir } = await createTestVault()
+    const page = await vault.createPage({ title: 'Area', content: 'Old text\n', author: OWNER })
+    await vault.createPage({ parentId: page.id, title: 'Sub', author: OWNER })
+    const note = await vault.getNote(page.id)
+    await vault.saveContent(page.id, '', { baseHash: note.hash, author: OWNER })
+    expect(existsSync(join(dataDir, 'Area.md'))).toBe(false)
+    expect(await vault.getNode(page.id)).toMatchObject({
+      kind: 'folder',
+      path: 'Area',
+      empty: true,
+    })
+    expect((await vault.searchNotes('old')).results).toEqual([])
+    const [version] = await vault.history(page.id)
+    expect((await vault.readVersion(version!.id)).content).toBe('Old text\n')
+    await vault.reconcile()
+    expect(await vault.getNode(page.id)).toMatchObject({ kind: 'folder', path: 'Area' })
+    // Appending (an agent) makes it a page again.
+    await vault.appendContent(page.id, 'Back', OWNER)
+    expect(await readFile(join(dataDir, 'Area.md'), 'utf8')).toBe('Back\n')
+  })
+
+  it('keeps a blank page without child pages a page (an empty file)', async () => {
+    const { vault, dataDir } = await createTestVault()
+    const page = await vault.createPage({ title: 'Draft', content: 'x', author: OWNER })
+    const note = await vault.getNote(page.id)
+    await vault.saveContent(page.id, '', { baseHash: note.hash, author: OWNER })
+    expect(await vault.getNode(page.id)).toMatchObject({ kind: 'page', empty: true })
+    expect(await readFile(join(dataDir, 'Draft.md'), 'utf8')).toBe('')
+  })
+
+  it('resolves links to folders, and attaching to one makes it a page', async () => {
+    const { vault } = await createTestVault()
+    const folder = await vault.createFolder({ title: 'Box' })
+    expect((await vault.resolveLink('Box'))?.id).toBe(folder.id)
+    expect(await vault.attachments(folder.id)).toEqual([])
+    expect(await vault.blame(folder.id)).toEqual([])
+    await vault.addAttachment(folder.id, 'a.txt', new TextEncoder().encode('a'))
+    expect((await vault.getNode(folder.id)).kind).toBe('page')
+  })
+})
+
 describe('tags, links and attachments', () => {
   it('stores and counts tags', async () => {
     const { vault } = await createTestVault()

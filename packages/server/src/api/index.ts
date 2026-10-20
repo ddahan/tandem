@@ -147,14 +147,6 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       async (c) =>
         c.json(await vault.createPage({ ...c.req.valid('json'), author: authorOf(c) }), 201),
     )
-    .post(
-      '/folders',
-      zValidator(
-        'json',
-        z.object({ parentId: z.string().nullish(), title: z.string().default('New folder') }),
-      ),
-      async (c) => c.json(await vault.createFolder(c.req.valid('json')), 201),
-    )
     .get('/notes/:id', zValidator('param', idParam), async (c) =>
       c.json(await vault.getNote(c.req.valid('param').id)),
     )

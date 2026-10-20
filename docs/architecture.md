@@ -43,8 +43,13 @@ The web app and the CLI use the server's API through Hono's typed client
 ### Files (source of truth)
 
 - A page is `Title.md`; its child pages are in `Title/`; its attachments in `Title.assets/`.
-- A folder without a same-named page is a folder node. When `X.md` appears next to a folder
-  `X/`, the page takes the folder over (its contents become child pages).
+- A folder without a same-named page is a folder node: to the user, a page without content
+  (`TreeNode.empty`; the web app shows a blank page with child pages as a folder, `kindOf`).
+  When `X.md` appears next to a folder `X/`, the page takes the folder over (its contents
+  become child pages). The vault does the same when a folder is written to (`folderToPage`:
+  same row, so id, icon, position and history stay), and the reverse when a page with child
+  pages is saved blank (`pageToFolder`, after snapshotting its text). There is no API to create
+  a folder: pages only.
 - Titles are file names (`sanitizeTitle` in shared), unique per folder, case-insensitively,
   pages and folders together.
 - Writes are atomic (temporary file + rename). Hidden files, `~$…` Office locks and our

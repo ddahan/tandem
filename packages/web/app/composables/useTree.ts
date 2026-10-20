@@ -1,5 +1,5 @@
 // The tree of pages and folders, shared by the sidebar, breadcrumbs, links and search.
-import type { TreeNode } from '@tandem/shared'
+import type { NodeKind, TreeNode } from '@tandem/shared'
 
 export interface TreeItem {
   id: string
@@ -30,6 +30,14 @@ export function useTree() {
     return map
   })
 
+  /**
+   * How a node shows: every node is a page, and one without content but with child pages is a
+   * folder (on disk too: see TreeNode.empty).
+   */
+  function kindOf(node: TreeNode): NodeKind {
+    return node.empty && childrenOf.value.get(node.id)?.length ? 'folder' : 'page'
+  }
+
   function build(parentId: string | null): TreeItem[] {
     return (childrenOf.value.get(parentId) ?? []).map((node) => {
       const children = build(node.id)
@@ -37,7 +45,7 @@ export function useTree() {
         id: node.id,
         label: node.title,
         node,
-        icon: node.kind === 'folder' ? 'i-lucide-folder' : 'i-lucide-file-text',
+        icon: kindOf(node) === 'folder' ? 'i-lucide-folder' : 'i-lucide-file-text',
         children: children.length ? children : undefined,
       }
     })
@@ -69,16 +77,6 @@ export function useTree() {
       return node
     } catch (error) {
       showError(error, 'Could not create the page')
-    }
-  }
-
-  async function createFolder(parentId: string | null = null, title = 'New folder') {
-    try {
-      const node = await unwrap(api.folders.$post({ json: { parentId, title } }))
-      nodes.value = [...nodes.value, node]
-      return node
-    } catch (error) {
-      showError(error, 'Could not create the folder')
     }
   }
 
@@ -176,7 +174,7 @@ export function useTree() {
     isWithin,
     refresh,
     createPage,
-    createFolder,
+    kindOf,
     rename,
     move,
     remove,

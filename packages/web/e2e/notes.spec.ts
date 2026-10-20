@@ -1054,9 +1054,10 @@ test('types the title of a new page at once, however the page was created', asyn
   await page.goto(`/notes/${parent.id}`)
   const title = page.getByLabel('Title')
 
-  // From a menu: once closed, the menu must not take the focus back.
-  await page.getByRole('button', { name: 'New page or folder' }).click()
-  await page.getByRole('menuitem', { name: /^New page/ }).click()
+  // From a row's ⋯ menu: once closed, the menu must not take the focus back.
+  await page.getByTestId('tree-Focus parent').hover()
+  await page.getByTestId('tree-Focus parent').getByRole('button', { name: 'Actions' }).click()
+  await page.getByRole('menuitem', { name: 'New page inside' }).click()
   await expect(title).toHaveValue(/^Untitled/)
   // Once the menu has closed (when it would take the focus back).
   await expect(page.getByRole('menu')).toHaveCount(0)
@@ -1127,11 +1128,12 @@ test('manages pages from the tree with the keyboard and the menu', async ({ page
   await expect(page.getByLabel('New title')).toHaveValue('Key first')
   await page.keyboard.press('Escape')
 
-  // Below the pages, the menu creates them.
+  // Below the pages, the menu creates one (only pages: no folders to create).
   const area = page.getByTestId('tree-menu-area')
   const box = await area.boundingBox()
   await area.click({ button: 'right', position: { x: 20, y: (box?.height ?? 0) - 5 } })
-  await expect(page.getByRole('menuitem', { name: 'New folder', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: /^New page/ })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: /folder/i })).toHaveCount(0)
 })
 
 test('shows a pointer on everything clickable', async ({ page, request }) => {
@@ -1446,4 +1448,44 @@ test('scrolls to the match found in a long note, and to the next one', async ({
   await bar.getByRole('button', { name: 'Next match' }).click()
   await expect(count).toHaveText('1 of 2')
   await expect(current).toBeInViewport()
+})
+
+test('shows a page without content but with child pages as a folder, until written in', async ({
+  page,
+  request,
+}) => {
+  const parent = await createNote(request, 'Areas', '')
+  await api(request, 'POST', '/notes', { title: 'Health', parentId: parent.id, content: 'Run' })
+  await page.goto('/')
+  const row = page.getByTestId('tree-Areas')
+  await expect(row.locator('.i-lucide\\:folder')).toBeVisible()
+
+  // A click opens it: a placeholder saying how to make it a note, and its pages listed.
+  await row.click()
+  await expect(page).toHaveURL(`/notes/${parent.id}`)
+  await expect(page.locator('.ProseMirror p[data-placeholder]').first()).toHaveAttribute(
+    'data-placeholder',
+    'Write here to turn this folder into a note.',
+  )
+  const pages = page.getByTestId('sub-pages')
+  await expect(pages.getByRole('link')).toHaveText(['Health'])
+
+  // Written in: a page (the list goes); emptied: a folder again, on disk too.
+  await page.locator('.ProseMirror').click()
+  await page.keyboard.type('Overview')
+  await waitSaved(page)
+  await expect(row.locator('.i-lucide\\:file-text')).toBeVisible()
+  await expect(pages).toHaveCount(0)
+  const kind = async () =>
+    (await api<{ id: string; kind: string }[]>(request, 'GET', '/tree')).find(
+      (n) => n.id === parent.id,
+    )?.kind
+  expect(await kind()).toBe('page')
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.press('Backspace')
+  await expect.poll(kind).toBe('folder')
+  await expect(row.locator('.i-lucide\\:folder')).toBeVisible()
+  await expect(pages.getByRole('link')).toHaveText(['Health'])
+  await pages.getByRole('link', { name: 'Health' }).click()
+  await expect(page.getByLabel('Title')).toHaveValue('Health')
 })
