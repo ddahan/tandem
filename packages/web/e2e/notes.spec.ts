@@ -1058,8 +1058,9 @@ test('types the title of a new page at once, however the page was created', asyn
   await page.getByRole('button', { name: 'New page or folder' }).click()
   await page.getByRole('menuitem', { name: /^New page/ }).click()
   await expect(title).toHaveValue(/^Untitled/)
-  // After the menu's closing animation.
-  await page.waitForTimeout(500)
+  // Once the menu has closed (when it would take the focus back).
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(title).toBeFocused()
   await page.keyboard.type('From the menu')
   await expect(title).toHaveValue('From the menu')
 
@@ -1067,7 +1068,8 @@ test('types the title of a new page at once, however the page was created', asyn
   await page.getByTestId('tree-Focus parent').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'New page inside' }).click()
   await expect(title).toHaveValue(/^Untitled/)
-  await page.waitForTimeout(500)
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(title).toBeFocused()
   await page.keyboard.type('From the row')
   await expect(title).toHaveValue('From the row')
 })
