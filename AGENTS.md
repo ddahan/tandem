@@ -40,12 +40,12 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 | Server benchmark                  | `./td pnpm --filter @tandem/server bench [pages]` (large generated vault, API timings)     |
 | Format / lint                     | `./td format` · `./td lint`                                                                |
 | Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
-| The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3000)                           |
+| The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3864)                           |
 | Rebuild the toolchain image       | `./td setup` (after changing `compose.dev.yaml`)                                           |
 | The app people install            | `./td release`, into `app/tandem/` (checked on Node 22.16 and `app/node.env`'s)            |
 | The Node the installer downloads  | `./td node-pin <version>` (`app/node.env`: version and checksums)                          |
 
-The owner's app (port 3000) and the dev servers (3010/3011) can run at the same time; they use
+The owner's app (port 3864) and the dev servers (3010/3011) can run at the same time; they use
 different data folders. **Never point the dev servers or tests at the owner's data folder.**
 
 ## Conventions
@@ -122,7 +122,7 @@ A change is done when:
 4. Server and shared code keep at least 80% line coverage (enforced by their `test` scripts,
    so by `./td check`).
 5. If dependencies, the Dockerfile, compose files or entry points changed: `./td start` builds,
-   and the app answers on http://localhost:3000. If the server's start-up, the standalone
+   and the app answers on http://localhost:3864. If the server's start-up, the standalone
    package or `app/install.sh` changed: `./td release` passes (it checks the app on Node 22.16
    and `app/node.env`'s). Commit `app/tandem/` only for a release; otherwise `git restore app/tandem`.
 6. A visible change was checked in a browser (dev servers), in light and dark mode.

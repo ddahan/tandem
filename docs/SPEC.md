@@ -31,8 +31,10 @@ inside OneDrive so that it is backed up and synced.
   windows switch to the new version by themselves (after saving what's being typed); on macOS an
   update keeps the login item as it is and only restarts the app (registering it again made
   macOS show a "Login Items" notification); `--uninstall`
-  removes it (with a Node it downloaded) and never touches the notes. Port 3000 by default, or the next free one when
-  another app uses it (said); it then stays (the installed app's address): an update or a
+  removes it (with a Node it downloaded) and never touches the notes. Port 3864 by default, or the next free one when
+  another app uses it (said); it then stays (the installed app's address), except that an
+  update moves an install on 3000–3020 (the default before 3864, often taken by dev servers)
+  to the default, unless `TANDEM_PORT` is set, and says the new address. An update or a
   `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.
   Started while another app holds its port, Tandem waits for it (logged once) instead of
   failing.
@@ -215,7 +217,7 @@ inside OneDrive so that it is backed up and synced.
   search, tree, read, create, write, append, replace text, move, delete, tags, history,
   restore, attach files, and databases (list a note's, read rows as the saved view shows
   them, create one, add, change and delete rows; columns by name).
-- **MCP server** over HTTP at `http://localhost:3000/mcp` with the same operations, so any
+- **MCP server** over HTTP at `http://localhost:3864/mcp` with the same operations, so any
   MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
 

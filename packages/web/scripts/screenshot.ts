@@ -2,7 +2,7 @@
 //   ./td pnpm --filter @tandem/web screenshot [base URL] [note title]
 import { chromium } from '@playwright/test'
 
-const baseUrl = process.argv[2] ?? 'http://host.docker.internal:3000'
+const baseUrl = process.argv[2] ?? 'http://host.docker.internal:3864'
 const title = process.argv[3] ?? 'Tandem'
 
 const browser = await chromium.launch()

@@ -1,5 +1,5 @@
 // MCP server (Streamable HTTP, stateless) at `/mcp`, so agents can read and write notes:
-//   claude mcp add --transport http tandem http://localhost:3000/mcp \
+//   claude mcp add --transport http tandem http://localhost:3864/mcp \
 //     --header "X-Tandem-Author: claude"
 // The author header names the agent in history and authorship (default: `agent`).
 import { StreamableHTTPTransport } from '@hono/mcp'

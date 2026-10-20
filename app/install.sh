@@ -13,7 +13,7 @@
 #
 # Options (environment): TANDEM_NODE (the Node to use), TANDEM_INSTALL_NODE (1: download Node
 # without asking when none fits, e.g. for an agent with no terminal; 0: never), TANDEM_NODE_MIRROR
-# (a copy of nodejs.org/dist), TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3000),
+# (a copy of nodejs.org/dist), TANDEM_DATA_DIR (notes folder), TANDEM_PORT (default 3864),
 # TANDEM_BIN_DIR (default ~/.local/bin), TANDEM_HOME (the app's own folder), TANDEM_SERVICE_LABEL
 # (the login item's name, default app.tandem), TANDEM_NO_OPEN=1 (don't open the browser).
 set -eu
@@ -201,9 +201,13 @@ if [ -f "$settings" ]; then
   . "$settings"
 fi
 data_dir="${TANDEM_DATA_DIR:-$data_dir}"
+# Before 3864, the default was 3000 (or the next free one), often taken by other dev servers:
+# an update moves off those ports, unless TANDEM_PORT asks for one.
+port_before="$port"
+case "$port" in 30[01][0-9] | 3020) port="" ;; esac
 # Chosen (TANDEM_PORT, or the previous install's), or the default, which may move if taken.
 port_chosen="${TANDEM_PORT:-$port}"
-port="${port_chosen:-3000}"
+port="${port_chosen:-3864}"
 
 # --- The port: free, or this very Tandem's (an update) ------------------------------------
 # Something answers on it (curl's 7: nothing listens).
@@ -353,6 +357,10 @@ done
 
 say ""
 say "Tandem $("$bin" version) runs at $url (notes in $data_dir)."
+if [ -n "$port_before" ] && [ "$port_before" != "$port" ]; then
+  say "Its address changed (it was http://localhost:$port_before): install the app again from"
+  say "$url, and update agents' settings (the Claude command below)."
+fi
 case ":$PATH:" in
   *":$bin_dir:"*) ;;
   *) say "Add $bin_dir to your PATH to use the tandem command (e.g. in ~/.zshrc)." ;;

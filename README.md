@@ -56,7 +56,7 @@ admin rights. It works where GitHub's other downloads are blocked.
 
 It finds Node (or offers to download it), copies the app into your home folder, writes the
 `tandem` command (the app run by that Node), asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder works), starts
-Tandem at login (all in your home folder) and opens <http://localhost:3000>.
+Tandem at login (all in your home folder) and opens <http://localhost:3864>.
 
 - **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
@@ -70,9 +70,10 @@ Tandem at login (all in your home folder) and opens <http://localhost:3000>.
   of `https://nodejs.org/dist`, e.g. your company's), `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
   `~/Library/Logs/Tandem.log` (macOS), `journalctl --user -u tandem` (Linux).
-- **Port**: 3000, or the next free one if another app uses it (the installer says which). It
+- **Port**: 3864, or the next free one if another app uses it (the installer says which). It
   then stays: an update whose port another app took stops and says so, and Tandem started at
-  login waits for its port to be free.
+  login waits for its port to be free. An install from before 3864 (on 3000 to 3020) moves to
+  it on update (the installer gives the new address), unless `TANDEM_PORT` is set.
 - With OneDrive, right-click the folder in Finder → **Always Keep on This Device**.
 
 ### Installing with an AI agent
@@ -93,7 +94,7 @@ Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 4. Run its installer with the notes folder chosen by the user (set it, the installer would
    otherwise ask on the terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <repository>/app/install.sh`
 5. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
-   in the installer's last lines: 3000, or the next free one when another app uses it).
+   in the installer's last lines: 3864, or the next free one when another app uses it).
 6. Tell the user to open Tandem's address and install it as an app (below), and offer to
    connect Claude to it (see [Agents](#agents)).
 
@@ -107,13 +108,13 @@ cp .env.example .env     # then set TANDEM_DATA_DIR to your notes folder
 ./td start               # builds and starts the app
 ```
 
-Open <http://localhost:3000>. The app restarts with Docker; `./td stop` stops it and
+Open <http://localhost:3864>. The app restarts with Docker; `./td stop` stops it and
 `./td logs` shows its output. After pulling changes, `./td start` rebuilds. Docker can't read
 OneDrive's online-only files: keep the folder on the device.
 
 ### As a Mac app
 
-- **Safari**: open <http://localhost:3000>, then **File → Add to Dock**.
+- **Safari**: open <http://localhost:3864>, then **File → Add to Dock**.
 - **Chrome**: open it, then **⋮ → Cast, save and share → Install page as app**.
 
 It then opens in its own window, with the Tandem icon in the Dock.
@@ -123,7 +124,7 @@ It then opens in its own window, with the Tandem icon in the Dock.
 ### MCP (Claude Code, Claude Desktop, any MCP client)
 
 ```bash
-claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"
+claude mcp add --transport http tandem http://localhost:3864/mcp --header "X-Tandem-Author: claude"
 ```
 
 The header names the agent in the history and authorship views. Tools: `search_notes`,

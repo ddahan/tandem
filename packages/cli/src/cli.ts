@@ -68,7 +68,7 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-delete <database> <row>               delete a row
 
 Options
-  --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3000)
+  --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3864)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
   --json             machine-readable output
   -h, --help         this help
@@ -231,7 +231,7 @@ export async function run(
     return command || values.help ? 0 : 2
   }
 
-  const client = createClient(values.url ?? env.TANDEM_URL ?? 'http://localhost:3000', {
+  const client = createClient(values.url ?? env.TANDEM_URL ?? 'http://localhost:3864', {
     author: normalizeAuthor(values.author ?? env.TANDEM_AUTHOR),
   })
   const print = (text: string, data?: unknown) =>

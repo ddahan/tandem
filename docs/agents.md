@@ -8,7 +8,7 @@ instructions (or point it here).
 **MCP** (preferred), over HTTP while Tandem runs:
 
 ```bash
-claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"
+claude mcp add --transport http tandem http://localhost:3864/mcp --header "X-Tandem-Author: claude"
 ```
 
 **CLI** (`tandem`, installed with the app; with Docker, `bin/tandem`: see the README), with

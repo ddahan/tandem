@@ -8,7 +8,7 @@ const app = await startServer({
   dataDir: resolve(env.TANDEM_DATA_DIR ?? '/data'),
   dbPath: resolve(env.TANDEM_DB_PATH ?? '/var/lib/tandem/tandem.db'),
   webDir: env.TANDEM_WEB_DIR ? resolve(env.TANDEM_WEB_DIR) : undefined,
-  port: Number(env.PORT ?? 3000),
+  port: Number(env.PORT ?? 3864),
   hostname: env.HOST ?? '0.0.0.0',
   // Shorter in end-to-end tests.
   sessionIdleMs: Number(env.TANDEM_SESSION_IDLE_MS ?? 30_000),

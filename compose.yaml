@@ -1,5 +1,5 @@
 # Tandem, the app you use: `./td start` (or `docker compose up -d --build`), then
-# http://localhost:3000. Settings come from .env (copy .env.example).
+# http://localhost:3864. Settings come from .env (copy .env.example).
 name: tandem
 
 services:
@@ -10,7 +10,7 @@ services:
     init: true
     ports:
       # Local only: there is no authentication.
-      - '127.0.0.1:${TANDEM_PORT:-3000}:3000'
+      - '127.0.0.1:${TANDEM_PORT:-3864}:3864'
     environment:
       TANDEM_WATCH_POLLING: ${TANDEM_WATCH_POLLING:-false}
     volumes:

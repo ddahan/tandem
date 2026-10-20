@@ -6,7 +6,7 @@ import type { SavedSettings } from './settings.ts'
 export const SERVE_USAGE = `Running the app
   serve [--data <folder>]       run Tandem on a notes folder (TANDEM_DATA_DIR, or the one
                                 saved by the installer or in Settings), at
-                                http://localhost:3000 (--port, TANDEM_PORT)
+                                http://localhost:3864 (--port, TANDEM_PORT)
   version                       this app's version
 `
 
@@ -42,7 +42,7 @@ export function serveOptions(
   const rawPort = asService
     ? (saved.port ?? values.port ?? env.TANDEM_PORT)
     : (values.port ?? env.TANDEM_PORT ?? saved.port)
-  const port = Number(rawPort ?? 3000)
+  const port = Number(rawPort ?? 3864)
   if (!Number.isInteger(port) || port <= 0) throw new Error(`Invalid port: ${rawPort}`)
   return { dataDir: resolve(data), port, asService }
 }

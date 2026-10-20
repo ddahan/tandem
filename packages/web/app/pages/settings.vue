@@ -443,7 +443,7 @@ async function set(patch: Partial<Settings>) {
           <p>Agents can use Tandem through its MCP server:</p>
           <pre
             class="overflow-x-auto rounded-md border border-muted bg-muted p-3 text-xs"
-          ><code>claude mcp add --transport http tandem http://localhost:3000/mcp --header "X-Tandem-Author: claude"</code></pre>
+          ><code>claude mcp add --transport http tandem http://localhost:3864/mcp --header "X-Tandem-Author: claude"</code></pre>
           <p>Or with the <code>bin/tandem</code> CLI of the repository. See the README.</p>
         </section>
       </div>

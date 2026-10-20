@@ -16,7 +16,7 @@ describe('serve options', () => {
       dataDir: '/n',
       port: 4000,
     })
-    expect(serveOptions(['--data', '/n'], {}).port).toBe(3000)
+    expect(serveOptions(['--data', '/n'], {}).port).toBe(3864)
   })
 
   it('uses the saved folder: last by hand, first as the login item', () => {

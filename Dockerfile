@@ -26,7 +26,7 @@ RUN pnpm --filter @tandem/web exec nuxt prepare && pnpm --filter @tandem/web bui
 FROM base AS runtime
 ENV NODE_ENV=production \
   TZ=Europe/Paris \
-  PORT=3000 \
+  PORT=3864 \
   TANDEM_DATA_DIR=/data \
   TANDEM_DB_PATH=/var/lib/tandem/tandem.db \
   TANDEM_WEB_DIR=/app/packages/web/dist
@@ -42,7 +42,7 @@ RUN chmod +x packages/cli/src/main.ts \
   && mkdir -p /data /var/lib/tandem \
   && chown node:node /data /var/lib/tandem
 USER node
-EXPOSE 3000
+EXPOSE 3864
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
-  CMD node -e "fetch('http://localhost:3000/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+  CMD node -e "fetch('http://localhost:3864/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
 CMD ["node", "packages/server/src/main.ts"]

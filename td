@@ -8,7 +8,7 @@ usage() {
   cat <<USAGE
 Usage: ./td <command> [args]
 
-  start             build and start the app in the background (http://localhost:3000)
+  start             build and start the app in the background (http://localhost:3864)
   stop              stop the app
   logs              follow the app's output
   dev               run the dev servers with reload (http://localhost:3010), Ctrl-C stops them
@@ -51,7 +51,7 @@ cmd="${1:-}"
 [ $# -gt 0 ] && shift
 
 case "$cmd" in
-  start) docker compose up -d --build "$@" && echo "Tandem runs on http://localhost:3000" ;;
+  start) docker compose up -d --build "$@" && echo "Tandem runs on http://localhost:3864" ;;
   stop) docker compose down ;;
   logs) docker compose logs -f ;;
   dev)
