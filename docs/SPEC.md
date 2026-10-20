@@ -138,8 +138,9 @@ inside OneDrive so that it is backed up and synced.
   database, not a copy. A block whose database is gone says so.
 - **Databases panel** (side panel): the databases the note shows, in order, with their row
   counts; a click scrolls to one.
-- **Files panel** (side panel): the note's attachments, with their size; files dropped or
-  picked there are attached and added at the end of the note. Clicking an image shows it in a
+- **Files panel** (side panel): the note's attachments, with their size. No drop zone: files
+  are dropped on the note; the panel's "click here" opens the file picker, and picked files are
+  attached and added at the end of the note (empty, the panel says so like the other tabs). Clicking an image shows it in a
   modal, scaled to fit, with its name and size; Esc, a click outside or its close button
   close it, and its new-tab button opens the file. Other files, and ⌘/Ctrl-clicks, open in a
   new tab.

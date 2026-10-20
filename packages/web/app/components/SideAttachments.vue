@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Files attached to the note (its `.assets` folder): open them, view images, add more.
+// Files attached to the note (its `.assets` folder): open them, view images, add more (from
+// the computer's file picker; dropping them on the note works too).
 import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
@@ -43,7 +44,15 @@ function focusModal(event: Event) {
   ;(event.target as HTMLElement).focus()
 }
 
-const files = ref<File[] | null>(null)
+// "Click here": the computer's file picker (dropping files on the note is the other way).
+const picker = useTemplateRef<HTMLInputElement>('picker')
+function pick(event: Event) {
+  const input = event.target as HTMLInputElement
+  const selected = [...(input.files ?? [])]
+  input.value = ''
+  void upload(selected)
+}
+
 async function upload(selected: File[] | null | undefined) {
   if (!selected?.length) return
   for (const file of selected) {
@@ -67,24 +76,35 @@ async function upload(selected: File[] | null | undefined) {
       showError(error, 'Upload failed')
     }
   }
-  files.value = null
   await load()
 }
 </script>
 
 <template>
   <div class="space-y-3">
-    <UFileUpload
-      v-model="files"
+    <input
+      ref="picker"
+      type="file"
       multiple
-      label="Drop files here"
-      description="They are attached and added at the end of the note."
-      layout="list"
-      class="min-h-24"
-      :interactive="true"
-      @update:model-value="(value) => upload(value as File[] | null)"
+      class="hidden"
+      data-testid="attach-input"
+      @change="pick"
     />
-    <ul class="space-y-0.5">
+    <UEmpty
+      v-if="!attachments.length"
+      icon="i-lucide-paperclip"
+      title="No files"
+      size="sm"
+      variant="naked"
+    >
+      <template #description>
+        Upload a file by dragging it on the note, or
+        <button type="button" class="text-primary hover:underline" @click="picker?.click()">
+          click here</button
+        >.
+      </template>
+    </UEmpty>
+    <ul v-if="attachments.length" class="space-y-0.5">
       <li
         v-for="attachment in attachments"
         :key="attachment.path"
@@ -107,8 +127,11 @@ async function upload(selected: File[] | null | undefined) {
         <span class="shrink-0 text-xs text-dimmed">{{ formatSize(attachment.size) }}</span>
       </li>
     </ul>
-    <p v-if="!attachments.length" class="px-2 text-sm text-dimmed">
-      No files yet. You can also drop files right into the note.
+    <p v-if="attachments.length" class="px-2 text-xs text-dimmed">
+      Upload a file by dragging it on the note, or
+      <button type="button" class="text-primary hover:underline" @click="picker?.click()">
+        click here</button
+      >.
     </p>
 
     <UModal

@@ -168,10 +168,12 @@ test('attaches files from the side panel', async ({ page, request }) => {
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
     'base64',
   )
-  await page
-    .locator('input[type=file]')
-    .last()
-    .setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: png })
+  // The panel's empty state says how; "click here" opens the file picker.
+  const panel = page.locator('#tandem-panels-panel-note-side')
+  await expect(panel).toContainText('Upload a file by dragging it on the note, or click here.')
+  const chooser = page.waitForEvent('filechooser')
+  await panel.getByRole('button', { name: 'click here' }).click()
+  await (await chooser).setFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: png })
   const image = page.locator('.ProseMirror img')
   await expect(image).toBeVisible()
   await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1)
