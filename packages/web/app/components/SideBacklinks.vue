@@ -42,7 +42,15 @@ const outgoing = computed(() => {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <UEmpty
+    v-if="!backlinks.length && !outgoing.length"
+    icon="i-lucide-link-2"
+    title="No links"
+    description="Notes linking here and notes linked from this one appear here. Type [[ to link one."
+    size="sm"
+    variant="naked"
+  />
+  <div v-else class="space-y-5">
     <section>
       <h3 class="mb-1.5 px-2 text-xs font-medium tracking-wide text-dimmed uppercase">
         Linked from

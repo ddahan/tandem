@@ -33,7 +33,15 @@ const shown = computed(() =>
 </script>
 
 <template>
-  <div>
+  <UEmpty
+    v-if="!shown.length"
+    icon="i-lucide-database"
+    title="No databases"
+    description="Databases of the note appear here. Type /database in the note to add one."
+    size="sm"
+    variant="naked"
+  />
+  <div v-else>
     <ul class="space-y-0.5">
       <li v-for="(database, index) in shown" :key="`${database.id}-${index}`">
         <button
@@ -51,8 +59,5 @@ const shown = computed(() =>
         </button>
       </li>
     </ul>
-    <p v-if="!shown.length" class="px-2 text-sm text-dimmed">
-      No databases. Type /database in the note to add one.
-    </p>
   </div>
 </template>

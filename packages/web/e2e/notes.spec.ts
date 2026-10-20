@@ -1352,6 +1352,15 @@ test('names the side panel tabs by tooltips, icons only', async ({ page, request
     'false',
   )
 
+  // Empty tabs say so the same way.
+  for (const [tab, title] of [
+    ['Headings', 'No headings'],
+    ['Links', 'No links'],
+    ['Databases', 'No databases'],
+  ]) {
+    await panel.getByRole('tab', { name: tab }).click()
+    await expect(panel.locator('[data-slot="title"]', { hasText: title })).toBeVisible()
+  }
 })
 
 test('resizes the side panel from its left edge, remembered', async ({ page, request }) => {
