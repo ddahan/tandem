@@ -7,6 +7,7 @@ import { StarterKit } from '@tiptap/starter-kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createExtensions, starterKitOptions } from '../app/editor/extensions'
 import { DOCS_BLOCK_GROUPS } from '../app/utils/docs-blocks'
+import { SCRATCHPAD_MARKDOWN, welcomeMarkdown } from '../../server/src/welcome.ts'
 import {
   fromEditorMarkdown,
   normalizeMarkdown,
@@ -34,6 +35,14 @@ function roundTrip(markdown: string): string {
 }
 
 describe('Markdown round-trip', () => {
+  // The welcome note (server/src/welcome.ts): a first edit in it changes nothing else.
+  it.each([
+    ['welcome note', welcomeMarkdown(3864, 'k3Jd9xQe2TmA')],
+    ['scratchpad', SCRATCHPAD_MARKDOWN],
+  ])('the %s', (_name, markdown) => {
+    expect(roundTrip(markdown)).toBe(markdown.trim())
+  })
+
   // Docs › Blocks shows this Markdown as what notes hold: the editor must write it back as is.
   it.each(DOCS_BLOCK_GROUPS.flatMap((group) => group.blocks.map((b) => [b.title, b.markdown])))(
     'the Docs example of %s',

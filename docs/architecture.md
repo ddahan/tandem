@@ -363,6 +363,12 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   On macOS, when that login item is registered and its plist unchanged (an update), it stays:
   the files are swapped and `launchctl kickstart -k` restarts the app, since each
   `bootstrap` makes macOS notify a new login item. `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).
+- The welcome note (`src/welcome.ts`): `startServer({ welcome: true })` (the standalone app;
+  `main.ts` with `TANDEM_WELCOME=true`, as `compose.yaml` sets) calls it after reconciling.
+  `.tandem/welcomed` is written first, whatever the folder holds, so the check (no node, nothing
+  in the trash) happens once per folder. It uses the vault's own methods (pages, icons, a
+  database whose first, empty row is filled, then the note's content naming it), as "tandem".
+  A web unit test round-trips its Markdown through the editor.
 - The one-line install (README › Install): `curl` of GitHub's archive of `main`, piped into
   `tar` in `/tmp`, then `sh /tmp/tandem-main/app/install.sh`. The installer knows it was run that
   way from its folder (`/tmp/tandem-main/app`): its messages then show the command (via

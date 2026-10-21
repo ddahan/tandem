@@ -49,6 +49,9 @@ folder works), starts Tandem at login (all in your home folder), opens
 codeload.github.com, where GitHub serves archives), so it also works behind company proxies that
 block raw.githubusercontent.com.
 
+In a new notes folder, a **Welcome to Tandem** page waits for you: a few things to try, a page
+inside it and a small database. Delete it when you're done; it won't come back.
+
 > **Node.js 22.16 or later (not 23)** runs Tandem, a JavaScript app (in `app/tandem/`, about
 > 11 MB). If the computer has one (`node -v`; Node 22 and 24, the long-term support versions,
 > or newer), the installer uses it and needs no network. If not, it offers to download one for

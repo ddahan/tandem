@@ -13,6 +13,8 @@ const app = await startServer({
   // Shorter in end-to-end tests.
   sessionIdleMs: Number(env.TANDEM_SESSION_IDLE_MS ?? 30_000),
   watchPolling: env.TANDEM_WATCH_POLLING === 'true',
+  // The welcome note in a folder that never had notes (compose.yaml asks for it; tests don't).
+  welcome: env.TANDEM_WELCOME === 'true',
 })
 
 async function shutdown() {

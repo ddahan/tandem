@@ -13,6 +13,8 @@ services:
       - '127.0.0.1:${TANDEM_PORT:-3864}:3864'
     environment:
       TANDEM_WATCH_POLLING: ${TANDEM_WATCH_POLLING:-false}
+      # A first page to play with, in a notes folder that never had notes.
+      TANDEM_WELCOME: 'true'
     volumes:
       # Your notes (Markdown files, attachments, history): typically a OneDrive folder.
       - ${TANDEM_DATA_DIR:?Set TANDEM_DATA_DIR in .env (see .env.example)}:/data

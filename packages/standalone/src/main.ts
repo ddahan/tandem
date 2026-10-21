@@ -22,6 +22,8 @@ async function serve(args: string[]) {
     // Local only: there is no authentication.
     hostname: '127.0.0.1',
     forbiddenFolders: [home],
+    // A first page to play with, in a folder that never had notes.
+    welcome: true,
     notesFolder: {
       readOnlyReason: asService
         ? null

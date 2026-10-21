@@ -46,6 +46,14 @@ inside OneDrive so that it is backed up and synced.
   `TANDEM_PORT` whose port another app uses stops before changing anything, naming the app.
   Started while another app holds its port, Tandem waits for it (logged once) instead of
   failing.
+- **The welcome note**: on its first start on a notes folder that never had notes (none, none in
+  the trash), the app writes "Welcome to Tandem" (👋), by "Tandem" (so the authorship view has
+  something to show): five things to try as to-dos, a TODO, a tip, a diagram, the command that
+  connects Claude (at this Tandem's address) in a collapsible section, a page inside it
+  (Scratchpad ✏️, with a rocket to find with a typo) and a small database (Things to try).
+  Only once per folder (a marker in `.tandem/`): deleted, it never comes back, and a folder
+  that had notes never gets one. The standalone app and Docker (`TANDEM_WELCOME=true`) ask for
+  it; the dev servers and tests don't.
 - **Docker**: `./td start` from a clone of the repository (the developer's setup).
 - Both use the same notes folder layout; switching between them only takes pointing the new
   one at the same folder (its database is restored from the folder's backup).

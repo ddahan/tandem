@@ -10,6 +10,7 @@ import { waitForPort } from './port.ts'
 import { openDatabase } from './db/client.ts'
 import { Vault } from './vault/vault.ts'
 import { watchVault } from './watcher.ts'
+import { welcome } from './welcome.ts'
 
 export interface ServerOptions {
   /** The notes folder. */
@@ -30,6 +31,8 @@ export interface ServerOptions {
   notesFolder?: NotesFolderControl
   /** Folders that can't be the notes folder (the app's own). */
   forbiddenFolders?: string[]
+  /** Writes the welcome note in a folder that never had notes (see welcome.ts). */
+  welcome?: boolean
 }
 
 const README = `# Tandem internal folder
@@ -64,6 +67,7 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   console.log(`Data folder: ${dataDir}`)
   await vault.reconcile()
   await vault.reindexAll()
+  if (options.welcome) await welcome(vault, dataDir, port)
 
   const watcher = watchVault(vault, { polling: options.watchPolling ?? false })
 
