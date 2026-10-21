@@ -259,8 +259,11 @@ inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
-- A landing page at `/landing` presents Tandem (full width, without the sidebar): a note
-  written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
+- A landing page at `/landing` presents Tandem (full width, without the sidebar): the
+  one-line install right under the hero's buttons (a dark terminal line in both modes, with a
+  copy button saying "Copied", or, where the browser refuses to copy, selecting the command and
+  saying which keys copy it; it scrolls sideways on narrow screens, and links to the latest
+  release for company networks), a note written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
   shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
   shows its final state. The sidebar's "About Tandem" button (ⓘ, next to the collapse button)
   shows it fullscreen over the app; its links into the app close it and go there, Escape closes.

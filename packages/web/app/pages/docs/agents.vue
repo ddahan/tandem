@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Docs › Agents: connecting an agent (MCP at this very address, or the CLI), and what it can
 // do. The full guide for agents is docs/agents.md in the repository.
+import { copyText } from '~/utils/copy-text'
+
 useHead({ title: 'Agents' })
 
 const toast = useToast()
@@ -13,8 +15,8 @@ tandem append "Projects/Roadmap" "- [ ] Draft the release notes"
 tandem --help`
 
 async function copy(text: string) {
-  await navigator.clipboard.writeText(text)
-  toast.add({ title: 'Copied', icon: 'i-lucide-check' })
+  if (await copyText(text)) toast.add({ title: 'Copied', icon: 'i-lucide-check' })
+  else toast.add({ title: "Couldn't copy: select the text instead", color: 'error' })
 }
 
 const abilities = [

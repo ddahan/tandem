@@ -268,9 +268,10 @@ const AGENT_POINTS = [
             class="bg-default/60 backdrop-blur"
           />
         </div>
+        <LandingInstallCommand class="landing-rise mt-8" style="--delay: 360ms" />
         <ul
           class="landing-rise mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted"
-          style="--delay: 360ms"
+          style="--delay: 450ms"
         >
           <li
             v-for="point in ['Plain .md files', 'Syncs with any folder', 'One app, no Docker']"
@@ -283,7 +284,7 @@ const AGENT_POINTS = [
       </div>
 
       <!-- The live note -->
-      <div class="landing-window-in relative mx-auto mt-16 max-w-5xl" style="--delay: 420ms">
+      <div class="landing-window-in relative mx-auto mt-16 max-w-5xl" style="--delay: 510ms">
         <div class="landing-window-glow" aria-hidden="true" />
         <div
           class="landing-tilt relative"

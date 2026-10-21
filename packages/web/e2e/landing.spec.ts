@@ -10,6 +10,12 @@ test('shows the landing page without the app sidebar, and leads into the app', a
   await expect(page.getByLabel('Title')).toHaveCount(0)
   await expect(page.getByTestId('workspace-name')).toHaveCount(0)
 
+  // The one-line install, early, with its copy button.
+  const install = page.getByTestId('install-command')
+  await expect(install).toBeVisible()
+  await expect(install).toContainText('app/get.sh | sh')
+  await expect(install.getByRole('button', { name: 'Copy the install command' })).toBeVisible()
+
   // The hero note writes itself.
   await expect(page.getByText('Ship the beta to ten friendly teams')).toBeVisible()
 

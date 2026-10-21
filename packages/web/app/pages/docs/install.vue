@@ -2,6 +2,7 @@
 // Docs › Install: Tandem as an app (its own window and Dock icon), with the browser's install
 // prompt or Safari's steps (useInstallApp), where Tandem runs, and the command that updates it
 // (app/get.sh).
+import { copyText } from '~/utils/copy-text'
 import { accentShade, logoSvg } from '~/utils/logo'
 
 useHead({ title: 'Install' })
@@ -14,8 +15,8 @@ const updateCommand =
   'curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh'
 
 async function copyUpdateCommand() {
-  await navigator.clipboard.writeText(updateCommand)
-  toast.add({ title: 'Copied', icon: 'i-lucide-check' })
+  if (await copyText(updateCommand)) toast.add({ title: 'Copied', icon: 'i-lucide-check' })
+  else toast.add({ title: "Couldn't copy: select the command instead", color: 'error' })
 }
 </script>
 

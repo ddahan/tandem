@@ -254,6 +254,8 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   decorations, replace), `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
   drawn as decorations; typing, Backspace and Delete apply to all of them). Docs › Shortcuts
   (`pages/docs/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
+- Copy buttons (landing install command, Docs) use `utils/copy-text.ts`: the Clipboard API,
+  then `execCommand('copy')` on a hidden field when it is refused (frames, permissions).
 - Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old
   `/shortcuts` redirecting with `definePageMeta`). Blocks shows each entry of
   `utils/docs-blocks.ts` in `DocsExample.vue`: a read-only UEditor with the note editor's
