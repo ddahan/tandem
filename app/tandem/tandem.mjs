@@ -7681,7 +7681,10 @@ var DEFAULT_SETTINGS = {
   editorFontSize: "medium",
   backgroundTone: "white",
   codeTheme: "tandem",
-  spellcheck: false
+  spellcheck: false,
+  tags: false,
+  trash: true,
+  todos: false
 };
 
 // ../shared/src/titles.ts
@@ -31943,7 +31946,10 @@ var settingsPatch = external_exports.object({
   editorFontSize: external_exports.enum(["small", "medium", "large", "xlarge"]),
   backgroundTone: external_exports.enum(["white", "paper", "sepia", "cool"]),
   codeTheme: external_exports.enum(CODE_THEMES),
-  spellcheck: external_exports.boolean()
+  spellcheck: external_exports.boolean(),
+  tags: external_exports.boolean(),
+  trash: external_exports.boolean(),
+  todos: external_exports.boolean()
 }).partial();
 var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
 var cells = external_exports.record(external_exports.string(), cellValue);
@@ -52849,8 +52855,6 @@ function welcomeMarkdown(port, databaseId) {
 - [ ] Select a word and press **\u2318B** (or Ctrl+B)
 - [ ] Type \`[[\` to link a page, like this one: [[Scratchpad]]
 - [ ] Press **\u2318\u21E7F** and search for the rocket in your Scratchpad: misspell it, on purpose
-
-TODO: come back to this list tomorrow: it waits for you on the TODOs page.
 
 ## Who wrote what?
 
