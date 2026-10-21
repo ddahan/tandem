@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Docs › Install: Tandem as an app (its own window and Dock icon), with the browser's install
-// prompt or Safari's steps (useInstallApp), and where Tandem runs.
+// prompt or Safari's steps (useInstallApp), where Tandem runs, and the command that updates it
+// (app/get.sh).
 import { accentShade, logoSvg } from '~/utils/logo'
 
 useHead({ title: 'Install' })
@@ -8,6 +9,14 @@ useHead({ title: 'Install' })
 const install = useInstallApp()
 const installLogo = logoSvg(accentShade, 'install-docs-logo')
 const address = window.location.origin
+const toast = useToast()
+const updateCommand =
+  'curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh'
+
+async function copyUpdateCommand() {
+  await navigator.clipboard.writeText(updateCommand)
+  toast.add({ title: 'Copied', icon: 'i-lucide-check' })
+}
 </script>
 
 <template>
@@ -68,9 +77,35 @@ const address = window.location.origin
         >: nobody else can reach it. It keeps running when the window is closed, so agents can work
         in your notes.
       </p>
+      <p>Your notes are Markdown files in your notes folder (Settings › Notes folder).</p>
+    </section>
+
+    <section aria-labelledby="install-update" class="space-y-2 text-sm text-muted">
+      <h2 id="install-update" class="font-semibold text-highlighted">Updating Tandem</h2>
       <p>
-        Your notes are Markdown files in your notes folder (Settings › Notes folder). Tandem itself
-        is installed, updated and removed with <code>app/install.sh</code>: see the README.
+        In Terminal, the command that installed it: it downloads the latest version, keeps your
+        notes folder and settings, and restarts Tandem. Open windows switch to the new version by
+        themselves.
+      </p>
+      <div class="relative">
+        <pre
+          class="overflow-x-auto rounded-md border border-muted bg-muted p-3 pe-12 text-xs"
+          data-testid="update-command"
+        ><code>{{ updateCommand }}</code></pre>
+        <UButton
+          icon="i-lucide-copy"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          aria-label="Copy the command"
+          class="absolute end-2 top-2"
+          @click="copyUpdateCommand"
+        />
+      </div>
+      <p>
+        Installed from a downloaded copy (no access to GitHub from Terminal)? Run the
+        <code>app/install.sh</code> of a newer download instead. To uninstall, add
+        <code>-s -- --uninstall</code> after <code>sh</code>: your notes stay.
       </p>
     </section>
   </div>

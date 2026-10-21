@@ -319,8 +319,8 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   a `NotesFolderControl`. The standalone app's saves the choice and exits; launchd restarts it
   (`KeepAlive`, `ThrottleInterval` 2 s) on the new folder. Without one (Docker, development),
   the folder is read-only.
-- `app/` (committed): `tandem/` (the built app, rewritten by `./td release`), `install.sh` and
-  `node.env` (the Node it may download: version and SHA-256 of the four builds, from
+- `app/` (committed): `tandem/` (the built app, rewritten by `./td release`), `get.sh`,
+  `install.sh` and `node.env` (the Node it may download: version and SHA-256 of the four builds, from
   nodejs.org's `SHASUMS256.txt`, written by `./td node-pin`). The installer picks Node
   (`TANDEM_NODE`, the installed launcher's, the `PATH`'s, then its own in `<app folder>/node/`;
   kept by full path since the login item has no shell `PATH`); with none, it asks on the
@@ -336,6 +336,13 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   On macOS, when that login item is registered and its plist unchanged (an update), it stays:
   the files are swapped and `launchctl kickstart -k` restarts the app, since each
   `bootstrap` makes macOS notify a new login item. `TANDEM_SERVICE_LABEL` names another one (a second instance, tests).
+- `app/get.sh` (the one-liner, fetched from `main` by `curl … | sh`): wrapped in a function
+  called on its last line, so a cut-short download runs nothing. It finds the latest release
+  from where `releases/latest` redirects (`curl -w '%{url_effective}'`; the API has a rate
+  limit), downloads the tag's `.tar.gz` (`tar` is everywhere, `unzip` isn't), and runs its
+  `app/install.sh` with `TANDEM_GET=1`, which makes the installer's messages show the
+  one-liner instead of its temporary path. Questions still work: the installer reads them from
+  `/dev/tty`, not from standard input (the piped script).
 
 ## CLI (`packages/cli`)
 

@@ -5,6 +5,8 @@
 # one for Tandem only (app/node.env: version and checksums). Download the repository (GitHub:
 # Code › Download ZIP), unzip it, then run:
 #   sh ~/Downloads/tandem-main/app/install.sh
+# Or in one command, from the latest release (app/get.sh downloads it and runs this file):
+#   curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh
 #
 # It copies the app into your home folder, writes the `tandem` command (the app run by this
 # Node), asks where your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a
@@ -51,6 +53,16 @@ bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
 # The repository's app/ folder: this file's. The app is its tandem/ folder.
 here="$(cd "$(dirname "$0")" && pwd)"
+# This installer run again, as the user ran it, for the commands it shows: `again [VAR=value]
+# [argument]`. Run by app/get.sh (TANDEM_GET), it is in a temporary folder: the same one-liner.
+again() {
+  if [ -n "${TANDEM_GET:-}" ]; then
+    printf 'curl -fsSL https://raw.githubusercontent.com/%s/main/app/get.sh | %ssh%s' \
+      "$REPO" "${1:+$1 }" "${2:+ -s -- $2}"
+  else
+    printf '%ssh "%s/install.sh"%s' "${1:+$1 }" "$here" "${2:+ $2}"
+  fi
+}
 
 stop_service() {
   if [ "$platform" = darwin ]; then
@@ -80,7 +92,7 @@ fi
 # --- The app and Node -----------------------------------------------------------------------
 if [ ! -f "$here/tandem/tandem.mjs" ]; then
   fail "no app next to this installer (app/tandem/): download the whole repository again
-(https://github.com/$REPO: Code › Download ZIP), unzip it, then run sh <its folder>/app/install.sh."
+(https://github.com/$REPO/releases: the source code ZIP), unzip it, then run sh <its folder>/app/install.sh."
 fi
 # Tandem needs node:sqlite with setReturnArrays: Node 22.16 or later, never 23 (the app's
 # nodeSupported says the same). The first that fits: TANDEM_NODE (only it, when set), the one
@@ -110,7 +122,7 @@ own_node="$app_dir/node/bin/node"
 node_help="Install Node 22.16 or later (not 23) yourself: https://nodejs.org (its .tar.gz needs no
 admin rights: unpack it anywhere), nvm, Volta or Homebrew. Then run this installer again, with
 TANDEM_NODE=/path/to/node in front if it isn't on your PATH:
-  TANDEM_NODE=/path/to/node sh \"$here/install.sh\""
+  $(again TANDEM_NODE=/path/to/node)"
 
 # Downloads Tandem's own Node (app/node.env: version and checksums) into the app folder: only
 # the node program, never on the PATH (other Node setups are untouched).
@@ -188,7 +200,7 @@ if [ -z "$node_bin" ]; then
     "" | y | Y | yes | Yes | o | O | oui) download_node && node_fits "$own_node" && node_bin="$own_node" ;;
   esac
   [ -n "$node_bin" ] || fail "no Node to run on. $node_help
-(Or let this installer download it: TANDEM_INSTALL_NODE=1 sh \"$here/install.sh\")"
+(Or let this installer download it: $(again TANDEM_INSTALL_NODE=1))"
 fi
 # Its full path: the login item doesn't get your shell's PATH (nvm, Volta…).
 node_bin="$(cd "$(dirname "$node_bin")" && pwd)/$(basename "$node_bin")"
@@ -232,7 +244,7 @@ if port_used "$port" && ! { service_running && curl -fs -m 2 "http://127.0.0.1:$
   if [ -n "$port_chosen" ]; then
     # Not moved silently: the installed app (PWA) and agents' settings use this address.
     fail "port $port is used by $(port_user "$port"). Stop it, or choose another port:
-TANDEM_PORT=$((port + 1)) sh \"$here/install.sh\" (then open Tandem at its new address, and install the app again from there)."
+$(again TANDEM_PORT=$((port + 1))) (then open Tandem at its new address, and install the app again from there)."
   fi
   taken="$port"
   while port_used "$port"; do
@@ -368,9 +380,14 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-say "Update:           download the repository again and run its app/install.sh (also after"
-say "                  changing or removing this Node: $node_bin)"
-say "Uninstall:        sh \"$here/install.sh\" --uninstall"
+if [ -n "${TANDEM_GET:-}" ]; then
+  say "Update:           $(again)"
+  say "                  (also after changing or removing this Node: $node_bin)"
+else
+  say "Update:           download the repository again and run its app/install.sh (also after"
+  say "                  changing or removing this Node: $node_bin)"
+fi
+say "Uninstall:        $(again "" --uninstall)"
 
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then
   if [ "$platform" = darwin ]; then open "$url"; elif command -v xdg-open > /dev/null 2>&1; then xdg-open "$url" > /dev/null 2>&1 || true; fi

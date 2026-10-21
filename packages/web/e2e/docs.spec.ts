@@ -41,7 +41,12 @@ test('shows every block in the read-only editor, next to its Markdown', async ({
   )
 })
 
-test('gives the MCP command at Tandem’s own address', async ({ page, baseURL }) => {
+test('gives the update command, and the MCP command at Tandem’s own address', async ({
+  page,
+  baseURL,
+}) => {
+  await page.goto('/docs/install')
+  await expect(page.getByTestId('update-command')).toContainText('app/get.sh | sh')
   await page.goto('/docs/agents')
   await expect(page.getByTestId('mcp-command')).toContainText(`${new URL(baseURL!).origin}/mcp`)
 })

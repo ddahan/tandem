@@ -23,7 +23,13 @@ inside OneDrive so that it is backed up and synced.
   hand (behind a company proxy). Without a terminal (an agent), it downloads only with
   `TANDEM_INSTALL_NODE=1`; a Node it downloaded and that no longer fits is replaced without
   asking. The app is in the repository (`app/tandem/`), so downloading it (a ZIP from GitHub,
-  on any computer) is enough; GitHub releases only carry notes. `app/install.sh` installs it
+  on any computer) is enough; GitHub releases only carry notes (their source archive holds
+  the app). **One command** installs from the latest release:
+  `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh` downloads
+  its source archive (or `TANDEM_VERSION`'s), unpacks it in a temporary folder (removed after)
+  and runs its installer with the same options and arguments (`sh -s -- --uninstall`); the
+  installer then shows that command for updating and uninstalling. When GitHub can't be
+  reached, it says so and how to install from a downloaded release. `app/install.sh` installs it
   with no admin rights (macOS and Linux), and with no network when Node is there: it finds
   Node, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the
@@ -260,7 +266,9 @@ inside OneDrive so that it is backed up and synced.
   shows it fullscreen over the app; its links into the app close it and go there, Escape closes.
 - Docs (sidebar, ⌘⇧F palette), in tabs with their own addresses (`/docs/<tab>`):
   - **Install**: installing Tandem as an app (the browser's install button, or Safari's steps;
-    "Installed" in the app), removing it, and where Tandem runs (this address, local only).
+    "Installed" in the app), removing it, where Tandem runs (this address, local only), and
+    updating Tandem: the one-command install, with a copy button (or a newer download's
+    installer), and how to uninstall.
   - **Concepts**: pages and folders, Markdown on disk, autosave and conflicts, authorship,
     history, links, files, databases, tags and icons, search, TODOs, trash, agents; each says
     where it is in the app.

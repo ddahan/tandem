@@ -34,6 +34,18 @@ MCP server or a CLI, and every line remembers who wrote it.
 
 ## Install
 
+In Terminal (macOS or Linux), with no admin rights:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh
+```
+
+It downloads the latest [release](https://github.com/ddahan/tandem/releases), finds Node (or
+offers to download it), copies the app into your home folder, writes the `tandem` command (the
+app run by that Node), asks where your notes live (default `~/Tandem`; a OneDrive or iCloud
+folder works), starts Tandem at login (all in your home folder) and opens
+<http://localhost:3864>.
+
 > **Node.js 22.16 or later (not 23)** runs Tandem, a JavaScript app (in `app/tandem/`, about
 > 11 MB). If the computer has one (`node -v`; Node 22 and 24, the long-term support versions,
 > or newer), the installer uses it and needs no network. If not, it offers to download one for
@@ -42,30 +54,41 @@ MCP server or a CLI, and every line remembers who wrote it.
 > first: [nodejs.org](https://nodejs.org)'s `.tar.gz` (unpack it anywhere), nvm or Volta need
 > no admin rights; its `.pkg` does.
 
-The app is in this repository (`app/`): downloading it is all it takes, with no Docker and no
-admin rights. It works where GitHub's other downloads are blocked.
+### Without the command (company network, offline)
 
-1. Download the repository, on any computer: on GitHub, **Code › Download ZIP** (or
-   `git clone`). Copy it to the computer where Tandem goes if it's another one.
+Where a proxy blocks GitHub from the terminal, download the app by hand: it is in this
+repository (`app/`), with no Docker and no admin rights, and this works where GitHub's other
+downloads are blocked.
+
+1. Download the latest release, on any computer: on its
+   [page](https://github.com/ddahan/tandem/releases/latest), **Source code (zip)** (or `git
+   clone`). Copy it to the computer where Tandem goes if it's another one.
 2. Unzip it (double-click).
-3. Run the installer, in Terminal:
+3. Run the installer, in Terminal (the folder is named after the version):
 
    ```bash
-   sh ~/Downloads/tandem-main/app/install.sh
+   sh ~/Downloads/tandem-0.5.0/app/install.sh
    ```
 
-It finds Node (or offers to download it), copies the app into your home folder, writes the
-`tandem` command (the app run by that Node), asks where your notes live (default `~/Tandem`; a OneDrive or iCloud folder works), starts
-Tandem at login (all in your home folder) and opens <http://localhost:3864>.
+It does the same as the command above.
+
+### Afterwards
 
 - **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
-- **Update**: the same with a newer download of the repository (your notes folder is
-  remembered), using the same Node as before (asking nothing). To switch to another Node:
-  `TANDEM_NODE=/path/to/node` in front.
-- **Uninstall**: `sh ~/Downloads/tandem-main/app/install.sh --uninstall` (your notes stay;
-  a Node downloaded for Tandem goes).
-- Options, as environment variables: `TANDEM_NODE` (the Node to use), `TANDEM_INSTALL_NODE`
+- **Update**: the same command again, or the installer of a newer download (your notes folder
+  is remembered), using the same Node as before (asking nothing). To switch to another Node:
+  `TANDEM_NODE=/path/to/node` in front of `sh`.
+- **Uninstall** (your notes stay; a Node downloaded for Tandem goes):
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh -s -- --uninstall
+  ```
+
+  or `sh <its folder>/app/install.sh --uninstall`.
+
+- Options, as environment variables in front of `sh` (`curl … | TANDEM_PORT=4000 sh`):
+  `TANDEM_VERSION` (with the command: a release, e.g. `0.5.0`; default the latest), `TANDEM_NODE` (the Node to use), `TANDEM_INSTALL_NODE`
   (`1`: download Node without asking when none fits; `0`: never), `TANDEM_NODE_MIRROR` (a copy
   of `https://nodejs.org/dist`, e.g. your company's), `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
@@ -81,18 +104,19 @@ Tandem at login (all in your home folder) and opens <http://localhost:3864>.
 Steps for an agent (Claude Code…) asked to install Tandem on this computer:
 
 1. **Never** use `sudo` or ask for admin rights, and **don't build from source**: building needs
-   ~1,000 npm packages from the network. The app is ready in `app/`.
+   ~1,000 npm packages from the network. The app comes built, in `app/`.
 2. Check Node: `node -v` must be 22.16 or later, and not 23. If it isn't, ask the user whether
    the installer may download one for Tandem (about 50 MB from nodejs.org): if so, add
-   `TANDEM_INSTALL_NODE=1` in step 4 (the installer can't ask you itself); if the download
+   `TANDEM_INSTALL_NODE=1` in front of `sh` in step 3 or 4 (the installer can't ask you itself); if the download
    fails (a proxy), tell the user to install Node first (see above). With several Nodes (nvm…),
    pass a suitable one as `TANDEM_NODE=/path/to/node`.
-3. Find this repository on the computer (a clone, or the unzipped `tandem-main` folder: `ls
-   ~/Downloads ~/Desktop`). If it isn't there, get it: `git clone
-   https://github.com/ddahan/tandem`; if that fails (blocked network), ask the user to download
-   it (GitHub: Code › Download ZIP) on any computer and copy it here.
-4. Run its installer with the notes folder chosen by the user (set it, the installer would
-   otherwise ask on the terminal): `TANDEM_DATA_DIR="$HOME/Tandem" sh <repository>/app/install.sh`
+3. Run the command with the notes folder chosen by the user (set it: the installer would
+   otherwise ask on the terminal):
+   `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | TANDEM_DATA_DIR="$HOME/Tandem" sh`
+4. If it can't download (a proxy blocks GitHub), use the repository instead: find it on the
+   computer (a clone, or an unzipped `tandem-…` folder: `ls ~/Downloads ~/Desktop`), or ask the
+   user to download the latest release (its source code ZIP) on any computer and copy it here;
+   then run `TANDEM_DATA_DIR="$HOME/Tandem" sh <its folder>/app/install.sh`.
 5. Check it runs: `curl -fs http://localhost:<port>/health` answers `{"ok":true}` (the port is
    in the installer's last lines: 3864, or the next free one when another app uses it).
 6. Tell the user to open Tandem's address and install it as an app (below), and offer to
