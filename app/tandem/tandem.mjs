@@ -7684,7 +7684,8 @@ var DEFAULT_SETTINGS = {
   spellcheck: false,
   tags: false,
   trash: true,
-  todos: false
+  todos: false,
+  daily: false
 };
 
 // ../shared/src/titles.ts
@@ -7999,6 +8000,41 @@ function plainText(markdown) {
   ).replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, "$1").replace(/(\*\*|__|~~|`+)/g, "").replace(/(^|[^\p{L}\p{N}])[*_](\S(?:.*?\S)?)[*_](?![\p{L}\p{N}])/gu, "$1$2").replace(/\\([\\`*_{}[\]()#+\-.!|<>~])/g, "$1").replace(/\s+/g, " ").trim();
 }
 
+// ../shared/src/calendar.ts
+var CALENDAR_DIR = "Calendar";
+var ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+var DAY_PATH = new RegExp(`^${CALENDAR_DIR}/(\\d{4}-\\d{2}-\\d{2})\\.md$`, "i");
+function isIsoDate(value) {
+  const match2 = ISO_DATE.exec(value);
+  if (!match2) return false;
+  const [, year, month, day] = match2.map(Number);
+  const date5 = new Date(year, month - 1, day);
+  return date5.getFullYear() === year && date5.getMonth() === month - 1 && date5.getDate() === day;
+}
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+function isoDate(date5 = /* @__PURE__ */ new Date()) {
+  return `${date5.getFullYear()}-${pad(date5.getMonth() + 1)}-${pad(date5.getDate())}`;
+}
+function calendarPath(iso) {
+  return `${CALENDAR_DIR}/${iso}.md`;
+}
+function calendarDateOf(path) {
+  const day = DAY_PATH.exec(path)?.[1];
+  return day && isIsoDate(day) ? day : null;
+}
+var TASK = /^\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\]/gm;
+function taskCounts(markdown) {
+  let open3 = 0;
+  let done = 0;
+  for (const match2 of markdown.matchAll(TASK)) {
+    if (match2[1] === " ") open3++;
+    else done++;
+  }
+  return { open: open3, done };
+}
+
 // ../cli/src/cli.ts
 var USAGE = `Usage: tandem <command> [arguments] [options]
 
@@ -8023,6 +8059,8 @@ Writing (content from arguments, --file, or standard input)
   delete <note>                 move to the trash
   restore <note> <version-id>   restore a version
   attach <note> <file>          attach a file (--name, --insert to append its link)
+  daily [content]               today's daily note (created if needed), or --date YYYY-MM-DD;
+                                with content (or --file), added at its end
 
 Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   databases <note>              a note's databases, with their columns
@@ -8150,7 +8188,8 @@ async function run(argv, io, env = process.env) {
         insert: { type: "boolean" },
         meta: { type: "boolean" },
         clear: { type: "boolean" },
-        limit: { type: "string" }
+        limit: { type: "string" },
+        date: { type: "string" }
       }
     });
   } catch (error62) {
@@ -8198,6 +8237,23 @@ async function execute(command2, args, values, client, io, print) {
     return input2;
   };
   switch (command2) {
+    case "daily": {
+      const node2 = await call(
+        client.calendar[":date"].$post({ param: { date: values.date ?? isoDate() } })
+      );
+      if (args.length || values.file) {
+        const added = await content(0);
+        await call(
+          client.notes[":id"].append.$post({ param: { id: node2.id }, json: { content: added } })
+        );
+        return print(`Appended to ${node2.path}`, node2);
+      }
+      const note = await call(client.notes[":id"].$get({ param: { id: node2.id } }));
+      if (values.json) return print("", note);
+      return print(`${node2.path}
+---
+${note.content.replace(/\n$/, "")}`);
+    }
     case "databases": {
       const node2 = await resolve5(need(0, "note"));
       const note = await call(client.notes[":id"].$get({ param: { id: node2.id } }));
@@ -31949,7 +32005,8 @@ var settingsPatch = external_exports.object({
   spellcheck: external_exports.boolean(),
   tags: external_exports.boolean(),
   trash: external_exports.boolean(),
-  todos: external_exports.boolean()
+  todos: external_exports.boolean(),
+  daily: external_exports.boolean()
 }).partial();
 var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
 var cells = external_exports.record(external_exports.string(), cellValue);
@@ -32096,7 +32153,19 @@ function createApi(vault, options = {}) {
     c.header("Cache-Control", "public, max-age=31536000, immutable");
     c.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
     return c.body(Readable3.toWeb(createReadStream2(path)));
-  }).get("/tags", async (c) => c.json(await vault.listTags())).get("/todos", async (c) => c.json(await vault.listTodos())).put(
+  }).get("/tags", async (c) => c.json(await vault.listTags())).get("/todos", async (c) => c.json(await vault.listTodos())).post(
+    "/calendar/:date",
+    zValidator2("param", external_exports.object({ date: external_exports.string() })),
+    async (c) => c.json(await vault.calendarNote(c.req.valid("param").date, authorOf(c)))
+  ).get(
+    "/calendar",
+    zValidator2("query", external_exports.object({ month: external_exports.string() })),
+    async (c) => c.json(await vault.calendarMonth(c.req.valid("query").month))
+  ).delete(
+    "/calendar/:id",
+    zValidator2("param", idParam),
+    async (c) => c.json({ dropped: await vault.dropEmptyCalendarNote(c.req.valid("param").id) })
+  ).put(
     "/notes/:id/tags",
     zValidator2("param", idParam),
     zValidator2("json", external_exports.object({ tags: external_exports.array(external_exports.string().max(60)).max(50) })),
@@ -42587,7 +42656,8 @@ id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
-Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.`;
+Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
+Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
@@ -42717,6 +42787,30 @@ ${detail.content}`);
       const node2 = await vault.resolveRef(note);
       await vault.appendContent(node2.id, content, author);
       return text(`Appended to ${node2.path}`);
+    })
+  );
+  server.registerTool(
+    "daily_note",
+    {
+      title: "Daily note",
+      description: "A day's note (Calendar/YYYY-MM-DD; today, on the user's computer, by default), created when it has none: its content, and `append` added at its end as a new block.",
+      inputSchema: {
+        date: external_exports.string().optional().describe("The day, YYYY-MM-DD (default: today)"),
+        append: external_exports.string().optional().describe("Markdown to add at the end")
+      }
+    },
+    async ({ date: date5, append }) => attempt(async () => {
+      const node2 = await vault.calendarNote(date5 ?? isoDate(), author);
+      if (append) await vault.appendContent(node2.id, append, author);
+      const detail = await vault.getNote(node2.id);
+      return text(
+        `# ${node2.title}
+path: ${node2.path} \xB7 id: ${node2.id}
+
+---
+
+${detail.content}`
+      );
     })
   );
   server.registerTool(
@@ -50125,31 +50219,8 @@ var Vault = class {
     return this.lock.run(async () => {
       const dir = await this.dirOfParent(input2.parentId ?? null);
       const name = uniqueName(sanitizeTitle(input2.title), "", await this.takenNames(dir));
-      const path = joinPath(dir, `${name}.md`);
-      const content = input2.content ?? "";
-      const now = this.now();
-      await atomicWrite(this.abs(path), content);
-      const info = await statFile(this.abs(path));
-      const row = {
-        id: nanoid3(12),
-        kind: "page",
-        path,
-        position: await this.nextPosition(dir),
-        createdAt: now,
-        updatedAt: now,
-        content,
-        hash: hashContent(content),
-        mtime: info?.mtime ?? null,
-        size: info?.size ?? null,
-        lastAuthor: input2.author,
-        lastSaveAt: now,
-        pendingSnapshot: content !== "",
-        blame: JSON.stringify(initialBlame(content, input2.author, now)),
-        icon: null
-      };
-      await this.db.insert(nodes).values(row);
+      const row = await this.insertPage(dir, name, input2.content ?? "", input2.author);
       if (input2.tags?.length) await this.writeTags(row.id, input2.tags);
-      await this.indexPage(row);
       this.changed({ type: "tree" });
       return this.nodeOf(row);
     });
@@ -50164,6 +50235,74 @@ var Vault = class {
       const row = await this.insertFolder(path, now);
       this.changed({ type: "tree" });
       return this.nodeOf(row);
+    });
+  }
+  // --- Daily notes (shared/calendar.ts) ------------------------------------------------------
+  /**
+   * A day's note, created (empty) when it has none. One call, under the lock: the app, an agent
+   * and another window asking for the same day at once all get the same note.
+   */
+  async calendarNote(date5, author) {
+    if (!isIsoDate(date5)) throw new ValidationError(`Not a day: "${date5}" (use YYYY-MM-DD)`);
+    return this.lock.run(async () => {
+      const path = calendarPath(date5);
+      let row = await this.rowByPath(path);
+      if (!row && await statFile(this.abs(path))) {
+        await this.reconcileInternal();
+        row = await this.rowByPath(path);
+      }
+      if (row) return this.nodeOf(row);
+      const owner = await this.rowByPath(CALENDAR_DIR) ?? await this.rowByPath(`${CALENDAR_DIR}.md`);
+      const dir = owner ? owner.path.replace(/\.md$/, "") : CALENDAR_DIR;
+      if (!owner) {
+        await mkdir3(this.abs(dir), { recursive: true });
+        await this.insertFolder(dir, this.now());
+      }
+      const created = await this.insertPage(dir, date5, "", author);
+      this.changed({ type: "tree" });
+      return this.nodeOf(created);
+    });
+  }
+  /** The days of a month (`YYYY-MM`) that have a note, for the calendar's marks. */
+  async calendarMonth(month) {
+    if (!/^\d{4}-\d{2}$/.test(month)) throw new ValidationError(`Not a month: "${month}"`);
+    const prefix = `${CALENDAR_DIR}/${month}-`.toLowerCase();
+    const rows = await this.db.select({ id: nodes.id, path: nodes.path, content: nodes.content }).from(nodes).where(
+      sql`${nodes.kind} = 'page' AND substr(lower(${nodes.path}), 1, ${prefix.length}) = ${prefix}`
+    );
+    return rows.flatMap((row) => {
+      const date5 = calendarDateOf(row.path);
+      if (!date5) return [];
+      const content = row.content ?? "";
+      return [{ date: date5, id: row.id, written: !isBlank(content), ...taskCounts(content) }];
+    });
+  }
+  /**
+   * Removes a day's note left empty (opened, nothing written), so that a day with nothing has
+   * no file. Only an empty note with no history, files or pages; anything else stays.
+   */
+  async dropEmptyCalendarNote(id) {
+    return this.lock.run(async () => {
+      const found = await this.db.select().from(nodes).where(eq(nodes.id, id)).get();
+      if (!found || found.kind !== "page" || !calendarDateOf(found.path)) return false;
+      const row = await this.freshPage(id).catch(() => null);
+      if (!row) return false;
+      if (!isBlank(row.content ?? "") || row.pendingSnapshot || await this.hasChildren(row))
+        return false;
+      const version3 = await this.db.select({ id: versions2.id }).from(versions2).where(eq(versions2.nodeId, id)).get();
+      if (version3 || existsSync6(this.abs(assetsDirOf(row.path)))) return false;
+      await rm2(this.abs(row.path), { force: true });
+      await this.db.delete(nodes).where(eq(nodes.id, id));
+      this.search.remove(id);
+      await this.databases.deleteForNodes([id]);
+      const dir = dirnameOf(row.path);
+      const folder = await this.rowByPath(dir);
+      if (folder?.kind === "folder" && !await this.hasChildren(folder)) {
+        await removeIfEmpty(this.abs(dir));
+        if (!existsSync6(this.abs(dir))) await this.db.delete(nodes).where(eq(nodes.id, folder.id));
+      }
+      this.changed({ type: "tree" });
+      return true;
     });
   }
   /**
@@ -50679,6 +50818,37 @@ var Vault = class {
     ).get();
     const max = row?.max ?? null;
     return max === null ? 0 : max + 1;
+  }
+  /** Writes a new page `<dir>/<name>.md` and its row (the name must be free). */
+  async insertPage(dir, name, content, author) {
+    const path = joinPath(dir, `${name}.md`);
+    const now = this.now();
+    await atomicWrite(this.abs(path), content);
+    const info = await statFile(this.abs(path));
+    const row = {
+      id: nanoid3(12),
+      kind: "page",
+      path,
+      position: await this.nextPosition(dir),
+      createdAt: now,
+      updatedAt: now,
+      content,
+      hash: hashContent(content),
+      mtime: info?.mtime ?? null,
+      size: info?.size ?? null,
+      lastAuthor: author,
+      lastSaveAt: now,
+      pendingSnapshot: content !== "",
+      blame: JSON.stringify(initialBlame(content, author, now)),
+      icon: null
+    };
+    await this.db.insert(nodes).values(row);
+    await this.indexPage(row);
+    return row;
+  }
+  /** The row at a path, whatever its case (the disk of a Mac ignores it). */
+  async rowByPath(path) {
+    return await this.db.select().from(nodes).where(sql`lower(${nodes.path}) = ${path.toLowerCase()}`).get();
   }
   async insertFolder(path, now) {
     const row = {

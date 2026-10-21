@@ -1,0 +1,1 @@
+import{st as e}from"./BhF0ymEK.js";import{J as t,Y as n,et as r,q as i,r as a}from"#entry";function o(){let o=t(),s=a(),c=n();async function l(t=r(),n={}){try{let r=await i(o.calendar[`:date`].$post({param:{date:t}}));s.byId.value.has(r.id)||await s.refresh(),await e(`/notes/${r.id}`,{replace:n.replace})}catch(e){c(e,`Could not open this day`)}}return{open:l}}export{o as t};
