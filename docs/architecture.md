@@ -254,6 +254,17 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   decorations, replace), `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
   drawn as decorations; typing, Backspace and Delete apply to all of them). Docs › Shortcuts
   (`pages/docs/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
+- Tabs (`composables/useTabs.ts`, `components/TabBar.vue`): the route is the active tab. The
+  layout calls `show(route)` on each navigation, which opens a tab for it or updates the one
+  with its key (`note:<id>`, or an app page's name); the tree's single click calls `preview`,
+  which marks that path as the next preview (`pendingPreview`, tied to the path so that a
+  double click arriving before the navigation, or another navigation, isn't taken for one).
+  `keepOpen` is called by a double click, by the note page when its document becomes `pending`
+  (an edit, not the load), and when its title changes. Closing picks the most recently used
+  tab (`recent`). The list and `recent` are one `useState` value, written to localStorage on
+  each change; the layout closes the tabs of notes missing from the tree once it is loaded.
+  The layout wraps the page in a column under the tab bar, and forces its panels' `min-h-svh`
+  to `min-h-0` so they fit under it.
 - Copy buttons (landing install command, Docs) use `utils/copy-text.ts`: the Clipboard API,
   then `execCommand('copy')` on a hidden field when it is refused (frames, permissions).
 - Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old

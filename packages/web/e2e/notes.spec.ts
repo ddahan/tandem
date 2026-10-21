@@ -19,7 +19,7 @@ test('creates a page, edits it with Markdown shortcuts, and saves it in the back
   await page.getByRole('button', { name: 'New page', exact: true }).first().click()
   await expect(page).toHaveURL(/\/notes\//)
 
-  const title = page.getByLabel('Title')
+  const title = page.getByLabel('Title', { exact: true })
   await title.fill('First page')
   await title.press('Enter')
   await expect(page.locator('.ProseMirror')).toBeFocused()
@@ -98,7 +98,7 @@ test('renames a note from its title, keeping links working', async ({ page, requ
   const note = await createNote(request, 'Old title', 'Content')
   await createNote(request, 'Linker', 'Points to [[Old title]].')
   await openNote(page, note.id)
-  const title = page.getByLabel('Title')
+  const title = page.getByLabel('Title', { exact: true })
   await title.fill('New title')
   await title.press('Tab')
   await expect(page.getByTestId('tree-New title')).toBeVisible()
@@ -153,7 +153,7 @@ test('keeps history and restores a version', async ({ page, request }) => {
     .toBe(1)
   await api(request, 'PUT', `/notes/${note.id}/content`, { content: 'Second version.' }, 'claude')
   await openNote(page, note.id)
-  await page.getByRole('tab', { name: 'History' }).click()
+  await page.getByRole('tab', { name: 'History', exact: true }).click()
   await page.getByTestId('history-version').first().click()
   await page.getByRole('button', { name: 'Restore this version' }).click()
   await expect(page.locator('.ProseMirror')).toContainText('First version.')
@@ -1052,7 +1052,7 @@ test('types the title of a new page at once, however the page was created', asyn
 }) => {
   const parent = await createNote(request, 'Focus parent')
   await page.goto(`/notes/${parent.id}`)
-  const title = page.getByLabel('Title')
+  const title = page.getByLabel('Title', { exact: true })
 
   // From a row's ⋯ menu: once closed, the menu must not take the focus back.
   await page.getByTestId('tree-Focus parent').hover()
@@ -1478,5 +1478,5 @@ test('shows a page without content but with child pages as a folder, until writt
   await expect(row.locator('.i-lucide\\:folder')).toBeVisible()
   await expect(pages.getByRole('link')).toHaveText(['Health'])
   await pages.getByRole('link', { name: 'Health' }).click()
-  await expect(page.getByLabel('Title')).toHaveValue('Health')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Health')
 })

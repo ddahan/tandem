@@ -671,7 +671,7 @@ teams by the end of the month.
             Feels like your code editor.
           </h2>
           <p class="mt-4 text-lg text-muted">
-            The keys your fingers know, the colors your eyes like, and soon, tabs.
+            The keys your fingers know, the colors your eyes like, and tabs.
           </p>
         </div>
         <div class="mt-12 grid gap-4 lg:grid-cols-3">
@@ -719,13 +719,10 @@ teams by the end of the month.
             data-testid="editor-point"
             @pointermove="spotlight"
           >
-            <div class="flex items-start justify-between gap-3">
-              <UIcon name="i-lucide-panels-top-left" class="landing-card-icon" />
-              <UBadge label="Coming soon" color="primary" variant="soft" size="sm" />
-            </div>
-            <h3 class="landing-card-title">Multiple tabs</h3>
+            <UIcon name="i-lucide-panels-top-left" class="landing-card-icon" />
+            <h3 class="landing-card-title">Tabs, as for your files</h3>
             <p class="landing-card-text">
-              Keep several notes open and switch between them, as with files in your editor.
+              Keep several notes open: a click previews one, a double click keeps it, as in VS Code.
             </p>
             <LandingTabsDemo class="mt-6" />
           </article>

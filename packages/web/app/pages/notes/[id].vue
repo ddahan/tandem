@@ -92,6 +92,16 @@ function resetEditor(markdown: string) {
   editorKey.value++
 }
 
+// Editing a note in the preview tab keeps it open, as in VS Code: a change waiting to be
+// saved (not opening it, which changes nothing), or a new title.
+const tabs = useTabs()
+watch(
+  () => doc.status.value,
+  (status) => {
+    if (status === 'pending') tabs.keepOpen(`note:${id.value}`)
+  },
+)
+
 function onEditorChange(markdown: string) {
   content.value = normalizeMarkdown(fromEditorMarkdown(markdown, notePath.value))
   // The editor's own Markdown: nothing in it the editor can't show.
@@ -190,6 +200,7 @@ async function commitTitle() {
     return
   }
   await doc.flush()
+  tabs.keepOpen(`note:${node.value.id}`)
   const renamed = await tree.rename(node.value.id, title)
   titleDraft.value = renamed?.title ?? node.value.title
 }
@@ -343,7 +354,8 @@ const deleting = ref(false)
 async function remove() {
   deleting.value = false
   await doc.flush()
-  if (await tree.remove(id.value)) await navigateTo('/')
+  // Its tab closes by itself (default.vue): the one used before shows.
+  await tree.remove(id.value)
 }
 
 const moreItems = computed<DropdownMenuItem[][]>(() => [

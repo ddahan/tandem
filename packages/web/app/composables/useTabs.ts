@@ -1,0 +1,212 @@
+// Open pages as tabs, as VS Code opens files in editors. A note, and the app's own pages (Docs,
+// Settings, TODOs, Trash), each have one tab; the route is the active tab. A single click in
+// the tree opens a note in the preview tab (one at most, in italics, replaced by the next
+// preview); a double click, editing the note, or any other way of opening it gives it a tab of
+// its own. Closing the active tab shows the one used before it, or Home with none left. The
+// tabs, their order and the recently used ones are kept in localStorage.
+import type { RouteLocationNormalizedLoaded } from 'vue-router'
+import { noteIdOf, tabKeyOf } from '~/utils/tabs'
+
+export interface Tab {
+  key: string
+  /** Where it leads (a Docs tab remembers its section). */
+  path: string
+  /** The preview tab: replaced by the next preview, until kept open. */
+  preview: boolean
+}
+
+interface Saved {
+  tabs: Tab[]
+  recent: string[]
+}
+
+const STORAGE_KEY = 'tandem-tabs'
+/** How many closed tabs can be reopened. */
+const CLOSED_LIMIT = 20
+
+/** Forgets every tab (switching notes folders: another folder's notes are other notes). */
+export function forgetTabs() {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Nothing kept, then.
+  }
+}
+
+function load(): Saved {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Saved | null
+    if (saved && Array.isArray(saved.tabs) && Array.isArray(saved.recent)) return saved
+  } catch {
+    // Not saved, or not readable: no tabs.
+  }
+  return { tabs: [], recent: [] }
+}
+
+export function useTabs() {
+  const saved = useState('tabs:saved', load)
+  const tabs = computed(() => saved.value.tabs)
+  /** Keys, most recently active first. */
+  const recent = computed(() => saved.value.recent)
+  const closed = useState<Tab[]>('tabs:closed', () => [])
+  /** The path to open in the preview tab when the router shows it (set by `preview`). */
+  const pendingPreview = useState<string | null>('tabs:pending-preview', () => null)
+  const route = useRoute()
+  const activeKey = computed(() => tabKeyOf(route.path))
+
+  function persist() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saved.value))
+    } catch {
+      // Private browsing, quota: the tabs just won't come back.
+    }
+  }
+
+  function touch(key: string) {
+    saved.value.recent = [key, ...saved.value.recent.filter((k) => k !== key)]
+  }
+
+  /** Shows the route in its tab, opening one if needed (the router calls it: see default.vue). */
+  function show(current: RouteLocationNormalizedLoaded) {
+    const key = tabKeyOf(current.path)
+    const asPreview = pendingPreview.value === current.path
+    pendingPreview.value = null
+    if (!key) return
+    const list = saved.value.tabs
+    const existing = list.find((tab) => tab.key === key)
+    if (existing) existing.path = current.path
+    else {
+      const tab: Tab = { key, path: current.path, preview: asPreview }
+      const previewIndex = asPreview ? list.findIndex((t) => t.preview) : -1
+      if (previewIndex >= 0) {
+        // The preview tab shows this note instead.
+        const replaced = list[previewIndex]!
+        saved.value.recent = saved.value.recent.filter((k) => k !== replaced.key)
+        list.splice(previewIndex, 1, tab)
+      } else {
+        // Right of the tab that was active, as in VS Code.
+        const from = list.findIndex((t) => t.key === saved.value.recent[0])
+        list.splice(from >= 0 ? from + 1 : list.length, 0, tab)
+      }
+    }
+    touch(key)
+    persist()
+  }
+
+  /** Opens a path in the preview tab (a single click in the tree), unless it has a tab. */
+  function preview(path: string) {
+    if (tabKeyOf(path) === activeKey.value) return
+    pendingPreview.value = path
+    return navigateTo(path)
+  }
+
+  /** Opens a path in a tab of its own (a double click in the tree): keeps a preview open. */
+  function open(path: string) {
+    const key = tabKeyOf(path)
+    // A preview of it still on its way: it arrives kept open.
+    if (pendingPreview.value === path) pendingPreview.value = null
+    if (key === activeKey.value) keepOpen(key)
+    else return navigateTo(path)
+  }
+
+  /** Makes a tab a tab of its own, no longer replaced by the next preview. */
+  function keepOpen(key = activeKey.value) {
+    const tab = saved.value.tabs.find((t) => t.key === key)
+    if (!tab?.preview) return
+    tab.preview = false
+    persist()
+  }
+
+  function activate(key: string) {
+    const tab = saved.value.tabs.find((t) => t.key === key)
+    if (tab) return navigateTo(tab.path)
+  }
+
+  /** Closes tabs; when the active one goes, shows the one used most recently, or Home. */
+  function close(keys: string[]) {
+    if (!keys.length) return
+    const gone = saved.value.tabs.filter((tab) => keys.includes(tab.key))
+    closed.value = [...gone.toReversed(), ...closed.value].slice(0, CLOSED_LIMIT)
+    saved.value.tabs = saved.value.tabs.filter((tab) => !keys.includes(tab.key))
+    saved.value.recent = saved.value.recent.filter((key) => !keys.includes(key))
+    persist()
+    if (activeKey.value && keys.includes(activeKey.value)) {
+      const next = saved.value.tabs.find((tab) => tab.key === saved.value.recent[0])
+      return navigateTo(next?.path ?? '/')
+    }
+  }
+
+  const closeTab = (key = activeKey.value) => (key ? close([key]) : undefined)
+  const closeOthers = (key: string) =>
+    close(saved.value.tabs.filter((t) => t.key !== key).map((t) => t.key))
+  function closeToTheRight(key: string) {
+    const index = saved.value.tabs.findIndex((t) => t.key === key)
+    return close(saved.value.tabs.slice(index + 1).map((t) => t.key))
+  }
+  const closeAll = () => close(saved.value.tabs.map((t) => t.key))
+
+  /** Reopens the tab closed last (it becomes the active one). */
+  function reopenClosed() {
+    const [tab, ...rest] = closed.value
+    if (!tab) return
+    closed.value = rest
+    return navigateTo(tab.path)
+  }
+
+  /** The next or previous tab, in their order (wrapping around). */
+  function step(by: 1 | -1) {
+    const list = saved.value.tabs
+    if (!list.length) return
+    const index = list.findIndex((t) => t.key === activeKey.value)
+    const next = list[(index + by + list.length) % list.length]!
+    return navigateTo(next.path)
+  }
+
+  /** The tab at a position (1-based, as ⌃1…⌃9), the last one for 9, as in VS Code. */
+  function at(position: number) {
+    const list = saved.value.tabs
+    const tab = position === 9 ? list.at(-1) : list[position - 1]
+    if (tab) return navigateTo(tab.path)
+  }
+
+  /** Moves a tab to another position (dragging it). */
+  function move(key: string, toIndex: number) {
+    const list = saved.value.tabs
+    const from = list.findIndex((t) => t.key === key)
+    if (from < 0) return
+    const [tab] = list.splice(from, 1)
+    list.splice(Math.min(toIndex, list.length), 0, tab!)
+    persist()
+  }
+
+  /** Closes the tabs of notes that are gone (trashed, deleted), without opening anything. */
+  function forgetNotes(exists: (id: string) => boolean) {
+    const gone = saved.value.tabs
+      .filter((tab) => {
+        const id = noteIdOf(tab.key)
+        return id !== null && !exists(id)
+      })
+      .map((tab) => tab.key)
+    if (gone.length) return close(gone)
+  }
+
+  return {
+    tabs,
+    recent,
+    activeKey,
+    show,
+    preview,
+    open,
+    keepOpen,
+    activate,
+    closeTab,
+    closeOthers,
+    closeToTheRight,
+    closeAll,
+    reopenClosed,
+    step,
+    at,
+    move,
+    forgetNotes,
+  }
+}

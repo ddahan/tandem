@@ -187,8 +187,9 @@ inside OneDrive so that it is backed up and synced.
 
 - Sidebar tree of pages, with drag and drop to reorder and move, and the usual actions (new
   page, new page inside, rename, delete) in each row's menu: its ⋯
-  button, or a right-click on the row. A row opens its page (a folder too); its arrow expands
-  it. The "+" above the tree makes a page. A new page opens with its title selected, however it was
+  button, or a right-click on the row. A click on a row opens its page (a folder too) in the
+  preview tab, a double click in a tab of its own (see Tabs); its arrow expands it. Renaming is
+  F2 or the menu. The "+" above the tree makes a page. A new page opens with its title selected, however it was
   created (button, menu, shortcut): typing replaces it.
 - Breadcrumb above each note.
 - Tags on notes (stored in SQLite).
@@ -250,6 +251,26 @@ inside OneDrive so that it is backed up and synced.
   The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
   Keyboard shortcuts throughout.
+- **Tabs**, as VS Code's editors, above the page (and its side panel). Notes open in tabs, and
+  so do Settings, Docs (one tab, which remembers its section), TODOs and the trash; Home has
+  none. The page shown is always the active tab: an accent line on top, merged with the page.
+  - A click in the tree opens a note in the **preview tab**: in italics, one at most, replaced
+    by the next preview (in its place). It becomes a tab of its own with a double click in the
+    tree or on the tab, an edit of the note (a change to save, or a new title), or "Keep open"
+    in its menu. Opening a note any other way (search, links, TODOs, Home, a new page) gives it
+    a tab of its own. A new tab opens right of the active one; a note already open just shows.
+  - Closing: the tab's × (on the active tab and on hover), a middle click, ⌥⌘W, or the tab's
+    menu (a right-click: Close, Close others, Close to the right, Close all; Keep open for the
+    preview; Copy path for a note). Closing the active tab shows the tab used most recently;
+    closing the last one shows Home. ⌥⌘T reopens closed tabs, last first (up to 20).
+  - ⌥⌘→ / ⌥⌘← go to the next or previous tab (wrapping around), ⌃1…⌃8 to that tab and ⌃9 to
+    the last one (⌘W, ⌘T and ⌘1…9 belong to the browser). Tabs are dragged to reorder them;
+    the bar scrolls sideways when they don't fit, keeping the active one in view. A double
+    click on its empty space makes a new page.
+  - A note moved to the trash or deleted (here or by an agent) loses its tab. Renamed or moved,
+    its tab follows (title, icon). The tabs, their order and the recently used ones are kept in
+    the browser: opening Tandem on Home shows the tab that was active. Switching notes folders
+    closes them all.
 - VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),
   delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a
   word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once (Esc goes back to one

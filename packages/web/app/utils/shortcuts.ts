@@ -57,6 +57,36 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    id: 'tabs',
+    title: 'Tabs',
+    description:
+      'As in VS Code: a click in the pages tree previews a page (in italics, replaced by the next one); a double click, or editing it, keeps it open. ⌘W and ⌘T are the browser’s.',
+    icon: 'i-lucide-panels-top-left',
+    shortcuts: [
+      {
+        keys: [['meta', 'alt', 'w']],
+        label: 'Close the tab',
+        description: 'Or its ×, or a middle click on it. The tab used before it shows.',
+      },
+      { keys: [['meta', 'alt', 't']], label: 'Reopen the closed tab' },
+      {
+        keys: [
+          ['meta', 'alt', 'arrowright'],
+          ['meta', 'alt', 'arrowleft'],
+        ],
+        label: 'Next or previous tab',
+      },
+      {
+        keys: [
+          ['ctrl', '1'],
+          ['ctrl', '9'],
+        ],
+        label: 'Go to tab 1 to 8, or the last one',
+        description: '⌃1 to ⌃8, and ⌃9 for the last one.',
+      },
+    ],
+  },
+  {
     id: 'find',
     title: 'Find in the note',
     description: 'As in VS Code: the matches are highlighted, the current one selected.',

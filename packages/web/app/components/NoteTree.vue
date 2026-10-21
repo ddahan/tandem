@@ -28,9 +28,14 @@ watch(
   { immediate: true },
 )
 
-// Every row opens its page (a folder too: writing in it makes it a note); the arrow expands.
+// Every row opens its page (a folder too: writing in it makes it a note) in the preview tab, as
+// VS Code's explorer: a double click opens it in a tab of its own (useTabs). The arrow expands.
+const tabs = useTabs()
 function open(item: TreeItem) {
-  void navigateTo(`/notes/${item.id}`)
+  void tabs.preview(`/notes/${item.id}`)
+}
+function openForGood(item: TreeItem) {
+  void tabs.open(`/notes/${item.id}`)
 }
 
 function toggle(id: string) {
@@ -62,8 +67,8 @@ async function commitRename() {
 const iconFor = ref<TreeItem | null>(null)
 
 async function trash(item: TreeItem) {
-  const wasOpen = currentId.value && tree.isWithin(currentId.value, item.id)
-  if ((await tree.moveToTrash(item.id)) && wasOpen) await navigateTo('/')
+  // Its tab, and those of its pages, close by themselves (default.vue): the one used before shows.
+  await tree.moveToTrash(item.id)
 }
 
 /** Moves a node up or down among its siblings, and keeps the focus on it. */
@@ -303,6 +308,7 @@ function rowClass(item: TreeItem) {
                 @keydown.capture="onRowKeydown($event, item)"
                 :data-testid="`tree-${item.label}`"
                 @click="open(item)"
+                @dblclick="openForGood(item)"
                 @dragstart="onDragStart($event, item)"
                 @dragover.stop="onDragOver($event, item)"
                 @dragleave="dropTarget = null"
@@ -337,9 +343,7 @@ function rowClass(item: TreeItem) {
                   @keydown.esc.prevent="renamingId = null"
                   @blur="commitRename"
                 />
-                <span v-else class="min-w-0 flex-1 truncate" @dblclick.stop="startRename(item)">{{
-                  item.label
-                }}</span>
+                <span v-else class="min-w-0 flex-1 truncate">{{ item.label }}</span>
 
                 <div
                   v-if="renamingId !== item.id"

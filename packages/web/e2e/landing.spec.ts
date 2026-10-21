@@ -12,7 +12,7 @@ test('shows the landing page, leading to the install command and GitHub', async 
   await page.goto('/')
   await expect(page).toHaveTitle('Tandem — notes you write with your agent')
   await expect(page.getByRole('heading', { level: 1 })).toContainText('with your agent')
-  await expect(page.getByLabel('Title')).toHaveCount(0)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveCount(0)
   await expect(page.getByTestId('workspace-name')).toHaveCount(0)
 
   // The one-line install, early, with its copy button.
@@ -32,12 +32,12 @@ test('shows the landing page, leading to the install command and GitHub', async 
   await expect(agents).toBeVisible()
   await expect(page.getByText('tandem search "launch plan"')).toBeVisible()
 
-  // Like a code editor: three points, tabs to come.
+  // Like a code editor: three points.
   const points = page.getByTestId('editor-point')
   await points.first().scrollIntoViewIfNeeded()
   await expect(points).toHaveCount(3)
   await expect(points.nth(0)).toContainText('VS Code shortcuts you already know')
-  await expect(points.nth(2)).toContainText('Coming soon')
+  await expect(points.nth(2)).toContainText('Tabs, as for your files')
   await points.nth(1).getByRole('button', { name: 'Dracula' }).click()
   await expect(points.nth(1).locator('pre')).toHaveAttribute('data-code-preview', 'dracula-light')
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The landing page's tabs card (a coming feature): notes open side by side in tabs, the
-// current one moving from tab to tab, each with its page's lines.
+// The landing page's tabs card: notes open side by side in tabs, the current one moving from tab
+// to tab, each with its page's lines.
 const TABS = [
   { title: 'Launch', icon: '🚀', lines: ['88%', '64%', '76%'] },
   { title: 'Roadmap', icon: '🗺️', lines: ['70%', '82%', '52%'] },

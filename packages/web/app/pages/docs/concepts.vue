@@ -24,6 +24,16 @@ const CONCEPTS: Concept[] = [
     where: 'The sidebar’s tree, and + above it.',
   },
   {
+    id: 'tabs',
+    icon: 'i-lucide-panels-top-left',
+    title: 'Tabs',
+    paragraphs: [
+      'Pages open in tabs, as files in VS Code. A click in the tree previews a page in a tab in italics, which the next preview replaces; a double click, or editing the page, keeps it open. Settings, Docs, TODOs and the trash open in tabs too.',
+      'Drag tabs to reorder them; right-click one to close it, the others or those to its right. Your tabs come back when you reopen Tandem.',
+    ],
+    where: 'Above the page. ⌥⌘W closes one, ⌃1…⌃9 go to one.',
+  },
+  {
     id: 'markdown',
     icon: 'i-lucide-file-code-2',
     title: 'Plain Markdown, on disk',

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Picks the notes folder (Settings › Notes folder). The server lists folders (a browser can't
 // see paths) and switches: it restarts on the new folder, then the app reloads.
+import { forgetTabs } from '~/composables/useTabs'
 import type { FolderListing } from '@tandem/shared'
 
 const props = defineProps<{ current: string }>()
@@ -101,6 +102,8 @@ async function useFolder() {
       await new Promise((resolve) => setTimeout(resolve, 500))
       const now = await unwrap(api['notes-folder'].$get()).catch(() => null)
       if (now?.path === path) {
+        // Its notes aren't the tabs' notes: Home, and no tabs.
+        forgetTabs()
         window.location.href = '/'
         return
       }
