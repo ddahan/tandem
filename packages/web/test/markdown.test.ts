@@ -5,7 +5,7 @@ import { Editor } from '@tiptap/core'
 import { Markdown } from '@tiptap/markdown'
 import { StarterKit } from '@tiptap/starter-kit'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createExtensions, starterKitOptions } from '../app/editor/extensions'
+import { createExtensions, markdownOptions, starterKitOptions } from '../app/editor/extensions'
 import { DOCS_BLOCK_GROUPS } from '../app/utils/docs-blocks'
 import { SCRATCHPAD_MARKDOWN, welcomeMarkdown } from '../../server/src/welcome.ts'
 import {
@@ -21,7 +21,7 @@ function createEditor(markdown: string) {
   editor = new Editor({
     extensions: [
       StarterKit.configure(starterKitOptions),
-      Markdown.configure({ markedOptions: { gfm: true } }),
+      Markdown.configure(markdownOptions()),
       ...createExtensions(),
     ],
     content: markdown,

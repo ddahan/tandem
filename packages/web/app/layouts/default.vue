@@ -83,7 +83,8 @@ let askBeforeClosing: ((event: BeforeUnloadEvent) => void) | null = null
 useEventListener(window, 'keydown', (event: KeyboardEvent) => {
   const command = /Mac|iPhone|iPad/.test(navigator.userAgent) ? event.metaKey : event.ctrlKey
   if (!command || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'w') return
-  if (tabs.activeKey.value) {
+  // A tab just closed may still be the route for a moment: only a tab still open counts.
+  if (tabs.tabs.value.some((tab) => tab.key === tabs.activeKey.value)) {
     event.preventDefault()
     void tabs.closeTab()
     return
@@ -127,11 +128,11 @@ defineShortcuts({
   // On a day's note, the day after or before; elsewhere, the next or previous tab.
   meta_alt_arrowright: {
     usingInput: true,
-    handler: () => void (daily.activeDay.value ? daily.step(1) : tabs.step(1)),
+    handler: () => void (daily.onDay.value ? daily.step(1) : tabs.step(1)),
   },
   meta_alt_arrowleft: {
     usingInput: true,
-    handler: () => void (daily.activeDay.value ? daily.step(-1) : tabs.step(-1)),
+    handler: () => void (daily.onDay.value ? daily.step(-1) : tabs.step(-1)),
   },
   meta_alt_n: { usingInput: true, handler: () => void createNextToOpen() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.

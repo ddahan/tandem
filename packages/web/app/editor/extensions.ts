@@ -6,8 +6,10 @@ import { FileHandler } from '@tiptap/extension-file-handler'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
 import type { AnyExtension, Editor } from '@tiptap/core'
+import type { MarkdownExtensionOptions } from '@tiptap/markdown'
 import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
+import { Marked } from 'marked'
 import { BlockKeys } from './block-keys'
 import { Callout } from './callout'
 import { Database } from './database'
@@ -24,6 +26,20 @@ import { ResizableImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
 
 export const lowlight = createLowlight(common)
+
+/**
+ * The Markdown extension's options, for one editor: its own parser. By default every editor
+ * registers its syntax on marked's single shared parser, and nothing removes it: each editor
+ * opened made every later parse slower (the rules piled up) and stayed in memory.
+ */
+export function markdownOptions(): Partial<MarkdownExtensionOptions> {
+  return {
+    // Tiptap's types name its own marked (17); the app's (18) parses alike: the Markdown
+    // round-trip tests run with it.
+    marked: new Marked() as unknown as MarkdownExtensionOptions['marked'],
+    markedOptions: { gfm: true },
+  }
+}
 
 export interface ExtensionOptions {
   onOpenWikiLink?: (attributes: WikiLinkAttributes) => void

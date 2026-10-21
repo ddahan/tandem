@@ -7,7 +7,7 @@
 import { Editor } from '@tiptap/core'
 import { Markdown } from '@tiptap/markdown'
 import { StarterKit } from '@tiptap/starter-kit'
-import { createExtensions, starterKitOptions } from '../editor/extensions'
+import { createExtensions, markdownOptions, starterKitOptions } from '../editor/extensions'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from './markdown-paths'
 
 export interface Loss {
@@ -24,7 +24,7 @@ export function editorRoundTrip(markdown: string, notePath: string): string {
   const editor = new Editor({
     extensions: [
       StarterKit.configure(starterKitOptions),
-      Markdown.configure({ markedOptions: { gfm: true } }),
+      Markdown.configure(markdownOptions()),
       ...createExtensions(),
     ],
     content: toEditorMarkdown(markdown, notePath),

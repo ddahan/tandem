@@ -6,10 +6,11 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import { Callout } from '~/editor/callout'
-import { createExtensions, starterKitOptions } from '~/editor/extensions'
+import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
 
 defineProps<{ markdown: string }>()
 
+const markdownParser = markdownOptions()
 const extensions = createExtensions().map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {
     return (extension as typeof CodeBlockLowlight).extend({
@@ -29,6 +30,7 @@ const extensions = createExtensions().map((extension) => {
       :model-value="markdown"
       :editable="false"
       content-type="markdown"
+      :markdown="markdownParser"
       :starter-kit="starterKitOptions"
       :image="false"
       :mention="false"

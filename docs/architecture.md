@@ -180,8 +180,11 @@ history, attachments or pages; its folder goes with its last note). API: `POST /
 `GET /calendar?month=`, `DELETE /calendar/:id`; MCP `daily_note`, CLI `tandem daily`. The web
 app hides them from the tree (`useTree`, daily notes on), opens days with `useDaily`, shows
 `SideCalendar` in the side panel, and drops an empty day when its page unmounts. Going from
-one day to another keeps the tab: `useTabs().replace` gives the active tab the new page, and
-⌥⌘← ⌥⌘→ step days on a day's note (tabs elsewhere).
+one day to another keeps the tab: `useTabs().replace` gives the active tab the new page at once
+(before the router shows it), and ⌥⌘← ⌥⌘→ step days on a day's note (tabs elsewhere). Steps
+pressed faster than days open queue: each counts from the day on its way, waits for the page
+before it to show (`page:finish`: a switch started while the last page loads can end on the
+earlier one), and one superseded by a newer press is skipped.
 
 ### Optional features
 
@@ -250,10 +253,16 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   with two fixes: a numbered line under a bullet or to-do line of an item is that list's, and
   an item's content starts after its whole marker). `normalizeMarkdown` drops empty items.
   `test/lists.test.ts` holds the rules, for every pair and triple of kinds.
+- Every editor (the note's, the Docs' examples, the loss check, the tests) gets its own marked
+  parser (`markdownOptions()`): by default TipTap's Markdown extension registers its syntax on
+  marked's single shared instance and never removes it, so each editor opened slowed every later
+  parse and stayed in memory (pages got slower over a session).
 - Markdown the editor would lose (`utils/markdown-loss.ts`): a headless TipTap editor with the
   same extensions parses the note and saves it again (`editorRoundTrip`); the lines whose words
-  or HTML tags (except those with their own node) are missing afterwards are losses. The note
-  page checks on load, on agents' changes and while the Markdown view is typed in (debounced);
+  or HTML tags (except those with their own node) are missing afterwards are losses. On
+  opening a note, the visible editor's first reading stands for that trip (`lostLines` on its
+  `getMarkdown()`, as soon as it exists): a second, hidden editor would parse the note twice.
+  The note page also checks while the Markdown view is typed in (debounced), with `editorRoundTrip`;
   `NoteEditor`'s `readOnly` goes to the TipTap editor (`setEditable`: UEditor reads `editable`
   once). The Markdown view (`MarkdownSource.vue`) numbers its lines: each number is as tall as
   its wrapped line, measured in a hidden copy of the text with the same width and font.

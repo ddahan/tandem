@@ -14,7 +14,7 @@ import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import DatabaseView from '~/components/editor/DatabaseView.vue'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
-import { createExtensions, starterKitOptions } from '~/editor/extensions'
+import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
 import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
 import { currentHeading, scrollParent } from '~/utils/current-heading'
 import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
@@ -118,6 +118,7 @@ watch(
   },
 )
 
+const markdownParser = markdownOptions()
 const extensions = createExtensions({
   onOpenWikiLink: openWikiLink,
   wikiLinkExists: (target) => !!linkedPage(target),
@@ -779,6 +780,7 @@ defineExpose({
       :model-value="content"
       :editable="!readOnly"
       content-type="markdown"
+      :markdown="markdownParser"
       :starter-kit="starterKitOptions"
       :image="false"
       :mention="false"

@@ -12,7 +12,7 @@ import {
 } from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
 import { DELETE_FOREVER } from '~/composables/useTree'
-import { markdownLosses, type Loss } from '~/utils/markdown-loss'
+import { lostLines, markdownLosses, type Loss } from '~/utils/markdown-loss'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
 
 definePageMeta({ key: (route) => String(route.params.id) })
@@ -164,7 +164,19 @@ const lossSummary = computed(() =>
 function checkLosses() {
   losses.value = markdownLosses(content.value, notePath.value)
 }
-checkLosses()
+// On opening, the editor's own first reading of the note tells, as soon as it exists (before
+// any typing): a second, hidden editor would parse the note twice (200 ms on a long note).
+let checkedOnOpen = false
+watch(
+  () => editor.value?.editor,
+  (tiptap) => {
+    if (!tiptap || checkedOnOpen) return
+    checkedOnOpen = true
+    const read = normalizeMarkdown(fromEditorMarkdown(tiptap.getMarkdown(), notePath.value))
+    losses.value = lostLines(content.value, read)
+  },
+  { immediate: true },
+)
 watchDebounced(content, () => mode.value === 'source' && checkLosses(), { debounce: 400 })
 
 function acceptLoss() {
