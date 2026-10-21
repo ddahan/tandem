@@ -85,7 +85,7 @@ It does the same as the command above.
 
 ### Afterwards
 
-- **Notes folder**: change it in **Settings › Notes folder** (the app restarts on the new one
+- **Notes folder**: change it in **Settings › General › Notes folder** (the app restarts on the new one
   in a few seconds; nothing is moved).
 - **Update**: the same command again, or the installer of a newer download (your notes folder
   is remembered), using the same Node as before (asking nothing). To switch to another Node:

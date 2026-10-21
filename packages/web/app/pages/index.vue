@@ -36,7 +36,7 @@ useHead({ title: 'Home' })
 const actions: { label: string; icon: string; to?: string; onClick?: () => void }[] = [
   { label: 'New page', icon: 'i-lucide-file-plus', onClick: () => void tree.createPage() },
   { label: 'Search', icon: 'i-lucide-search', onClick: () => openSearch() },
-  { label: 'Settings', icon: 'i-lucide-palette', to: '/settings' },
+  { label: 'Settings', icon: 'i-lucide-palette', to: '/settings/appearance' },
 ]
 </script>
 

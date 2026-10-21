@@ -100,7 +100,8 @@ const RISKS: Risk[] = [
     <section aria-labelledby="security-where" class="space-y-2">
       <h2 id="security-where" class="font-semibold text-highlighted">Where your text is</h2>
       <p class="text-muted">
-        In the notes folder (Settings › Notes folder): the notes, their files, and in its hidden
+        In the notes folder (Settings › General › Notes folder): the notes, their files, and in its
+        hidden
         <code>.tandem</code> folder their history and a backup of Tandem’s database. And in Tandem’s
         own folder, <code>~/Library/Application Support/Tandem</code>: the database, with the search
         index. FileVault covers both; a synced notes folder takes the first to the cloud.

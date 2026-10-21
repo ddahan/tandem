@@ -343,7 +343,7 @@ test('won’t switch to the editor while it would lose Markdown, unless asked', 
 })
 
 test('changes the theme and the settings', async ({ page, request }) => {
-  await page.goto('/settings')
+  await page.goto('/settings/appearance')
   // The version, from the standalone package (the app's): at the bottom of the sidebar.
   await expect(page.getByTestId('app-version')).toHaveText(/^v\d+\.\d+\.\d+$/)
   await page.getByRole('button', { name: 'emerald' }).click()
@@ -356,6 +356,11 @@ test('changes the theme and the settings', async ({ page, request }) => {
   await expect(page.locator('html')).toHaveClass(/dark/)
 
   // The workspace name: next to the logo and in the tab.
+  await page
+    .getByRole('navigation', { name: 'Settings' })
+    .getByRole('link', { name: 'General' })
+    .click()
+  await expect(page).toHaveURL(/\/settings\/general$/)
   await page.getByLabel('Workspace name').fill('Brain')
   await page.getByLabel('Workspace name').press('Enter')
   await expect(page.getByTestId('workspace-name')).toHaveText('Brain')
@@ -384,7 +389,7 @@ test('colors the title bar like the background (theme-color)', async ({ page, re
 test('switches the color mode in Settings, not from the sidebar', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('button', { name: /^Theme: / })).toHaveCount(0)
-  await page.goto('/settings')
+  await page.goto('/settings/appearance')
   const card = (mode: string) => page.getByRole('button', { name: `Theme: ${mode}` })
   await expect(card('System')).toHaveAttribute('aria-pressed', 'true')
   await chooseTheme(page, 'Dark')
@@ -506,7 +511,7 @@ test('asks before attaching a file over 10 MB', async ({ page, request }) => {
 
 test('changes the text size of notes only', async ({ page, request }) => {
   const note = await createNote(request, 'Text size note', '# Heading\n\nBody text.')
-  await page.goto('/settings')
+  await page.goto('/settings/editor')
   await page.getByRole('button', { name: 'Text size: Extra large' }).click()
   await expect
     .poll(
@@ -528,7 +533,7 @@ test('changes the text size of notes only', async ({ page, request }) => {
 })
 
 test('tints the background, in light and dark mode', async ({ page, request }) => {
-  await page.goto('/settings')
+  await page.goto('/settings/appearance')
   await chooseTheme(page, 'Light')
   await page.getByRole('button', { name: 'Background: Paper' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-tone', 'paper')
@@ -546,7 +551,7 @@ test('tints the background, in light and dark mode', async ({ page, request }) =
 })
 
 test('draws the logo and the tab icon in the accent color', async ({ page, request }) => {
-  await page.goto('/settings')
+  await page.goto('/settings/appearance')
   await page.getByRole('button', { name: 'emerald' }).click()
   const logoColor = () =>
     page
@@ -1256,7 +1261,7 @@ test('colors code blocks with the code theme chosen in Settings, light and dark'
     "```javascript\n// A comment\nconst greeting = 'Hello'\n```\n",
   )
   await page.emulateMedia({ colorScheme: 'light' })
-  await page.goto('/settings')
+  await page.goto('/settings/editor')
   await page.getByRole('button', { name: 'Code theme: Tomorrow' }).click()
   await expect
     .poll(async () => (await api<{ codeTheme: string }>(request, 'GET', '/settings')).codeTheme)
@@ -1403,7 +1408,7 @@ test('checks spelling only when Settings turn it on', async ({ page, request }) 
   expect(await spellcheck('.ProseMirror')).toBe(false)
   expect(await spellcheck('input[aria-label="Title"]')).toBe(false)
 
-  await page.goto('/settings')
+  await page.goto('/settings/features')
   await page.getByRole('switch', { name: 'Spell check' }).click()
   await expect
     .poll(async () => (await api<{ spellcheck: boolean }>(request, 'GET', '/settings')).spellcheck)

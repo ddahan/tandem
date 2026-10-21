@@ -61,6 +61,6 @@ export async function waitSaved(page: Page) {
 
 /** Picks a color mode in Settings › Appearance (going there if needed). */
 export async function chooseTheme(page: Page, mode: 'Light' | 'Dark' | 'System') {
-  if (!page.url().endsWith('/settings')) await page.goto('/settings')
+  if (!page.url().endsWith('/settings/appearance')) await page.goto('/settings/appearance')
   await page.getByRole('button', { name: `Theme: ${mode}` }).click()
 }

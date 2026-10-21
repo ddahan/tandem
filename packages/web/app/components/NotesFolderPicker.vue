@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Picks the notes folder (Settings › Notes folder). The server lists folders (a browser can't
+// Picks the notes folder (Settings › General › Notes folder). The server lists folders (a browser can't
 // see paths) and switches: it restarts on the new folder, then the app reloads.
 import { forgetTabs } from '~/composables/useTabs'
 import type { FolderListing } from '@tandem/shared'

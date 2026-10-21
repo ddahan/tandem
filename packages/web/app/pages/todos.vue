@@ -9,7 +9,12 @@ if (!todos.loaded.value) await todos.load()
 
 // Off (Settings › Features), the page stays reachable (an open tab, an address): it says so.
 const off = [
-  { label: 'Settings', to: '/settings', color: 'neutral' as const, variant: 'outline' as const },
+  {
+    label: 'Settings',
+    to: '/settings/features',
+    color: 'neutral' as const,
+    variant: 'outline' as const,
+  },
 ]
 </script>
 

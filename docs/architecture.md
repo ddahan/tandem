@@ -308,7 +308,8 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
 - Copy buttons (landing install command, Docs) use `utils/copy-text.ts`: the Clipboard API,
   then `execCommand('copy')` on a hidden field when it is refused (frames, permissions).
 - Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old
-  `/shortcuts` redirecting with `definePageMeta`). Blocks shows each entry of
+  `/shortcuts` redirecting with `definePageMeta`). Settings are built the same way (`pages/settings.vue`, its tabs in
+  `pages/settings/`, saving through `useSettingsSave`). Blocks shows each entry of
   `utils/docs-blocks.ts` in `DocsExample.vue`: a read-only UEditor with the note editor's
   extensions and node views, so the tour can't drift from what notes show; a unit test checks
   each example's Markdown round-trips unchanged. A database's data isn't in its Markdown, so its

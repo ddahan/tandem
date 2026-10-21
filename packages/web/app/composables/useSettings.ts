@@ -93,3 +93,16 @@ export function useSettings() {
 
   return { settings, favicon, load, update, apply }
 }
+
+/** Saves a change to the settings, saying so when it fails (the Settings tabs). */
+export function useSettingsSave() {
+  const { update } = useSettings()
+  const showError = useApiErrorToast()
+  return async (patch: Partial<Settings>) => {
+    try {
+      await update(patch)
+    } catch (error) {
+      showError(error, 'Could not save the settings')
+    }
+  }
+}

@@ -78,7 +78,7 @@ async function copyUpdateCommand() {
         >: nobody else can reach it. It keeps running when the window is closed, so agents can work
         in your notes.
       </p>
-      <p>Your notes are Markdown files in your notes folder (Settings › Notes folder).</p>
+      <p>Your notes are Markdown files in your notes folder (Settings › General › Notes folder).</p>
     </section>
 
     <section aria-labelledby="install-update" class="space-y-2 text-sm text-muted">

@@ -17,7 +17,7 @@ test('starts with tags, TODOs and spell check off, the trash on', async ({ page,
   const settings = await api<Settings>(request, 'GET', '/settings')
   expect(settings).toMatchObject({ tags: false, trash: true, todos: false, spellcheck: false })
 
-  await page.goto('/settings')
+  await page.goto('/settings/features')
   const features = page.getByTestId('features')
   await expect(features.getByRole('switch', { name: 'Tags' })).not.toBeChecked()
   await expect(features.getByRole('switch', { name: 'Trash' })).toBeChecked()
@@ -37,7 +37,7 @@ test('hides tags while off, and shows them as they were once back on', async ({
   await expect(page.getByPlaceholder('Add tag…')).toHaveCount(0)
   await expect(page.getByText('kept-tag')).toHaveCount(0)
 
-  await page.goto('/settings')
+  await page.goto('/settings/features')
   await page.getByTestId('features').getByRole('switch', { name: 'Tags' }).click()
   await expect.poll(async () => (await api<Settings>(request, 'GET', '/settings')).tags).toBe(true)
   await openNote(page, note.id)

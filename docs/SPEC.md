@@ -57,7 +57,7 @@ inside OneDrive so that it is backed up and synced.
 - **Docker**: `./td start` from a clone of the repository (the developer's setup).
 - Both use the same notes folder layout; switching between them only takes pointing the new
   one at the same folder (its database is restored from the folder's backup).
-- **Settings › Notes folder** shows the folder in use. In the standalone app (run as the login
+- **Settings › General › Notes folder** shows the folder in use. In the standalone app (run as the login
   item), "Change…" opens a folder picker drawn by the app (the server lists folders: a browser
   can't): places (Home, Documents, iCloud Drive, OneDrive…), the path, subfolders, "New
   folder", a path field, and "Show hidden folders" (⇧⌘., as in Finder: folders whose name
@@ -373,20 +373,24 @@ inside OneDrive so that it is backed up and synced.
   - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
-- Light, dark or system color mode, chosen in Settings › Appearance (a small preview of each).
-  Settings page: color mode, background tone
-  (white, paper, sepia or cool, each with a light and a dark variant), primary (amber by default) and neutral colors,
-  corner radius, editor font, width and text size (notes only: the interface keeps its size), the
-  code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a light
-  and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
-  Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
-  owner's display name, the workspace name (next to the logo and in the browser tab; Tandem by
-  default), and **Features**, optional parts of the app, each a switch: tags (off by default),
-  the trash (on), TODOs (off), daily notes (off) and spell check (the browser's, while typing in notes, titles and
-  fields; off; never in the Markdown source). Turning one off only hides it: tags stay on their
-  notes, TODO lines in theirs, and turned back on they show as before; agents (MCP, CLI) keep
-  every feature. Its end links to Docs › Install and Agents (installing
-  the app, connecting agents).
+- **Settings**, in tabs with their own addresses, as the Docs (`/settings` opens General; the
+  TODOs and Trash pages and Home's Settings button lead to their tab):
+  - **General**: the workspace name (next to the logo and in the browser tab; Tandem by
+    default), the owner's display name, the notes folder; it ends with links to Docs › Install
+    and Agents (installing the app, connecting agents).
+  - **Appearance**: light, dark or system color mode (a small preview of each), background
+    tone (white, paper, sepia or cool, each with a light and a dark variant), primary (amber by
+    default) and neutral colors, corner radius.
+  - **Editor**: font, text size (notes only: the interface keeps its size), page width, and
+    the code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a
+    light and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is
+    Tomorrow Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono"
+    theme).
+  - **Features**: optional parts of the app, each a switch: tags (off by default), the trash
+    (on), TODOs (off), daily notes (off) and spell check (the browser's, while typing in notes,
+    titles and fields; off; never in the Markdown source). Turning one off only hides it: tags
+    stay on their notes, TODO lines in theirs, and turned back on they show as before; agents
+    (MCP, CLI) keep every feature.
 - The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
   in your color and the agent's amber, the agent's amber page behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
   got at install.
