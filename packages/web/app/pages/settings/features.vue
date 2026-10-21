@@ -40,18 +40,26 @@ const features: {
 </script>
 
 <template>
-  <section class="space-y-5" data-testid="features">
+  <div class="space-y-10" data-testid="features">
     <p class="text-sm text-muted">
       Show only what you use. Turning one off hides it and keeps its data: turn it back on to find
       everything as it was.
     </p>
-    <USwitch
-      v-for="feature in features"
-      :key="feature.key"
-      :model-value="settings[feature.key]"
-      :label="feature.label"
-      :description="feature.description"
-      @update:model-value="(value) => set({ [feature.key]: value })"
-    />
-  </section>
+    <template v-for="(feature, index) in features" :key="feature.key">
+      <USeparator v-if="index" />
+      <SettingsSection
+        :title="feature.label"
+        :description="feature.description"
+        :for="`feature-${feature.key}`"
+      >
+        <template #action>
+          <USwitch
+            :id="`feature-${feature.key}`"
+            :model-value="settings[feature.key]"
+            @update:model-value="(value) => set({ [feature.key]: value })"
+          />
+        </template>
+      </SettingsSection>
+    </template>
+  </div>
 </template>

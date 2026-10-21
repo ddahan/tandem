@@ -38,8 +38,8 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
 </script>
 
 <template>
-  <section class="space-y-6">
-    <UFormField label="Font">
+  <div class="space-y-10">
+    <SettingsSection title="Font" description="The font of notes.">
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <button
           v-for="font in fonts"
@@ -55,8 +55,11 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
           <span class="text-xs text-muted">{{ font.label }}</span>
         </button>
       </div>
-    </UFormField>
-    <UFormField label="Text size" description="In notes only; the interface keeps its size.">
+    </SettingsSection>
+
+    <USeparator />
+
+    <SettingsSection title="Text size" description="In notes only; the interface keeps its size.">
       <div class="flex flex-wrap items-end gap-2">
         <UButton
           v-for="size in sizes"
@@ -70,8 +73,14 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
           <span class="text-xs text-muted">{{ size.label }}</span>
         </UButton>
       </div>
-    </UFormField>
-    <UFormField label="Page width">
+    </SettingsSection>
+
+    <USeparator />
+
+    <SettingsSection
+      title="Page width"
+      description="How wide notes are; a note’s ⋯ menu makes one full width."
+    >
       <div class="flex flex-wrap gap-2">
         <UButton
           v-for="width in widths"
@@ -82,9 +91,12 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
           @click="set({ editorWidth: width.value })"
         />
       </div>
-    </UFormField>
-    <UFormField
-      label="Code blocks"
+    </SettingsSection>
+
+    <USeparator />
+
+    <SettingsSection
+      title="Code blocks"
       description="Colors of code: each theme has a light and a dark variant, as the background."
     >
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -126,6 +138,6 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
           <span class="mt-1.5 block truncate px-0.5 text-xs text-muted">{{ theme.label }}</span>
         </button>
       </div>
-    </UFormField>
-  </section>
+    </SettingsSection>
+  </div>
 </template>

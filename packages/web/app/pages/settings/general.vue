@@ -23,19 +23,15 @@ function saveWorkspaceName() {
 
 <template>
   <div class="space-y-10">
-    <section>
-      <h2 class="font-semibold text-highlighted">Workspace</h2>
-      <p class="mb-4 text-sm text-muted">Shown next to the logo and in the browser tab.</p>
+    <SettingsSection title="Workspace" description="Shown next to the logo and in the browser tab.">
       <UFormField label="Workspace name">
         <UInput v-model="workspaceName" class="w-64" maxlength="40" @change="saveWorkspaceName" />
       </UFormField>
-    </section>
+    </SettingsSection>
 
     <USeparator />
 
-    <section>
-      <h2 class="font-semibold text-highlighted">Notes folder</h2>
-      <p class="mb-4 text-sm text-muted">Where your notes are, as Markdown files.</p>
+    <SettingsSection title="Notes folder" description="Where your notes are, as Markdown files.">
       <div class="flex flex-wrap items-center gap-3" data-testid="notes-folder">
         <code
           class="max-w-full truncate rounded-md border border-muted bg-muted px-2 py-1 text-sm text-highlighted"
@@ -54,15 +50,14 @@ function saveWorkspaceName() {
         {{ notesFolder.readOnlyReason }}
       </p>
       <NotesFolderPicker v-if="notesFolder" v-model:open="pickerOpen" :current="notesFolder.path" />
-    </section>
+    </SettingsSection>
 
     <USeparator />
 
-    <section>
-      <h2 class="font-semibold text-highlighted">You</h2>
-      <p class="mb-4 text-sm text-muted">
-        Shown in the history and authorship views for what you write.
-      </p>
+    <SettingsSection
+      title="You"
+      description="Shown in the history and authorship views for what you write."
+    >
       <UFormField label="Display name">
         <UInput
           v-model="displayName"
@@ -70,7 +65,7 @@ function saveWorkspaceName() {
           @change="set({ displayName: displayName.trim() || 'Me' })"
         />
       </UFormField>
-    </section>
+    </SettingsSection>
 
     <USeparator />
 

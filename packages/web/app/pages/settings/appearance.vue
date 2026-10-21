@@ -48,10 +48,10 @@ const WINDOWS = [
 </script>
 
 <template>
-  <section class="space-y-6">
+  <div class="space-y-10">
     <p class="text-sm text-muted">Saved with your notes, so it follows the data folder.</p>
 
-    <UFormField label="Theme" description="Light, dark, or as the computer is set.">
+    <SettingsSection title="Theme" description="Light, dark, or as the computer is set.">
       <div class="grid grid-cols-3 gap-2 sm:max-w-md">
         <button
           v-for="mode in modes"
@@ -89,10 +89,12 @@ const WINDOWS = [
           </span>
         </button>
       </div>
-    </UFormField>
+    </SettingsSection>
 
-    <UFormField
-      label="Background"
+    <USeparator />
+
+    <SettingsSection
+      title="Background"
       description="A tint for the whole window, in light and dark mode."
     >
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -112,9 +114,11 @@ const WINDOWS = [
           <span class="mt-1.5 block px-0.5 text-xs text-muted">{{ tone.label }}</span>
         </button>
       </div>
-    </UFormField>
+    </SettingsSection>
 
-    <UFormField label="Accent color">
+    <USeparator />
+
+    <SettingsSection title="Accent color" description="Buttons, links, highlights and the logo.">
       <div class="flex flex-wrap gap-2">
         <UTooltip v-for="color in PRIMARY" :key="color" :text="color">
           <button
@@ -127,9 +131,14 @@ const WINDOWS = [
           />
         </UTooltip>
       </div>
-    </UFormField>
+    </SettingsSection>
 
-    <UFormField label="Gray tone">
+    <USeparator />
+
+    <SettingsSection
+      title="Gray tone"
+      description="The grays of the interface: text, borders and backgrounds."
+    >
       <div class="flex flex-wrap gap-2">
         <UButton
           v-for="color in NEUTRAL"
@@ -148,9 +157,11 @@ const WINDOWS = [
           </template>
         </UButton>
       </div>
-    </UFormField>
+    </SettingsSection>
 
-    <UFormField label="Corner radius">
+    <USeparator />
+
+    <SettingsSection title="Corner radius" description="How round buttons, fields and cards are.">
       <div class="flex flex-wrap gap-2">
         <UButton
           v-for="radius in RADII"
@@ -161,6 +172,6 @@ const WINDOWS = [
           @click="set({ radius })"
         />
       </div>
-    </UFormField>
-  </section>
+    </SettingsSection>
+  </div>
 </template>
