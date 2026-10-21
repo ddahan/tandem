@@ -7673,7 +7673,7 @@ var LEGACY_CODE_THEMES = {
 var DEFAULT_SETTINGS = {
   workspaceName: "Tandem",
   displayName: "Me",
-  primaryColor: "indigo",
+  primaryColor: "amber",
   neutralColor: "zinc",
   radius: 0.375,
   editorFont: "sans",

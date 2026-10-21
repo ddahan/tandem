@@ -1,1 +1,0 @@
-var e=`curl -fL https://github.com/ddahan/tandem/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && sh /tmp/tandem-main/app/install.sh`,t=e.split(/ (?=\| |&& )/);export{t as n,e as t};

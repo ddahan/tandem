@@ -1,1 +1,0 @@
-var e=`owner`,t=`external`;function n(e,t){return e===`owner`?t||`Me`:e===`external`?`External edit`:e.charAt(0).toUpperCase()+e.slice(1)}export{e as n,n as r,t};
