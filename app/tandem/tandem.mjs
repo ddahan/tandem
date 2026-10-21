@@ -8465,8 +8465,8 @@ var processIo = {
 };
 
 // ../server/src/server.ts
-import { mkdir as mkdir4, writeFile as writeFile2 } from "node:fs/promises";
-import { join as join10 } from "node:path";
+import { mkdir as mkdir5, writeFile as writeFile3 } from "node:fs/promises";
+import { join as join11 } from "node:path";
 
 // ../../node_modules/.pnpm/@hono+node-server@2.1.5_hono@4.13.13/node_modules/@hono/node-server/dist/constants-BLSFu_RU.mjs
 var X_ALREADY_SENT = "x-hono-already-sent";
@@ -44115,7 +44115,7 @@ function sql(strings, ...params) {
     return new SQL([new StringChunk(str)]);
   }
   sql2.raw = raw2;
-  function join13(chunks, separator) {
+  function join14(chunks, separator) {
     const result = [];
     for (const [i, chunk] of chunks.entries()) {
       if (i > 0 && separator !== void 0) {
@@ -44125,7 +44125,7 @@ function sql(strings, ...params) {
     }
     return new SQL(result);
   }
-  sql2.join = join13;
+  sql2.join = join14;
   function identifier(value) {
     return new Name(value);
   }
@@ -46633,7 +46633,7 @@ var SQLiteSelectQueryBuilderBase = class extends TypedQueryBuilder {
       const baseTableName = this.tableName;
       const tableName = getTableLikeName(table);
       for (const item of extractUsedTable(table)) this.usedTables.add(item);
-      if (typeof tableName === "string" && this.config.joins?.some((join13) => join13.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins?.some((join14) => join14.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (!this.isPartialSelect) {
@@ -47492,7 +47492,7 @@ var SQLiteUpdateBase = class extends QueryPromise {
   createJoin(joinType) {
     return (table, on) => {
       const tableName = getTableLikeName(table);
-      if (typeof tableName === "string" && this.config.joins.some((join13) => join13.alias === tableName)) {
+      if (typeof tableName === "string" && this.config.joins.some((join14) => join14.alias === tableName)) {
         throw new Error(`Alias "${tableName}" is already used in this query`);
       }
       if (typeof on === "function") {
@@ -52830,6 +52830,111 @@ function watchVault(vault, options = {}) {
   return watcher;
 }
 
+// ../server/src/welcome.ts
+import { existsSync as existsSync7 } from "node:fs";
+import { mkdir as mkdir4, writeFile as writeFile2 } from "node:fs/promises";
+import { join as join10 } from "node:path";
+var WELCOME_AUTHOR = "tandem";
+var WELCOME_TITLE = "Welcome to Tandem";
+function welcomeMarkdown(port, databaseId) {
+  return `Hi! This page is yours: play with it, scribble on it, then delete it when you're done (it waits in the trash).
+
+> [!TIP]
+> Everything you write is a plain Markdown file in your notes folder. Any app can open it, and you can leave anytime.
+
+## Five things to try
+
+- [ ] Tick this box
+- [ ] Type \`/\` on an empty line, and pick a block
+- [ ] Select a word and press **\u2318B** (or Ctrl+B)
+- [ ] Type \`[[\` to link a page, like this one: [[Scratchpad]]
+- [ ] Press **\u2318\u21E7F** and search for the rocket in your Scratchpad: misspell it, on purpose
+
+TODO: come back to this list tomorrow: it waits for you on the TODOs page.
+
+## Who wrote what?
+
+Every line remembers its author. Tandem wrote this page: add a line anywhere, then switch to **Authorship** (the people icon, top right), and your color shows up next to Tandem's.
+
+## You, your agent, and your notes
+
+\`\`\`mermaid
+flowchart LR
+  You -- writes --> Notes["Your notes"]
+  Agent["Your agent"] -- writes too --> Notes
+\`\`\`
+
+<details>
+<summary>Connect Claude in one command</summary>
+
+\`\`\`bash
+claude mcp add --transport http tandem http://localhost:${port}/mcp --header "X-Tandem-Author: claude"
+\`\`\`
+
+Then ask it: *Add three ideas to my Scratchpad page.* Its lines will be in its own color.
+
+</details>
+
+## A tiny database
+
+\`\`\`database
+id: ${databaseId}
+\`\`\`
+
+Sort it, filter it, tick what you've done: its rows live in Tandem, the note only holds this block.
+`;
+}
+var SCRATCHPAD_MARKDOWN = `This page lives inside **${WELCOME_TITLE}**: any page can hold pages (look at the tree on the left).
+
+- \u{1F680} A rocket-sized idea, waiting for you to write it down
+- Ideas from your agent can land here too
+`;
+var THINGS_TO_TRY = [
+  ["Double-click a page", "Easy"],
+  ["Pick an accent color", "Easy"],
+  ["Drop in an image", "Easy"],
+  ["Drag a block by \u22EE\u22EE", "Fun"],
+  ["Ask your agent for a row", "Fun"]
+];
+async function welcome(vault, dataDir, port) {
+  const marker = join10(dataDir, ".tandem", "welcomed");
+  if (existsSync7(marker)) return null;
+  const fresh = !(await vault.tree()).length && !(await vault.trashList()).length;
+  await mkdir4(join10(dataDir, ".tandem"), { recursive: true });
+  await writeFile2(marker, "The welcome note was offered (or the folder had notes already).\n");
+  if (!fresh) return null;
+  const note = await vault.createPage({ title: WELCOME_TITLE, author: WELCOME_AUTHOR });
+  await vault.setIconEmoji(note.id, "\u{1F44B}");
+  const scratchpad = await vault.createPage({
+    parentId: note.id,
+    title: "Scratchpad",
+    content: SCRATCHPAD_MARKDOWN,
+    author: WELCOME_AUTHOR
+  });
+  await vault.setIconEmoji(scratchpad.id, "\u270F\uFE0F");
+  const database = await vault.createDatabase(note.id, {
+    title: "Things to try",
+    columns: [
+      { name: "Thing", type: "text" },
+      { name: "Effort", type: "select", options: ["Easy", "Fun"] },
+      { name: "Done", type: "checkbox" }
+    ]
+  });
+  const column = (name) => database.columns.find((c) => c.name === name).id;
+  const cells2 = ([thing, effort]) => ({
+    [column("Thing")]: thing,
+    [column("Effort")]: effort,
+    [column("Done")]: false
+  });
+  const [first, ...rest2] = THINGS_TO_TRY;
+  const empty = database.rows[0];
+  if (empty) await vault.updateDatabaseRow(database.id, empty.id, cells2(first));
+  else await vault.addDatabaseRow(database.id, { cells: cells2(first) });
+  for (const thing of rest2) await vault.addDatabaseRow(database.id, { cells: cells2(thing) });
+  await vault.saveContent(note.id, welcomeMarkdown(port, database.id), { author: WELCOME_AUTHOR });
+  return note.id;
+}
+
 // ../server/src/server.ts
 var README = `# Tandem internal folder
 
@@ -52845,10 +52950,10 @@ Managed by Tandem: don't edit by hand.
 async function startServer(options) {
   const { dataDir, dbPath, webDir, port, hostname: hostname3 } = options;
   const sessionIdleMs = options.sessionIdleMs ?? 3e4;
-  const backupPath = join10(dataDir, ".tandem", "tandem.db");
+  const backupPath = join11(dataDir, ".tandem", "tandem.db");
   await waitForPort(port, hostname3);
-  await mkdir4(join10(dataDir, ".tandem"), { recursive: true });
-  await writeFile2(join10(dataDir, ".tandem", "README.md"), README);
+  await mkdir5(join11(dataDir, ".tandem"), { recursive: true });
+  await writeFile3(join11(dataDir, ".tandem", "README.md"), README);
   const database = await openDatabase(dbPath, backupPath, {
     migrationsFolder: options.migrationsFolder
   });
@@ -52856,6 +52961,7 @@ async function startServer(options) {
   console.log(`Data folder: ${dataDir}`);
   await vault.reconcile();
   await vault.reindexAll();
+  if (options.welcome) await welcome(vault, dataDir, port);
   const watcher = watchVault(vault, { polling: options.watchPolling ?? false });
   function backup() {
     if (!vault.dirty) return;
@@ -52930,7 +53036,7 @@ function serveOptions(args, env = process.env, saved = {}) {
 // src/runtime.ts
 import { readFileSync } from "node:fs";
 import { homedir as homedir2 } from "node:os";
-import { dirname as dirname6, join as join11 } from "node:path";
+import { dirname as dirname6, join as join12 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 var NODE_REQUIREMENT = "Node 22.16 or later (not 23)";
 function nodeSupported(version3) {
@@ -52939,15 +53045,15 @@ function nodeSupported(version3) {
 }
 function appDir(env = process.env, platform = process.platform) {
   if (env.TANDEM_HOME) return env.TANDEM_HOME;
-  if (platform === "darwin") return join11(homedir2(), "Library", "Application Support", "Tandem");
+  if (platform === "darwin") return join12(homedir2(), "Library", "Application Support", "Tandem");
   if (platform === "win32")
-    return join11(env.APPDATA ?? join11(homedir2(), "AppData", "Roaming"), "Tandem");
-  return join11(env.XDG_DATA_HOME ?? join11(homedir2(), ".local", "share"), "tandem");
+    return join12(env.APPDATA ?? join12(homedir2(), "AppData", "Roaming"), "Tandem");
+  return join12(env.XDG_DATA_HOME ?? join12(homedir2(), ".local", "share"), "tandem");
 }
 var here = dirname6(fileURLToPath2(import.meta.url));
 function manifest(dir = here) {
   try {
-    return JSON.parse(readFileSync(join11(dir, "manifest.json"), "utf8"));
+    return JSON.parse(readFileSync(join12(dir, "manifest.json"), "utf8"));
   } catch {
     return null;
   }
@@ -52965,23 +53071,23 @@ function runtimeFiles(dir = here) {
   }
   return {
     version: built.version,
-    webDir: join11(dir, "web"),
-    migrationsFolder: join11(dir, "drizzle")
+    webDir: join12(dir, "web"),
+    migrationsFolder: join12(dir, "drizzle")
   };
 }
 
 // src/settings.ts
-import { existsSync as existsSync7, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { existsSync as existsSync8, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync } from "node:fs";
 import { createHash as createHash2 } from "node:crypto";
-import { dirname as dirname7, join as join12 } from "node:path";
+import { dirname as dirname7, join as join13 } from "node:path";
 function settingsFile(home) {
-  return join12(home, "install.env");
+  return join13(home, "install.env");
 }
 var quote = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
 var unquote = (value) => value.startsWith("'") ? value.slice(1, -1).replace(/'\\''/g, "'") : value;
 function readSettings(home) {
   const path = settingsFile(home);
-  if (!existsSync7(path)) return {};
+  if (!existsSync8(path)) return {};
   const values = /* @__PURE__ */ new Map();
   for (const line of readFileSync2(path, "utf8").split("\n")) {
     const match2 = /^(\w+)=(.*)$/.exec(line.trim());
@@ -53006,12 +53112,12 @@ function writeSettings(home, settings2) {
 }
 function databaseFor(home, dataDir) {
   const key = createHash2("sha256").update(dataDir).digest("hex").slice(0, 16);
-  const path = join12(home, "databases", `${key}.db`);
-  const legacy = join12(home, "tandem.db");
-  if (!existsSync7(path) && existsSync7(legacy)) {
+  const path = join13(home, "databases", `${key}.db`);
+  const legacy = join13(home, "tandem.db");
+  if (!existsSync8(path) && existsSync8(legacy)) {
     mkdirSync2(dirname7(path), { recursive: true });
     for (const suffix of ["", "-wal", "-shm"]) {
-      if (existsSync7(legacy + suffix)) renameSync2(legacy + suffix, path + suffix);
+      if (existsSync8(legacy + suffix)) renameSync2(legacy + suffix, path + suffix);
     }
   }
   return path;
@@ -53033,6 +53139,8 @@ async function serve2(args) {
     // Local only: there is no authentication.
     hostname: "127.0.0.1",
     forbiddenFolders: [home],
+    // A first page to play with, in a folder that never had notes.
+    welcome: true,
     notesFolder: {
       readOnlyReason: asService ? null : "Tandem was started by hand: start it again with --data <folder> to change it.",
       // Saved, then a clean exit: launchd starts the login item again, on the new folder.
