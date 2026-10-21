@@ -13,6 +13,15 @@ test('opens the Docs from the sidebar, a tab per address', async ({ page }) => {
   await expect(page.getByTestId('concept').first()).toBeVisible()
   await expect(page).toHaveTitle(/^Concepts/)
 
+  // Grouped, and without Agents (their own tab).
+  await expect(page.getByRole('heading', { name: 'Keep track' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Agents' })).toHaveCount(0)
+
+  await tabs.getByRole('link', { name: 'Security' }).click()
+  await expect(page).toHaveURL(/\/docs\/security$/)
+  await expect(page.getByTestId('security-risk')).toHaveCount(3)
+  await expect(page.getByText('Advanced Data Protection').first()).toBeVisible()
+
   await tabs.getByRole('link', { name: 'Shortcuts' }).click()
   await expect(page.getByTestId('shortcut').first()).toBeVisible()
 

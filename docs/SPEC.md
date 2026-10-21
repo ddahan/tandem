@@ -330,9 +330,14 @@ inside OneDrive so that it is backed up and synced.
     "Installed" in the app), removing it, where Tandem runs (this address, local only), and
     updating Tandem: the one-command install, with a copy button (or a newer download's
     installer), and how to uninstall.
-  - **Concepts**: pages and folders, Markdown on disk, autosave and conflicts, authorship,
-    history, links, files, databases, tags and icons, search, TODOs, trash, agents; each says
-    where it is in the app.
+  - **Concepts**: in three groups. Organize: pages and folders, tabs, icons and tags, search.
+    Write: Markdown on disk, autosave and conflicts, links, files, databases, TODOs. Keep track:
+    authorship, history, trash. Agents have their own tab.
+  - **Security**: who could read the notes, and what to turn on against each: someone with the
+    computer or its disk (FileVault, an encrypted Time Machine disk), the cloud the notes
+    folder syncs with (iCloud's Advanced Data Protection; other drives aren't end-to-end
+    encrypted), apps and agents on the computer. Tandem doesn't encrypt notes itself, and says
+    why, and where the notes' text is (the notes folder, its `.tandem`, Tandem's database).
   - **Blocks**: every block and inline element the editor writes, grouped (text, lists,
     blocks, files), each shown by the editor itself (read-only) next to its Markdown, as saved,
     with how to add it (`/` menu item, typed Markdown, keys). Links and files there lead
