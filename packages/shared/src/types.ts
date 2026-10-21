@@ -179,7 +179,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   workspaceName: 'Tandem',
   displayName: 'Me',
-  primaryColor: 'indigo',
+  primaryColor: 'amber',
   neutralColor: 'zinc',
   radius: 0.375,
   editorFont: 'sans',

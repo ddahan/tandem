@@ -10,8 +10,8 @@ test('shows the landing page, leading to the install command and GitHub', async 
   page.on('pageerror', (error) => errors.push(error.message))
   page.on('request', (request) => requests.push(new URL(request.url()).pathname))
   await page.goto('/')
-  await expect(page).toHaveTitle('Tandem — notes you write with your agents')
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('with your agents')
+  await expect(page).toHaveTitle('Tandem — notes you write with your agent')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('with your agent')
   await expect(page.getByLabel('Title')).toHaveCount(0)
   await expect(page.getByTestId('workspace-name')).toHaveCount(0)
 
@@ -31,6 +31,15 @@ test('shows the landing page, leading to the install command and GitHub', async 
   await agents.scrollIntoViewIfNeeded()
   await expect(agents).toBeVisible()
   await expect(page.getByText('tandem search "launch plan"')).toBeVisible()
+
+  // Like a code editor: three points, tabs to come.
+  const points = page.getByTestId('editor-point')
+  await points.first().scrollIntoViewIfNeeded()
+  await expect(points).toHaveCount(3)
+  await expect(points.nth(0)).toContainText('VS Code shortcuts you already know')
+  await expect(points.nth(2)).toContainText('Coming soon')
+  await points.nth(1).getByRole('button', { name: 'Dracula' }).click()
+  await expect(points.nth(1).locator('pre')).toHaveAttribute('data-code-preview', 'dracula-light')
 
   // No app behind it: links go to the install command and GitHub.
   await expect(page.getByRole('link', { name: 'Open the app' })).toHaveCount(0)

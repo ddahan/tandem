@@ -8,7 +8,7 @@ import { logoSvg, accentShade } from '~/utils/logo'
 import { vReveal } from '~/utils/reveal'
 
 definePageMeta({ layout: false })
-useHead({ title: 'Tandem — notes you write with your agents', titleTemplate: null })
+useHead({ title: 'Tandem — notes you write with your agent', titleTemplate: null })
 
 const headerLogo = logoSvg(accentShade, 'landing-logo')
 const ctaLogo = logoSvg(accentShade, 'landing-logo-cta')
@@ -123,13 +123,14 @@ const VERSIONS = [
   { who: 'You', when: 'Monday', color: AUTHOR_COLORS.you },
 ]
 
+// VS Code's own (utils/shortcuts.ts lists them all).
 const SHORTCUTS = [
-  { keys: ['meta', 'shift', 'F'], label: 'Search all notes' },
-  { keys: ['meta', 'F'], label: 'Find and replace' },
-  { keys: ['alt', 'arrowup'], label: 'Move a block' },
+  { keys: ['alt', 'arrowup'], label: 'Move a line' },
+  { keys: ['shift', 'alt', 'arrowdown'], label: 'Duplicate a line' },
+  { keys: ['meta', 'shift', 'K'], label: 'Delete a line' },
   { keys: ['meta', 'D'], label: 'Next occurrence' },
-  { keys: ['meta', 'backspace'], label: 'Move to the trash' },
-  { keys: ['meta', '/'], label: 'Every shortcut' },
+  { keys: ['meta', 'shift', 'L'], label: 'Every occurrence' },
+  { keys: ['meta', 'alt', 'F'], label: 'Find and replace' },
 ]
 
 const ATTACHMENTS = [
@@ -226,15 +227,14 @@ const AGENT_POINTS = [
           style="--delay: 90ms"
         >
           Notes you write <br class="hidden sm:block" />
-          <span class="landing-gradient-text">with your agents.</span>
+          <span class="landing-gradient-text">with your agent.</span>
         </h1>
         <p
           class="landing-rise mx-auto mt-6 max-w-2xl text-lg text-pretty text-muted sm:text-xl"
           style="--delay: 180ms"
         >
           A beautiful editor for Markdown files you own, with instant search and full history. And a
-          CLI and an MCP server, so Claude can write alongside you — every line remembers who wrote
-          it.
+          CLI and an MCP server, so your agent can write alongside you.
         </p>
         <!-- The website's call to action: installing (#install, from the header too). -->
         <LandingInstallCommand
@@ -549,7 +549,7 @@ const AGENT_POINTS = [
           </p>
           <div class="mt-5 flex items-center gap-2" aria-hidden="true">
             <span
-              v-for="(color, index) in ['#6366f1', '#10b981', '#f43f5e', '#f59e0b', '#0ea5e9']"
+              v-for="(color, index) in ['#f59e0b', '#6366f1', '#10b981', '#f43f5e', '#0ea5e9']"
               :key="color"
               class="landing-swatch size-7 rounded-full ring-2 ring-(--ui-bg)"
               :style="{ background: color, '--swatch-delay': `${index * 0.5}s` }"
@@ -660,31 +660,75 @@ teams by the end of the month.
       </div>
     </section>
 
-    <!-- Shortcuts -->
+    <!-- Like a code editor -->
     <section class="border-y border-default bg-muted/40 py-24">
       <div class="mx-auto max-w-6xl px-4 sm:px-6">
         <div v-reveal class="mx-auto max-w-2xl text-center">
-          <p class="text-sm font-semibold text-primary">Keyboard</p>
-          <h2 class="mt-2 text-3xl font-bold tracking-tight text-highlighted sm:text-4xl">
-            As fast as your code editor.
+          <p class="text-sm font-semibold text-primary">For people who code</p>
+          <h2
+            class="mt-2 text-3xl font-bold tracking-tight text-balance text-highlighted sm:text-4xl"
+          >
+            Feels like your code editor.
           </h2>
           <p class="mt-4 text-lg text-muted">
-            The VS Code shortcuts you already know, in your notes.
+            The keys your fingers know, the colors your eyes like, and soon, tabs.
           </p>
         </div>
-        <div class="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <div
-            v-for="(shortcut, index) in SHORTCUTS"
-            :key="shortcut.label"
-            v-reveal="index * 70"
-            class="landing-shortcut flex flex-col items-center gap-3 rounded-xl border border-default bg-default p-5 text-center"
-            :style="{ '--press-delay': `${index * 1}s` }"
+        <div class="mt-12 grid gap-4 lg:grid-cols-3">
+          <article
+            v-reveal
+            class="landing-card landing-card-raised"
+            data-testid="editor-point"
+            @pointermove="spotlight"
           >
-            <span class="landing-keys flex gap-1">
-              <UKbd v-for="key in shortcut.keys" :key="key" :value="key" size="lg" />
-            </span>
-            <span class="text-sm text-muted">{{ shortcut.label }}</span>
-          </div>
+            <UIcon name="i-lucide-keyboard" class="landing-card-icon" />
+            <h3 class="landing-card-title">VS Code shortcuts you already know</h3>
+            <p class="landing-card-text">
+              Move, duplicate and delete lines, select every occurrence, find and replace.
+            </p>
+            <div class="mt-6 divide-y divide-default rounded-xl border border-default bg-default">
+              <div
+                v-for="(shortcut, index) in SHORTCUTS"
+                :key="shortcut.label"
+                class="landing-shortcut flex items-center justify-between gap-3 px-3 py-2"
+                :style="{ '--press-delay': `${index * 1}s` }"
+              >
+                <span class="truncate text-sm text-muted">{{ shortcut.label }}</span>
+                <span class="landing-keys flex shrink-0 gap-1">
+                  <UKbd v-for="key in shortcut.keys" :key="key" :value="key" />
+                </span>
+              </div>
+            </div>
+          </article>
+          <article
+            v-reveal="90"
+            class="landing-card landing-card-raised"
+            data-testid="editor-point"
+            @pointermove="spotlight"
+          >
+            <UIcon name="i-lucide-palette" class="landing-card-icon" />
+            <h3 class="landing-card-title">Code in the colors you like</h3>
+            <p class="landing-card-text">
+              Seven code themes, each with a light and a dark variant: GitHub, One, Dracula, Nord…
+            </p>
+            <LandingCodeThemesDemo class="mt-6" />
+          </article>
+          <article
+            v-reveal="180"
+            class="landing-card landing-card-raised"
+            data-testid="editor-point"
+            @pointermove="spotlight"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <UIcon name="i-lucide-panels-top-left" class="landing-card-icon" />
+              <UBadge label="Coming soon" color="primary" variant="soft" size="sm" />
+            </div>
+            <h3 class="landing-card-title">Multiple tabs</h3>
+            <p class="landing-card-text">
+              Keep several notes open and switch between them, as with files in your editor.
+            </p>
+            <LandingTabsDemo class="mt-6" />
+          </article>
         </div>
       </div>
     </section>
@@ -789,7 +833,7 @@ html:has(.landing-root) {
   background: linear-gradient(
     120deg,
     var(--ui-color-primary-400),
-    #f59e0b55,
+    #0ea5e955,
     var(--ui-color-primary-600)
   );
   filter: blur(60px);
@@ -859,7 +903,7 @@ html:has(.landing-root) {
   height: 30rem;
   top: -4rem;
   right: 2%;
-  background: #fcd34d;
+  background: #7dd3fc;
   opacity: 0.35;
   animation: landing-drift-2 26s ease-in-out infinite alternate;
 }
@@ -908,10 +952,10 @@ html:has(.landing-root) {
 .landing-gradient-text {
   background: linear-gradient(
     100deg,
-    var(--ui-color-primary-600),
-    #f59e0b,
+    var(--ui-color-primary-700),
     var(--ui-color-primary-500),
-    var(--ui-color-primary-700)
+    var(--ui-color-primary-600),
+    var(--ui-color-primary-800)
   );
   background-size: 300% 100%;
   -webkit-background-clip: text;
@@ -923,7 +967,7 @@ html:has(.landing-root) {
   background-image: linear-gradient(
     100deg,
     var(--ui-color-primary-300),
-    #fcd34d,
+    var(--ui-color-primary-500),
     var(--ui-color-primary-400),
     var(--ui-color-primary-200)
   );
@@ -978,6 +1022,10 @@ html:has(.landing-root) {
 }
 .landing-card > * {
   position: relative;
+}
+/* On a tinted section: the page's own background. */
+.landing-card-raised {
+  background: var(--ui-bg);
 }
 .landing-card-icon {
   width: 1.75rem;
@@ -1117,7 +1165,7 @@ html:has(.landing-root) {
       color-mix(in oklab, var(--ui-color-primary-500) 30%, transparent),
       transparent 70%
     ),
-    radial-gradient(30rem 20rem at 10% 90%, #f59e0b22, transparent 70%);
+    radial-gradient(30rem 20rem at 10% 90%, #0ea5e922, transparent 70%);
 }
 .landing-dark-glow::after {
   content: '';
@@ -1177,7 +1225,7 @@ html:has(.landing-root) {
   background: conic-gradient(
     from 0deg,
     var(--ui-color-primary-300),
-    #fcd34d,
+    #7dd3fc,
     var(--ui-color-primary-600),
     var(--ui-color-primary-300)
   );

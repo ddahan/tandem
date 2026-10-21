@@ -270,7 +270,9 @@ inside OneDrive so that it is backed up and synced.
   copy button saying "Copied", or, where the browser refuses to copy, selecting the command and
   saying which keys copy it; it scrolls sideways on narrow screens, and links to the latest
   release for company networks). Then a note written live by the owner and an agent, the
-  features, the agents' CLI and MCP, the files, the shortcuts. Animated, in the accent color and
+  features, the agents' CLI and MCP, the files, then "Feels like your code editor": VS Code
+  shortcuts, the code themes (a snippet in each in turn; a click on a theme's name picks it) and
+  multiple tabs, marked "Coming soon". Animated, in the accent color and
   both modes; with reduced motion, every demo shows its final state. It asks nothing of a
   Tandem server.
 - Docs (sidebar, ⌘⇧F palette), in tabs with their own addresses (`/docs/<tab>`):
@@ -292,7 +294,7 @@ inside OneDrive so that it is backed up and synced.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
 - Light, dark or system color mode, chosen in Settings › Appearance (a small preview of each).
   Settings page: color mode, background tone
-  (white, paper, sepia or cool, each with a light and a dark variant), primary and neutral colors,
+  (white, paper, sepia or cool, each with a light and a dark variant), primary (amber by default) and neutral colors,
   corner radius, editor font, width and text size (notes only: the interface keeps its size), the
   code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a light
   and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
@@ -301,8 +303,10 @@ inside OneDrive so that it is backed up and synced.
   default), and spell check (the browser's, while typing in notes, titles and fields; off by
   default; never in the Markdown source). Its end links to Docs › Install and Agents (installing
   the app, connecting agents).
-- The logo (sidebar and browser tab) is drawn in the accent color. The installed app's Dock
-  icon is the default (indigo) logo: macOS keeps the image it got at install.
+- The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
+  in your color and the agent's sky blue (Claude's color in the app), the agent's sky page
+  behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
+  got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes
   the page's background color (tone, light or dark: `theme-color`), from the first frame. In a browser tab
   that can install it, the sidebar offers to (the logo, "Install Tandem"): Chrome and Edge

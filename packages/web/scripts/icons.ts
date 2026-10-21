@@ -1,4 +1,4 @@
-// Writes the app's static icons from the logo (app/utils/logo.ts) in the default indigo:
+// Writes the app's static icons from the logo (app/utils/logo.ts) in the default amber:
 // public/icon.svg and the PNG icons of the web app manifest. Run after changing the logo:
 // `./td pnpm --filter @tandem/web icons`. Full-bleed variants (no rounded corners) are used
 // where the system applies its own mask (iOS/macOS touch icon, maskable icon).
@@ -6,18 +6,18 @@ import { writeFileSync } from 'node:fs'
 import { Resvg } from '@resvg/resvg-js'
 import { logoSvg, type LogoShade } from '../app/utils/logo.ts'
 
-// Tailwind's indigo.
-const INDIGO: Record<LogoShade, string> = {
-  50: '#eef2ff',
-  200: '#c7d2fe',
-  300: '#a5b4fc',
-  400: '#818cf8',
-  500: '#6366f1',
-  600: '#4f46e5',
+// Tailwind's amber.
+const AMBER: Record<LogoShade, string> = {
+  50: '#fffbeb',
+  200: '#fde68a',
+  300: '#fcd34d',
+  400: '#fbbf24',
+  500: '#f59e0b',
+  600: '#d97706',
 }
-const indigo = (n: LogoShade) => INDIGO[n]
-const rounded = logoSvg(indigo, 'icon')
-const fullBleed = logoSvg(indigo, 'icon', 0)
+const amber = (n: LogoShade) => AMBER[n]
+const rounded = logoSvg(amber, 'icon')
+const fullBleed = logoSvg(amber, 'icon', 0)
 
 writeFileSync(new URL('../public/icon.svg', import.meta.url), `${rounded}\n`)
 console.log('public/icon.svg')

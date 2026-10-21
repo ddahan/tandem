@@ -418,7 +418,7 @@ test('shows the chosen theme at once on reload, before the settings load', async
   expect(await theme()).toEqual(chosen)
 
   await page.unroute('**/api/settings')
-  await api(request, 'PATCH', '/settings', { primaryColor: 'indigo', backgroundTone: 'white' })
+  await api(request, 'PATCH', '/settings', { primaryColor: 'amber', backgroundTone: 'white' })
 })
 
 /** Drops files on the editor, as dragging them from Finder would. */
@@ -570,7 +570,7 @@ test('draws the logo and the tab icon in the accent color', async ({ page, reque
         .evaluateAll((links) => links.map((l) => l.getAttribute('href'))),
     )
     .toEqual([expect.stringMatching(/^data:image\/svg\+xml/)])
-  await api(request, 'PATCH', '/settings', { primaryColor: 'indigo' })
+  await api(request, 'PATCH', '/settings', { primaryColor: 'amber' })
 })
 
 test('makes any kind of list at any level, typed or from the slash menu', async ({
@@ -1280,9 +1280,9 @@ test('has no landing page: it is the website, tandem.w3lt.org', async ({ page })
   await expect(page.getByTestId('workspace-name')).toBeVisible()
   await expect(page.getByRole('button', { name: 'About Tandem' })).toHaveCount(0)
   await page.goto('/landing')
-  await expect(
-    page.getByRole('heading', { name: 'Notes you write with your agents.' }),
-  ).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Notes you write with your agent.' })).toHaveCount(
+    0,
+  )
 })
 
 test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ page, request }) => {
