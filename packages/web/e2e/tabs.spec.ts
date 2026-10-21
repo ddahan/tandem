@@ -244,3 +244,37 @@ test('⌘T makes a page, ⌘B shows or hides the sidebar, ⌘W on Home asks befo
   await page.close({ runBeforeUnload: true })
   expect(await asked).toBe('beforeunload')
 })
+
+test('⌘T makes the page next to the open one: same parent, right after it', async ({
+  page,
+  request,
+}) => {
+  const parent = await createNote(request, 'Next parent', 'Parent.')
+  const first = await createNote(request, 'Next first', 'One.', 'owner', parent.id)
+  await createNote(request, 'Next second', 'Two.', 'owner', parent.id)
+  await page.goto(`/notes/${first.id}`)
+  await expect(page.locator('.ProseMirror')).toBeVisible()
+
+  await page.keyboard.press('ControlOrMeta+T')
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
+  const children = async () => {
+    const tree = await api<
+      { id: string; title: string; parentId: string | null; position: number }[]
+    >(request, 'GET', '/tree')
+    return tree
+      .filter((node) => node.parentId === parent.id)
+      .toSorted((a, b) => a.position - b.position)
+      .map((node) => node.title)
+  }
+  await expect.poll(children).toEqual(['Next first', 'Untitled', 'Next second'])
+
+  // Not on a note: at the top level.
+  await page.goto('/settings')
+  await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible()
+  const before = (await api<unknown[]>(request, 'GET', '/tree')).length
+  await page.keyboard.press('ControlOrMeta+T')
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
+  const created = await api<{ parentId: string | null }[]>(request, 'GET', '/tree')
+  expect(created).toHaveLength(before + 1)
+  expect(created.at(-1)?.parentId ?? null).toBeNull()
+})

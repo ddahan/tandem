@@ -283,7 +283,7 @@ inside OneDrive so that it is backed up and synced.
   - Closing: the tab's × (on the active tab and on hover), a middle click, ⌘W (in the installed app; with no tab open, ⌘W closes Tandem, the browser asking first), or the tab's
     menu (a right-click: Close, Close others, Close to the right, Close all; Keep open for the
     preview; Copy path for a note). Closing the active tab shows the tab used most recently;
-    closing the last one shows Home. ⌘⇧T reopens closed tabs, last first (up to 20). ⌘T makes a new page. In a browser tab, ⌘W, ⌘T and ⌘⇧T stay the browser's.
+    closing the last one shows Home. ⌘⇧T reopens closed tabs, last first (up to 20). ⌘T (and ⌥⌘N) makes a new page next to the open one: the same parent, right after it (a folder too: inside is the row menu's "New page inside"); with no note open, at the top level. The sidebar's "+" and Home's button make one at the top level. In a browser tab, ⌘W, ⌘T and ⌘⇧T stay the browser's.
   - ⌥⌘→ / ⌥⌘← go to the next or previous tab (wrapping around), ⌃1…⌃8 to that tab and ⌃9 to
     the last one (⌘1…9 belong to the browser). Tabs are dragged to reorder them,
     from one row to the other too. A double click on the bar's empty space makes a new page.

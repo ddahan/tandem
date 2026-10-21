@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
+import { noteIdOf } from '~/utils/tabs'
 
 const tree = useTree()
 const { openSearch } = useSearchPalette()
@@ -42,6 +43,8 @@ watch(
 
 // The open note's save status, next to the version.
 const openNoteSave = useOpenNoteSave()
+
+const createNextToOpen = () => tree.createPageNextTo(noteIdOf(tabs.activeKey.value ?? ''))
 
 // The sidebar: collapsed or not from lg up, a drawer (open or not) below.
 const sidebarCollapsed = ref(false)
@@ -88,14 +91,15 @@ const tabShortcuts = Object.fromEntries(
 
 defineShortcuts({
   ...tabShortcuts,
-  meta_t: { usingInput: true, handler: () => void tree.createPage() },
+  // A new page next to the open one (same parent, right after it), or at the top level.
+  meta_t: { usingInput: true, handler: () => void createNextToOpen() },
   meta_shift_t: { usingInput: true, handler: () => void tabs.reopenClosed() },
   // ⌘B: Bold in a note or a field; elsewhere, and ⌥⌘B anywhere, the sidebar, as in VS Code.
   meta_b: () => toggleSidebar(),
   meta_alt_b: { usingInput: true, handler: () => toggleSidebar() },
   meta_alt_arrowright: { usingInput: true, handler: () => void tabs.step(1) },
   meta_alt_arrowleft: { usingInput: true, handler: () => void tabs.step(-1) },
-  meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
+  meta_alt_n: { usingInput: true, handler: () => void createNextToOpen() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
   'meta_/': { usingInput: true, handler: () => void navigateTo('/docs/shortcuts') },
   // Search in every note (as in VS Code); the selected text, if any, is the query.

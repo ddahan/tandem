@@ -38,7 +38,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
           ['meta', 'alt', 'n'],
         ],
         label: 'New page',
-        description: '⌘T in the installed app (in a browser tab, it’s the browser’s).',
+        description:
+          'Next to the open page (the same parent, right after it), or at the top. ⌘T in the installed app (in a browser tab, it’s the browser’s).',
       },
       {
         keys: [

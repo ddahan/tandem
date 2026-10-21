@@ -80,6 +80,20 @@ export function useTree() {
     }
   }
 
+  /**
+   * A new page next to another one (⌘T on a note): the same parent, right after it. Without
+   * one, or one not in the tree, at the top level.
+   */
+  async function createPageNextTo(id: string | null) {
+    const current = id ? byId.value.get(id) : undefined
+    if (!current) return createPage()
+    const siblings = childrenOf.value.get(current.parentId) ?? []
+    const index = siblings.findIndex((n) => n.id === current.id) + 1
+    const node = await createPage(current.parentId)
+    if (node) await move(node.id, current.parentId, index)
+    return node
+  }
+
   async function rename(id: string, title: string) {
     try {
       const node = await unwrap(api.nodes[':id'].$patch({ param: { id }, json: { title } }))
@@ -174,6 +188,7 @@ export function useTree() {
     isWithin,
     refresh,
     createPage,
+    createPageNextTo,
     kindOf,
     rename,
     move,
