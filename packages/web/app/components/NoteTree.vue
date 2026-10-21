@@ -4,11 +4,13 @@
 // inline renaming and a menu on each row (its ⋯ button, or a right-click).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
-import type { TreeItem } from '~/composables/useTree'
+import { DELETE_FOREVER, type TreeItem } from '~/composables/useTree'
 
 const tree = useTree()
 const route = useRoute()
 const showError = useApiErrorToast()
+const { settings } = useSettings()
+const confirm = useConfirm()
 
 const expanded = useLocalStorage<string[]>('tandem-tree-expanded', [])
 const currentId = computed(() => (route.name === 'notes-id' ? String(route.params.id) : null))
@@ -66,9 +68,20 @@ async function commitRename() {
 /** The node whose icon is being changed (picker dialog). */
 const iconFor = ref<TreeItem | null>(null)
 
+// To the trash at once (Undo in the toast); with the trash off, deleted for good once confirmed.
 async function trash(item: TreeItem) {
   // Its tab, and those of its pages, close by themselves (default.vue): the one used before shows.
-  await tree.moveToTrash(item.id)
+  if (settings.value.trash) await tree.moveToTrash(item.id)
+  else if (
+    await confirm({
+      title: `Delete “${item.node.title}” forever?`,
+      description: DELETE_FOREVER,
+      confirmLabel: 'Delete forever',
+      confirmColor: 'error',
+      icon: 'i-lucide-trash-2',
+    })
+  )
+    await tree.deleteForever(item.id)
 }
 
 /** Moves a node up or down among its siblings, and keeps the focus on it. */
@@ -146,7 +159,7 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
     ],
     [
       {
-        label: 'Move to trash',
+        label: settings.value.trash ? 'Move to trash' : 'Delete',
         icon: 'i-lucide-trash-2',
         color: 'error' as const,
         kbds: ['meta', 'backspace'],

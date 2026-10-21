@@ -129,6 +129,12 @@ describe('API', () => {
     expect((await client.settings.$patch({ json: { primaryColor: 'Not a color!' } })).status).toBe(
       400,
     )
+    // Optional features: tags and TODOs off, the trash on, until changed.
+    expect(settings).toMatchObject({ tags: false, trash: true, todos: false })
+    const features = await (
+      await client.settings.$patch({ json: { tags: true, trash: false, todos: true } })
+    ).json()
+    expect(features).toMatchObject({ tags: true, trash: false, todos: true })
   })
 
   it('sets, serves and clears icons', async () => {

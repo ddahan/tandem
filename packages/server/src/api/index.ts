@@ -65,6 +65,9 @@ const settingsPatch = z
     backgroundTone: z.enum(['white', 'paper', 'sepia', 'cool']),
     codeTheme: z.enum(CODE_THEMES),
     spellcheck: z.boolean(),
+    tags: z.boolean(),
+    trash: z.boolean(),
+    todos: z.boolean(),
   })
   .partial()
 

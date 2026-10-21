@@ -18,7 +18,7 @@ MCP server or a CLI, and every line remembers who wrote it.
   one with a block); agents read and fill them too.
 - **Autosave** in the background, with conflict detection when an agent edits the same note.
 - **Pages in a tree** (pages can have child pages; one with no content of its own shows as a
-  folder), with drag and drop, tags, breadcrumbs, and icons (an emoji or an image).
+  folder), with drag and drop, breadcrumbs, icons (an emoji or an image), and tags.
 - **Files**: drop or paste a file anywhere in a note; it is copied next to the note
   (`Note.assets/`) and shown as an image or a file chip.
 - **Search** (`⌘⇧F`): prefixes, accents ignored, typos corrected, `"phrases"`, `-word`,
@@ -28,6 +28,9 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **TODOs**: write `TODO:` in a note; it is highlighted, and the TODOs page lists them all,
   one click away from each.
 - **Trash** with restore and permanent delete.
+- **Optional features**, in Settings › Features: tags, TODOs and spell check are off by
+  default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
+  its data stays.
 - **For agents**: an MCP server and a CLI with the same operations.
 - Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.
 - Installable as an app with its own window and Dock icon.

@@ -4,6 +4,7 @@ import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import { OWNER, authorLabel, formatDateTime } from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
+import { DELETE_FOREVER } from '~/composables/useTree'
 import { markdownLosses, type Loss } from '~/utils/markdown-loss'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
 
@@ -361,7 +362,8 @@ async function remove() {
   deleting.value = false
   await doc.flush()
   // Its tab closes by itself (default.vue): the one used before shows.
-  await tree.remove(id.value)
+  if (settings.value.trash) await tree.remove(id.value)
+  else await tree.deleteForever(id.value)
 }
 
 const moreItems = computed<DropdownMenuItem[][]>(() => [
@@ -392,7 +394,7 @@ const moreItems = computed<DropdownMenuItem[][]>(() => [
   ],
   [
     {
-      label: 'Move to trash',
+      label: settings.value.trash ? 'Move to trash' : 'Delete',
       icon: 'i-lucide-trash-2',
       color: 'error' as const,
       onSelect: () => (deleting.value = true),
@@ -562,6 +564,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             ><UIcon name="i-lucide-calendar" class="size-3.5" /> {{ created }}</span
           >
           <UInputTags
+            v-if="settings.tags"
             :model-value="tags"
             placeholder="Add tag…"
             size="xs"
@@ -715,13 +718,22 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
 
   <UModal
     v-model:open="deleting"
-    title="Move to trash?"
-    :description="`“${node?.title}” and its child pages will be moved to the trash.`"
+    :title="settings.trash ? 'Move to trash?' : `Delete “${node?.title}” forever?`"
+    :description="
+      settings.trash
+        ? `“${node?.title}” and its child pages will be moved to the trash.`
+        : DELETE_FOREVER
+    "
   >
     <template #footer>
       <div class="flex w-full justify-end gap-2">
         <UButton label="Cancel" color="neutral" variant="ghost" @click="deleting = false" />
-        <UButton label="Move to trash" color="error" icon="i-lucide-trash-2" @click="remove" />
+        <UButton
+          :label="settings.trash ? 'Move to trash' : 'Delete forever'"
+          color="error"
+          icon="i-lucide-trash-2"
+          @click="remove"
+        />
       </div>
     </template>
   </UModal>

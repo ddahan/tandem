@@ -352,6 +352,14 @@ html.dark[data-tone='cool'] {
   }
 }
 
+/* TODOs turned off (Settings › Features): their lines read as any text. */
+:root[data-todos='off'] .note-editor :is(.todo-highlight, .todo-marker) {
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
 /* Extra selections (⌘D, ⌘⇧L): drawn like the selection, with blinking cursors */
 .note-editor .occurrence-selection {
   background: color-mix(in oklab, var(--ui-primary) 28%, transparent);

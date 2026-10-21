@@ -144,7 +144,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       {
         keys: [['meta', 'backspace'], ['delete']],
         label: 'Move to the trash',
-        description: 'Undo from the message that appears.',
+        description:
+          'Undo from the message that appears. With the trash off (Settings), asks, then deletes forever.',
       },
     ],
   },

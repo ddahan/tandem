@@ -16,6 +16,12 @@ useServerEvents((event) => {
 })
 useHead({ title: 'Trash' })
 
+// Off (Settings › Features), the page stays reachable (an open tab, an address): it says so.
+const { settings } = useSettings()
+const off = [
+  { label: 'Settings', to: '/settings', color: 'neutral' as const, variant: 'outline' as const },
+]
+
 async function restore(item: TrashItem) {
   try {
     const node = await unwrap(api.trash[':id'].restore.$post({ param: { id: item.id } }))
@@ -85,6 +91,16 @@ async function emptyTrash() {
 
     <template #body>
       <div class="mx-auto w-full max-w-3xl py-4">
+        <UAlert
+          v-if="!settings.trash"
+          class="mb-6"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-eye-off"
+          title="The trash is turned off"
+          description="Pages you delete now are deleted forever. Those below were deleted before: restore them, or delete them. Turn the trash on in Settings › Features."
+          :actions="off"
+        />
         <p class="mb-6 text-sm text-muted">
           Deleted pages stay here, with their child pages, attachments and history, until you delete
           them.

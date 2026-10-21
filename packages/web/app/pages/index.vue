@@ -95,7 +95,7 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
                   note.path.replace(/\.md$/, '')
                 }}</span>
               </span>
-              <span class="flex shrink-0 gap-1">
+              <span v-if="settings.tags" class="flex shrink-0 gap-1">
                 <UBadge
                   v-for="tag in note.tags.slice(0, 3)"
                   :key="tag"
@@ -119,7 +119,7 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
           />
         </section>
 
-        <section v-if="tags.length" class="mt-10">
+        <section v-if="settings.tags && tags.length" class="mt-10">
           <h2 class="mb-3 text-xs font-medium tracking-wide text-dimmed uppercase">Tags</h2>
           <div class="flex flex-wrap gap-2">
             <UButton

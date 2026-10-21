@@ -13,6 +13,10 @@ function sortNodes(a: TreeNode, b: TreeNode): number {
   return a.position - b.position || a.title.localeCompare(b.title)
 }
 
+/** What deleting a page forever means, for the dialogs that ask (the trash off). */
+export const DELETE_FOREVER =
+  'It, its child pages, their attachments and history are deleted. This cannot be undone.'
+
 export function useTree() {
   const nodes = useState<TreeNode[]>('tree:nodes', () => [])
   const loaded = useState('tree:loaded', () => false)
@@ -140,6 +144,23 @@ export function useTree() {
     }
   }
 
+  /**
+   * Deletes a node and its pages forever (the trash turned off, Settings › Features), once the
+   * caller has asked: through the trash, then out of it, as the server deletes only from there.
+   */
+  async function deleteForever(id: string) {
+    try {
+      const { trashId } = await unwrap(api.nodes[':id'].$delete({ param: { id } }))
+      await unwrap(api.trash[':id'].$delete({ param: { id: trashId } }))
+      await refresh()
+      return true
+    } catch (error) {
+      await refresh()
+      showError(error, 'Could not delete')
+      return false
+    }
+  }
+
   /** Moves a node to the trash right away, with an "Undo" in the toast (no confirmation). */
   async function moveToTrash(id: string): Promise<boolean> {
     const title = byId.value.get(id)?.title ?? 'Item'
@@ -193,6 +214,7 @@ export function useTree() {
     rename,
     move,
     remove,
+    deleteForever,
     moveToTrash,
   }
 }

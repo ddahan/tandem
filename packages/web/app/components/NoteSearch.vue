@@ -9,6 +9,7 @@ import type { SearchResponse } from '@tandem/shared'
 const api = useApi()
 const tree = useTree()
 const colorMode = useColorMode()
+const { settings } = useSettings()
 
 const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
@@ -74,7 +75,10 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           {
             id: 'tips',
             label: 'Search tips',
-            items: TIPS.map(([example, description]) => ({
+            // `tag:` still filters with tags off, but isn't offered.
+            items: TIPS.filter(
+              ([example]) => settings.value.tags || !example.startsWith('tag:'),
+            ).map(([example, description]) => ({
               label: example,
               suffix: description,
               icon: 'i-lucide-lightbulb',
@@ -96,7 +100,9 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           kbds: ['meta', 'alt', 'n'],
           onSelect: () => void tree.createPage(),
         },
-        { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
+        ...(settings.value.trash
+          ? [{ label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' }]
+          : []),
         { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
         { label: 'Docs', icon: 'i-lucide-book-open', to: '/docs' },
         {

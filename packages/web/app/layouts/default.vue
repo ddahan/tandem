@@ -4,19 +4,24 @@ import { useEventListener, useMediaQuery } from '@vueuse/core'
 import { noteIdOf } from '~/utils/tabs'
 
 const tree = useTree()
+const { settings } = useSettings()
 const { openSearch } = useSearchPalette()
 const todos = useTodos()
 todos.follow()
 
-// At the bottom of the sidebar; the logo leads Home.
+// At the bottom of the sidebar; the logo leads Home. TODOs and Trash as Settings › Features say.
 const navigation = computed<NavigationMenuItem[]>(() => [
-  {
-    label: 'TODOs',
-    icon: 'i-lucide-list-todo',
-    to: '/todos',
-    badge: todos.count.value ? String(todos.count.value) : undefined,
-  },
-  { label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' },
+  ...(settings.value.todos
+    ? [
+        {
+          label: 'TODOs',
+          icon: 'i-lucide-list-todo',
+          to: '/todos',
+          badge: todos.count.value ? String(todos.count.value) : undefined,
+        },
+      ]
+    : []),
+  ...(settings.value.trash ? [{ label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' }] : []),
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
   { label: 'Docs', icon: 'i-lucide-book-open', to: '/docs' },
 ])

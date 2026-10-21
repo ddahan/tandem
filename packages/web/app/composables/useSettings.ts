@@ -74,6 +74,8 @@ export function useSettings() {
     document.documentElement.dataset.codeTheme = value.codeTheme
     // Inherited by every text field and the editor (the Markdown source never checks: code).
     document.documentElement.spellcheck = value.spellcheck
+    // TODO lines read as any text when TODOs are off (main.css).
+    document.documentElement.dataset.todos = value.todos ? 'on' : 'off'
     remember(value)
     void nextTick(() => requestAnimationFrame(updateFavicon))
   }

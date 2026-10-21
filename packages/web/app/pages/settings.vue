@@ -64,6 +64,34 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
   { value: 'solarized', label: 'Solarized', variants: 'Light and dark' },
   { value: 'tomorrow', label: 'Tomorrow', variants: 'Tomorrow, Night Eighties' },
 ]
+// Settings › Features: optional parts of the app (types.ts says what "off" keeps).
+const features: {
+  key: 'tags' | 'trash' | 'todos' | 'spellcheck'
+  label: string
+  description: string
+}[] = [
+  {
+    key: 'tags',
+    label: 'Tags',
+    description: 'Tag pages, and find them by tag. Off, existing tags are kept, only hidden.',
+  },
+  {
+    key: 'trash',
+    label: 'Trash',
+    description:
+      'Deleted pages wait in the trash, to restore. Off, deleting asks first, then deletes forever.',
+  },
+  {
+    key: 'todos',
+    label: 'TODOs',
+    description: 'Highlight TODO: lines in notes, and list them on a TODOs page.',
+  },
+  {
+    key: 'spellcheck',
+    label: 'Spell check',
+    description: "Underline misspelled words while typing, with the browser's checker.",
+  },
+]
 const modes = [
   { value: 'light', label: 'Light', icon: 'i-lucide-sun' },
   { value: 'dark', label: 'Dark', icon: 'i-lucide-moon' },
@@ -385,11 +413,25 @@ async function set(patch: Partial<Settings>) {
               </button>
             </div>
           </UFormField>
+        </section>
+
+        <USeparator />
+
+        <section class="space-y-5" data-testid="features">
+          <div>
+            <h2 class="font-semibold text-highlighted">Features</h2>
+            <p class="text-sm text-muted">
+              Show only what you use. Turning one off hides it and keeps its data: turn it back on
+              to find everything as it was.
+            </p>
+          </div>
           <USwitch
-            :model-value="settings.spellcheck"
-            label="Spell check"
-            description="Underline misspelled words while typing, with the browser's checker."
-            @update:model-value="(value) => set({ spellcheck: value })"
+            v-for="feature in features"
+            :key="feature.key"
+            :model-value="settings[feature.key]"
+            :label="feature.label"
+            :description="feature.description"
+            @update:model-value="(value) => set({ [feature.key]: value })"
           />
         </section>
 

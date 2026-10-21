@@ -26,8 +26,6 @@ export function welcomeMarkdown(port: number, databaseId: string): string {
 - [ ] Type \`[[\` to link a page, like this one: [[Scratchpad]]
 - [ ] Press **⌘⇧F** and search for the rocket in your Scratchpad: misspell it, on purpose
 
-TODO: come back to this list tomorrow: it waits for you on the TODOs page.
-
 ## Who wrote what?
 
 Every line remembers its author. Tandem wrote this page: add a line anywhere, then switch to **Authorship** (the people icon, top right), and your color shows up next to Tandem's.

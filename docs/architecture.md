@@ -153,7 +153,9 @@ Deleting moves the files into `.tandem/trash/<id>/` and the rows into the `trash
 (pending sessions are snapshotted first). Restoring puts both back (renaming to
 `Title (restored)` if the name is taken). Deleting forever removes the files, the history
 folders, the versions and the pages' databases (ids are kept through the trash, so databases
-just wait for their page).
+just wait for their page). With the trash off (a setting), the web app deletes a page forever
+in two calls, to the trash then out of it (`useTree().deleteForever`): the server has one way to
+delete, and agents keep the trash.
 
 ### TODOs
 
@@ -162,6 +164,15 @@ links. `listTodos` runs it on the pages whose stored content has `TODO:` (`instr
 sensitive): no table to keep in sync. The editor (`editor/todos.ts`) decorates the same
 ranges (`todoRanges`, on each text block's text, inline code blanked), so both agree; its
 `revealTodo` command goes to the n-th one (or the first with the same text) and flashes it.
+With TODOs off (a setting), the decorations stay and CSS (`html[data-todos='off']`, set by
+`useSettings`) draws them as plain text, so the editor isn't rebuilt; the layout stops loading
+them (`useTodos().follow`).
+
+### Optional features
+
+`tags`, `trash`, `todos` and `spellcheck` are settings like the others (`Settings`, shared):
+the web app shows or hides what each one governs, and never changes the data (tags stay in
+SQLite, TODO lines in the Markdown). The server and agents ignore them.
 
 ### Databases (`databases.ts`)
 

@@ -80,6 +80,7 @@ test('searches from the palette, forgiving typos', async ({ page, request }) => 
 })
 
 test('opens the search palette filtered on a tag, with syntax tips', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { tags: true })
   const note = await createNote(request, 'Tagged note', 'Some text.')
   await api(request, 'PUT', `/notes/${note.id}/tags`, { tags: ['palette-tag'] })
   await page.goto('/')
@@ -92,6 +93,7 @@ test('opens the search palette filtered on a tag, with syntax tips', async ({ pa
   await input.fill('')
   await page.getByRole('option', { name: /in:Projects/ }).click()
   await expect(input).toHaveValue('in:Projects ')
+  await api(request, 'PATCH', '/settings', { tags: false })
 })
 
 test('renames a note from its title, keeping links working', async ({ page, request }) => {
@@ -1286,6 +1288,7 @@ test('has no landing page: it is the website, tandem.w3lt.org', async ({ page })
 })
 
 test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { todos: true })
   const filler = Array.from({ length: 40 }, (_, i) => `Paragraph ${i}.`).join('\n\n')
   const note = await createNote(
     request,
@@ -1330,6 +1333,7 @@ test('highlights TODOs, lists them in the sidebar, and goes to one', async ({ pa
   await page.keyboard.press('Enter')
   await page.keyboard.type('TODO: one more')
   await expect(link).toContainText('3')
+  await api(request, 'PATCH', '/settings', { todos: false })
 })
 
 test('names the side panel tabs by tooltips, icons only', async ({ page, request }) => {

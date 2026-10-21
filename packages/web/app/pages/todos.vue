@@ -2,9 +2,15 @@
 // Every TODO of the notes (`TODO:` lines), by page: one click opens the note on it.
 const todos = useTodos()
 const tree = useTree()
+const { settings } = useSettings()
 useHead({ title: 'TODOs' })
 
 if (!todos.loaded.value) await todos.load()
+
+// Off (Settings › Features), the page stays reachable (an open tab, an address): it says so.
+const off = [
+  { label: 'Settings', to: '/settings', color: 'neutral' as const, variant: 'outline' as const },
+]
 </script>
 
 <template>
@@ -15,6 +21,16 @@ if (!todos.loaded.value) await todos.load()
 
     <template #body>
       <div class="mx-auto w-full max-w-3xl py-4">
+        <UAlert
+          v-if="!settings.todos"
+          class="mb-6"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-eye-off"
+          title="TODOs are turned off"
+          description="Notes don't highlight them, and the sidebar doesn't list this page. Turn them on in Settings › Features."
+          :actions="off"
+        />
         <p class="mb-6 text-sm text-muted">
           Write <code class="todo-chip">TODO:</code> in a note, in capitals: the rest of the line is
           a TODO, highlighted in the note and listed here. Click one to go to it.

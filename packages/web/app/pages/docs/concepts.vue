@@ -107,7 +107,8 @@ const CONCEPTS: Concept[] = [
     paragraphs: [
       'Tags group notes across the tree: click one to search its notes. Every page has an icon, an emoji or an image of yours, shown in the tree, the breadcrumb and the search.',
     ],
-    where: 'Under a note’s title, and its icon left of it.',
+    where:
+      'Under a note’s title (tags: turn them on in Settings › Features), and its icon left of it.',
   },
   {
     id: 'search',
@@ -125,7 +126,7 @@ const CONCEPTS: Concept[] = [
     paragraphs: [
       'Write TODO: in capitals anywhere in a note: it is highlighted, and listed with every other one on the TODOs page, which opens the note right at it.',
     ],
-    where: 'TODOs, in the sidebar.',
+    where: 'TODOs, in the sidebar, once turned on in Settings › Features.',
   },
   {
     id: 'trash',
@@ -133,6 +134,7 @@ const CONCEPTS: Concept[] = [
     title: 'Trash',
     paragraphs: [
       'A deleted page goes to the trash with its pages, files and history, and comes back with them. Only you can delete for good.',
+      'Turned off in Settings › Features, deleting a page asks first, then deletes it for good.',
     ],
     where: 'Trash, in the sidebar.',
   },

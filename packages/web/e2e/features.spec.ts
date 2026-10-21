@@ -1,0 +1,92 @@
+// Settings › Features: optional parts of the app, hidden when off, their data kept.
+import { expect, test } from '@playwright/test'
+import { api, createNote, openNote } from './helpers'
+
+interface Settings {
+  tags: boolean
+  trash: boolean
+  todos: boolean
+  spellcheck: boolean
+}
+
+test.afterEach(async ({ request }) => {
+  await api(request, 'PATCH', '/settings', { tags: false, trash: true, todos: false })
+})
+
+test('starts with tags, TODOs and spell check off, the trash on', async ({ page, request }) => {
+  const settings = await api<Settings>(request, 'GET', '/settings')
+  expect(settings).toMatchObject({ tags: false, trash: true, todos: false, spellcheck: false })
+
+  await page.goto('/settings')
+  const features = page.getByTestId('features')
+  await expect(features.getByRole('switch', { name: 'Tags' })).not.toBeChecked()
+  await expect(features.getByRole('switch', { name: 'Trash' })).toBeChecked()
+  await expect(features.getByRole('switch', { name: 'TODOs' })).not.toBeChecked()
+  await expect(features.getByRole('switch', { name: 'Spell check' })).not.toBeChecked()
+  await expect(page.getByRole('link', { name: 'Trash', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^TODOs/ })).toHaveCount(0)
+})
+
+test('hides tags while off, and shows them as they were once back on', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Kept tags', 'Text.')
+  await api(request, 'PUT', `/notes/${note.id}/tags`, { tags: ['kept-tag'] })
+  await openNote(page, note.id)
+  await expect(page.getByPlaceholder('Add tag…')).toHaveCount(0)
+  await expect(page.getByText('kept-tag')).toHaveCount(0)
+
+  await page.goto('/settings')
+  await page.getByTestId('features').getByRole('switch', { name: 'Tags' }).click()
+  await expect.poll(async () => (await api<Settings>(request, 'GET', '/settings')).tags).toBe(true)
+  await openNote(page, note.id)
+  await expect(page.getByPlaceholder('Add tag…')).toBeVisible()
+  await expect(page.getByText('kept-tag')).toBeVisible()
+})
+
+test('highlights TODOs only when on, without changing the note', async ({ page, request }) => {
+  const note = await createNote(request, 'Quiet todo', 'TODO: later.\n')
+  await openNote(page, note.id)
+  const highlight = page.locator('.ProseMirror .todo-highlight').first()
+  await expect(highlight).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+
+  await api(request, 'PATCH', '/settings', { todos: true })
+  await page.reload()
+  await expect(highlight).toHaveCSS('background-color', /rgba\(253, 224, 71/)
+  await expect(page.getByRole('link', { name: /^TODOs/ })).toBeVisible()
+  // Other tests count the TODOs.
+  await api(request, 'DELETE', `/nodes/${note.id}`)
+})
+
+test('with the trash off, deleting asks, then deletes forever', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { trash: false })
+  const note = await createNote(request, 'Gone for good', 'Bye.')
+  const other = await createNote(request, 'Also gone', 'Bye.')
+  await openNote(page, note.id)
+  await expect(page.getByRole('link', { name: 'Trash', exact: true })).toHaveCount(0)
+
+  // From the tree (⌘⌫): asked first; cancelled, nothing happens.
+  const row = page.getByTestId('tree-Also gone')
+  await row.focus()
+  await page.keyboard.press('ControlOrMeta+Backspace')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Delete “Also gone” forever?')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(row).toBeVisible()
+  await row.focus()
+  await page.keyboard.press('ControlOrMeta+Backspace')
+  await dialog.getByRole('button', { name: 'Delete forever' }).click()
+  await expect(row).toHaveCount(0)
+
+  // From the note's menu.
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Delete' }).click()
+  await dialog.getByRole('button', { name: 'Delete forever' }).click()
+  await expect(page.getByTestId('tree-Gone for good')).toHaveCount(0)
+
+  const trash = await api<{ title: string }[]>(request, 'GET', '/trash')
+  expect(trash.map((item) => item.title)).not.toContain('Gone for good')
+  expect(trash.map((item) => item.title)).not.toContain('Also gone')
+  expect((await request.get(`/api/notes/${other.id}`)).status()).toBe(404)
+})

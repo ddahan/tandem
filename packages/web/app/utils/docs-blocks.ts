@@ -79,7 +79,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'TODO',
         icon: 'i-lucide-list-todo',
         description:
-          '`TODO:` in capitals starts a TODO: it and the rest of its line are highlighted, and listed on the TODOs page with their note. None in code.',
+          '`TODO:` in capitals starts a TODO: it and the rest of its line are highlighted, and listed on the TODOs page with their note, when TODOs are on (Settings › Features). None in code.',
         typed: 'TODO: ',
         markdown: 'TODO: ask Léa for the pricing page.',
       },

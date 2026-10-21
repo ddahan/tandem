@@ -48,7 +48,7 @@ inside OneDrive so that it is backed up and synced.
   failing.
 - **The welcome note**: on its first start on a notes folder that never had notes (none, none in
   the trash), the app writes "Welcome to Tandem" (👋), by "Tandem" (so the authorship view has
-  something to show): five things to try as to-dos, a TODO, a tip, a diagram, the command that
+  something to show): five things to try as to-dos, a tip, a diagram, the command that
   connects Claude (at this Tandem's address) in a collapsible section, a page inside it
   (Scratchpad ✏️, with a rocket to find with a typo) and a small database (Things to try).
   Only once per folder (a marker in `.tandem/`): deleted, it never comes back, and a folder
@@ -201,7 +201,7 @@ inside OneDrive so that it is backed up and synced.
   created (button, menu, shortcut): typing replaces it.
 - Above a note's title, the pages it is in (a small breadcrumb, each a link; none for a page at
   the top): the tab says which page this is.
-- Tags on notes (stored in SQLite).
+- Tags on notes (stored in SQLite), when tags are on (Settings › Features; off by default).
 - Icons: every page has one, the default page icon until it is given an emoji or an image
   (from the computer): from the note page (click the icon left of the title) or the tree's
   menu; "Use the default icon" goes back. The picker searches emojis or shows
@@ -214,11 +214,12 @@ inside OneDrive so that it is backed up and synced.
 ## Search
 
 - One search: the `Cmd+Shift+F` palette (also the sidebar's search button, the Home page's Search
-  button, and tags, which open it filtered on the tag), over note titles, note text and
+  button, and tags on Home, which open it filtered on the tag), over note titles, note text and
   attachment file names. With an empty query it lists recent notes and the search syntax.
 - Prefix matching while typing, accent-insensitive (`ete` finds `été`), typo-tolerant (a
   word without matches is replaced by the closest known word, with "Showing results for…"),
-  quoted phrases, and filters: `tag:<tag>`, `in:<folder>`, `-word` to exclude.
+  quoted phrases, and filters: `tag:<tag>`, `in:<folder>`, `-word` to exclude. With tags off,
+  `tag:` still filters but isn't among the tips.
 - Ranking: title matches first, then body (BM25), with a small boost for recent notes;
   snippets highlight the matched words.
 - No search inside attached files.
@@ -228,6 +229,11 @@ inside OneDrive so that it is backed up and synced.
 - Deleting a note moves it to the trash with its child pages, attachments and history.
   Restoring puts everything back.
 - "Delete forever" per item and "Empty trash", both with a confirmation.
+- The trash can be turned off (Settings › Features; on by default). Then deleting a page (tree,
+  ⌘⌫, the note's ⋯ menu) asks first, "Delete “…” forever?", and deletes it with its child pages,
+  attachments and history; the sidebar and the palette no longer list the trash. Pages already
+  in it stay there: its page (still at `/trash`) says the trash is off. Agents' deletions still
+  go to the trash.
 
 ## Agents
 
@@ -241,6 +247,9 @@ inside OneDrive so that it is backed up and synced.
 
 ## TODOs
 
+- Off by default (Settings › Features). Off, nothing changes in the notes' Markdown: TODO lines
+  read as any text, the sidebar doesn't list the TODOs page (still at `/todos`, which says they
+  are off), and its count isn't loaded.
 - `TODO:` in capitals, not glued to a word before it (`myTODO:`, `todo:` and `TODO` without
   the colon aren't TODOs), starts a TODO: it and the rest of its line (or block, in the
   editor), up to the next TODO, are highlighted in yellow, the `TODO:` marker in the monospace
@@ -252,7 +261,7 @@ inside OneDrive so that it is backed up and synced.
 
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Docs at the
+- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
   and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
@@ -301,7 +310,7 @@ inside OneDrive so that it is backed up and synced.
   selected text.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
-  message that follows offers Undo.
+  message that follows offers Undo. With the trash off, it asks, then deletes forever.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
   has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
   Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install
@@ -341,8 +350,11 @@ inside OneDrive so that it is backed up and synced.
   and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is Tomorrow
   Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, the workspace name (next to the logo and in the browser tab; Tandem by
-  default), and spell check (the browser's, while typing in notes, titles and fields; off by
-  default; never in the Markdown source). Its end links to Docs › Install and Agents (installing
+  default), and **Features**, optional parts of the app, each a switch: tags (off by default),
+  the trash (on), TODOs (off) and spell check (the browser's, while typing in notes, titles and
+  fields; off; never in the Markdown source). Turning one off only hides it: tags stay on their
+  notes, TODO lines in theirs, and turned back on they show as before; agents (MCP, CLI) keep
+  every feature. Its end links to Docs › Install and Agents (installing
   the app, connecting agents).
 - The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
   in your color and the agent's amber, the agent's amber page behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it

@@ -174,6 +174,14 @@ export interface Settings {
   codeTheme: CodeTheme
   /** The browser's spell checking while typing (notes, titles, fields). */
   spellcheck: boolean
+  /**
+   * Optional features, shown or not (Settings › Features). Turned off, a feature only hides:
+   * its data stays (a note's tags, its TODO lines), and agents can still use it.
+   */
+  tags: boolean
+  /** Off: a deleted page is deleted for good, once confirmed, instead of going to the trash. */
+  trash: boolean
+  todos: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -188,6 +196,9 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundTone: 'white',
   codeTheme: 'tandem',
   spellcheck: false,
+  tags: false,
+  trash: true,
+  todos: false,
 }
 
 /** Server-sent events, on `/api/events`. */
