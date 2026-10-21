@@ -102,6 +102,14 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
       {
         keys: [
+          ['meta', 'alt', 'arrowdown'],
+          ['meta', 'alt', 'arrowup'],
+        ],
+        label: 'A week later or earlier',
+        description: 'On a day’s note (daily notes), in the same tab.',
+      },
+      {
+        keys: [
           ['ctrl', '1'],
           ['ctrl', '9'],
         ],

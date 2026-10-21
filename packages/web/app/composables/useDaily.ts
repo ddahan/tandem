@@ -67,7 +67,7 @@ export function useDaily() {
     if (day && day === pending.value) pending.value = null
   })
 
-  /** The day before or after the one shown (⌥⌘← ⌥⌘→, ‹ ›). */
+  /** Days before or after the one shown (⌥⌘← ⌥⌘→ and ‹ ›: one; ⌥⌘↑ ⌥⌘↓: a week). */
   async function step(days: number) {
     const from = pending.value ?? activeDay.value
     if (!from) return

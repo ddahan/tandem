@@ -134,6 +134,15 @@ defineShortcuts({
     usingInput: true,
     handler: () => void (daily.onDay.value ? daily.step(-1) : tabs.step(-1)),
   },
+  // On a day's note, a week later or earlier.
+  meta_alt_arrowdown: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(7)),
+  },
+  meta_alt_arrowup: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(-7)),
+  },
   meta_alt_n: { usingInput: true, handler: () => void createNextToOpen() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
   'meta_/': { usingInput: true, handler: () => void navigateTo('/docs/shortcuts') },

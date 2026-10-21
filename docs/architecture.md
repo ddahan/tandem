@@ -181,7 +181,7 @@ history, attachments or pages; its folder goes with its last note). API: `POST /
 app hides them from the tree (`useTree`, daily notes on), opens days with `useDaily`, shows
 `SideCalendar` in the side panel, and drops an empty day when its page unmounts. Going from
 one day to another keeps the tab: `useTabs().replace` gives the active tab the new page at once
-(before the router shows it), and ⌥⌘← ⌥⌘→ step days on a day's note (tabs elsewhere). Steps
+(before the router shows it), and ⌥⌘← ⌥⌘→ step days on a day's note (tabs elsewhere), ⌥⌘↑ ⌥⌘↓ weeks. Steps
 pressed faster than days open queue: each counts from the day on its way, waits for the page
 before it to show (`page:finish`: a switch started while the last page loads can end on the
 earlier one), and one superseded by a newer press is skipped.

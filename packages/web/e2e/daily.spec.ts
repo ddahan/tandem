@@ -63,7 +63,7 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   await calendar.locator(`[data-date="${tomorrow}"]`).click()
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(tomorrow).title)
 
-  // ⌥⌘← ⌥⌘→ go from day to day, and ⌘T back to today, all in the same tab.
+  // ⌥⌘← ⌥⌘→ go from day to day, ⌘T back to today, ⌥⌘↑ ⌥⌘↓ by weeks, all in the same tab.
   const tabCount = await page.getByRole('tab').count()
   await page.keyboard.press('ControlOrMeta+Alt+ArrowRight')
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, 2)).title)
@@ -74,6 +74,12 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, -1)).title)
   await page.keyboard.press('ControlOrMeta+T')
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(today).title)
+  // ⌥⌘↓ ⌥⌘↑: a week later or earlier, in the same tab too.
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowDown')
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, 7)).title)
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowUp')
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowUp')
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, -7)).title)
   expect(await page.getByRole('tab').count()).toBe(tabCount)
 
   // Off, daily notes are pages like any other, in Calendar.

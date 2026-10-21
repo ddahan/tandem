@@ -273,8 +273,8 @@ inside OneDrive so that it is backed up and synced.
   deleted when the note is left: a day with nothing has no file.
 - Its title is its day, not editable: "Today, Wed 21 October" (Yesterday, Tomorrow; the
   year when not this one), in the tab "Today" or "Wed 14 Oct" with a calendar icon. No
-  breadcrumb, no creation date. ‹ › (and ⌥⌘← ⌥⌘→) go to the day before and after, "Today"
-  back to today.
+  breadcrumb, no creation date. ‹ › (and ⌥⌘← ⌥⌘→) go to the day before and after, ⌥⌘↑ ⌥⌘↓
+  a week earlier and later, "Today" back to today.
 - From one day to another (‹ ›, the shortcuts, the calendar, Today), the day shows in the same
   tab: days don't pile up in tabs, unlike pages.
 - The side panel has a **Calendar** tab (daily notes on), selected by itself on a day's note
