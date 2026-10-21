@@ -265,7 +265,10 @@ inside OneDrive so that it is backed up and synced.
   has its own header on the same row). Notes open in tabs, and so do Settings, Docs (one tab,
   which remembers its section), TODOs and the trash; Home has none, and shows its title when no
   tab is open. The page shown is always the active tab.
-  - Tabs are chips (28px), the active one tinted with the accent color, on up to two rows of
+  - Tabs sit side by side, split by thin vertical lines (hidden next to the tab under the
+    pointer and the active one), as a browser's; the active one is tinted with the accent color.
+    Their × only shows on hover (or keyboard focus), over the end of the title, which fades out
+    under it: it takes no room. They are 28px high, on up to two rows of
     the bar: a single row is centered, a second one is used once the first is full. Those that
     don't fit are in a "+N" menu at the end; the active tab is always shown, in the last place
     shown when its own place is hidden (the tabs' order doesn't change). On a phone, one row
@@ -277,12 +280,12 @@ inside OneDrive so that it is backed up and synced.
     tree or on the tab, an edit of the note (a change to save, or a new title), or "Keep open"
     in its menu. Opening a note any other way (search, links, TODOs, Home, a new page) gives it
     a tab of its own. A new tab opens right of the active one; a note already open just shows.
-  - Closing: the tab's × (on the active tab and on hover), a middle click, ⌥⌘W, or the tab's
+  - Closing: the tab's × (on the active tab and on hover), a middle click, ⌘W (in the installed app; with no tab open, ⌘W closes Tandem, the browser asking first), or the tab's
     menu (a right-click: Close, Close others, Close to the right, Close all; Keep open for the
     preview; Copy path for a note). Closing the active tab shows the tab used most recently;
-    closing the last one shows Home. ⌥⌘T reopens closed tabs, last first (up to 20).
+    closing the last one shows Home. ⌘⇧T reopens closed tabs, last first (up to 20). ⌘T makes a new page. In a browser tab, ⌘W, ⌘T and ⌘⇧T stay the browser's.
   - ⌥⌘→ / ⌥⌘← go to the next or previous tab (wrapping around), ⌃1…⌃8 to that tab and ⌃9 to
-    the last one (⌘W, ⌘T and ⌘1…9 belong to the browser). Tabs are dragged to reorder them,
+    the last one (⌘1…9 belong to the browser). Tabs are dragged to reorder them,
     from one row to the other too. A double click on the bar's empty space makes a new page.
   - A note moved to the trash or deleted (here or by an agent) loses its tab. Renamed or moved,
     its tab follows (title, icon). The tabs, their order and the recently used ones are kept in

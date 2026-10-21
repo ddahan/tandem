@@ -86,10 +86,10 @@ test('closes tabs, showing the one used before, and reopens them', async ({ page
   await expect.poll(() => tabTitles(page)).toEqual(['Close A*', 'Close B', 'Close C'])
   await expect(page).toHaveTitle(/^Close A/)
 
-  // ⌥⌘T reopens it; ⌥⌘W closes the active tab; a middle click closes one.
-  await page.keyboard.press('ControlOrMeta+Alt+T')
+  // ⌘⇧T reopens it; ⌘W closes the active tab; a middle click closes one.
+  await page.keyboard.press('ControlOrMeta+Shift+T')
   await expect.poll(() => tabTitles(page)).toEqual(['Close A', 'Settings*', 'Close B', 'Close C'])
-  await page.keyboard.press('ControlOrMeta+Alt+W')
+  await page.keyboard.press('ControlOrMeta+W')
   await expect.poll(() => tabTitles(page)).toEqual(['Close A*', 'Close B', 'Close C'])
   await tab(page, 'Close B').click({ button: 'middle' })
   await expect.poll(() => tabTitles(page)).toEqual(['Close A*', 'Close C'])
@@ -104,7 +104,7 @@ test('closes tabs, showing the one used before, and reopens them', async ({ page
   await tab(page, 'Close C').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Close others' }).click()
   await expect.poll(() => tabTitles(page)).toEqual(['Close C*'])
-  await page.keyboard.press('ControlOrMeta+Alt+W')
+  await page.keyboard.press('ControlOrMeta+W')
   await expect(tabBar(page)).toHaveCount(0)
   await expect(page).toHaveURL(/\/$/)
 })
@@ -209,4 +209,38 @@ test('shows a page’s path on its tab, and its parent pages above its title', a
   await page.getByTestId('note-path').getByRole('link', { name: 'Path parent' }).click()
   await expect(page).toHaveTitle(/^Path parent/)
   await expect(page.getByTestId('note-path')).toHaveCount(0)
+})
+
+test('⌘T makes a page, ⌘B shows or hides the sidebar, ⌘W on Home asks before closing', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.getByTestId('workspace-name')).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+T')
+  await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
+  await expect.poll(() => tabTitles(page)).toEqual([expect.stringMatching(/^Untitled/)])
+
+  // ⌘B outside text: the sidebar; in a field, it's left alone (Bold, in a note).
+  const sidebar = page.locator('#tandem-panels-sidebar-sidebar')
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  await page.keyboard.press('ControlOrMeta+B')
+  await expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+  await page.keyboard.press('ControlOrMeta+Alt+B')
+  await expect(sidebar).toHaveAttribute('data-collapsed', 'false')
+  await page.getByLabel('Title', { exact: true }).focus()
+  await page.keyboard.press('ControlOrMeta+B')
+  await expect(sidebar).toHaveAttribute('data-collapsed', 'false')
+
+  // ⌘W closes the tab; with none left, ⌘W lets the app close, the browser asking first.
+  await page.keyboard.press('ControlOrMeta+W')
+  await expect(tabBar(page)).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+W')
+  const asked = new Promise<string>((resolve) =>
+    page.once('dialog', (dialog) => {
+      resolve(dialog.type())
+      void dialog.dismiss()
+    }),
+  )
+  await page.close({ runBeforeUnload: true })
+  expect(await asked).toBe('beforeunload')
 })

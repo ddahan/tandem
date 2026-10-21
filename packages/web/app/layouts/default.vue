@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { useEventListener, useMediaQuery } from '@vueuse/core'
 
 const tree = useTree()
 const { openSearch } = useSearchPalette()
@@ -42,10 +43,42 @@ watch(
 // The open note's save status, next to the version.
 const openNoteSave = useOpenNoteSave()
 
+// The sidebar: collapsed or not from lg up, a drawer (open or not) below.
+const sidebarCollapsed = ref(false)
+const sidebarOpen = ref(false)
+const wide = useMediaQuery('(min-width: 1024px)')
+function toggleSidebar() {
+  if (wide.value) sidebarCollapsed.value = !sidebarCollapsed.value
+  else sidebarOpen.value = !sidebarOpen.value
+}
+
+// ⌘W closes the active tab. With none, it closes the app, as it would, but asks first (the
+// browser's own "Leave?" question: a page can't close its window itself).
+let askBeforeClosing: ((event: BeforeUnloadEvent) => void) | null = null
+useEventListener(window, 'keydown', (event: KeyboardEvent) => {
+  const command = /Mac|iPhone|iPad/.test(navigator.userAgent) ? event.metaKey : event.ctrlKey
+  if (!command || event.altKey || event.shiftKey || event.key.toLowerCase() !== 'w') return
+  if (tabs.activeKey.value) {
+    event.preventDefault()
+    void tabs.closeTab()
+    return
+  }
+  if (askBeforeClosing) return
+  askBeforeClosing = (unload) => unload.preventDefault()
+  window.addEventListener('beforeunload', askBeforeClosing)
+  // Only for this ⌘W: a later reload asks nothing.
+  setTimeout(() => {
+    if (askBeforeClosing) window.removeEventListener('beforeunload', askBeforeClosing)
+    askBeforeClosing = null
+  }, 1000)
+})
+
 /** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
 const version = `${useRuntimeConfig().public.version}${import.meta.dev ? ' (dev)' : ''}`
 
-// ⌘W, ⌘T and ⌘1…9 belong to the browser: tabs use ⌥⌘W, ⌥⌘T and ⌃1…9 (shortcuts.ts).
+// ⌘W, ⌘T and ⌘⇧T, as in VS Code: they reach Tandem in the installed app, where a browser
+// reserves no keys (in a browser tab, they stay the browser's). ⌘1…9 do stay the browser's:
+// tabs use ⌃1…9 (shortcuts.ts).
 const tabShortcuts = Object.fromEntries(
   Array.from({ length: 9 }, (_, i) => [
     `ctrl_${i + 1}`,
@@ -55,8 +88,11 @@ const tabShortcuts = Object.fromEntries(
 
 defineShortcuts({
   ...tabShortcuts,
-  meta_alt_w: { usingInput: true, handler: () => void tabs.closeTab() },
-  meta_alt_t: { usingInput: true, handler: () => void tabs.reopenClosed() },
+  meta_t: { usingInput: true, handler: () => void tree.createPage() },
+  meta_shift_t: { usingInput: true, handler: () => void tabs.reopenClosed() },
+  // ⌘B: Bold in a note or a field; elsewhere, and ⌥⌘B anywhere, the sidebar, as in VS Code.
+  meta_b: () => toggleSidebar(),
+  meta_alt_b: { usingInput: true, handler: () => toggleSidebar() },
   meta_alt_arrowright: { usingInput: true, handler: () => void tabs.step(1) },
   meta_alt_arrowleft: { usingInput: true, handler: () => void tabs.step(-1) },
   meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
@@ -77,6 +113,8 @@ defineShortcuts({
   <UDashboardGroup unit="rem" storage="local" storage-key="tandem-panels">
     <UDashboardSidebar
       id="sidebar"
+      v-model:collapsed="sidebarCollapsed"
+      v-model:open="sidebarOpen"
       collapsible
       resizable
       :min-size="14"

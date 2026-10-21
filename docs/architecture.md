@@ -271,6 +271,22 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   (a resize observer). The active tab replaces the last one shown when hidden, for display
   only: drag positions are among the tabs shown, and the move (`moveBefore`) is in the full
   order.
+- App shortcuts (`layouts/default.vue`): ⌘W, ⌘T and ⌘⇧T only reach the page in an installed
+  app's window (browsers reserve no keys there); ⌘W is a plain keydown listener, not
+  `defineShortcuts` (which always prevents the default): with an active tab it prevents the
+  default and closes it, with none it lets the window close and adds a `beforeunload` handler
+  for that second only, so the browser asks first. ⌘B uses `defineShortcuts`' default (not in a
+  text field or the editor, where it is Bold); ⌥⌘B works everywhere. Text that names shortcuts
+  in Docs goes through `utils/platform-keys.ts` (`keysText`: ⌥⌘W on a Mac, Ctrl+Alt+W
+  elsewhere); key chips (UKbd) already adapt.
+- App shortcuts (`layouts/default.vue`): ⌘W, ⌘T and ⌘⇧T only reach the page in an installed
+  app's window (browsers reserve no keys there); ⌘W is a plain keydown listener, not
+  `defineShortcuts` (which always prevents the default): with an active tab it prevents the
+  default and closes it, with none it lets the window close and adds a `beforeunload` handler
+  for that second only, so the browser asks first. ⌘B uses `defineShortcuts`' default (not in a
+  text field or the editor, where it is Bold); ⌥⌘B works everywhere. Text that names shortcuts
+  in Docs goes through `utils/platform-keys.ts` (`keysText`: ⌥⌘W on a Mac, Ctrl+Alt+W
+  elsewhere); key chips (UKbd) already adapt.
 - Copy buttons (landing install command, Docs) use `utils/copy-text.ts`: the Clipboard API,
   then `execCommand('copy')` on a hidden field when it is refused (frames, permissions).
 - Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old

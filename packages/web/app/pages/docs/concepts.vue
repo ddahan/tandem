@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Docs › Concepts: what Tandem is made of and how it behaves, in the owner's words (the
 // product decisions behind it are in docs/SPEC.md).
+import { keysText } from '~/utils/platform-keys'
+
 useHead({ title: 'Concepts' })
 
 interface Concept {
@@ -31,7 +33,7 @@ const CONCEPTS: Concept[] = [
       'Pages open in tabs, as files in VS Code. A click in the tree previews a page in a tab in italics, which the next preview replaces and which closes once you leave it; a double click, or editing the page, keeps it open. Settings, Docs, TODOs and the trash open in tabs too.',
       'Drag tabs to reorder them; right-click one to close it, the others or those to its right. Your tabs come back when you reopen Tandem.',
     ],
-    where: 'Above the page. ⌥⌘W closes one, ⌃1…⌃9 go to one.',
+    where: 'Above the page. ⌘W closes one (in the installed app), ⌃1…⌃9 go to one.',
   },
   {
     id: 'markdown',
@@ -165,10 +167,10 @@ const CONCEPTS: Concept[] = [
           {{ concept.title }}
         </h2>
         <p v-for="paragraph in concept.paragraphs" :key="paragraph" class="text-default">
-          {{ paragraph }}
+          {{ keysText(paragraph) }}
         </p>
         <p v-if="concept.where" class="flex items-center gap-1.5 text-xs text-dimmed">
-          <UIcon name="i-lucide-map-pin" class="size-3.5 shrink-0" /> {{ concept.where }}
+          <UIcon name="i-lucide-map-pin" class="size-3.5 shrink-0" /> {{ keysText(concept.where) }}
         </p>
       </div>
     </section>

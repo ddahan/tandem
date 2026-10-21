@@ -1,6 +1,10 @@
 <script setup lang="ts">
-// Docs › Shortcuts: every keyboard shortcut and typing rule (from utils/shortcuts.ts).
+// Docs › Shortcuts: every keyboard shortcut and typing rule (from utils/shortcuts.ts), in this
+// computer's keys: macOS's on a Mac, Ctrl and Alt elsewhere (keysText for the text).
+import { isMac, keysText } from '~/utils/platform-keys'
 import { SHORTCUT_GROUPS } from '~/utils/shortcuts'
+
+const mac = isMac()
 
 useHead({ title: 'Keyboard shortcuts' })
 </script>
@@ -8,8 +12,11 @@ useHead({ title: 'Keyboard shortcuts' })
 <template>
   <div class="space-y-10">
     <p class="text-sm text-muted">
-      <UKbd value="meta" /> is ⌘ on a Mac and Ctrl elsewhere, <UKbd value="alt" /> is ⌥ (Option) or
-      Alt. Open this page from anywhere with <UKbd value="meta" /> <UKbd value="/" />.
+      <template v-if="mac"
+        ><UKbd value="meta" /> is Command, <UKbd value="alt" /> Option,
+        <UKbd value="ctrl" /> Control.
+      </template>
+      Open this page from anywhere with <UKbd value="meta" /> <UKbd value="/" />.
     </p>
 
     <section
@@ -23,7 +30,7 @@ useHead({ title: 'Keyboard shortcuts' })
           <h2 :id="`shortcuts-${group.id}`" class="font-semibold text-highlighted">
             {{ group.title }}
           </h2>
-          <p class="text-sm text-muted">{{ group.description }}</p>
+          <p class="text-sm text-muted">{{ keysText(group.description) }}</p>
         </div>
       </div>
 
@@ -37,7 +44,7 @@ useHead({ title: 'Keyboard shortcuts' })
           <div class="min-w-0">
             <p class="text-sm text-default">{{ shortcut.label }}</p>
             <p v-if="shortcut.description" class="text-xs text-dimmed">
-              {{ shortcut.description }}
+              {{ keysText(shortcut.description) }}
             </p>
           </div>
           <DocsKeys :typed="shortcut.typed" :keys="shortcut.keys" />

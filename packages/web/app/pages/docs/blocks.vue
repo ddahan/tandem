@@ -2,6 +2,7 @@
 // Docs › Blocks: every block the editor writes (utils/docs-blocks.ts), shown by the editor
 // itself next to its Markdown, with how to add it.
 import { DOCS_BLOCK_GROUPS } from '~/utils/docs-blocks'
+import { keysText } from '~/utils/platform-keys'
 
 useHead({ title: 'Blocks' })
 
@@ -14,7 +15,9 @@ const DATABASE_ROWS: [string, string, string | boolean][] = [
 
 /** `code` in a description, as code. */
 function parts(text: string) {
-  return text.split('`').map((part, index) => ({ text: part, code: index % 2 === 1 }))
+  return keysText(text)
+    .split('`')
+    .map((part, index) => ({ text: part, code: index % 2 === 1 }))
 }
 </script>
 

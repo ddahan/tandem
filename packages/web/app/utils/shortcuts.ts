@@ -32,7 +32,22 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description:
           'Notes, text and attachment names, and actions; starts from the selected text, if any.',
       },
-      { keys: [['meta', 'alt', 'n']], label: 'New page' },
+      {
+        keys: [
+          ['meta', 't'],
+          ['meta', 'alt', 'n'],
+        ],
+        label: 'New page',
+        description: '⌘T in the installed app (in a browser tab, it’s the browser’s).',
+      },
+      {
+        keys: [
+          ['meta', 'b'],
+          ['meta', 'alt', 'b'],
+        ],
+        label: 'Show or hide the sidebar',
+        description: '⌘B when you aren’t typing (in a note, it’s Bold); ⌥⌘B anywhere.',
+      },
       { keys: [['meta', '/']], label: 'Keyboard shortcuts', description: 'This page.' },
       {
         keys: [['meta', '\\']],
@@ -60,15 +75,16 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: 'tabs',
     title: 'Tabs',
     description:
-      'A click in the pages tree previews a page (in italics: replaced by the next one, closed once you leave it); a double click, or editing it, keeps it open. ⌘W and ⌘T are the browser’s.',
+      'A click in the pages tree previews a page (in italics: replaced by the next one, closed once you leave it); a double click, or editing it, keeps it open. ⌘W and ⌘⇧T work in the installed app: in a browser tab, they’re the browser’s.',
     icon: 'i-lucide-panels-top-left',
     shortcuts: [
       {
-        keys: [['meta', 'alt', 'w']],
+        keys: [['meta', 'w']],
         label: 'Close the tab',
-        description: 'Or its ×, or a middle click on it. The tab used before it shows.',
+        description:
+          'Or its ×, or a middle click on it. The tab used before it shows. With no tab open, closes Tandem, asking first.',
       },
-      { keys: [['meta', 'alt', 't']], label: 'Reopen the closed tab' },
+      { keys: [['meta', 'shift', 't']], label: 'Reopen the closed tab' },
       {
         keys: [
           ['meta', 'alt', 'arrowright'],

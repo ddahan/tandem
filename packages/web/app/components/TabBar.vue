@@ -47,7 +47,7 @@ function menu(tab: Tab): ContextMenuItem[][] {
       {
         label: 'Close',
         icon: 'i-lucide-x',
-        kbds: ['meta', 'alt', 'w'],
+        kbds: ['meta', 'w'],
         onSelect: () => void tabs.closeTab(tab.key),
       },
       {
@@ -234,7 +234,7 @@ function onDragEnd() {
 <template>
   <div
     ref="bar"
-    class="tab-bar flex h-full min-w-0 items-center gap-1"
+    class="tab-bar flex h-full min-w-0 items-center gap-y-1"
     :class="
       wide
         ? 'flex-wrap content-center overflow-hidden py-0.5'
@@ -260,11 +260,9 @@ function onDragEnd() {
             :aria-selected="isActive(tab)"
             draggable="true"
             data-tab-chip
-            class="group relative flex h-7 max-w-48 min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border ps-2 pe-1 text-sm transition-colors select-none"
+            class="tab-chip group relative flex h-7 max-w-48 min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm select-none"
             :class="[
-              isActive(tab)
-                ? 'border-primary/40 bg-primary/10 text-highlighted'
-                : 'border-transparent text-muted hover:bg-elevated hover:text-default',
+              isActive(tab) ? 'text-highlighted' : 'text-muted hover:text-default',
               dragged === tab.key && 'opacity-50',
             ]"
             :data-testid="`tab-${titleOf(tab)}`"
@@ -296,15 +294,17 @@ function onDragEnd() {
             <span class="min-w-0 truncate" :class="tab.preview && 'italic'">{{
               titleOf(tab)
             }}</span>
+            <!-- Over the end of the title, on hover (or focus): it takes no room otherwise. -->
             <button
               type="button"
-              class="grid size-5 shrink-0 place-items-center rounded text-muted hover:bg-accented hover:text-highlighted"
-              :class="isActive(tab) ? '' : 'opacity-0 group-hover:opacity-100'"
+              class="tab-close absolute inset-y-0 end-0 flex w-9 items-center justify-end rounded-e-md pe-1 text-muted opacity-0 group-hover:opacity-100 hover:text-highlighted focus-visible:opacity-100 [&:hover>span]:bg-accented"
               aria-label="Close tab"
               @click.stop="tabs.closeTab(tab.key)"
               @dblclick.stop
             >
-              <UIcon name="i-lucide-x" class="size-3.5" />
+              <span class="grid size-5 place-items-center rounded">
+                <UIcon name="i-lucide-x" class="size-3.5" />
+              </span>
             </button>
           </div>
 
@@ -346,6 +346,41 @@ function onDragEnd() {
 </template>
 
 <style>
+/* Tabs side by side, split by a thin line, as a browser's: the line goes next to the tab under
+   the pointer and next to the active one (tinted with the accent). --tab-bg is the tab's own
+   background, so that the × fades the title out over it. */
+.tab-chip {
+  --tab-bg: transparent;
+  background: var(--tab-bg);
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.tab-chip:hover {
+  --tab-bg: var(--ui-bg-elevated);
+}
+.tab-chip[aria-selected='true'] {
+  --tab-bg: color-mix(in oklab, var(--ui-primary) 12%, var(--ui-bg));
+}
+.tab-chip::after {
+  content: '';
+  position: absolute;
+  inset-block: 0.4rem;
+  inset-inline-end: 0;
+  width: 1px;
+  background: var(--ui-border-accented);
+  transition: opacity 0.15s;
+}
+.tab-chip:hover::after,
+.tab-chip[aria-selected='true']::after,
+.tab-chip:has(+ .tab-chip:hover)::after,
+.tab-chip:has(+ .tab-chip[aria-selected='true'])::after {
+  opacity: 0;
+}
+.tab-close {
+  background: linear-gradient(to right, transparent, var(--tab-bg) 45%);
+}
+
 /* One row on a phone: a thin scrollbar, only on hover. */
 .tab-bar {
   scrollbar-width: thin;
