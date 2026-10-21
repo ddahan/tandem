@@ -100,7 +100,7 @@ async function set(patch: Partial<Settings>) {
 <template>
   <UDashboardPanel id="settings">
     <template #header>
-      <UDashboardNavbar title="Settings" />
+      <PageNavbar title="Settings" />
     </template>
 
     <template #body>

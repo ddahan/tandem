@@ -68,7 +68,7 @@ async function emptyTrash() {
 <template>
   <UDashboardPanel id="trash">
     <template #header>
-      <UDashboardNavbar title="Trash">
+      <PageNavbar title="Trash">
         <template #right>
           <UButton
             v-if="items.length"
@@ -80,7 +80,7 @@ async function emptyTrash() {
             @click="emptyTrash"
           />
         </template>
-      </UDashboardNavbar>
+      </PageNavbar>
     </template>
 
     <template #body>

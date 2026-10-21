@@ -134,12 +134,6 @@ defineShortcuts({
 
     <NoteSearch />
 
-    <!-- The tabs above the page. Its panels get the column's height, not the screen's. -->
-    <div class="flex min-w-0 flex-1 flex-col">
-      <TabBar />
-      <div class="flex min-h-0 flex-1 *:min-h-0!">
-        <slot />
-      </div>
-    </div>
+    <slot />
   </UDashboardGroup>
 </template>

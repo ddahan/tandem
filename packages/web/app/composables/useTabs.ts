@@ -170,13 +170,15 @@ export function useTabs() {
     if (tab) return navigateTo(tab.path)
   }
 
-  /** Moves a tab to another position (dragging it). */
-  function move(key: string, toIndex: number) {
+  /** Moves a tab before another one, or to the end (dragging it). */
+  function moveBefore(key: string, beforeKey: string | null) {
+    if (key === beforeKey) return
     const list = saved.value.tabs
     const from = list.findIndex((t) => t.key === key)
     if (from < 0) return
     const [tab] = list.splice(from, 1)
-    list.splice(Math.min(toIndex, list.length), 0, tab!)
+    const to = beforeKey ? list.findIndex((t) => t.key === beforeKey) : -1
+    list.splice(to >= 0 ? to : list.length, 0, tab!)
     persist()
   }
 
@@ -207,7 +209,7 @@ export function useTabs() {
     reopenClosed,
     step,
     at,
-    move,
+    moveBefore,
     forgetNotes,
   }
 }

@@ -15,7 +15,7 @@ const tabs: NavigationMenuItem[] = [
 <template>
   <UDashboardPanel id="docs">
     <template #header>
-      <UDashboardNavbar title="Docs" />
+      <PageNavbar title="Docs" />
       <UDashboardToolbar>
         <UNavigationMenu :items="tabs" highlight class="-mx-1 flex-1" aria-label="Docs" />
       </UDashboardToolbar>

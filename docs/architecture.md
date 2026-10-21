@@ -263,8 +263,14 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   (an edit, not the load), and when its title changes. Closing picks the most recently used
   tab (`recent`). The list and `recent` are one `useState` value, written to localStorage on
   each change; the layout closes the tabs of notes missing from the tree once it is loaded.
-  The layout wraps the page in a column under the tab bar, and forces its panels' `min-h-svh`
-  to `min-h-0` so they fit under it.
+  Every page's bar is `PageNavbar` (Nuxt UI's navbar): `TabBar` in its left slot, the page's
+  actions in its right one, the title when no tab is open. `TabBar` fits the tabs on two rows:
+  it renders them all, counts the rows (distinct tops: rows are centered, so they move as tabs
+  come and go, and are never compared with an earlier layout), then shows fewer until they and
+  "+N" take two rows; again when the titles, order, active tab or the bar's width change
+  (a resize observer). The active tab replaces the last one shown when hidden, for display
+  only: drag positions are among the tabs shown, and the move (`moveBefore`) is in the full
+  order.
 - Copy buttons (landing install command, Docs) use `utils/copy-text.ts`: the Clipboard API,
   then `execCommand('copy')` on a hidden field when it is refused (frames, permissions).
 - Docs (`pages/docs.vue`, a tab per child page in `pages/docs/`, `/docs` and the old

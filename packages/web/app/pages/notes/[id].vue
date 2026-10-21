@@ -328,12 +328,12 @@ const iconPickerOpen = ref(false)
 const isFolder = computed(() => !!node.value && tree.kindOf(node.value) === 'folder')
 const subPages = computed(() => (isFolder.value ? (tree.childrenOf.value.get(id.value) ?? []) : []))
 
+// The pages it is in, above its title (the tab says which page this is): none at the top.
 const breadcrumb = computed<BreadcrumbItem[]>(() =>
-  tree.ancestors(id.value).map((n, index, all) => ({
-    label: n.title,
-    node: n,
-    to: index < all.length - 1 ? `/notes/${n.id}` : undefined,
-  })),
+  tree
+    .ancestors(id.value)
+    .slice(0, -1)
+    .map((n) => ({ label: n.title, node: n, to: `/notes/${n.id}` })),
 )
 
 const modes = [
@@ -411,25 +411,10 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
 </script>
 
 <template>
-  <UDashboardPanel id="note" :ui="{ body: 'p-0 sm:p-0' }">
+  <!-- Below lg the side panel takes the whole width: it replaces the note while it's open. -->
+  <UDashboardPanel id="note" :ui="{ root: panelOpen ? 'max-lg:hidden' : '', body: 'p-0 sm:p-0' }">
     <template #header>
-      <UDashboardNavbar :ui="{ title: 'min-w-0', root: 'gap-2' }">
-        <template #title>
-          <UBreadcrumb
-            :items="breadcrumb"
-            :ui="{
-              root: 'min-w-0',
-              list: 'min-w-0 flex-nowrap',
-              item: 'min-w-0',
-              link: 'min-w-0',
-              linkLabel: 'truncate',
-            }"
-          >
-            <template #item-leading="{ item }">
-              <NodeIcon :icon="item.node.icon" :kind="tree.kindOf(item.node)" />
-            </template>
-          </UBreadcrumb>
-        </template>
+      <PageNavbar :title="node?.title ?? ''">
         <template #right>
           <SaveStatus :status="doc.status.value" :saved-at="doc.savedAt.value" />
           <UFieldGroup size="sm" class="hidden sm:flex">
@@ -463,7 +448,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             />
           </UDropdownMenu>
         </template>
-      </UDashboardNavbar>
+      </PageNavbar>
     </template>
 
     <template #body>
@@ -506,6 +491,24 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @take-theirs="takeTheirs"
           @compare="comparing = true"
         />
+
+        <UBreadcrumb
+          v-if="breadcrumb.length"
+          :items="breadcrumb"
+          class="mb-3"
+          data-testid="note-path"
+          :ui="{
+            root: 'min-w-0',
+            list: 'min-w-0 flex-wrap',
+            link: 'min-w-0 text-xs text-muted',
+            linkLabel: 'truncate',
+            separatorIcon: 'size-3.5',
+          }"
+        >
+          <template #item-leading="{ item }">
+            <NodeIcon :icon="item.node.icon" :kind="tree.kindOf(item.node)" />
+          </template>
+        </UBreadcrumb>
 
         <!-- The page's icon, left of the title (click to change it): every page has one, the
              default icon until another is chosen. -->

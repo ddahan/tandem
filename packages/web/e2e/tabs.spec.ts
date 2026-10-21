@@ -144,3 +144,69 @@ test('closes the tab of a page moved to the trash', async ({ page, request }) =>
   await expect.poll(() => tabTitles(page)).toEqual(['Stays open*'])
   await expect(page).toHaveTitle(/^Stays open/)
 })
+
+test('shares the page’s bar: two rows at most, the rest in “+N”, the active one always shown', async ({
+  page,
+  request,
+}) => {
+  const titles = Array.from({ length: 16 }, (_, i) => `Many tabs number ${i + 1}`)
+  const notes = []
+  for (const title of titles) notes.push(await createNote(request, title, 'Text.'))
+  // Saved tabs, as a reload finds them: the last one active.
+  await page.goto('/')
+  await page.evaluate(
+    (ids) => {
+      const tabs = ids.map((id) => ({ key: `note:${id}`, path: `/notes/${id}`, preview: false }))
+      localStorage.setItem('tandem-tabs', JSON.stringify({ tabs, recent: [tabs.at(-1)!.key] }))
+    },
+    notes.map((n) => n.id),
+  )
+  await page.goto('/')
+  await expect(page).toHaveTitle(/^Many tabs number 16/)
+
+  // One bar: the tabs, and the note's actions on the same row.
+  const bar = tabBar(page)
+  const navbar = page.locator('[data-slot="root"]', { has: bar })
+  await expect(navbar.getByRole('button', { name: 'More actions' })).toBeVisible()
+
+  // Two rows, the rest in "+N"; the active tab (the last) is among those shown.
+  const more = bar.getByRole('button', { name: /more tabs$/ })
+  await expect(more).toBeVisible()
+  const rows = await bar
+    .locator('[data-tab-chip], [data-tab-more]')
+    .evaluateAll(
+      (items) => new Set(items.map((i) => Math.round(i.getBoundingClientRect().top))).size,
+    )
+  expect(rows).toBe(2)
+  await expect(tab(page, 'Many tabs number 16')).toHaveAttribute('aria-selected', 'true')
+  const shown = await bar.locator('[data-tab-chip]').count()
+  await expect(more).toHaveText(`+${titles.length - shown}`)
+
+  // A hidden tab, from "+N": shown and active, the tabs' order unchanged.
+  await more.click()
+  await page.getByRole('menuitem', { name: 'Many tabs number 14' }).click()
+  await expect(tab(page, 'Many tabs number 14')).toHaveAttribute('aria-selected', 'true')
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('tandem-tabs')!).tabs.map((t: { key: string }) => t.key),
+  )
+  expect(saved).toEqual(notes.map((n) => `note:${n.id}`))
+})
+
+test('shows a page’s path on its tab, and its parent pages above its title', async ({
+  page,
+  request,
+}) => {
+  const parent = await createNote(request, 'Path parent', 'Parent.')
+  const child = await createNote(request, 'Path child', 'Child.', 'owner', parent.id)
+  await page.goto(`/notes/${child.id}`)
+  await expect(page.getByTestId('note-path')).toContainText('Path parent')
+  await expect(page.getByTestId('note-path')).not.toContainText('Path child')
+  await tab(page, 'Path child').hover()
+  await expect(page.getByTestId('tab-path')).toContainText('Path parent')
+  await expect(page.getByTestId('tab-path')).toContainText('Path child')
+
+  // A page at the top has no path above its title.
+  await page.getByTestId('note-path').getByRole('link', { name: 'Path parent' }).click()
+  await expect(page).toHaveTitle(/^Path parent/)
+  await expect(page.getByTestId('note-path')).toHaveCount(0)
+})

@@ -191,7 +191,8 @@ inside OneDrive so that it is backed up and synced.
   preview tab, a double click in a tab of its own (see Tabs); its arrow expands it. Renaming is
   F2 or the menu. The "+" above the tree makes a page. A new page opens with its title selected, however it was
   created (button, menu, shortcut): typing replaces it.
-- Breadcrumb above each note.
+- Above a note's title, the pages it is in (a small breadcrumb, each a link; none for a page at
+  the top): the tab says which page this is.
 - Tags on notes (stored in SQLite).
 - Icons: every page has one, the default page icon until it is given an emoji or an image
   (from the computer): from the note page (click the icon left of the title) or the tree's
@@ -244,16 +245,24 @@ inside OneDrive so that it is backed up and synced.
 ## Interface
 
 - Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Docs at the
-  bottom, then the app's version and collapse; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
+  bottom, then the app's version and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its save status, modes,
+  side panel and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
-  named by tooltips), resizable from its left
+  named by tooltips; below 1024px it takes the whole width, replacing the note while open), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
   The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
   Keyboard shortcuts throughout.
-- **Tabs**, as VS Code's editors, above the page (and its side panel). Notes open in tabs, and
-  so do Settings, Docs (one tab, which remembers its section), TODOs and the trash; Home has
-  none. The page shown is always the active tab: an accent line on top, merged with the page.
+- **Tabs**, as VS Code's editors, in the page's bar, left of its actions (a note's side panel
+  has its own header on the same row). Notes open in tabs, and so do Settings, Docs (one tab,
+  which remembers its section), TODOs and the trash; Home has none, and shows its title when no
+  tab is open. The page shown is always the active tab.
+  - Tabs are chips (28px), the active one tinted with the accent color, on up to two rows of
+    the bar: a single row is centered, a second one is used once the first is full. Those that
+    don't fit are in a "+N" menu at the end; the active tab is always shown, in the last place
+    shown when its own place is hidden (the tabs' order doesn't change). On a phone, one row
+    that scrolls sideways, keeping the active tab in view. Hovering a tab shows its page's
+    path (the pages it is in, with their icons).
   - A click in the tree opens a note in the **preview tab**: in italics, one at most, replaced
     by the next preview (in its place), and closed once another page shows (another tab,
     Home…; a tab opened then takes its place). Unlike VS Code, where it stays. It becomes a tab of its own with a double click in the
@@ -265,9 +274,8 @@ inside OneDrive so that it is backed up and synced.
     preview; Copy path for a note). Closing the active tab shows the tab used most recently;
     closing the last one shows Home. ⌥⌘T reopens closed tabs, last first (up to 20).
   - ⌥⌘→ / ⌥⌘← go to the next or previous tab (wrapping around), ⌃1…⌃8 to that tab and ⌃9 to
-    the last one (⌘W, ⌘T and ⌘1…9 belong to the browser). Tabs are dragged to reorder them;
-    the bar scrolls sideways when they don't fit, keeping the active one in view. A double
-    click on its empty space makes a new page.
+    the last one (⌘W, ⌘T and ⌘1…9 belong to the browser). Tabs are dragged to reorder them,
+    from one row to the other too. A double click on the bar's empty space makes a new page.
   - A note moved to the trash or deleted (here or by an agent) loses its tab. Renamed or moved,
     its tab follows (title, icon). The tabs, their order and the recently used ones are kept in
     the browser: opening Tandem on Home shows the tab that was active. Switching notes folders

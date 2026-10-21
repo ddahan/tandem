@@ -10,7 +10,7 @@ if (!todos.loaded.value) await todos.load()
 <template>
   <UDashboardPanel id="todos">
     <template #header>
-      <UDashboardNavbar title="TODOs" />
+      <PageNavbar title="TODOs" />
     </template>
 
     <template #body>

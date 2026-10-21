@@ -43,11 +43,11 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
 <template>
   <UDashboardPanel id="home">
     <template #header>
-      <UDashboardNavbar title="Home">
+      <PageNavbar title="Home">
         <template #right>
           <UButton label="New page" icon="i-lucide-plus" size="sm" @click="tree.createPage()" />
         </template>
-      </UDashboardNavbar>
+      </PageNavbar>
     </template>
 
     <template #body>
