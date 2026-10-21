@@ -19,6 +19,12 @@ const { settings } = useSettings()
 
 const id = computed(() => String(route.params.id))
 const doc = useNoteDocument(id)
+// Shown at the bottom of the sidebar, next to the version (default.vue).
+const openNoteSave = useOpenNoteSave()
+watchEffect(() => {
+  openNoteSave.value = { status: doc.status.value, savedAt: doc.savedAt.value }
+})
+onBeforeUnmount(() => (openNoteSave.value = null))
 await doc.load()
 
 const node = computed(() => tree.byId.value.get(id.value) ?? doc.note.value?.node ?? null)
@@ -416,7 +422,6 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     <template #header>
       <PageNavbar :title="node?.title ?? ''">
         <template #right>
-          <SaveStatus :status="doc.status.value" :saved-at="doc.savedAt.value" />
           <UFieldGroup size="sm" class="hidden sm:flex">
             <UTooltip v-for="m in modes" :key="m.value" :text="m.label">
               <UButton

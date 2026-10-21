@@ -253,8 +253,8 @@ inside OneDrive so that it is backed up and synced.
 ## Interface
 
 - Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Docs at the
-  bottom, then the app's version and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its save status, modes,
-  side panel and ⋯), editor,
+  bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
+  and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
   named by tooltips; below 1024px it takes the whole width, replacing the note while open), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.

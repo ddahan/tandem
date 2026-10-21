@@ -39,6 +39,9 @@ watch(
   },
 )
 
+// The open note's save status, next to the version.
+const openNoteSave = useOpenNoteSave()
+
 /** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
 const version = `${useRuntimeConfig().public.version}${import.meta.dev ? ' (dev)' : ''}`
 
@@ -120,13 +123,21 @@ defineShortcuts({
           class="flex w-full items-center gap-1"
           :class="collapsed ? 'flex-col' : 'justify-between'"
         >
-          <span
-            v-if="!collapsed"
-            class="ps-2.5 font-mono text-xs text-dimmed"
-            data-testid="app-version"
-            :title="`Tandem ${version}`"
-            >v{{ version }}</span
-          >
+          <div class="flex min-w-0 items-center gap-3" :class="collapsed ? 'flex-col' : 'ps-2.5'">
+            <span
+              v-if="!collapsed"
+              class="shrink-0 font-mono text-xs text-dimmed"
+              data-testid="app-version"
+              :title="`Tandem ${version}`"
+              >v{{ version }}</span
+            >
+            <SaveStatus
+              v-if="openNoteSave"
+              :status="openNoteSave.status"
+              :saved-at="openNoteSave.savedAt"
+              :compact="collapsed"
+            />
+          </div>
           <UDashboardSidebarCollapse />
         </div>
       </template>

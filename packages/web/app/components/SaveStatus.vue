@@ -1,9 +1,12 @@
 <script setup lang="ts">
+// Whether the open note is saved ("Saving…", "Saved just now"), at the bottom of the sidebar,
+// next to the version: the note page shares its document's status (useOpenNoteSave). Compact
+// (the sidebar collapsed): the icon alone, the text in its tooltip.
 import { formatRelative } from '@tandem/shared'
 import { useIntervalFn } from '@vueuse/core'
 import type { SaveStatus } from '~/composables/useNoteDocument'
 
-const props = defineProps<{ status: SaveStatus; savedAt: number | null }>()
+const props = defineProps<{ status: SaveStatus; savedAt: number | null; compact?: boolean }>()
 // Refreshes "Saved 2 min ago".
 const now = ref(Date.now())
 useIntervalFn(() => (now.value = Date.now()), 30_000)
@@ -36,14 +39,20 @@ const display = computed(() => {
 </script>
 
 <template>
-  <span
-    v-if="display"
-    class="hidden items-center gap-1.5 text-xs sm:flex"
-    :class="display.class"
-    aria-live="polite"
-    data-testid="save-status"
-  >
-    <UIcon :name="display.icon" class="size-3.5" :class="display.spin && 'animate-spin'" />
-    {{ display.text }}
-  </span>
+  <UTooltip v-if="display" :text="display.text" :disabled="!compact">
+    <span
+      class="flex min-w-0 items-center gap-1.5 text-xs"
+      :class="display.class"
+      aria-live="polite"
+      :aria-label="compact ? display.text : undefined"
+      data-testid="save-status"
+    >
+      <UIcon
+        :name="display.icon"
+        class="size-3.5 shrink-0"
+        :class="display.spin && 'animate-spin'"
+      />
+      <span v-if="!compact" class="truncate">{{ display.text }}</span>
+    </span>
+  </UTooltip>
 </template>
