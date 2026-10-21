@@ -1,8 +1,8 @@
 // Open pages as tabs, as VS Code opens files in editors. A note, and the app's own pages (Docs,
 // Settings, TODOs, Trash), each have one tab; the route is the active tab. A single click in
 // the tree opens a note in the preview tab (one at most, in italics, replaced by the next
-// preview); a double click, editing the note, or any other way of opening it gives it a tab of
-// its own. Closing the active tab shows the one used before it, or Home with none left. The
+// preview, and closed once another page shows); a double click, editing the note, or any other
+// way of opening it gives it a tab of its own. Closing the active tab shows the one used before it, or Home with none left. The
 // tabs, their order and the recently used ones are kept in localStorage.
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { noteIdOf, tabKeyOf } from '~/utils/tabs'
@@ -66,30 +66,31 @@ export function useTabs() {
     saved.value.recent = [key, ...saved.value.recent.filter((k) => k !== key)]
   }
 
-  /** Shows the route in its tab, opening one if needed (the router calls it: see default.vue). */
+  /** Shows the route in its tab, opening one if needed (the router calls it: see default.vue).
+   * The preview tab closes once something else shows: it only lasts while it's looked at. */
   function show(current: RouteLocationNormalizedLoaded) {
     const key = tabKeyOf(current.path)
     const asPreview = pendingPreview.value === current.path
     pendingPreview.value = null
-    if (!key) return
     const list = saved.value.tabs
-    const existing = list.find((tab) => tab.key === key)
-    if (existing) existing.path = current.path
-    else {
-      const tab: Tab = { key, path: current.path, preview: asPreview }
-      const previewIndex = asPreview ? list.findIndex((t) => t.preview) : -1
-      if (previewIndex >= 0) {
-        // The preview tab shows this note instead.
-        const replaced = list[previewIndex]!
-        saved.value.recent = saved.value.recent.filter((k) => k !== replaced.key)
-        list.splice(previewIndex, 1, tab)
-      } else {
-        // Right of the tab that was active, as in VS Code.
-        const from = list.findIndex((t) => t.key === saved.value.recent[0])
-        list.splice(from >= 0 ? from + 1 : list.length, 0, tab)
-      }
+    // Where a new tab goes: right of the tab that was active, as in VS Code, or in the place of
+    // the preview tab it replaces.
+    const previewIndex = list.findIndex((t) => t.preview)
+    const activeIndex = list.findIndex((t) => t.key === saved.value.recent[0])
+    let insertAt = activeIndex >= 0 ? activeIndex + 1 : list.length
+    if (previewIndex >= 0 && list[previewIndex]!.key !== key) {
+      const left = list[previewIndex]!
+      list.splice(previewIndex, 1)
+      saved.value.recent = saved.value.recent.filter((k) => k !== left.key)
+      if (asPreview || previewIndex === activeIndex) insertAt = previewIndex
+      else if (previewIndex < insertAt) insertAt--
     }
-    touch(key)
+    if (key) {
+      const existing = list.find((tab) => tab.key === key)
+      if (existing) existing.path = current.path
+      else list.splice(insertAt, 0, { key, path: current.path, preview: asPreview })
+      touch(key)
+    }
     persist()
   }
 

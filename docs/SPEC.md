@@ -255,7 +255,8 @@ inside OneDrive so that it is backed up and synced.
   so do Settings, Docs (one tab, which remembers its section), TODOs and the trash; Home has
   none. The page shown is always the active tab: an accent line on top, merged with the page.
   - A click in the tree opens a note in the **preview tab**: in italics, one at most, replaced
-    by the next preview (in its place). It becomes a tab of its own with a double click in the
+    by the next preview (in its place), and closed once another page shows (another tab,
+    Home…; a tab opened then takes its place). Unlike VS Code, where it stays. It becomes a tab of its own with a double click in the
     tree or on the tab, an edit of the note (a change to save, or a new title), or "Keep open"
     in its menu. Opening a note any other way (search, links, TODOs, Home, a new page) gives it
     a tab of its own. A new tab opens right of the active one; a note already open just shows.

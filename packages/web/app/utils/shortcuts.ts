@@ -60,7 +60,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: 'tabs',
     title: 'Tabs',
     description:
-      'As in VS Code: a click in the pages tree previews a page (in italics, replaced by the next one); a double click, or editing it, keeps it open. ⌘W and ⌘T are the browser’s.',
+      'A click in the pages tree previews a page (in italics: replaced by the next one, closed once you leave it); a double click, or editing it, keeps it open. ⌘W and ⌘T are the browser’s.',
     icon: 'i-lucide-panels-top-left',
     shortcuts: [
       {

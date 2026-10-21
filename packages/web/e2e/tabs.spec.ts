@@ -51,11 +51,19 @@ test('previews a page from the tree, keeps it with a double click or an edit', a
   await expect.poll(() => isPreview(page, 'Tab three')).toBe(false)
   await expect.poll(() => noteContent(request, 'Tab three')).toBe('Three. Edited.\n')
 
-  // A double click on a preview tab keeps it open as well.
+  // The preview tab closes once another page shows.
   await page.getByTestId('tree-Tab one').click()
   await expect.poll(() => tabTitles(page)).toEqual(['Tab two', 'Tab three', 'Tab one*'])
+  await tab(page, 'Tab two').click()
+  await expect.poll(() => tabTitles(page)).toEqual(['Tab two*', 'Tab three'])
+
+  // A double click on a preview tab keeps it open as well.
+  await page.getByTestId('tree-Tab one').click()
+  await expect.poll(() => tabTitles(page)).toEqual(['Tab two', 'Tab one*', 'Tab three'])
   await tab(page, 'Tab one').dblclick()
   await expect.poll(() => isPreview(page, 'Tab one')).toBe(false)
+  await tab(page, 'Tab three').click()
+  await expect.poll(() => tabTitles(page)).toEqual(['Tab two', 'Tab one', 'Tab three*'])
 })
 
 test('closes tabs, showing the one used before, and reopens them', async ({ page, request }) => {
