@@ -10,6 +10,7 @@ const api = useApi()
 const tree = useTree()
 const colorMode = useColorMode()
 const { settings } = useSettings()
+const daily = useDaily()
 
 const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
@@ -100,6 +101,15 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           kbds: ['meta', 'alt', 'n'],
           onSelect: () => void tree.createPage(),
         },
+        ...(settings.value.daily
+          ? [
+              {
+                label: 'Today’s note',
+                icon: 'i-lucide-calendar-days',
+                onSelect: () => void daily.open(),
+              },
+            ]
+          : []),
         ...(settings.value.trash
           ? [{ label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' }]
           : []),

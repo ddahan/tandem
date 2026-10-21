@@ -13,6 +13,7 @@ import {
   databaseBlock,
   databaseIdsIn,
   formatDateTime,
+  isoDate,
   normalizeAuthor,
   rowsByName,
   type Database,
@@ -28,7 +29,8 @@ id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]
 [[Folder/Title]]. Prefer small edits (append_to_note, replace_in_note) over rewriting whole notes,
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
-Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.`
+Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
+Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.`
 
 type Text = { content: { type: 'text'; text: string }[]; isError?: boolean }
 
@@ -179,6 +181,28 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
         const node = await vault.resolveRef(note)
         await vault.appendContent(node.id, content, author)
         return text(`Appended to ${node.path}`)
+      }),
+  )
+
+  server.registerTool(
+    'daily_note',
+    {
+      title: 'Daily note',
+      description:
+        "A day's note (Calendar/YYYY-MM-DD; today, on the user's computer, by default), created when it has none: its content, and `append` added at its end as a new block.",
+      inputSchema: {
+        date: z.string().optional().describe('The day, YYYY-MM-DD (default: today)'),
+        append: z.string().optional().describe('Markdown to add at the end'),
+      },
+    },
+    async ({ date, append }) =>
+      attempt(async () => {
+        const node = await vault.calendarNote(date ?? isoDate(), author)
+        if (append) await vault.appendContent(node.id, append, author)
+        const detail = await vault.getNote(node.id)
+        return text(
+          `# ${node.title}\npath: ${node.path} · id: ${node.id}\n\n---\n\n${detail.content}`,
+        )
       }),
   )
 

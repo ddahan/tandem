@@ -10,6 +10,7 @@
 import type { ContextMenuItem, DropdownMenuItem } from '@nuxt/ui'
 import { useMediaQuery, useResizeObserver } from '@vueuse/core'
 import type { Tab } from '~/composables/useTabs'
+import { calendarDateOf, dayLabel } from '@tandem/shared'
 import { noteIdOf } from '~/utils/tabs'
 
 const tabs = useTabs()
@@ -28,12 +29,30 @@ function nodeOf(tab: Tab) {
   const id = noteIdOf(tab.key)
   return id ? tree.byId.value.get(id) : undefined
 }
+const { settings } = useSettings()
+/** A daily note's day (daily notes on): its tab reads "Today", "Wed 14 Oct"… */
+function dayOf(tab: Tab) {
+  const node = nodeOf(tab)
+  return node && settings.value.daily ? calendarDateOf(node.path) : null
+}
 function titleOf(tab: Tab) {
+  const day = dayOf(tab)
+  if (day) return dayLabel(day).short
   if (noteIdOf(tab.key)) return nodeOf(tab)?.title ?? '…'
   return PAGES[tab.key]?.title ?? tab.key
 }
+function iconOf(tab: Tab) {
+  if (dayOf(tab)) return 'i-lucide-calendar-days'
+  return PAGES[tab.key]?.icon ?? (noteIdOf(tab.key) ? 'i-lucide-file-text' : 'i-lucide-file')
+}
+/** A day's tooltip is its whole date (it is in no page). */
+function tooltipOf(tab: Tab) {
+  const day = dayOf(tab)
+  return day ? dayLabel(day).title : titleOf(tab)
+}
 /** A note's pages, from the top: the tooltip's path. */
 function pathOf(tab: Tab) {
+  if (dayOf(tab)) return []
   const id = noteIdOf(tab.key)
   return id ? tree.ancestors(id) : []
 }
@@ -112,7 +131,7 @@ const hidden = computed(() => tabs.tabs.value.filter((tab) => !visible.value.inc
 const hiddenItems = computed<DropdownMenuItem[]>(() =>
   hidden.value.map((tab) => ({
     label: titleOf(tab),
-    icon: PAGES[tab.key]?.icon ?? 'i-lucide-file-text',
+    icon: iconOf(tab),
     onSelect: () => void tabs.activate(tab.key),
   })),
 )
@@ -286,11 +305,11 @@ function onDragEnd() {
               aria-hidden="true"
             />
             <NodeIcon
-              v-if="nodeOf(tab)"
+              v-if="nodeOf(tab) && !dayOf(tab)"
               :icon="nodeOf(tab)!.icon"
               :kind="tree.kindOf(nodeOf(tab)!)"
             />
-            <UIcon v-else :name="PAGES[tab.key]?.icon ?? 'i-lucide-file'" class="size-4 shrink-0" />
+            <UIcon v-else :name="iconOf(tab)" class="size-4 shrink-0" />
             <span class="min-w-0 truncate" :class="tab.preview && 'italic'">{{
               titleOf(tab)
             }}</span>
@@ -325,7 +344,7 @@ function onDragEnd() {
                 </span>
               </template>
             </span>
-            <span v-else class="text-xs">{{ titleOf(tab) }}</span>
+            <span v-else class="text-xs">{{ tooltipOf(tab) }}</span>
           </template>
         </UTooltip>
       </UContextMenu>

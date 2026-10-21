@@ -168,9 +168,22 @@ With TODOs off (a setting), the decorations stay and CSS (`html[data-todos='off'
 `useSettings`) draws them as plain text, so the editor isn't rebuilt; the layout stops loading
 them (`useTodos().follow`).
 
+### Daily notes
+
+`shared/calendar.ts` holds the rules: `Calendar/<YYYY-MM-DD>.md` (`calendarPath`,
+`calendarDateOf`, any case, as a Mac's disk), ISO weeks, labels, to-do counts. Day notes are
+ordinary rows and files, so history, search, links and agents need nothing new. The vault adds
+`calendarNote` (find or create, under the lock: a file not read yet is reconciled first, its
+folder is a Calendar folder or the pages of a Calendar page), `calendarMonth` (the marks: written,
+to-dos left and done, from the stored content) and `dropEmptyCalendarNote` (only empty, with no
+history, attachments or pages; its folder goes with its last note). API: `POST /calendar/:date`,
+`GET /calendar?month=`, `DELETE /calendar/:id`; MCP `daily_note`, CLI `tandem daily`. The web
+app hides them from the tree (`useTree`, daily notes on), opens days with `useDaily`, shows
+`SideCalendar` in the side panel, and drops an empty day when its page unmounts.
+
 ### Optional features
 
-`tags`, `trash`, `todos` and `spellcheck` are settings like the others (`Settings`, shared):
+`tags`, `trash`, `todos`, `daily` and `spellcheck` are settings like the others (`Settings`, shared):
 the web app shows or hides what each one governs, and never changes the data (tags stay in
 SQLite, TODO lines in the Markdown). The server and agents ignore them.
 

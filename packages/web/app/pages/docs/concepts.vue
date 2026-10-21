@@ -109,6 +109,14 @@ const GROUPS: Group[] = [
         ],
       },
       {
+        id: 'daily',
+        icon: 'i-lucide-calendar-days',
+        title: 'Daily notes',
+        paragraphs: [
+          'Once turned on in Settings › Features, each day can have a note: Daily, in the sidebar, opens today’s, and the side panel’s calendar any other, with a dot for days with notes, a ring for to-dos left. They are Markdown files in the notes folder’s Calendar folder, out of the tree. A day left empty leaves no file.',
+        ],
+      },
+      {
         id: 'todos',
         icon: 'i-lucide-list-todo',
         title: 'TODOs',

@@ -259,9 +259,32 @@ inside OneDrive so that it is backed up and synced.
   renamed or trashed). Clicking a TODO opens its note in edit mode at that TODO: scrolled to,
   flashed, the cursor at its end; if the note changed since, the TODO with the same text.
 
+## Daily notes
+
+- Optional (Settings › Features, off by default). One note per day, `Calendar/<YYYY-MM-DD>.md`
+  in the notes folder (ISO dates, the computer's time zone); weekly notes may come later.
+- On, the tree doesn't show them (nor their Calendar folder, when it holds nothing else): the
+  sidebar's **Daily**, above the pages, opens today's (highlighted on a day's note), and so does
+  "Today's note" in the palette. `/daily` and `/daily/<date>` lead to one. Off, they are pages
+  like any other, in Calendar.
+- A day's note is created when it is opened, empty (no template), by one server call under the
+  vault's lock, so that two windows or an agent never make two; a file already there (written
+  elsewhere) is read, never overwritten. Left empty, with no history, files or pages, it is
+  deleted when the note is left: a day with nothing has no file.
+- Its title is its day, not editable: "Today, Wednesday 21 October" (Yesterday, Tomorrow; the
+  year when not this one), in the tab "Today" or "Wed 14 Oct" with a calendar icon. No
+  breadcrumb, no creation date. ‹ › go to the day before and after, "Today" back to today.
+- The side panel has a **Calendar** tab (daily notes on), selected by itself on a day's note
+  (other notes keep their tab): the month, Monday first, ISO week numbers (CW), ‹ › months and
+  "Today". Under each day: a dot when its note has something written, a ring when it has to-dos
+  left (`- [ ]`), a check when all its to-dos are done. A click opens the day. It follows
+  changes live.
+- Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
+  files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
+
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, tree; TODOs and Trash when on, Settings and Docs at the
+- Nuxt UI Dashboard layout: sidebar (search, Daily when daily notes are on, tree; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
   and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
@@ -356,7 +379,7 @@ inside OneDrive so that it is backed up and synced.
   Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono" theme), the
   owner's display name, the workspace name (next to the logo and in the browser tab; Tandem by
   default), and **Features**, optional parts of the app, each a switch: tags (off by default),
-  the trash (on), TODOs (off) and spell check (the browser's, while typing in notes, titles and
+  the trash (on), TODOs (off), daily notes (off) and spell check (the browser's, while typing in notes, titles and
   fields; off; never in the Markdown source). Turning one off only hides it: tags stay on their
   notes, TODO lines in theirs, and turned back on they show as before; agents (MCP, CLI) keep
   every feature. Its end links to Docs › Install and Agents (installing

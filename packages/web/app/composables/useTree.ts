@@ -1,5 +1,5 @@
 // The tree of pages and folders, shared by the sidebar, breadcrumbs, links and search.
-import type { NodeKind, TreeNode } from '@tandem/shared'
+import { CALENDAR_DIR, calendarDateOf, type NodeKind, type TreeNode } from '@tandem/shared'
 
 export interface TreeItem {
   id: string
@@ -42,9 +42,19 @@ export function useTree() {
     return node.empty && childrenOf.value.get(node.id)?.length ? 'folder' : 'page'
   }
 
+  // Daily notes on, their notes aren't in the tree (the calendar leads to them), nor their
+  // Calendar folder once it holds nothing else.
+  const { settings } = useSettings()
+  function hidden(node: TreeNode, children: TreeItem[]): boolean {
+    if (!settings.value.daily) return false
+    if (calendarDateOf(node.path)) return true
+    return node.path.toLowerCase() === CALENDAR_DIR.toLowerCase() && !children.length
+  }
+
   function build(parentId: string | null): TreeItem[] {
-    return (childrenOf.value.get(parentId) ?? []).map((node) => {
+    return (childrenOf.value.get(parentId) ?? []).flatMap((node) => {
       const children = build(node.id)
+      if (hidden(node, children)) return []
       return {
         id: node.id,
         label: node.title,
@@ -90,7 +100,8 @@ export function useTree() {
    */
   async function createPageNextTo(id: string | null) {
     const current = id ? byId.value.get(id) : undefined
-    if (!current) return createPage()
+    // Next to a daily note would be in Calendar, out of sight.
+    if (!current || calendarDateOf(current.path)) return createPage()
     const siblings = childrenOf.value.get(current.parentId) ?? []
     const index = siblings.findIndex((n) => n.id === current.id) + 1
     const node = await createPage(current.parentId)

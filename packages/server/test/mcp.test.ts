@@ -165,4 +165,18 @@ describe('MCP server', () => {
     const after = JSON.parse(textOf(await tool('read_database', { database: id, all: true })))
     expect(after.rows).toHaveLength(2)
   })
+
+  it('reads, creates and appends to a daily note', async () => {
+    const { vault } = await createTestVault()
+    const app = createApp(vault)
+    const tool = (name: string, args: Record<string, unknown>) =>
+      call(app, 'tools/call', { name, arguments: args })
+    const first = textOf(await tool('daily_note', { date: '2026-10-21', append: '- Shipped' }))
+    expect(first).toContain('path: Calendar/2026-10-21.md')
+    expect(first).toContain('- Shipped')
+    const again = textOf(await tool('daily_note', { date: '2026-10-21' }))
+    expect(again).toContain('- Shipped')
+    expect((await vault.tree()).filter((node) => node.path.startsWith('Calendar/'))).toHaveLength(1)
+    expect((await tool('daily_note', { date: 'tomorrow' })).result.isError).toBe(true)
+  })
 })

@@ -28,7 +28,9 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **TODOs**: write `TODO:` in a note; it is highlighted, and the TODOs page lists them all,
   one click away from each.
 - **Trash** with restore and permanent delete.
-- **Optional features**, in Settings › Features: tags, TODOs and spell check are off by
+- **Daily notes** (optional): a note per day, `Calendar/2026-10-21.md`, opened from Daily in the
+  sidebar or a calendar showing which days have notes and to-dos left; agents write in them too.
+- **Optional features**, in Settings › Features: tags, TODOs, daily notes and spell check are off by
   default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
   its data stays.
 - **For agents**: an MCP server and a CLI with the same operations.
@@ -159,7 +161,7 @@ claude mcp add --transport http tandem http://localhost:3864/mcp --header "X-Tan
 The header names the agent in the history and authorship views. Tools: `search_notes`,
 `list_notes`, `read_note`, `create_note`, `append_to_note`, `replace_in_note`,
 `write_note`, `rename_note`, `move_note`, `delete_note`, `set_tags`, `set_icon`, `list_tags`,
-`note_history`, `read_version`, `attach_file`.
+`note_history`, `read_version`, `attach_file`, `daily_note`.
 
 ### CLI
 

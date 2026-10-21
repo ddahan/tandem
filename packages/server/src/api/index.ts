@@ -68,6 +68,7 @@ const settingsPatch = z
     tags: z.boolean(),
     trash: z.boolean(),
     todos: z.boolean(),
+    daily: z.boolean(),
   })
   .partial()
 
@@ -253,6 +254,16 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     // --- Tags, links, attachments ----------------------------------------------------------
     .get('/tags', async (c) => c.json(await vault.listTags()))
     .get('/todos', async (c) => c.json(await vault.listTodos()))
+    // Daily notes: a day's note (created when it has none), a month's days, an empty day dropped.
+    .post('/calendar/:date', zValidator('param', z.object({ date: z.string() })), async (c) =>
+      c.json(await vault.calendarNote(c.req.valid('param').date, authorOf(c))),
+    )
+    .get('/calendar', zValidator('query', z.object({ month: z.string() })), async (c) =>
+      c.json(await vault.calendarMonth(c.req.valid('query').month)),
+    )
+    .delete('/calendar/:id', zValidator('param', idParam), async (c) =>
+      c.json({ dropped: await vault.dropEmptyCalendarNote(c.req.valid('param').id) }),
+    )
     .put(
       '/notes/:id/tags',
       zValidator('param', idParam),

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-// The note's side panel: headings, links, history, files and databases.
+// The note's side panel: headings, links, history, files and databases, and the calendar when
+// daily notes are on (shown by itself on a day's note).
 import { useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
-defineProps<{
+const props = defineProps<{
   noteId: string
+  /** The day of a daily note (null for any other note). */
+  calendarDate: string | null
   notePath: string
   headings: Heading[]
   /** Index in `headings` of the heading the reader is in (-1: none). */
@@ -19,9 +22,23 @@ defineEmits<{
   close: []
 }>()
 
-const tab = useLocalStorage('tandem-side-tab', 'headings')
+const saved = useLocalStorage('tandem-side-tab', 'headings')
 // Its old name.
-if (tab.value === 'outline') tab.value = 'headings'
+if (saved.value === 'outline') saved.value = 'headings'
+const { settings } = useSettings()
+// On a day's note the calendar shows, without changing the tab other notes open on; a tab
+// picked here is remembered as usual. (The panel is shown again for each note.)
+const picked = ref(false)
+const tab = computed({
+  get: () => {
+    if (!settings.value.daily && saved.value === 'calendar') return 'headings'
+    return props.calendarDate && settings.value.daily && !picked.value ? 'calendar' : saved.value
+  },
+  set: (value: string) => {
+    picked.value = true
+    saved.value = value
+  },
+})
 
 // --- Width -----------------------------------------------------------------------------------
 // Resizable from its left edge, as the sidebar is from its right one. Nuxt UI's resizable panel
@@ -61,13 +78,16 @@ function startResize(event: PointerEvent) {
   handle.addEventListener('pointercancel', end)
 }
 
-const tabs = [
+const tabs = computed(() => [
+  ...(settings.value.daily
+    ? [{ label: 'Calendar', value: 'calendar', icon: 'i-lucide-calendar-days' }]
+    : []),
   { label: 'Headings', value: 'headings', icon: 'i-lucide-list-tree' },
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
   { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
   { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
-] as const
+])
 </script>
 
 <template>
@@ -123,8 +143,9 @@ const tabs = [
     </template>
 
     <template #body>
+      <SideCalendar v-if="tab === 'calendar'" :date="calendarDate" />
       <SideHeadings
-        v-if="tab === 'headings'"
+        v-else-if="tab === 'headings'"
         :headings="headings"
         :active="activeHeading"
         @go="(pos) => $emit('goToHeading', pos)"

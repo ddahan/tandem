@@ -143,4 +143,14 @@ describe('CLI', () => {
     await cli(['row-delete', id, rowId])
     expect((await cli(['database', id, '--json'])).out).not.toContain('Dune')
   })
+
+  it('reads and appends to a daily note', async () => {
+    const { vault } = await setup()
+    const added = await cli(['daily', '--date', '2026-10-21', 'Called the notary'])
+    expect(added).toMatchObject({ code: 0, out: 'Appended to Calendar/2026-10-21.md\n' })
+    const read = await cli(['daily', '--date', '2026-10-21'])
+    expect(read.out).toBe('Calendar/2026-10-21.md\n---\nCalled the notary\n')
+    const node = await vault.resolveRef('Calendar/2026-10-21')
+    expect((await vault.getNote(node.id)).lastAuthor).toBe('claude-code')
+  })
 })

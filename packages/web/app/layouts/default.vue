@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { useEventListener, useMediaQuery } from '@vueuse/core'
+import { calendarDateOf } from '@tandem/shared'
 import { noteIdOf } from '~/utils/tabs'
 
 const tree = useTree()
@@ -24,6 +25,22 @@ const navigation = computed<NavigationMenuItem[]>(() => [
   ...(settings.value.trash ? [{ label: 'Trash', icon: 'i-lucide-trash-2', to: '/trash' }] : []),
   { label: 'Settings', icon: 'i-lucide-settings', to: '/settings' },
   { label: 'Docs', icon: 'i-lucide-book-open', to: '/docs' },
+])
+
+// Daily notes, when on: above the tree, highlighted on a day's note.
+const daily = useDaily()
+const onDailyNote = computed(() => {
+  if (route.name !== 'notes-id') return false
+  const node = tree.byId.value.get(String(route.params.id))
+  return !!node && !!calendarDateOf(node.path)
+})
+const calendarNavigation = computed<NavigationMenuItem[]>(() => [
+  {
+    label: 'Daily',
+    icon: 'i-lucide-calendar-days',
+    active: onDailyNote.value,
+    onSelect: () => void daily.open(),
+  },
 ])
 
 // Tabs (useTabs): the route is the active tab. Opening the app on Home brings back the tab that
@@ -140,6 +157,15 @@ defineShortcuts({
           :collapsed="collapsed"
           :kbds="['meta', 'shift', 'f']"
           class="bg-transparent ring-default"
+        />
+
+        <UNavigationMenu
+          v-if="settings.daily"
+          :collapsed="collapsed"
+          :items="calendarNavigation"
+          orientation="vertical"
+          tooltip
+          aria-label="Calendar notes"
         />
 
         <NoteTree v-if="!collapsed" class="-mx-1 min-h-0 flex-1" />

@@ -66,7 +66,7 @@ const codeThemes: { value: Settings['codeTheme']; label: string; variants: strin
 ]
 // Settings › Features: optional parts of the app (types.ts says what "off" keeps).
 const features: {
-  key: 'tags' | 'trash' | 'todos' | 'spellcheck'
+  key: 'tags' | 'trash' | 'todos' | 'daily' | 'spellcheck'
   label: string
   description: string
 }[] = [
@@ -85,6 +85,12 @@ const features: {
     key: 'todos',
     label: 'TODOs',
     description: 'Highlight TODO: lines in notes, and list them on a TODOs page.',
+  },
+  {
+    key: 'daily',
+    label: 'Daily notes',
+    description:
+      'A note for each day, opened from Daily in the sidebar or the calendar. Off, they show in the tree, in Calendar.',
   },
   {
     key: 'spellcheck',

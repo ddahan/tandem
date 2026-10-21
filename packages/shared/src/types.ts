@@ -182,6 +182,8 @@ export interface Settings {
   /** Off: a deleted page is deleted for good, once confirmed, instead of going to the trash. */
   trash: boolean
   todos: boolean
+  /** Daily notes: a note per day, reached from a calendar (shared/calendar.ts). */
+  daily: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -199,6 +201,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tags: false,
   trash: true,
   todos: false,
+  daily: false,
 }
 
 /** Server-sent events, on `/api/events`. */

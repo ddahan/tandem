@@ -32,6 +32,7 @@ const abilities = [
     text: 'Read and change databases: rows, as your saved view shows them.',
   },
   { icon: 'i-lucide-history', text: 'Read a note’s history and its past versions.' },
+  { icon: 'i-lucide-calendar-days', text: 'Read and write in a day’s note, today’s by default.' },
 ]
 </script>
 

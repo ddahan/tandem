@@ -13,6 +13,7 @@ import {
   databaseIdsIn,
   formatDateTime,
   formatSize,
+  isoDate,
   normalizeAuthor,
   rowsByName,
   viewRows,
@@ -55,6 +56,8 @@ Writing (content from arguments, --file, or standard input)
   delete <note>                 move to the trash
   restore <note> <version-id>   restore a version
   attach <note> <file>          attach a file (--name, --insert to append its link)
+  daily [content]               today's daily note (created if needed), or --date YYYY-MM-DD;
+                                with content (or --file), added at its end
 
 Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   databases <note>              a note's databases, with their columns
@@ -93,6 +96,7 @@ type Values = {
   meta?: boolean
   clear?: boolean
   limit?: string
+  date?: string
 }
 
 async function call<T>(
@@ -218,6 +222,7 @@ export async function run(
         meta: { type: 'boolean' },
         clear: { type: 'boolean' },
         limit: { type: 'string' },
+        date: { type: 'string' },
       },
     })
   } catch (error) {
@@ -273,6 +278,22 @@ async function execute(
   }
 
   switch (command) {
+    case 'daily': {
+      const node = await call(
+        client.calendar[':date'].$post({ param: { date: values.date ?? isoDate() } }),
+      )
+      // Content from arguments or --file only: an agent's standard input may never end.
+      if (args.length || values.file) {
+        const added = await content(0)
+        await call(
+          client.notes[':id'].append.$post({ param: { id: node.id }, json: { content: added } }),
+        )
+        return print(`Appended to ${node.path}`, node)
+      }
+      const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))
+      if (values.json) return print('', note)
+      return print(`${node.path}\n---\n${note.content.replace(/\n$/, '')}`)
+    }
     case 'databases': {
       const node = await resolve(need(0, 'note'))
       const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))

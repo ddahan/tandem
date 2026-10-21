@@ -41,6 +41,12 @@ import {
   type NoteTodos,
   type TrashItem,
   type TreeNode,
+  CALENDAR_DIR,
+  calendarDateOf,
+  calendarPath,
+  isIsoDate,
+  taskCounts,
+  type CalendarDay,
 } from '@tandem/shared'
 import type { Database, Db } from '../db/client.ts'
 import { links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
@@ -396,31 +402,8 @@ export class Vault {
     return this.lock.run(async () => {
       const dir = await this.dirOfParent(input.parentId ?? null)
       const name = uniqueName(sanitizeTitle(input.title), '', await this.takenNames(dir))
-      const path = joinPath(dir, `${name}.md`)
-      const content = input.content ?? ''
-      const now = this.now()
-      await atomicWrite(this.abs(path), content)
-      const info = await statFile(this.abs(path))
-      const row: NodeRow = {
-        id: nanoid(12),
-        kind: 'page',
-        path,
-        position: await this.nextPosition(dir),
-        createdAt: now,
-        updatedAt: now,
-        content,
-        hash: hashContent(content),
-        mtime: info?.mtime ?? null,
-        size: info?.size ?? null,
-        lastAuthor: input.author,
-        lastSaveAt: now,
-        pendingSnapshot: content !== '',
-        blame: JSON.stringify(initialBlame(content, input.author, now)),
-        icon: null,
-      }
-      await this.db.insert(nodes).values(row)
+      const row = await this.insertPage(dir, name, input.content ?? '', input.author)
       if (input.tags?.length) await this.writeTags(row.id, input.tags)
-      await this.indexPage(row)
       this.changed({ type: 'tree' })
       return this.nodeOf(row)
     })
@@ -436,6 +419,90 @@ export class Vault {
       const row = await this.insertFolder(path, now)
       this.changed({ type: 'tree' })
       return this.nodeOf(row)
+    })
+  }
+
+  // --- Daily notes (shared/calendar.ts) ------------------------------------------------------
+
+  /**
+   * A day's note, created (empty) when it has none. One call, under the lock: the app, an agent
+   * and another window asking for the same day at once all get the same note.
+   */
+  async calendarNote(date: string, author: string): Promise<TreeNode> {
+    if (!isIsoDate(date)) throw new ValidationError(`Not a day: "${date}" (use YYYY-MM-DD)`)
+    return this.lock.run(async () => {
+      const path = calendarPath(date)
+      let row = await this.rowByPath(path)
+      // Written outside Tandem, and not read yet: read it, never write over it.
+      if (!row && (await statFile(this.abs(path)))) {
+        await this.reconcileInternal()
+        row = await this.rowByPath(path)
+      }
+      if (row) return this.nodeOf(row)
+      // Its folder: a folder, or the pages of a Calendar page, in the case it has on disk.
+      const owner =
+        (await this.rowByPath(CALENDAR_DIR)) ?? (await this.rowByPath(`${CALENDAR_DIR}.md`))
+      const dir = owner ? owner.path.replace(/\.md$/, '') : CALENDAR_DIR
+      if (!owner) {
+        await mkdir(this.abs(dir), { recursive: true })
+        await this.insertFolder(dir, this.now())
+      }
+      const created = await this.insertPage(dir, date, '', author)
+      this.changed({ type: 'tree' })
+      return this.nodeOf(created)
+    })
+  }
+
+  /** The days of a month (`YYYY-MM`) that have a note, for the calendar's marks. */
+  async calendarMonth(month: string): Promise<CalendarDay[]> {
+    if (!/^\d{4}-\d{2}$/.test(month)) throw new ValidationError(`Not a month: "${month}"`)
+    const prefix = `${CALENDAR_DIR}/${month}-`.toLowerCase()
+    const rows = await this.db
+      .select({ id: nodes.id, path: nodes.path, content: nodes.content })
+      .from(nodes)
+      .where(
+        sql`${nodes.kind} = 'page' AND substr(lower(${nodes.path}), 1, ${prefix.length}) = ${prefix}`,
+      )
+    return rows.flatMap((row) => {
+      const date = calendarDateOf(row.path)
+      if (!date) return []
+      const content = row.content ?? ''
+      return [{ date, id: row.id, written: !isBlank(content), ...taskCounts(content) }]
+    })
+  }
+
+  /**
+   * Removes a day's note left empty (opened, nothing written), so that a day with nothing has
+   * no file. Only an empty note with no history, files or pages; anything else stays.
+   */
+  async dropEmptyCalendarNote(id: string): Promise<boolean> {
+    return this.lock.run(async () => {
+      const found = await this.db.select().from(nodes).where(eq(nodes.id, id)).get()
+      if (!found || found.kind !== 'page' || !calendarDateOf(found.path)) return false
+      // Its file gone already, the watcher will tell.
+      const row = await this.freshPage(id).catch(() => null)
+      if (!row) return false
+      if (!isBlank(row.content ?? '') || row.pendingSnapshot || (await this.hasChildren(row)))
+        return false
+      const version = await this.db
+        .select({ id: versions.id })
+        .from(versions)
+        .where(eq(versions.nodeId, id))
+        .get()
+      if (version || existsSync(this.abs(assetsDirOf(row.path)))) return false
+      await rm(this.abs(row.path), { force: true })
+      await this.db.delete(nodes).where(eq(nodes.id, id))
+      this.search.remove(id)
+      await this.databases.deleteForNodes([id])
+      // The Calendar folder goes with its last note (a Calendar page stays).
+      const dir = dirnameOf(row.path)
+      const folder = await this.rowByPath(dir)
+      if (folder?.kind === 'folder' && !(await this.hasChildren(folder))) {
+        await removeIfEmpty(this.abs(dir))
+        if (!existsSync(this.abs(dir))) await this.db.delete(nodes).where(eq(nodes.id, folder.id))
+      }
+      this.changed({ type: 'tree' })
+      return true
     })
   }
 
@@ -1086,6 +1153,48 @@ export class Vault {
       .get()
     const max = row?.max ?? null
     return max === null ? 0 : max + 1
+  }
+
+  /** Writes a new page `<dir>/<name>.md` and its row (the name must be free). */
+  private async insertPage(
+    dir: string,
+    name: string,
+    content: string,
+    author: string,
+  ): Promise<NodeRow> {
+    const path = joinPath(dir, `${name}.md`)
+    const now = this.now()
+    await atomicWrite(this.abs(path), content)
+    const info = await statFile(this.abs(path))
+    const row: NodeRow = {
+      id: nanoid(12),
+      kind: 'page',
+      path,
+      position: await this.nextPosition(dir),
+      createdAt: now,
+      updatedAt: now,
+      content,
+      hash: hashContent(content),
+      mtime: info?.mtime ?? null,
+      size: info?.size ?? null,
+      lastAuthor: author,
+      lastSaveAt: now,
+      pendingSnapshot: content !== '',
+      blame: JSON.stringify(initialBlame(content, author, now)),
+      icon: null,
+    }
+    await this.db.insert(nodes).values(row)
+    await this.indexPage(row)
+    return row
+  }
+
+  /** The row at a path, whatever its case (the disk of a Mac ignores it). */
+  private async rowByPath(path: string): Promise<NodeRow | undefined> {
+    return (await this.db
+      .select()
+      .from(nodes)
+      .where(sql`lower(${nodes.path}) = ${path.toLowerCase()}`)
+      .get()) as NodeRow | undefined
   }
 
   private async insertFolder(path: string, now: number): Promise<NodeRow> {

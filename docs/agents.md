@@ -43,6 +43,15 @@ precisely. Prefer MCP or the CLI.
 - Never delete notes unless the owner asked; deleted notes go to the trash.
 - Dates in notes are French-formatted (`17/10/2026`), the interface is in English.
 
+## Daily notes
+
+Each day can have a note, `Calendar/2026-10-21.md` (ISO date, the owner's computer's time
+zone). `daily_note` (MCP: `date` optional, today by default; `append` adds Markdown at its end)
+and `tandem daily [content] [--date 2026-10-21]` read it, creating it when the day has none, so
+two callers never make two. It is a note like any other otherwise: read and edit it by its path,
+`Calendar/2026-10-21`. The owner may hide daily notes from the app (Settings › Features); they
+are still there for agents.
+
 ## Markdown that Tandem understands
 
 GitHub-flavored Markdown, plus:

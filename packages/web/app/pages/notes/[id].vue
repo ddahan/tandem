@@ -2,7 +2,15 @@
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
-import { OWNER, authorLabel, formatDateTime } from '@tandem/shared'
+import {
+  OWNER,
+  addDays,
+  authorLabel,
+  calendarDateOf,
+  dayLabel,
+  formatDateTime,
+  isoDate,
+} from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
 import { DELETE_FOREVER } from '~/composables/useTree'
 import { markdownLosses, type Loss } from '~/utils/markdown-loss'
@@ -31,7 +39,29 @@ await doc.load()
 const node = computed(() => tree.byId.value.get(id.value) ?? doc.note.value?.node ?? null)
 const notePath = computed(() => node.value?.path ?? doc.note.value?.node.path ?? '')
 
-useHead({ title: () => node.value?.title || 'Untitled' })
+// --- A daily note (daily notes on): its day is its title, and ‹ › lead to the days around ---
+
+const calendarDate = computed(() => (settings.value.daily ? calendarDateOf(notePath.value) : null))
+const today = ref(isoDate())
+const dayTitle = computed(() =>
+  calendarDate.value ? dayLabel(calendarDate.value, today.value).title : '',
+)
+const daily = useDaily()
+function goToDay(days: number) {
+  if (calendarDate.value) void daily.open(addDays(calendarDate.value, days))
+}
+// Left empty (opened, nothing written), the day's note goes: a day with nothing has no file.
+// The server checks it is still empty, and has no history.
+const noteId = id.value
+onBeforeUnmount(() => {
+  if (!calendarDate.value || content.value.trim()) return
+  void doc
+    .flush()
+    .then(() => api.calendar[':id'].$delete({ param: { id: noteId } }))
+    .catch(() => {})
+})
+
+useHead({ title: () => dayTitle.value || node.value?.title || 'Untitled' })
 
 // --- Content and modes ---------------------------------------------------------------------
 
@@ -500,7 +530,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
         />
 
         <UBreadcrumb
-          v-if="breadcrumb.length"
+          v-if="breadcrumb.length && !calendarDate"
           :items="breadcrumb"
           class="mb-3"
           data-testid="note-path"
@@ -517,9 +547,50 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           </template>
         </UBreadcrumb>
 
+        <div
+          v-if="calendarDate"
+          class="flex items-center gap-2 leading-tight font-bold tracking-tight"
+          :style="{
+            fontFamily: 'var(--editor-font)',
+            fontSize: 'calc(var(--editor-font-size) * 1.75)',
+          }"
+        >
+          <UIcon name="i-lucide-calendar-days" class="size-[0.9em] shrink-0 text-primary" />
+          <h1 class="min-w-0 flex-1 text-balance text-highlighted" data-testid="day-title">
+            {{ dayTitle }}
+          </h1>
+          <div class="flex shrink-0 items-center gap-0.5 text-base">
+            <UButton
+              v-if="calendarDate !== today"
+              label="Today"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="daily.open()"
+            />
+            <UButton
+              icon="i-lucide-chevron-left"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              aria-label="Previous day"
+              @click="goToDay(-1)"
+            />
+            <UButton
+              icon="i-lucide-chevron-right"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              aria-label="Next day"
+              @click="goToDay(1)"
+            />
+          </div>
+        </div>
+
         <!-- The page's icon, left of the title (click to change it): every page has one, the
              default icon until another is chosen. -->
         <div
+          v-else
           class="group/header flex items-center gap-[0.3em] leading-tight font-bold tracking-tight"
           :style="{
             fontFamily: 'var(--editor-font)',
@@ -560,7 +631,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
         </div>
 
         <div class="mt-2 mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
-          <span class="flex items-center gap-1"
+          <span v-if="!calendarDate" class="flex items-center gap-1"
             ><UIcon name="i-lucide-calendar" class="size-3.5" /> {{ created }}</span
           >
           <UInputTags
@@ -695,6 +766,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
   <NoteSidePanel
     v-if="panelOpen && node && !doc.loadError.value"
     :note-id="id"
+    :calendar-date="calendarDate"
     :note-path="notePath"
     :headings="headings"
     :active-heading="activeHeading"
