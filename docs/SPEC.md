@@ -334,8 +334,7 @@ inside OneDrive so that it is backed up and synced.
   default; never in the Markdown source). Its end links to Docs › Install and Agents (installing
   the app, connecting agents).
 - The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
-  in your color and the agent's sky blue (Claude's color in the app), the agent's sky page
-  behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
+  in your color and the agent's amber, the agent's amber page behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
   got at install.
 - Installable as an app (web app manifest): its own window and Dock icon. Its title bar takes
   the page's background color (tone, light or dark: `theme-color`), from the first frame. In a browser tab

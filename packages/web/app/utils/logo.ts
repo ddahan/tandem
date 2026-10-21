@@ -1,7 +1,7 @@
 // The Tandem logo: two pages written side by side, yours in front (its lines alternate between
-// your color and the agent's sky blue, Claude's color in the app), the agent's behind. Drawn in
-// a color scale (the accent color) for the sidebar and the browser tab; public/icon.svg and the
-// PNG icons are the same drawing in the default amber (scripts/icons.ts).
+// your color and the agent's amber), the agent's behind. Drawn in a color scale (the accent
+// color) for the sidebar and the browser tab; public/icon.svg and the PNG icons are the same
+// drawing in the default amber (scripts/icons.ts).
 
 export type LogoShade = 50 | 200 | 300 | 400 | 500 | 600
 
@@ -21,8 +21,8 @@ export function logoSvg(shade: (n: LogoShade) => string, idPrefix = 'logo', radi
       <stop offset="1" style="stop-color:${shade(50)}"/>
     </linearGradient>
     <linearGradient id="${agent}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" style="stop-color:#bae6fd"/>
-      <stop offset="1" style="stop-color:#38bdf8"/>
+      <stop offset="0" style="stop-color:#fde68a"/>
+      <stop offset="1" style="stop-color:#fbbf24"/>
     </linearGradient>
   </defs>
   <rect width="512" height="512" rx="${radius}" fill="url(#${bg})"/>
@@ -34,9 +34,9 @@ export function logoSvg(shade: (n: LogoShade) => string, idPrefix = 'logo', radi
     <rect x="104" y="160" width="204" height="268" rx="30" fill="#000000" opacity="0.14" transform="translate(6 12)"/>
     <rect x="104" y="160" width="204" height="268" rx="30" fill="url(#${page})"/>
     <rect x="138" y="214" width="136" height="22" rx="11" style="fill:${shade(500)}"/>
-    <rect x="138" y="262" width="104" height="22" rx="11" fill="#0ea5e9"/>
+    <rect x="138" y="262" width="104" height="22" rx="11" fill="#f59e0b"/>
     <rect x="138" y="310" width="124" height="22" rx="11" style="fill:${shade(300)}"/>
-    <rect x="138" y="358" width="80" height="22" rx="11" fill="#7dd3fc"/>
+    <rect x="138" y="358" width="80" height="22" rx="11" fill="#fbbf24"/>
   </g>
 </svg>`
 }
