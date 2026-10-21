@@ -1,6 +1,6 @@
 # Tandem
 
-Local notes, written by you **and** your agents.
+Local notes, written by you **and** your agents. Website: <https://tandem.w3lt.org>.
 
 Tandem is a note-taking app that runs on your computer (macOS or Linux) and keeps everything
 in one folder of plain Markdown files — typically inside OneDrive, so your notes are synced and backed

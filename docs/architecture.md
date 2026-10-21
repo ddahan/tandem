@@ -280,6 +280,14 @@ renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
   browser's cache, when the window becomes visible and when the event stream reconnects (an
   update restarts the server), and reloads when they differ, once per build (sessionStorage)
   and after open notes are saved (`useNoteDocument` holds it while changes are pending).
+- The website (`site/`, tandem.w3lt.org): the same Nuxt app built with `TANDEM_SITE=1`
+  (`build:site`, `dev:site` on :3012), where a `pages:extend` hook keeps only the landing page,
+  at `/` (the app's build drops it), `runtimeConfig.public.site` skips everything that talks to
+  the server (`app.vue`'s loading and events, the update check), and there is no web app
+  manifest. Its own build folder and output (`.output-site`), so it builds while the dev server
+  runs. `site/Dockerfile` builds it from the repository's root and serves it with Caddy
+  (`site/Caddyfile`, :8080); DokWalt deploys it (`site/README.md`). The end-to-end tests serve
+  the build as Caddy does (`scripts/serve-site.ts`).
 - Landing page (`pages/landing.vue`, `layout: false`, demos in `components/landing/`): CSS
   animations (classes prefixed `landing-`), `v-reveal` (`utils/reveal.ts`) for scroll reveals,
   and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,

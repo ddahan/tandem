@@ -54,6 +54,15 @@ services:
       - '127.0.0.1:3010:3010'
     depends_on: [server]
 
+  # …and the website (site/: the landing page alone), on its own dev server.
+  site:
+    extends: node
+    profiles: [dev]
+    working_dir: /repo/packages/web
+    command: node --run dev:site
+    ports:
+      - '127.0.0.1:3012:3012'
+
 volumes:
   pnpm-store:
     name: tandem-dev-pnpm-store

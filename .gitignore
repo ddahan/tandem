@@ -12,3 +12,6 @@ coverage
 
 # Node binaries downloaded to build the standalone app
 .cache
+
+# The website build (TANDEM_SITE=1)
+.output-site

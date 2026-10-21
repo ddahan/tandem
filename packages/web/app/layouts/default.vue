@@ -22,9 +22,6 @@ const navigation = computed<NavigationMenuItem[]>(() => [
 /** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
 const version = `${useRuntimeConfig().public.version}${import.meta.dev ? ' (dev)' : ''}`
 
-// The landing page, over the app (LandingModal).
-const aboutOpen = ref(false)
-
 defineShortcuts({
   meta_alt_n: { usingInput: true, handler: () => void tree.createPage() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
@@ -97,25 +94,12 @@ defineShortcuts({
             :title="`Tandem ${version}`"
             >v{{ version }}</span
           >
-          <div class="flex items-center gap-1" :class="collapsed && 'flex-col'">
-            <UTooltip text="About Tandem">
-              <UButton
-                icon="i-lucide-info"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                aria-label="About Tandem"
-                @click="aboutOpen = true"
-              />
-            </UTooltip>
-            <UDashboardSidebarCollapse />
-          </div>
+          <UDashboardSidebarCollapse />
         </div>
       </template>
     </UDashboardSidebar>
 
     <NoteSearch />
-    <LazyLandingModal v-if="aboutOpen" v-model:open="aboutOpen" />
 
     <slot />
   </UDashboardGroup>

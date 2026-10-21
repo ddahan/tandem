@@ -1,0 +1,14 @@
+# The website, tandem.w3lt.org: the landing page (packages/web, built with TANDEM_SITE=1),
+# served by Caddy. Deployed with DokWalt from this folder: `dokwalt deploy` (see README.md).
+services:
+  web:
+    build:
+      # The whole repository: the landing page is built from the web app's sources.
+      context: ..
+      dockerfile: site/Dockerfile
+    expose: ['8080']
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:8080/']
+      interval: 30s
+      timeout: 5s
+      retries: 3

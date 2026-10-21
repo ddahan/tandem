@@ -243,7 +243,7 @@ inside OneDrive so that it is backed up and synced.
 ## Interface
 
 - Nuxt UI Dashboard layout: sidebar (search, tree; TODOs, Trash, Settings and Docs at the
-  bottom, then the app's version, About and collapse; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
+  bottom, then the app's version and collapse; the logo leads Home), note header (breadcrumb, tags, save status, actions), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
   named by tooltips), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
@@ -261,14 +261,18 @@ inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo.
-- A landing page at `/landing` presents Tandem (full width, without the sidebar): the
-  one-line install right under the hero's buttons (a dark terminal line in both modes, with a
+- **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
+  has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
+  Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install
+  first, then "See what's inside" and "View on GitHub" (with the icon); the page ends with the
+  command again, and the footer links to it, the releases and GitHub (with the icon). The
+  one-line install is a dark terminal line in both modes, with a
   copy button saying "Copied", or, where the browser refuses to copy, selecting the command and
   saying which keys copy it; it scrolls sideways on narrow screens, and links to the latest
-  release for company networks), a note written live by the owner and an agent, the features, the agents' CLI and MCP, the files, the
-  shortcuts. Animated, in the accent color and both modes; with reduced motion, every demo
-  shows its final state. The sidebar's "About Tandem" button (ⓘ, next to the collapse button)
-  shows it fullscreen over the app; its links into the app close it and go there, Escape closes.
+  release for company networks). Then a note written live by the owner and an agent, the
+  features, the agents' CLI and MCP, the files, the shortcuts. Animated, in the accent color and
+  both modes; with reduced motion, every demo shows its final state. It asks nothing of a
+  Tandem server.
 - Docs (sidebar, ⌘⇧F palette), in tabs with their own addresses (`/docs/<tab>`):
   - **Install**: installing Tandem as an app (the browser's install button, or Safari's steps;
     "Installed" in the app), removing it, where Tandem runs (this address, local only), and

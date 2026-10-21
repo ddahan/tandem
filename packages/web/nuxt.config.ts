@@ -1,6 +1,11 @@
 // The web app: a single-page app (no server rendering), built to static files that the
 // Tandem server serves. In development, `/api`, `/files` and `/mcp` go to the dev server.
+// With TANDEM_SITE=1, the public website instead (tandem.w3lt.org, deployed from site/): the
+// landing page alone, at `/`, with no server to talk to. The app has no landing page.
 import { readFileSync } from 'node:fs'
+import type { NuxtPage } from 'nuxt/schema'
+
+const site = process.env.TANDEM_SITE === '1'
 
 const apiUrl = process.env.TANDEM_API_URL ?? 'http://localhost:3011'
 // Tandem's version (the standalone package holds it, see README › Releasing), shown at the bottom of the sidebar.
@@ -13,7 +18,24 @@ export default defineNuxtConfig({
   modules: ['@nuxt/ui'],
   ssr: false,
   devtools: { enabled: false },
-  runtimeConfig: { public: { version } },
+  runtimeConfig: { public: { version, site } },
+  // Its own build folders and output: it builds while the dev servers run (the website's dev
+  // server holds a lock on its folder).
+  ...(site
+    ? {
+        buildDir: 'node_modules/.cache/nuxt/.nuxt-site',
+        $development: { buildDir: 'node_modules/.cache/nuxt/.nuxt-site-dev' },
+      }
+    : {}),
+
+  hooks: {
+    'pages:extend'(pages: NuxtPage[]) {
+      const landing = pages.findIndex((page) => page.name === 'landing')
+      if (landing < 0) return
+      const [page] = pages.splice(landing, 1)
+      if (site && page) pages.splice(0, pages.length, { ...page, path: '/' })
+    },
+  },
   css: ['~/assets/css/main.css'],
 
   app: {
@@ -36,7 +58,8 @@ export default defineNuxtConfig({
         // Replaced at runtime by the logo in the accent color (app.vue).
         { key: 'favicon', rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-        { rel: 'manifest', href: '/manifest.webmanifest' },
+        // The website isn't the app: nothing to install from it.
+        ...(site ? [] : [{ rel: 'manifest' as const, href: '/manifest.webmanifest' }]),
       ],
       script: [
         // The background tone, before the first paint (the rest: remembered-settings plugin).
@@ -78,6 +101,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    ...(site ? { output: { dir: '.output-site' } } : {}),
     devProxy: {
       '/api': { target: `${apiUrl}/api`, changeOrigin: true },
       '/files': { target: `${apiUrl}/files`, changeOrigin: true },
@@ -85,7 +109,7 @@ export default defineNuxtConfig({
     },
   },
 
-  devServer: { host: '0.0.0.0', port: 3010 },
+  devServer: { host: '0.0.0.0', port: site ? 3012 : 3010 },
 
   vite: {
     optimizeDeps: {

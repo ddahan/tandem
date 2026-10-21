@@ -9,3 +9,4 @@ app/tandem
 **/test-results
 **/playwright-report
 **/.cache
+**/.output-site

@@ -24,6 +24,7 @@ source, no admin rights: one command downloads the repository from github.com an
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
 | `compose.yaml`, `Dockerfile` | The app as the owner runs it                                                   |
 | `compose.dev.yaml`           | Development toolchain (Node, pnpm, Chromium) and dev servers                   |
+| `site/`                      | The website (tandem.w3lt.org: the landing page alone), deployed with DokWalt   |
 | `docs/`                      | SPEC (behavior), architecture, agents guide                                    |
 
 ## Commands
@@ -32,7 +33,7 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 
 | Task                              | Command                                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------------------ |
-| Dev servers with reload           | `./td dev` → http://localhost:3010 (API on :3011, data in `.data/notes`)                   |
+| Dev servers with reload           | `./td dev` → http://localhost:3010 (API on :3011, data in `.data/notes`; website on :3012) |
 | Same, in the background (agents)  | `docker compose -f compose.dev.yaml --profile dev up -d`, then `… logs -f`, `… down`       |
 | Demo notes in the dev data folder | `./td pnpm --filter @tandem/server seed http://server:3011`                                |
 | All checks                        | `./td check` (format, lint with 0 warnings, builds, type checks, unit tests with coverage) |
@@ -42,6 +43,7 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 | Format / lint                     | `./td format` · `./td lint`                                                                |
 | Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
 | The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3864)                           |
+| The website                       | `cd site && dokwalt deploy` (https://tandem.w3lt.org, see `site/README.md`)                |
 | Rebuild the toolchain image       | `./td setup` (after changing `compose.dev.yaml`)                                           |
 | The app people install            | `./td release`, into `app/tandem/` (checked on Node 22.16 and `app/node.env`'s)            |
 | The Node the installer downloads  | `./td node-pin <version>` (`app/node.env`: version and checksums)                          |

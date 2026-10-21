@@ -1,6 +1,8 @@
 <script setup lang="ts">
-// The landing page (/landing): what Tandem is, shown with live demos. Full width, without
-// the app's sidebar. Follows the accent color, light/dark mode and reduced motion.
+// The landing page: what Tandem is, shown with live demos, and how to install it. It is the
+// website (tandem.w3lt.org, built with TANDEM_SITE: see nuxt.config.ts), not part of the app:
+// its links lead to the install command and GitHub. Follows the accent color, light/dark mode
+// and reduced motion.
 import { authorColor } from '~/utils/authorship'
 import { logoSvg, accentShade } from '~/utils/logo'
 import { vReveal } from '~/utils/reveal'
@@ -10,31 +12,7 @@ useHead({ title: 'Tandem — notes you write with your agents', titleTemplate: n
 
 const headerLogo = logoSvg(accentShade, 'landing-logo')
 const ctaLogo = logoSvg(accentShade, 'landing-logo-cta')
-
-// Shown in the app's "About Tandem" modal (a frame): links into the app ask the app to close
-// the modal and go there (LandingModal), instead of opening the app inside the frame.
-function onClickInFrame(event: MouseEvent) {
-  if (window.self === window.top || event.defaultPrevented || event.button !== 0) return
-  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-  const link = (event.target as Element | null)?.closest?.('a[href]')
-  const href = link?.getAttribute('href')
-  if (!href || !href.startsWith('/') || href.startsWith('/landing')) return
-  event.preventDefault()
-  window.parent.postMessage({ type: 'tandem:open', to: href }, window.location.origin)
-}
-// Escape closes the modal there, as it would with the focus outside the frame.
-function onKeydownInFrame(event: KeyboardEvent) {
-  if (window.self === window.top || event.key !== 'Escape') return
-  window.parent.postMessage({ type: 'tandem:close' }, window.location.origin)
-}
-onMounted(() => {
-  document.addEventListener('click', onClickInFrame, true)
-  document.addEventListener('keydown', onKeydownInFrame)
-})
-onBeforeUnmount(() => {
-  document.removeEventListener('click', onClickInFrame, true)
-  document.removeEventListener('keydown', onKeydownInFrame)
-})
+const GITHUB = 'https://github.com/ddahan/tandem'
 
 // The header gets its border once the page scrolls.
 const scrolled = ref(false)
@@ -189,7 +167,7 @@ const AGENT_POINTS = [
       "
     >
       <nav class="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
-        <NuxtLink to="/landing" class="flex items-center gap-2.5" aria-label="Tandem">
+        <NuxtLink to="/" class="flex items-center gap-2.5" aria-label="Tandem">
           <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
           <span
             class="size-8 overflow-hidden rounded-lg shadow-sm [&_svg]:size-full"
@@ -202,7 +180,17 @@ const AGENT_POINTS = [
           <a href="#agents" class="transition-colors hover:text-highlighted">Agents</a>
           <a href="#files" class="transition-colors hover:text-highlighted">Your files</a>
         </div>
-        <UButton to="/" label="Open the app" trailing-icon="i-lucide-arrow-right" class="ms-auto" />
+        <div class="ms-auto flex items-center gap-1.5">
+          <UButton
+            :to="GITHUB"
+            target="_blank"
+            icon="i-lucide-github"
+            color="neutral"
+            variant="ghost"
+            aria-label="Tandem on GitHub"
+          />
+          <UButton to="#install" label="Install" trailing-icon="i-lucide-arrow-down" />
+        </div>
       </nav>
     </header>
 
@@ -248,27 +236,34 @@ const AGENT_POINTS = [
           CLI and an MCP server, so Claude can write alongside you — every line remembers who wrote
           it.
         </p>
-        <div
-          class="landing-rise mt-9 flex flex-wrap items-center justify-center gap-3"
+        <!-- The website's call to action: installing (#install, from the header too). -->
+        <LandingInstallCommand
+          id="install"
+          class="landing-rise mt-9 scroll-mt-28"
           style="--delay: 270ms"
+        />
+        <div
+          class="landing-rise mt-8 flex flex-wrap items-center justify-center gap-3"
+          style="--delay: 360ms"
         >
-          <UButton
-            to="/"
-            size="xl"
-            label="Start writing"
-            trailing-icon="i-lucide-arrow-right"
-            class="landing-cta-button"
-          />
           <UButton
             to="#features"
             size="xl"
+            label="See what's inside"
+            trailing-icon="i-lucide-arrow-down"
+            class="landing-cta-button"
+          />
+          <UButton
+            :to="GITHUB"
+            target="_blank"
+            size="xl"
             color="neutral"
             variant="outline"
-            label="See what's inside"
+            icon="i-lucide-github"
+            label="View on GitHub"
             class="bg-default/60 backdrop-blur"
           />
         </div>
-        <LandingInstallCommand class="landing-rise mt-8" style="--delay: 360ms" />
         <ul
           class="landing-rise mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted"
           style="--delay: 450ms"
@@ -697,7 +692,7 @@ teams by the end of the month.
     <!-- Call to action -->
     <section class="relative isolate overflow-hidden px-4 py-32 text-center sm:px-6">
       <div class="landing-cta-glow" aria-hidden="true" />
-      <div v-reveal class="mx-auto max-w-2xl">
+      <div v-reveal class="mx-auto max-w-4xl">
         <div class="landing-cta-logo relative mx-auto size-24">
           <span class="landing-cta-ring" aria-hidden="true" />
           <!-- eslint-disable-next-line vue/no-v-html -- our own static drawing -->
@@ -712,13 +707,7 @@ teams by the end of the month.
           Start writing.
         </h2>
         <p class="mt-4 text-lg text-muted">Your notes are waiting, and so are your agents.</p>
-        <UButton
-          to="/"
-          size="xl"
-          label="Open Tandem"
-          trailing-icon="i-lucide-arrow-right"
-          class="landing-cta-button mt-9"
-        />
+        <LandingInstallCommand class="mt-9" />
       </div>
     </section>
 
@@ -728,10 +717,14 @@ teams by the end of the month.
       >
         <span class="font-semibold text-highlighted">tandem</span>
         <span>Notes for one person and their agents.</span>
-        <div class="ms-auto flex gap-5">
-          <NuxtLink to="/docs" class="hover:text-highlighted">Docs</NuxtLink>
-          <NuxtLink to="/settings" class="hover:text-highlighted">Settings</NuxtLink>
-          <NuxtLink to="/" class="hover:text-highlighted">Open the app</NuxtLink>
+        <div class="ms-auto flex items-center gap-5">
+          <a href="#install" class="hover:text-highlighted">Install</a>
+          <a :href="`${GITHUB}/releases`" target="_blank" class="hover:text-highlighted"
+            >Releases</a
+          >
+          <a :href="GITHUB" target="_blank" class="flex items-center gap-1.5 hover:text-highlighted"
+            ><UIcon name="i-lucide-github" class="size-4" /> GitHub</a
+          >
         </div>
       </div>
     </footer>

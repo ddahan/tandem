@@ -2,6 +2,8 @@
 // a page it kept (back/forward, a reopened window), when the window comes back into view, and
 // when the server is back after a restart (an update restarts it).
 export default defineNuxtPlugin(() => {
+  // The website (TANDEM_SITE) has no server telling it about updates.
+  if (useRuntimeConfig().public.site) return
   const { buildId, buildAssetsDir } = useRuntimeConfig().app
   const check = () => void reloadIfOutdated(buildId, buildAssetsDir)
 

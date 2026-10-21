@@ -80,6 +80,7 @@ case "$cmd" in
   e2e)
     prepare
     pnpm_ --filter @tandem/web build
+    pnpm_ --filter @tandem/web build:site
     pnpm_ --filter @tandem/web test:e2e "$@"
     ;;
   pnpm)
