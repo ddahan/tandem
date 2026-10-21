@@ -24,12 +24,14 @@ inside OneDrive so that it is backed up and synced.
   `TANDEM_INSTALL_NODE=1`; a Node it downloaded and that no longer fits is replaced without
   asking. The app is in the repository (`app/tandem/`), so downloading it (a ZIP from GitHub,
   on any computer) is enough; GitHub releases only carry notes (their source archive holds
-  the app). **One command** installs from the latest release:
-  `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh` downloads
-  its source archive (or `TANDEM_VERSION`'s), unpacks it in a temporary folder (removed after)
-  and runs its installer with the same options and arguments (`sh -s -- --uninstall`); the
-  installer then shows that command for updating and uninstalling. When GitHub can't be
-  reached, it says so and how to install from a downloaded release. `app/install.sh` installs it
+  the app). **One command** installs it:
+  `curl -fL https://github.com/ddahan/tandem/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && sh /tmp/tandem-main/app/install.sh`
+  downloads GitHub's archive of `main` (whose `app/tandem/` is the latest release's: it is only
+  rebuilt for a release), unpacks it in `/tmp` and runs its installer, which then removes it,
+  and shows that command for updating and uninstalling (`--uninstall` at its end). It only
+  reaches github.com and codeload.github.com, never raw.githubusercontent.com, which company
+  proxies often block. `app/get.sh`, the command published with 0.5.1
+  (`curl … raw.githubusercontent.com/…/app/get.sh | sh`), does the same. `app/install.sh` installs it
   with no admin rights (macOS and Linux), and with no network when Node is there: it finds
   Node, asks for the notes folder, starts it at login (a
   LaunchAgent on macOS, a systemd user service on Linux; restarted if it stops) and opens the

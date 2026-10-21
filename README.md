@@ -37,14 +37,17 @@ MCP server or a CLI, and every line remembers who wrote it.
 In Terminal (macOS or Linux), with no admin rights:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh
+curl -fL https://github.com/ddahan/tandem/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && sh /tmp/tandem-main/app/install.sh
 ```
 
-It downloads the latest [release](https://github.com/ddahan/tandem/releases), finds Node (or
-offers to download it), copies the app into your home folder, writes the `tandem` command (the
+It downloads the repository from GitHub (its `app/` is the latest
+[release](https://github.com/ddahan/tandem/releases)'s: it is only rebuilt for a release) into
+`/tmp`, and runs its installer, which finds Node (or offers to download it), copies the app into your home folder, writes the `tandem` command (the
 app run by that Node), asks where your notes live (default `~/Tandem`; a OneDrive or iCloud
-folder works), starts Tandem at login (all in your home folder) and opens
-<http://localhost:3864>.
+folder works), starts Tandem at login (all in your home folder), opens
+<http://localhost:3864> and removes the download. It only reaches github.com (and
+codeload.github.com, where GitHub serves archives), so it also works behind company proxies that
+block raw.githubusercontent.com.
 
 > **Node.js 22.16 or later (not 23)** runs Tandem, a JavaScript app (in `app/tandem/`, about
 > 11 MB). If the computer has one (`node -v`; Node 22 and 24, the long-term support versions,
@@ -56,7 +59,7 @@ folder works), starts Tandem at login (all in your home folder) and opens
 
 ### Without the command (company network, offline)
 
-Where a proxy blocks GitHub from the terminal, download the app by hand: it is in this
+Where a proxy blocks GitHub from the terminal, or with no network, download the app by hand: it is in this
 repository (`app/`), with no Docker and no admin rights, and this works where GitHub's other
 downloads are blocked.
 
@@ -79,16 +82,12 @@ It does the same as the command above.
 - **Update**: the same command again, or the installer of a newer download (your notes folder
   is remembered), using the same Node as before (asking nothing). To switch to another Node:
   `TANDEM_NODE=/path/to/node` in front of `sh`.
-- **Uninstall** (your notes stay; a Node downloaded for Tandem goes):
-
-  ```bash
-  curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh -s -- --uninstall
-  ```
-
-  or `sh <its folder>/app/install.sh --uninstall`.
-
-- Options, as environment variables in front of `sh` (`curl … | TANDEM_PORT=4000 sh`):
-  `TANDEM_VERSION` (with the command: a release, e.g. `0.5.0`; default the latest), `TANDEM_NODE` (the Node to use), `TANDEM_INSTALL_NODE`
+- **Uninstall** (your notes stay; a Node downloaded for Tandem goes): the same command with
+  `--uninstall` at the end, or `sh <its folder>/app/install.sh --uninstall`.
+- **A given release**: in the command, `refs/tags/v0.5.1` instead of `refs/heads/main`, and
+  `tandem-0.5.1` instead of `tandem-main`.
+- Options, as environment variables in front of `sh` (`… && TANDEM_PORT=4000 sh /tmp/…`):
+  `TANDEM_NODE` (the Node to use), `TANDEM_INSTALL_NODE`
   (`1`: download Node without asking when none fits; `0`: never), `TANDEM_NODE_MIRROR` (a copy
   of `https://nodejs.org/dist`, e.g. your company's), `TANDEM_DATA_DIR`, `TANDEM_PORT`, `TANDEM_BIN_DIR`,
   `TANDEM_HOME` and `TANDEM_SERVICE_LABEL` (to run a second instance). Logs:
@@ -112,7 +111,7 @@ Steps for an agent (Claude Code…) asked to install Tandem on this computer:
    pass a suitable one as `TANDEM_NODE=/path/to/node`.
 3. Run the command with the notes folder chosen by the user (set it: the installer would
    otherwise ask on the terminal):
-   `curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | TANDEM_DATA_DIR="$HOME/Tandem" sh`
+   `curl -fL https://github.com/ddahan/tandem/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && TANDEM_DATA_DIR="$HOME/Tandem" sh /tmp/tandem-main/app/install.sh`
 4. If it can't download (a proxy blocks GitHub), use the repository instead: find it on the
    computer (a clone, or an unzipped `tandem-…` folder: `ls ~/Downloads ~/Desktop`), or ask the
    user to download the latest release (its source code ZIP) on any computer and copy it here;

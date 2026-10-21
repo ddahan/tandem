@@ -13,7 +13,9 @@ test('shows the landing page without the app sidebar, and leads into the app', a
   // The one-line install, early, with its copy button.
   const install = page.getByTestId('install-command')
   await expect(install).toBeVisible()
-  await expect(install).toContainText('app/get.sh | sh')
+  await expect(install).toContainText(
+    'main.tar.gz | tar -xz -C /tmp && sh /tmp/tandem-main/app/install.sh',
+  )
   await expect(install.getByRole('button', { name: 'Copy the install command' })).toBeVisible()
 
   // The hero note writes itself.

@@ -7,7 +7,7 @@ changing it) want [docs/agents.md](docs/agents.md).
 
 **Asked to install Tandem** (not to change it)? Follow
 [README › Installing with an AI agent](README.md#installing-with-an-ai-agent): no build from
-source, no admin rights: one command (`app/get.sh`) downloads the latest release and runs its
+source, no admin rights: one command downloads the repository from github.com and runs its
 `app/install.sh`, which also works from a downloaded copy, with no network needed.
 
 ## Layout
@@ -19,7 +19,7 @@ source, no admin rights: one command (`app/get.sh`) downloads the latest release
 | `packages/cli`               | The `tandem` CLI                                                               |
 | `packages/web`               | The Nuxt UI single-page app, its editor extensions, its Playwright tests       |
 | `packages/standalone`        | The standalone app (server + CLI + web app, run by Node) and its build         |
-| `app/`                       | The app people install (`tandem/`, built), `install.sh` and `get.sh`           |
+| `app/`                       | The app people install (`tandem/`, built) and its `install.sh`                 |
 | `bin/tandem`                 | Runs the CLI in the running container, from the Mac                            |
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
 | `compose.yaml`, `Dockerfile` | The app as the owner runs it                                                   |
@@ -125,7 +125,7 @@ A change is done when:
    so by `./td check`).
 5. If dependencies, the Dockerfile, compose files or entry points changed: `./td start` builds,
    and the app answers on http://localhost:3864. If the server's start-up, the standalone
-   package, `app/install.sh` or `app/get.sh` changed: `./td release` passes (it checks the app on Node 22.16
+   package or `app/install.sh` changed: `./td release` passes (it checks the app on Node 22.16
    and `app/node.env`'s). Commit `app/tandem/` only for a release; otherwise `git restore app/tandem`.
 6. A visible change was checked in a browser (dev servers), in light and dark mode.
 7. The documentation describes the new behavior, and no document describes the old one

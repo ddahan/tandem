@@ -1,8 +1,9 @@
 <script setup lang="ts">
 // Docs › Install: Tandem as an app (its own window and Dock icon), with the browser's install
 // prompt or Safari's steps (useInstallApp), where Tandem runs, and the command that updates it
-// (app/get.sh).
+// (utils/install-command.ts).
 import { copyText } from '~/utils/copy-text'
+import { INSTALL_COMMAND } from '~/utils/install-command'
 import { accentShade, logoSvg } from '~/utils/logo'
 
 useHead({ title: 'Install' })
@@ -11,8 +12,7 @@ const install = useInstallApp()
 const installLogo = logoSvg(accentShade, 'install-docs-logo')
 const address = window.location.origin
 const toast = useToast()
-const updateCommand =
-  'curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh'
+const updateCommand = INSTALL_COMMAND
 
 async function copyUpdateCommand() {
   if (await copyText(updateCommand)) toast.add({ title: 'Copied', icon: 'i-lucide-check' })
@@ -90,7 +90,7 @@ async function copyUpdateCommand() {
       </p>
       <div class="relative">
         <pre
-          class="overflow-x-auto rounded-md border border-muted bg-muted p-3 pe-12 text-xs"
+          class="rounded-md border border-muted bg-muted p-3 pe-12 text-xs [overflow-wrap:anywhere] whitespace-pre-wrap"
           data-testid="update-command"
         ><code>{{ updateCommand }}</code></pre>
         <UButton
@@ -106,7 +106,7 @@ async function copyUpdateCommand() {
       <p>
         Installed from a downloaded copy (no access to GitHub from Terminal)? Run the
         <code>app/install.sh</code> of a newer download instead. To uninstall, add
-        <code>-s -- --uninstall</code> after <code>sh</code>: your notes stay.
+        <code>--uninstall</code> at the end of either: your notes stay.
       </p>
     </section>
   </div>

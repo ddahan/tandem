@@ -5,8 +5,8 @@
 # one for Tandem only (app/node.env: version and checksums). Download the repository (GitHub:
 # Code › Download ZIP), unzip it, then run:
 #   sh ~/Downloads/tandem-main/app/install.sh
-# Or in one command, from the latest release (app/get.sh downloads it and runs this file):
-#   curl -fsSL https://raw.githubusercontent.com/ddahan/tandem/main/app/get.sh | sh
+# Or in one command (GitHub's archive of the repository, unpacked in /tmp, then this file):
+#   curl -fL https://github.com/ddahan/tandem/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && sh /tmp/tandem-main/app/install.sh
 #
 # It copies the app into your home folder, writes the `tandem` command (the app run by this
 # Node), asks where your notes live, and starts Tandem at login (macOS: a LaunchAgent; Linux: a
@@ -53,12 +53,23 @@ bin="$bin_dir/tandem"
 settings="$app_dir/install.env"
 # The repository's app/ folder: this file's. The app is its tandem/ folder.
 here="$(cd "$(dirname "$0")" && pwd)"
+# The one-line install (README › Install) unpacks the repository in /tmp/tandem-main: run from
+# there, this installer shows that command for what comes next (it downloads it again).
+case "$here" in
+  /tmp/tandem-main/app | /private/tmp/tandem-main/app) one_line=true ;;
+  *) one_line=false ;;
+esac
+# The unpacked download goes once it is used (a later one must not mix in its old files). sh
+# keeps reading this file from its open descriptor: removing it is safe.
+remove_download() {
+  if [ "$one_line" = true ]; then rm -rf "$(dirname "$here")"; fi
+}
 # This installer run again, as the user ran it, for the commands it shows: `again [VAR=value]
-# [argument]`. Run by app/get.sh (TANDEM_GET), it is in a temporary folder: the same one-liner.
+# [argument]`.
 again() {
-  if [ -n "${TANDEM_GET:-}" ]; then
-    printf 'curl -fsSL https://raw.githubusercontent.com/%s/main/app/get.sh | %ssh%s' \
-      "$REPO" "${1:+$1 }" "${2:+ -s -- $2}"
+  if [ "$one_line" = true ]; then
+    printf 'curl -fL https://github.com/%s/archive/refs/heads/main.tar.gz | tar -xz -C /tmp && %ssh /tmp/tandem-main/app/install.sh%s' \
+      "$REPO" "${1:+$1 }" "${2:+ $2}"
   else
     printf '%ssh "%s/install.sh"%s' "${1:+$1 }" "$here" "${2:+ $2}"
   fi
@@ -86,6 +97,7 @@ if [ "${1:-}" = --uninstall ]; then
   [ "$platform" = linux ] && command -v systemctl > /dev/null 2>&1 && systemctl --user daemon-reload || true
   say "Tandem is uninstalled. Your notes are untouched; the app's own folder (database copy,"
   say "settings) is kept in: $app_dir"
+  remove_download
   exit 0
 fi
 
@@ -380,7 +392,7 @@ esac
 say ""
 say "From a terminal:  tandem search \"…\", tandem --help"
 say "For Claude:       claude mcp add --transport http tandem $url/mcp --header \"X-Tandem-Author: claude\""
-if [ -n "${TANDEM_GET:-}" ]; then
+if [ "$one_line" = true ]; then
   say "Update:           $(again)"
   say "                  (also after changing or removing this Node: $node_bin)"
 else
@@ -392,3 +404,4 @@ say "Uninstall:        $(again "" --uninstall)"
 if [ -z "${TANDEM_NO_OPEN:-}" ]; then
   if [ "$platform" = darwin ]; then open "$url"; elif command -v xdg-open > /dev/null 2>&1; then xdg-open "$url" > /dev/null 2>&1 || true; fi
 fi
+remove_download
