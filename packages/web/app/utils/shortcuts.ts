@@ -34,12 +34,18 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
       {
         keys: [
-          ['meta', 't'],
+          ['meta', 'n'],
           ['meta', 'alt', 'n'],
         ],
         label: 'New page',
         description:
-          'Next to the open page (the same parent, right after it), or at the top. ⌘T in the installed app (in a browser tab, it’s the browser’s).',
+          'Next to the open page (the same parent, right after it), or at the top. ⌘N in the installed app (in a browser tab, it’s the browser’s).',
+      },
+      {
+        keys: [['meta', 't']],
+        label: 'Today’s note',
+        description:
+          'With daily notes on (Settings › Features); a new page otherwise. In the installed app (in a browser tab, it’s the browser’s).',
       },
       {
         keys: [
@@ -92,6 +98,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
           ['meta', 'alt', 'arrowleft'],
         ],
         label: 'Next or previous tab',
+        description: 'On a day’s note, the next or previous day (in the same tab).',
       },
       {
         keys: [

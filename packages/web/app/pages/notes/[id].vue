@@ -4,7 +4,6 @@ import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import {
   OWNER,
-  addDays,
   authorLabel,
   calendarDateOf,
   dayLabel,
@@ -48,7 +47,7 @@ const dayTitle = computed(() =>
 )
 const daily = useDaily()
 function goToDay(days: number) {
-  if (calendarDate.value) void daily.open(addDays(calendarDate.value, days))
+  void daily.step(days)
 }
 // Left empty (opened, nothing written), the day's note goes: a day with nothing has no file.
 // The server checks it is still empty, and has no history.

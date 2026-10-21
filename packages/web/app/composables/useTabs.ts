@@ -2,7 +2,8 @@
 // Settings, TODOs, Trash), each have one tab; the route is the active tab. A single click in
 // the tree opens a note in the preview tab (one at most, in italics, replaced by the next
 // preview, and closed once another page shows); a double click, editing the note, or any other
-// way of opening it gives it a tab of its own. Closing the active tab shows the one used before it, or Home with none left. The
+// way of opening it gives it a tab of its own. Days of daily notes follow each other in one tab
+// (`replace`). Closing the active tab shows the one used before it, or Home with none left. The
 // tabs, their order and the recently used ones are kept in localStorage.
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 import { noteIdOf, tabKeyOf } from '~/utils/tabs'
@@ -51,6 +52,11 @@ export function useTabs() {
   const closed = useState<Tab[]>('tabs:closed', () => [])
   /** The path to open in the preview tab when the router shows it (set by `preview`). */
   const pendingPreview = useState<string | null>('tabs:pending-preview', () => null)
+  /** The path to show in the active tab, in place of its page, when the router shows it. */
+  const pendingReplace = useState<{ path: string; key: string } | null>(
+    'tabs:pending-replace',
+    () => null,
+  )
   const route = useRoute()
   const activeKey = computed(() => tabKeyOf(route.path))
 
@@ -72,7 +78,19 @@ export function useTabs() {
     const key = tabKeyOf(current.path)
     const asPreview = pendingPreview.value === current.path
     pendingPreview.value = null
+    const replacing = pendingReplace.value?.path === current.path ? pendingReplace.value : null
+    pendingReplace.value = null
     const list = saved.value.tabs
+    // In place of the tab's page (another day): the same tab, unless the page has one already.
+    const replaced = replacing && key && list.find((tab) => tab.key === replacing.key)
+    if (replaced && !list.some((tab) => tab.key === key)) {
+      saved.value.recent = saved.value.recent.filter((k) => k !== replaced.key)
+      replaced.key = key
+      replaced.path = current.path
+      touch(key)
+      persist()
+      return
+    }
     // Where a new tab goes: right of the tab that was active, as in VS Code, or in the place of
     // the preview tab it replaces.
     const previewIndex = list.findIndex((t) => t.preview)
@@ -108,6 +126,13 @@ export function useTabs() {
     if (pendingPreview.value === path) pendingPreview.value = null
     if (key === activeKey.value) keepOpen(key)
     else return navigateTo(path)
+  }
+
+  /** Shows a path in the active tab, in place of its page (from one day to another). */
+  function replace(path: string) {
+    const key = activeKey.value
+    if (key) pendingReplace.value = { path, key }
+    return navigateTo(path)
   }
 
   /** Makes a tab a tab of its own, no longer replaced by the next preview. */
@@ -198,6 +223,7 @@ export function useTabs() {
     recent,
     activeKey,
     show,
+    replace,
     preview,
     open,
     keepOpen,

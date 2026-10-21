@@ -211,12 +211,12 @@ test('shows a page’s path on its tab, and its parent pages above its title', a
   await expect(page.getByTestId('note-path')).toHaveCount(0)
 })
 
-test('⌘T makes a page, ⌘B shows or hides the sidebar, ⌘W on Home asks before closing', async ({
+test('⌘N makes a page, ⌘B shows or hides the sidebar, ⌘W on Home asks before closing', async ({
   page,
 }) => {
   await page.goto('/')
   await expect(page.getByTestId('workspace-name')).toBeVisible()
-  await page.keyboard.press('ControlOrMeta+T')
+  await page.keyboard.press('ControlOrMeta+N')
   await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
   await expect.poll(() => tabTitles(page)).toEqual([expect.stringMatching(/^Untitled/)])
 
@@ -245,7 +245,7 @@ test('⌘T makes a page, ⌘B shows or hides the sidebar, ⌘W on Home asks befo
   expect(await asked).toBe('beforeunload')
 })
 
-test('⌘T makes the page next to the open one: same parent, right after it', async ({
+test('⌘N makes the page next to the open one: same parent, right after it', async ({
   page,
   request,
 }) => {
@@ -255,7 +255,7 @@ test('⌘T makes the page next to the open one: same parent, right after it', as
   await page.goto(`/notes/${first.id}`)
   await expect(page.locator('.ProseMirror')).toBeVisible()
 
-  await page.keyboard.press('ControlOrMeta+T')
+  await page.keyboard.press('ControlOrMeta+N')
   await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
   const children = async () => {
     const tree = await api<
@@ -272,7 +272,7 @@ test('⌘T makes the page next to the open one: same parent, right after it', as
   await page.goto('/settings')
   await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible()
   const before = (await api<unknown[]>(request, 'GET', '/tree')).length
-  await page.keyboard.press('ControlOrMeta+T')
+  await page.keyboard.press('ControlOrMeta+N')
   await expect(page.getByLabel('Title', { exact: true })).toBeFocused()
   const created = await api<{ parentId: string | null }[]>(request, 'GET', '/tree')
   expect(created).toHaveLength(before + 1)

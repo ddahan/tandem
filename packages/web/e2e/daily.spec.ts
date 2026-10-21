@@ -24,7 +24,7 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   const today = isoDate()
   const tomorrow = addDays(today, 1)
   await page.goto('/')
-  await page.getByRole('navigation', { name: 'Calendar notes' }).getByText('Daily').click()
+  await page.getByRole('navigation', { name: 'Calendar notes' }).getByText('Today').click()
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(today).title)
   await expect(page.getByTestId('tab-Today')).toBeVisible()
   await expect(page.getByTestId('tree-Calendar')).toHaveCount(0)
@@ -62,6 +62,19 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   // A click on a day opens it.
   await calendar.locator(`[data-date="${tomorrow}"]`).click()
   await expect(page.getByTestId('day-title')).toHaveText(dayLabel(tomorrow).title)
+
+  // ⌥⌘← ⌥⌘→ go from day to day, and ⌘T back to today, all in the same tab.
+  const tabCount = await page.getByRole('tab').count()
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowRight')
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, 2)).title)
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowLeft')
+  await page.keyboard.press('ControlOrMeta+Alt+ArrowLeft')
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(today).title)
+  await page.getByRole('button', { name: 'Previous day' }).click()
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(addDays(today, -1)).title)
+  await page.keyboard.press('ControlOrMeta+T')
+  await expect(page.getByTestId('day-title')).toHaveText(dayLabel(today).title)
+  expect(await page.getByRole('tab').count()).toBe(tabCount)
 
   // Off, daily notes are pages like any other, in Calendar.
   await api(request, 'PATCH', '/settings', { daily: false })

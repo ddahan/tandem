@@ -36,7 +36,7 @@ const onDailyNote = computed(() => {
 })
 const calendarNavigation = computed<NavigationMenuItem[]>(() => [
   {
-    label: 'Daily',
+    label: 'Today',
     icon: 'i-lucide-calendar-days',
     active: onDailyNote.value,
     onSelect: () => void daily.open(),
@@ -101,8 +101,9 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
 /** This build's version (nuxt.config.ts), at the bottom of the sidebar; `dev` on the dev servers. */
 const version = `${useRuntimeConfig().public.version}${import.meta.dev ? ' (dev)' : ''}`
 
-// ⌘W, ⌘T and ⌘⇧T, as in VS Code: they reach Tandem in the installed app, where a browser
-// reserves no keys (in a browser tab, they stay the browser's). ⌘1…9 do stay the browser's:
+// ⌘W, ⌘N, ⌘T and ⌘⇧T, as in VS Code: they reach Tandem in the installed app, where a browser
+// reserves no keys (in a browser tab, they stay the browser's). ⌘T is today's note when daily
+// notes are on (a new page otherwise, as ⌘N). ⌘1…9 do stay the browser's:
 // tabs use ⌃1…9 (shortcuts.ts).
 const tabShortcuts = Object.fromEntries(
   Array.from({ length: 9 }, (_, i) => [
@@ -114,13 +115,24 @@ const tabShortcuts = Object.fromEntries(
 defineShortcuts({
   ...tabShortcuts,
   // A new page next to the open one (same parent, right after it), or at the top level.
-  meta_t: { usingInput: true, handler: () => void createNextToOpen() },
+  meta_n: { usingInput: true, handler: () => void createNextToOpen() },
+  meta_t: {
+    usingInput: true,
+    handler: () => void (settings.value.daily ? daily.open() : createNextToOpen()),
+  },
   meta_shift_t: { usingInput: true, handler: () => void tabs.reopenClosed() },
   // ⌘B: Bold in a note or a field; elsewhere, and ⌥⌘B anywhere, the sidebar, as in VS Code.
   meta_b: () => toggleSidebar(),
   meta_alt_b: { usingInput: true, handler: () => toggleSidebar() },
-  meta_alt_arrowright: { usingInput: true, handler: () => void tabs.step(1) },
-  meta_alt_arrowleft: { usingInput: true, handler: () => void tabs.step(-1) },
+  // On a day's note, the day after or before; elsewhere, the next or previous tab.
+  meta_alt_arrowright: {
+    usingInput: true,
+    handler: () => void (daily.activeDay.value ? daily.step(1) : tabs.step(1)),
+  },
+  meta_alt_arrowleft: {
+    usingInput: true,
+    handler: () => void (daily.activeDay.value ? daily.step(-1) : tabs.step(-1)),
+  },
   meta_alt_n: { usingInput: true, handler: () => void createNextToOpen() },
   // From the editor too (usingInput): the editor doesn't use ⌘/.
   'meta_/': { usingInput: true, handler: () => void navigateTo('/docs/shortcuts') },

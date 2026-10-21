@@ -28,7 +28,7 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **TODOs**: write `TODO:` in a note; it is highlighted, and the TODOs page lists them all,
   one click away from each.
 - **Trash** with restore and permanent delete.
-- **Daily notes** (optional): a note per day, `Calendar/2026-10-21.md`, opened from Daily in the
+- **Daily notes** (optional): a note per day, `Calendar/2026-10-21.md`, opened from Today in the
   sidebar or a calendar showing which days have notes and to-dos left; agents write in them too.
 - **Optional features**, in Settings › Features: tags, TODOs, daily notes and spell check are off by
   default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:

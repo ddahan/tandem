@@ -90,7 +90,7 @@ const features: {
     key: 'daily',
     label: 'Daily notes',
     description:
-      'A note for each day, opened from Daily in the sidebar or the calendar. Off, they show in the tree, in Calendar.',
+      'A note for each day, opened from Today in the sidebar (⌘T) or the calendar. Off, they show in the tree, in Calendar.',
   },
   {
     key: 'spellcheck',

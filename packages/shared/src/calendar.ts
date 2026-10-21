@@ -84,7 +84,7 @@ export function monthLabel(year: number, month: number): string {
 }
 
 /**
- * How a day reads: the day before the month, as in French (`Wednesday 21 October`; the year
+ * How a day reads: the day before the month, as in French (`Wed 21 October`; the year
  * when it isn't this one), led by Today, Yesterday or Tomorrow. `short` is for tabs.
  */
 export function dayLabel(iso: string, today = isoDate()): { title: string; short: string } {
@@ -92,7 +92,8 @@ export function dayLabel(iso: string, today = isoDate()): { title: string; short
   const weekday = WEEKDAYS[date.getDay()]!
   const month = MONTHS[date.getMonth()]!
   const year = date.getFullYear() === dateOf(today).getFullYear() ? '' : ` ${date.getFullYear()}`
-  const long = `${weekday} ${date.getDate()} ${month}${year}`
+  // The weekday short (Wed): the title stays on one line.
+  const long = `${weekday.slice(0, 3)} ${date.getDate()} ${month}${year}`
   const relative =
     iso === today
       ? 'Today'

@@ -36,15 +36,15 @@ describe('calendar', () => {
 
   it('reads days the French way, relative to today', () => {
     expect(dayLabel('2026-10-21', '2026-10-21')).toEqual({
-      title: 'Today, Wednesday 21 October',
+      title: 'Today, Wed 21 October',
       short: 'Today',
     })
-    expect(dayLabel('2026-10-20', '2026-10-21').title).toBe('Yesterday, Tuesday 20 October')
+    expect(dayLabel('2026-10-20', '2026-10-21').title).toBe('Yesterday, Tue 20 October')
     expect(dayLabel('2026-10-14', '2026-10-21')).toEqual({
-      title: 'Wednesday 14 October',
+      title: 'Wed 14 October',
       short: 'Wed 14 Oct',
     })
-    expect(dayLabel('2025-12-31', '2026-10-21').title).toBe('Wednesday 31 December 2025')
+    expect(dayLabel('2025-12-31', '2026-10-21').title).toBe('Wed 31 December 2025')
   })
 
   it('counts to-dos, left and done', () => {
