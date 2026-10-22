@@ -94,4 +94,6 @@ export const starterKitOptions: Partial<StarterKitOptions> = {
   // NestedOrderedList replaces it (its Markdown parser).
   orderedList: false,
   heading: { levels: [1, 2, 3, 4] },
+  // As many steps as the app's history keeps (useUndo): each of its text steps is one of these.
+  undoRedo: { depth: 1000 },
 }

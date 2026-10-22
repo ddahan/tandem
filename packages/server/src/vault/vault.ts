@@ -36,6 +36,7 @@ import {
   type Backlink,
   type BlameRange,
   type Database as DatabaseData,
+  type DatabaseRestore,
   type DatabaseSummary,
   type HistoryVersion,
   type NodeIcon,
@@ -786,6 +787,13 @@ export class Vault {
   ): Promise<DatabaseData> {
     return this.lock.run(async () =>
       this.databaseChanged(await this.databases.updateRow(id, rowId, cells)),
+    )
+  }
+
+  /** Undo or redo of a database change (see `DatabaseStore.restore`). */
+  async restoreDatabase(id: string, changes: DatabaseRestore): Promise<DatabaseData> {
+    return this.lock.run(async () =>
+      this.databaseChanged(await this.databases.restore(id, changes)),
     )
   }
 

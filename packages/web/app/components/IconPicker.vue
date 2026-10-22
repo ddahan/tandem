@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // Picks the icon of a page or folder: an emoji (search, categories, recently used), an image
-// from the computer, or none.
+// from the computer, or none. Changes between emojis and none are steps of the undo history
+// (an image can't be put back once replaced).
 import { useLocalStorage } from '@vueuse/core'
 import { emojiGroups, searchEmojis, type PickerEmoji } from '~/utils/emoji-groups'
 
@@ -9,6 +10,32 @@ const emit = defineEmits<{ done: [] }>()
 
 const api = useApi()
 const showError = useApiErrorToast()
+const tree = useTree()
+const undoHistory = useUndo()
+
+/** Sets an emoji, or none (null). */
+function setEmoji(nodeId: string, emoji: string | null) {
+  return emoji
+    ? unwrap(api.nodes[':id'].icon.$put({ param: { id: nodeId }, json: { emoji } }))
+    : unwrap(api.nodes[':id'].icon.$delete({ param: { id: nodeId } }))
+}
+
+/** Changes the icon to `emoji` (null: none); a step of the undo history unless an image goes. */
+function change(emoji: string | null) {
+  const nodeId = props.nodeId
+  const icon = tree.byId.value.get(nodeId)?.icon ?? null
+  return run(async () => {
+    await setEmoji(nodeId, emoji)
+    if (icon?.type === 'image') return
+    const before = icon?.emoji ?? null
+    if (before === emoji) return
+    undoHistory.record({
+      label: 'Change the icon',
+      undo: () => setEmoji(nodeId, before).then(() => true),
+      redo: () => setEmoji(nodeId, emoji).then(() => true),
+    })
+  })
+}
 
 const query = ref('')
 const groups = emojiGroups()
@@ -37,9 +64,7 @@ async function run(task: () => Promise<unknown>) {
 
 function pick(emoji: string) {
   recent.value = [emoji, ...recent.value.filter((e) => e !== emoji)].slice(0, 16)
-  return run(() =>
-    unwrap(api.nodes[':id'].icon.$put({ param: { id: props.nodeId }, json: { emoji } })),
-  )
+  return change(emoji)
 }
 
 function upload(event: Event) {
@@ -53,7 +78,7 @@ function upload(event: Event) {
 }
 
 function remove() {
-  return run(() => unwrap(api.nodes[':id'].icon.$delete({ param: { id: props.nodeId } })))
+  return change(null)
 }
 </script>
 

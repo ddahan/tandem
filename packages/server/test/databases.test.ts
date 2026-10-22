@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { OWNER, viewRows, type ServerEvent } from '@tandem/shared'
+import { OWNER, databaseChanges, viewRows, type Database, type ServerEvent } from '@tandem/shared'
 import { createApp } from '../src/app.ts'
 import { createClient } from '../src/client.ts'
 import { createTestVault } from './helpers.ts'
+
+/** What undoing must put back as it was (not the times of changes). */
+const view = (d: Database) => ({
+  title: d.title,
+  columns: d.columns,
+  sort: d.sort,
+  filters: d.filters,
+  rows: d.rows.map((row) => ({ id: row.id, cells: row.cells, createdAt: row.createdAt })),
+})
 
 async function setup() {
   const test = await createTestVault()
@@ -135,7 +144,7 @@ describe('databases', () => {
     expect(database.columns[2]!.options).toEqual(['Reading', 'Done'])
     expect(database.rows.map((row) => row.cells)).toEqual([
       { [name!.id]: 'Dune', [pages!.id]: 412, [status!.id]: 'Reading' },
-      { [name!.id]: 'Solaris', [pages!.id]: null, [status!.id]: 'Done' },
+      { [name!.id]: 'Solaris', [status!.id]: 'Done' },
     ])
     database = await vault.updateDatabase(database.id, {
       columns: [{ id: name!.id, name: 'Title', type: 'text' }],
@@ -211,6 +220,73 @@ describe('databases', () => {
       [status!.id]: null,
     })
     expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
+  })
+
+  it('restores an earlier state, and the later one again (undo, redo)', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      title: 'Books',
+      columns: [
+        { name: 'Name', type: 'text' },
+        { name: 'Pages', type: 'text' },
+      ],
+    })
+    const [name, pages] = database.columns
+    database = await vault.updateDatabaseRow(database.id, database.rows[0]!.id, {
+      [name!.id]: 'Dune',
+      [pages!.id]: '412 pages',
+    })
+    for (const title of ['Solaris', 'Ubik']) {
+      database = await vault.addDatabaseRow(database.id, { cells: { [name!.id]: title } })
+    }
+    // Each change undone, then redone: the database is as it was each time.
+    const changes: ((d: Database) => Promise<Database>)[] = [
+      (d) => vault.updateDatabaseRow(d.id, d.rows[1]!.id, { [name!.id]: 'Solaris (1961)' }),
+      (d) => vault.deleteDatabaseRow(d.id, d.rows[1]!.id),
+      (d) => vault.addDatabaseRow(d.id, { after: d.rows[0]!.id }),
+      (d) => vault.moveDatabaseRow(d.id, d.rows[2]!.id, null),
+      (d) =>
+        vault.updateDatabase(d.id, {
+          title: 'Read',
+          sort: { column: name!.id, direction: 'desc' },
+          filters: [{ column: pages!.id, operator: 'not-empty' }],
+        }),
+      // Values lost by a type change or with their column come back.
+      (d) => vault.updateDatabase(d.id, { columns: [name!, { ...pages!, type: 'number' }] }),
+      (d) => vault.updateDatabase(d.id, { columns: [name!] }),
+    ]
+    for (const change of changes) {
+      const before = await vault.getDatabase(database.id)
+      const after = await change(before)
+      expect(view(after)).not.toEqual(view(before))
+      const undone = await vault.restoreDatabase(database.id, databaseChanges(after, before))
+      expect(view(undone)).toEqual(view(before))
+      const redone = await vault.restoreDatabase(database.id, databaseChanges(before, after))
+      expect(view(redone)).toEqual(view(after))
+      await vault.restoreDatabase(database.id, databaseChanges(after, before))
+    }
+  })
+
+  it('keeps what others changed since when it restores', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id)
+    const name = database.columns[0]!.id
+    const first = database.rows[0]!.id
+    const before = await vault.addDatabaseRow(database.id, { cells: { [name]: 'Mine' } })
+    const after = await vault.deleteDatabaseRow(database.id, before.rows[1]!.id)
+    // An agent adds a row and changes another, then the deleted row is put back.
+    database = await vault.addDatabaseRow(database.id, { cells: { [name]: 'Agent' } })
+    database = await vault.updateDatabaseRow(database.id, first, { [name]: 'Edited' })
+    database = await vault.restoreDatabase(database.id, databaseChanges(after, before))
+    expect(database.rows.map((row) => row.cells[name])).toEqual(['Edited', 'Mine', 'Agent'])
+    // Undoing a change to a row since deleted by others doesn't bring it back.
+    const unedited = database
+    const edited = await vault.updateDatabaseRow(database.id, database.rows[2]!.id, {
+      [name]: 'Agent 2',
+    })
+    await vault.deleteDatabaseRow(database.id, edited.rows[2]!.id)
+    database = await vault.restoreDatabase(database.id, databaseChanges(edited, unedited))
+    expect(database.rows.map((row) => row.cells[name])).toEqual(['Edited', 'Mine'])
   })
 
   it('keeps the width a column was resized to, within bounds', async () => {

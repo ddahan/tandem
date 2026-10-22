@@ -305,3 +305,77 @@ export function cellsByName(
   }
   return cells
 }
+
+/**
+ * What to change in a database to bring it back to an earlier state (undo) or forward again
+ * (redo): only what differs, so changes made since by others (an agent) are kept.
+ */
+export interface DatabaseRestore {
+  title?: string
+  /** Exactly these columns (ids kept; values of columns left out are dropped). */
+  columns?: DatabaseColumn[]
+  sort?: DatabaseSort | null
+  filters?: DatabaseFilter[]
+  deleteRows?: string[]
+  /**
+   * Rows changed or put back, in order. A missing one is created with its id. `cells` sets
+   * those values (null empties one); `after` places it (null: first).
+   */
+  rows?: RowRestore[]
+}
+
+export interface RowRestore {
+  id: string
+  cells?: Record<string, CellValue>
+  after?: string | null
+  createdAt?: number
+}
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/** The ids of these rows that are among `ids`, in order. */
+const idsIn = (rows: DatabaseRow[], ids: Set<string>) =>
+  rows.filter((row) => ids.has(row.id)).map((row) => row.id)
+
+/** The restore that turns database `from` into `to` (nothing when they're the same). */
+export function databaseChanges(from: Database, to: Database): DatabaseRestore {
+  const changes: DatabaseRestore = {}
+  if (from.title !== to.title) changes.title = to.title
+  if (!same(from.columns, to.columns)) changes.columns = to.columns
+  if (!same(from.sort, to.sort)) changes.sort = to.sort
+  if (!same(from.filters, to.filters)) changes.filters = to.filters
+
+  const fromRows = new Map(from.rows.map((row) => [row.id, row]))
+  const toIds = new Set(to.rows.map((row) => row.id))
+  const deleteRows = from.rows.filter((row) => !toIds.has(row.id)).map((row) => row.id)
+  if (deleteRows.length) changes.deleteRows = deleteRows
+
+  // Rows in both kept their order: only new rows are placed. Otherwise every row is.
+  const reordered = !same(idsIn(from.rows, toIds), idsIn(to.rows, new Set(fromRows.keys())))
+  const columnIds = to.columns.map((column) => column.id)
+  const rows: RowRestore[] = []
+  to.rows.forEach((row, index) => {
+    const after = index ? to.rows[index - 1]!.id : null
+    const old = fromRows.get(row.id)
+    if (!old) {
+      rows.push({ id: row.id, cells: row.cells, after, createdAt: row.createdAt })
+      return
+    }
+    const cells: Record<string, CellValue> = {}
+    for (const id of columnIds) {
+      const value = row.cells[id] ?? null
+      if ((old.cells[id] ?? null) !== value) cells[id] = value
+    }
+    const changed = Object.keys(cells).length > 0
+    if (changed || reordered) {
+      rows.push({ id: row.id, ...(changed ? { cells } : {}), ...(reordered ? { after } : {}) })
+    }
+  })
+  if (rows.length) changes.rows = rows
+  return changes
+}
+
+/** Whether a restore changes nothing. */
+export function isEmptyRestore(changes: DatabaseRestore): boolean {
+  return Object.keys(changes).length === 0
+}

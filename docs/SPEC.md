@@ -158,11 +158,11 @@ inside OneDrive so that it is backed up and synced.
   The table is as wide as its columns, an "Add a column" + right after its header. A row's
   buttons show before it on hover (or while one of its cells is being edited): + inserts a row
   right below it, the cursor in its first cell (⌘Enter in a cell too, saving the value first),
-  × deletes it (asking first when it has values). "New row" adds one at the end. ⌥↑ / ⌥↓ in a
+  × deletes it at once (⌘Z brings it back). "New row" adds one at the end. ⌥↑ / ⌥↓ in a
   cell move its row up or down among the rows shown, the cursor staying in it; a sorted table
   says it must stop being sorted first. Each column's menu renames it, changes its type (values converted when they can be; a column
   becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
-  and deletes it. A choice list can require a value ("Allow empty" unchecked in its choices):
+  and deletes it (at once: ⌘Z brings it back with its values). A choice list can require a value ("Allow empty" unchecked in its choices):
   new rows then start with its first choice, empty cells take it at once, and a cell can't
   be emptied. The sort and the filters (every condition must match) are saved with the
   database, so everyone, agents included, sees the same view; a condition applies once it has
@@ -235,6 +235,24 @@ inside OneDrive so that it is backed up and synced.
 - Ranking: title matches first, then body (BM25), with a small boost for recent notes;
   snippets highlight the matched words.
 - No search inside attached files.
+
+## Undo and redo
+
+- ⌘Z undoes and ⌘⇧Z redoes (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y elsewhere) anywhere in the app,
+  in one history, in the order things were done: a note's text, its databases (values, rows
+  added, moved or deleted, columns, title, sort, filters, widths), pages (made, renamed, moved,
+  moved to the trash, tags, emoji icons) and bookmarks (made, edited, moved). Typing in a note
+  then changing a database: ⌘Z undoes the database change first, then the typing.
+- A text field being typed in (a cell, a title) undoes its own typing first; once its text is
+  as it was when it got the focus, ⌘Z goes to the history.
+- Undoing puts back only what the step changed: what an agent changed since stays. A step
+  undone in another note than the one shown says so in a message. A step that can no longer
+  be undone (its page deleted for good) says so and is skipped.
+- Not in the history, so they still ask first: deleting forever, emptying the trash, deleting
+  a bookmark (it removes its cards from notes), settings. A replaced image icon can't come
+  back either.
+- The history lives in the app's memory: a reload starts a new one. A note's text steps go
+  when its tab is closed (its editor's history goes with it).
 
 ## Trash
 
@@ -407,7 +425,7 @@ inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand (↑ ↓ preview the page reached, as a
   click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
-  message that follows offers Undo. With the trash off, it asks, then deletes forever.
+  message that follows offers Undo (as ⌘Z does). With the trash off, it asks, then deletes forever.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
   has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
   Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install

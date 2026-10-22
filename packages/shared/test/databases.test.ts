@@ -4,6 +4,8 @@ import {
   cellText,
   convertCell,
   databaseBlock,
+  databaseChanges,
+  isEmptyRestore,
   databaseIdsIn,
   rowsByName,
   toCellValue,
@@ -157,5 +159,75 @@ describe('for agents', () => {
     expect(() => cellsByName(database, { Author: 'x' })).toThrow(
       'No column “Author” (columns: Name, Pages)',
     )
+  })
+})
+
+const row = (id: string, cells: Record<string, string | number | null>): DatabaseRow => ({
+  id,
+  cells: Object.fromEntries(Object.entries(cells).filter(([, value]) => value !== null)),
+  createdAt: 1,
+  updatedAt: 1,
+})
+
+describe('databaseChanges', () => {
+  const base: Database = {
+    id: 'db',
+    nodeId: 'page',
+    title: 'Books',
+    columns: [text, number],
+    sort: null,
+    filters: [],
+    rows: [row('a', { t: 'Dune', n: 412 }), row('b', { t: 'Solaris' }), row('c', { t: 'Ubik' })],
+    createdAt: 1,
+    updatedAt: 1,
+  }
+
+  it('is empty for the same database', () => {
+    expect(isEmptyRestore(databaseChanges(base, structuredClone(base)))).toBe(true)
+  })
+
+  it('sets only the values that differ, emptying with null', () => {
+    const to = structuredClone(base)
+    to.rows[0]!.cells = { t: 'Dune' }
+    to.rows[1]!.cells = { t: 'Solaris', n: 204 }
+    expect(databaseChanges(base, to)).toEqual({
+      rows: [
+        { id: 'a', cells: { n: null } },
+        { id: 'b', cells: { n: 204 } },
+      ],
+    })
+  })
+
+  it('puts deleted rows back where they were, and deletes added ones', () => {
+    const without = { ...base, rows: [base.rows[0]!, base.rows[2]!] }
+    expect(databaseChanges(without, base)).toEqual({
+      rows: [{ id: 'b', cells: { t: 'Solaris' }, after: 'a', createdAt: 1 }],
+    })
+    expect(databaseChanges(base, without)).toEqual({ deleteRows: ['b'] })
+  })
+
+  it('places every row when the order changed', () => {
+    const moved = { ...base, rows: [base.rows[2]!, base.rows[0]!, base.rows[1]!] }
+    expect(databaseChanges(base, moved).rows).toEqual([
+      { id: 'c', after: null },
+      { id: 'a', after: 'c' },
+      { id: 'b', after: 'a' },
+    ])
+  })
+
+  it('restores the view and the columns, with the values of a column put back', () => {
+    const to = {
+      ...structuredClone(base),
+      title: 'Read',
+      columns: [text],
+      sort: { column: 't', direction: 'asc' as const },
+      rows: base.rows.map((r) => row(r.id, { t: r.cells.t as string })),
+    }
+    expect(databaseChanges(to, base)).toEqual({
+      title: 'Books',
+      columns: [text, number],
+      sort: null,
+      rows: [{ id: 'a', cells: { n: 412 } }],
+    })
   })
 })

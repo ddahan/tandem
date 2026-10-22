@@ -334,6 +334,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
           ['meta', 'shift', 'z'],
         ],
         label: 'Undo, redo',
+        description:
+          'Anywhere in the app, in the order things were done: text, databases, pages, bookmarks. A field being typed in undoes its typing first.',
       },
     ],
   },

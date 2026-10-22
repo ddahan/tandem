@@ -117,6 +117,28 @@ const databasePatch = databaseInput.extend({
     .max(20)
     .optional(),
 })
+const databaseRestore = z.object({
+  title: z.string().max(200).optional(),
+  columns: z
+    .array(columnInput.extend({ id: z.string().regex(/^[A-Za-z0-9]{1,64}$/) }))
+    .max(50)
+    .optional(),
+  sort: databasePatch.shape.sort,
+  filters: databasePatch.shape.filters,
+  deleteRows: z.array(z.string()).max(100_000).optional(),
+  rows: z
+    .array(
+      z.object({
+        // Ids are typed in commands: letters and digits only (see vault/databases.ts).
+        id: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+        cells: cells.optional(),
+        after: z.string().nullable().optional(),
+        createdAt: z.number().optional(),
+      }),
+    )
+    .max(100_000)
+    .optional(),
+})
 const rowParam = z.object({ id: z.string().min(1), rowId: z.string().min(1) })
 
 // A favicon sent along (the extension has it): a `data:` URL, small.
@@ -451,6 +473,13 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
         const { id, rowId } = c.req.valid('param')
         return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid('json').cells))
       },
+    )
+    .post(
+      '/databases/:id/restore',
+      zValidator('param', idParam),
+      zValidator('json', databaseRestore),
+      async (c) =>
+        c.json(await vault.restoreDatabase(c.req.valid('param').id, c.req.valid('json'))),
     )
     .post(
       '/databases/:id/rows/:rowId/move',

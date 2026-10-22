@@ -7,6 +7,8 @@ import type { EmojiItem } from '@tiptap/extension-emoji'
 import type { Editor as CoreEditor } from '@tiptap/core'
 import { VueNodeViewRenderer, type Editor } from '@tiptap/vue-3'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
+import { closeHistory, undoDepth } from '@tiptap/pm/history'
+import type { Transaction } from '@tiptap/pm/state'
 import type { TreeNode } from '@tandem/shared'
 import { linkKey } from '@tandem/shared'
 import CalloutView from '~/components/editor/CalloutView.vue'
@@ -697,6 +699,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopFollowing?.()
   scroller?.removeEventListener('scroll', onScroll)
   resizes?.disconnect()
   cancelAnimationFrame(frame)
@@ -770,7 +773,49 @@ onMounted(() => {
   if (!editor) return
   reported = normalizeMarkdown(editor.getMarkdown())
   collectHeadings(editor)
+  followHistory(editor)
 })
+
+// --- Undo ------------------------------------------------------------------------------------
+
+const undoHistory = useUndo()
+let stopFollowing: (() => void) | undefined
+
+/**
+ * The editor's undo steps take their place in the app's history (useUndo), which ⌘Z and ⌘⇧Z
+ * go through: each new step of its own history (a group of changes) is recorded there, and
+ * undone or redone by it. A step recorded elsewhere (a database change) closes the editor's
+ * current group: typing after it is a step of its own, undone before it.
+ */
+function followHistory(editor: Editor) {
+  let depth = undoDepth(editor.state)
+  const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+    const next = undoDepth(editor.state)
+    // Only a change of the document is a step (the depth can also move with no change: the
+    // editor's state reconfigured as it starts).
+    if (next > depth && transaction.docChanged && !undoHistory.isReplaying()) {
+      undoHistory.record({
+        label: 'Typing',
+        noteId: props.noteId,
+        editor,
+        undo: () => editor.chain().focus().undo().run(),
+        redo: () => editor.chain().focus().redo().run(),
+      })
+    }
+    depth = next
+  }
+  editor.on('transaction', onTransaction)
+  const stopListening = undoHistory.onRecord((step) => {
+    if (step.editor !== editor && !editor.isDestroyed) {
+      editor.view.dispatch(closeHistory(editor.state.tr))
+    }
+  })
+  stopFollowing = () => {
+    editor.off('transaction', onTransaction)
+    stopListening()
+    undoHistory.forget(editor)
+  }
+}
 
 defineExpose({
   /** The TipTap editor (for the find bar). */

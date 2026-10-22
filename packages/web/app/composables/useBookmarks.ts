@@ -1,8 +1,21 @@
 // Bookmarks (see @tandem/shared's bookmarks.ts), shared by the sidebar, the cards in notes and
 // the search palette. All of them are loaded at once (a few thousand at most) and kept current
-// by the layout (`follow`): an agent, the extension or another window changes them.
+// by the layout (`follow`): an agent, the extension or another window changes them. Making,
+// editing and moving them are steps of the undo history (useUndo); deleting isn't (it removes
+// their cards from notes too): it asks first.
 import type { Bookmark } from '@tandem/shared'
 import { announce } from '~/composables/useServerEvents'
+
+/**
+ * A bookmark made again by a redo has a new id: the undo history's steps keep the first one,
+ * which leads here to the current one.
+ */
+const remade = new Map<string, string>()
+function currentId(id: string): string {
+  let current = id
+  while (remade.has(current)) current = remade.get(current)!
+  return current
+}
 
 /** A bookmark or folder as the sidebar's tree shows it. */
 export interface BookmarkItem {
@@ -32,6 +45,7 @@ export function useBookmarks() {
   const list = useState<Bookmark[]>('bookmarks:list', () => [])
   const loaded = useState('bookmarks:loaded', () => false)
   const api = useApi()
+  const undoHistory = useUndo()
 
   const byId = computed(() => new Map(list.value.map((bookmark) => [bookmark.id, bookmark])))
 
@@ -115,15 +129,53 @@ export function useBookmarks() {
 
   /** A new bookmark or folder. A page already bookmarked fails with a 409 naming its bookmark. */
   async function create(fields: BookmarkFields & { kind?: Bookmark['kind'] }) {
-    return keep(await unwrap(api.bookmarks.$post({ json: fields })))
+    const made = keep(await unwrap(api.bookmarks.$post({ json: fields })))
+    undoHistory.record({
+      label: made.kind === 'folder' ? 'New folder' : 'New bookmark',
+      undo: async () => {
+        await unwrap(api.bookmarks[':id'].$delete({ param: { id: currentId(made.id) } }))
+        void load()
+      },
+      redo: async () => {
+        const again = keep(await unwrap(api.bookmarks.$post({ json: fields })))
+        remade.set(currentId(made.id), again.id)
+      },
+    })
+    return made
   }
 
+  /** Changes a bookmark's fields, as a step of the undo history. */
   async function update(id: string, fields: BookmarkFields) {
-    return keep(await unwrap(api.bookmarks[':id'].$patch({ param: { id }, json: fields })))
+    const old = byId.value.get(id)
+    const changed = await patch(id, fields)
+    if (old) {
+      const before = Object.fromEntries(
+        Object.keys(fields).map((key) => [key, old[key as keyof typeof old]]),
+      ) as BookmarkFields
+      remember('Edit the bookmark', id, before, fields)
+    }
+    return changed
+  }
+
+  function patch(id: string, fields: BookmarkFields) {
+    return unwrap(api.bookmarks[':id'].$patch({ param: { id: currentId(id) }, json: fields })).then(
+      keep,
+    )
+  }
+
+  function remember(label: string, id: string, before: BookmarkFields, after: BookmarkFields) {
+    undoHistory.record({
+      label,
+      undo: () => patch(id, before).then(() => true),
+      redo: () => patch(id, after).then(() => true),
+    })
   }
 
   /** Moves a bookmark or folder into a folder (null: the top), at `index` (default: last). */
   async function move(id: string, parentId: string | null, index?: number) {
+    const old = byId.value.get(id)
+    const from = old?.parentId ?? null
+    const was = (childrenOf.value.get(from) ?? []).findIndex((b) => b.id === id)
     // Shown at once where it goes, before the server's answer.
     const siblings = (childrenOf.value.get(parentId) ?? []).filter((b) => b.id !== id)
     const at = index ?? siblings.length
@@ -132,7 +184,9 @@ export function useBookmarks() {
     list.value = list.value.map((bookmark) =>
       bookmark.id === id ? { ...bookmark, parentId, position: (before + after) / 2 } : bookmark,
     )
-    return update(id, { parentId, index: at })
+    const moved = await patch(id, { parentId, index: at })
+    if (old) remember('Move', id, { parentId: from, index: was }, { parentId, index: at })
+    return moved
   }
 
   /** Deletes it (a folder with its contents) for good; its cards leave the pages showing them. */

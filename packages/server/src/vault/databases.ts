@@ -1,7 +1,7 @@
 // Databases: their columns, saved view (sort, filters) and rows, in SQLite. The vault calls
 // these under its lock and announces the changes. Values are checked against their column's
 // type (`toCellValue`); changing a type converts the column's values (`convertCell`).
-import { asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import {
   COLUMN_TYPES,
@@ -17,6 +17,7 @@ import {
   type Database,
   type DatabaseColumn,
   type DatabaseFilter,
+  type DatabaseRestore,
   type DatabaseRow,
   type DatabaseSort,
   type DatabaseSummary,
@@ -193,6 +194,91 @@ export class DatabaseStore {
   }
 
   /**
+   * Brings a database back to an earlier state, or forward again (undo, redo: see
+   * `databaseChanges`). Columns are set as given, ids kept (a deleted column comes back; its
+   * values come with the rows); rows are deleted, then changed or put back in order. Rows
+   * since deleted by others are skipped; a row placed after one that is gone stays where it is.
+   */
+  async restore(id: string, changes: DatabaseRestore): Promise<Database> {
+    const record = await this.record(id)
+    const before = JSON.parse(record.columns) as DatabaseColumn[]
+    const updates: Partial<DatabaseRecord> = { updatedAt: this.now() }
+    if (changes.title !== undefined) updates.title = changes.title.trim()
+    let columns = before
+    if (changes.columns) {
+      // Their ids are known: those of columns since deleted too.
+      columns = checkColumns(changes.columns, [...before, ...changes.columns])
+      await this.convertRows(id, before, columns)
+      updates.columns = JSON.stringify(columns)
+    }
+    const known = new Set(columns.map((column) => column.id))
+    if (changes.sort !== undefined) {
+      updates.sort = JSON.stringify(
+        changes.sort && known.has(changes.sort.column) ? changes.sort : null,
+      )
+    } else if (changes.columns) {
+      const sort = JSON.parse(record.sort ?? 'null') as DatabaseSort | null
+      if (sort && !known.has(sort.column)) updates.sort = 'null'
+    }
+    if (changes.filters !== undefined || changes.columns) {
+      const filters = changes.filters ?? (JSON.parse(record.filters) as DatabaseFilter[])
+      updates.filters = JSON.stringify(checkFilters(filters, columns, false))
+    }
+    await this.db.update(databases).set(updates).where(eq(databases.id, id))
+
+    if (changes.deleteRows?.length) {
+      await this.db
+        .delete(databaseRows)
+        .where(and(eq(databaseRows.databaseId, id), inArray(databaseRows.id, changes.deleteRows)))
+    }
+    if (changes.rows?.length) {
+      const rows = await this.db
+        .select()
+        .from(databaseRows)
+        .where(eq(databaseRows.databaseId, id))
+        .orderBy(asc(databaseRows.position))
+      const order = rows.map((row) => row.id)
+      const existing = new Map(rows.map((row) => [row.id, row]))
+      const now = this.now()
+      for (const change of changes.rows) {
+        const row = existing.get(change.id)
+        // A row to change that others have since deleted (one put back has its creation time).
+        if (!row && change.createdAt === undefined) continue
+        const cells = checkCells(
+          change.cells ?? {},
+          columns,
+          row ? (JSON.parse(row.cells) as Record<string, CellValue>) : {},
+        )
+        if (!row) {
+          await this.db.insert(databaseRows).values({
+            id: change.id,
+            databaseId: id,
+            position: 0,
+            cells: JSON.stringify(cells),
+            createdAt: change.createdAt ?? now,
+            updatedAt: now,
+          })
+        } else if (change.cells) {
+          await this.db
+            .update(databaseRows)
+            .set({ cells: JSON.stringify(cells), updatedAt: now })
+            .where(eq(databaseRows.id, row.id))
+        }
+        if (change.after === undefined && row) continue
+        const after = change.after ?? null
+        if (after !== null && !order.includes(after)) {
+          if (!row) order.push(change.id)
+          continue
+        }
+        if (row) order.splice(order.indexOf(change.id), 1)
+        order.splice(after === null ? 0 : order.indexOf(after) + 1, 0, change.id)
+      }
+      await this.renumber(id, order)
+    }
+    return this.get(id)
+  }
+
+  /**
    * Moves a row after row `after` (null: first). Positions are renumbered 1, 2, 3…: moving
    * back and forth never runs out of room between two positions.
    */
@@ -211,16 +297,29 @@ export class DatabaseStore {
       0,
       rows.find((row) => row.id === rowId)!,
     )
-    for (const [i, row] of order.entries()) {
-      if (row.position !== i + 1) {
+    await this.renumber(
+      id,
+      order.map((row) => row.id),
+    )
+    await this.touch(id, this.now())
+    return this.get(id)
+  }
+
+  /** Positions 1, 2, 3… for the rows in this order (only those that change are written). */
+  private async renumber(id: string, order: string[]) {
+    const rows = await this.db
+      .select({ id: databaseRows.id, position: databaseRows.position })
+      .from(databaseRows)
+      .where(eq(databaseRows.databaseId, id))
+    const positions = new Map(rows.map((row) => [row.id, row.position]))
+    for (const [i, rowId] of order.entries()) {
+      if (positions.has(rowId) && positions.get(rowId) !== i + 1) {
         await this.db
           .update(databaseRows)
           .set({ position: i + 1 })
-          .where(eq(databaseRows.id, row.id))
+          .where(eq(databaseRows.id, rowId))
       }
     }
-    await this.touch(id, this.now())
-    return this.get(id)
   }
 
   async deleteRow(id: string, rowId: string): Promise<Database> {
@@ -304,7 +403,10 @@ export class DatabaseStore {
         if (kept.has(columnId)) next[columnId] = value
       }
       for (const column of changed) {
-        next[column.id] = convertCell(cells[column.id], previous.get(column.id)!, column)
+        const value = convertCell(cells[column.id], previous.get(column.id)!, column)
+        // Empty values aren't stored (as `checkCells` does).
+        if (value === null) delete next[column.id]
+        else next[column.id] = value
       }
       await this.db
         .update(databaseRows)

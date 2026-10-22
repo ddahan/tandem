@@ -32,7 +32,6 @@ const {
   moveRow,
   deleteRow,
 } = useDatabase(id)
-const confirm = useConfirm()
 const toast = useToast()
 const table = ref<HTMLTableElement | null>(null)
 
@@ -79,8 +78,8 @@ const titleDraft = ref('')
 const editingTitle = ref(false)
 watch(
   () => database.value?.title,
-  (title) => {
-    if (!editingTitle.value) titleDraft.value = title ?? ''
+  (title, old) => {
+    if (!editingTitle.value || titleDraft.value === (old ?? '')) titleDraft.value = title ?? ''
   },
   { immediate: true },
 )
@@ -104,7 +103,10 @@ async function rename(column: DatabaseColumn) {
   const name = nameDraft.value.trim()
   renaming.value = null
   if (name && name !== column.name)
-    await setColumns(columnsWith(column.id, (c) => ({ ...c, name })))
+    await setColumns(
+      columnsWith(column.id, (c) => ({ ...c, name })),
+      'Rename a column',
+    )
 }
 
 /** The name field, once shown: focused, its text selected. */
@@ -127,7 +129,10 @@ async function addColumn() {
   const names = new Set(database.value?.columns.map((c) => c.name.toLowerCase()))
   let name = 'Column'
   for (let n = 2; names.has(name.toLowerCase()); n++) name = `Column ${n}`
-  const ok = await setColumns([...columnsWith(null, (c) => c), { name, type: 'text' }])
+  const ok = await setColumns(
+    [...columnsWith(null, (c) => c), { name, type: 'text' }],
+    'Add a column',
+  )
   if (ok) renaming.value = database.value?.columns.at(-1)?.id ?? null
 }
 
@@ -137,24 +142,15 @@ function move(column: DatabaseColumn, by: -1 | 1) {
   const target = index + by
   if (target < 0 || target >= columns.length) return
   ;[columns[index], columns[target]] = [columns[target]!, columns[index]!]
-  void setColumns(columns)
+  void setColumns(columns, 'Move a column')
 }
 
+/** Deletes a column and its values, without asking: ⌘Z brings them back. */
 async function removeColumn(column: DatabaseColumn) {
-  const used = database.value?.rows.some(
-    (row) => row.cells[column.id] !== null && row.cells[column.id] !== undefined,
+  await setColumns(
+    columnsWith(column.id, () => null),
+    'Delete a column',
   )
-  if (used) {
-    const ok = await confirm({
-      title: `Delete the column “${column.name}”?`,
-      description: 'Its values in every row are deleted too.',
-      confirmLabel: 'Delete',
-      confirmColor: 'error',
-      icon: 'i-lucide-trash-2',
-    })
-    if (!ok) return
-  }
-  await setColumns(columnsWith(column.id, () => null))
 }
 
 // Choices of a `select` column: one per line.
@@ -174,7 +170,10 @@ async function saveChoices() {
     .map((line) => line.trim())
     .filter(Boolean)
   choicesOf.value = null
-  await setColumns(columnsWith(column.id, (c) => ({ ...c, options, allowEmpty: allowEmpty.value })))
+  await setColumns(
+    columnsWith(column.id, (c) => ({ ...c, options, allowEmpty: allowEmpty.value })),
+    'Edit the choices',
+  )
 }
 
 const filtersOpen = ref(false)
@@ -207,7 +206,10 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
           checked: column.type === type,
           onSelect: () => {
             if (type !== column.type) {
-              void setColumns(columnsWith(column.id, (c) => ({ ...c, type, options: undefined })))
+              void setColumns(
+                columnsWith(column.id, (c) => ({ ...c, type, options: undefined })),
+                'Change a column’s type',
+              )
             }
           },
         })),
@@ -309,7 +311,12 @@ function startResize(event: PointerEvent, column: DatabaseColumn) {
     handle.removeEventListener('pointercancel', onUp)
     const width = resizing.value?.width ?? start
     // Kept until saved: the column doesn't jump back to its old width meanwhile.
-    if (width !== start) await setColumns(columnsWith(column.id, (c) => ({ ...c, width })))
+    if (width !== start) {
+      await setColumns(
+        columnsWith(column.id, (c) => ({ ...c, width })),
+        'Resize a column',
+      )
+    }
     resizing.value = null
   }
   handle.addEventListener('pointermove', onMove)
@@ -320,7 +327,10 @@ function startResize(event: PointerEvent, column: DatabaseColumn) {
 /** A double-click on the edge: back to the default width. */
 function resetWidth(column: DatabaseColumn) {
   if (readonly.value || column.width === undefined) return
-  void setColumns(columnsWith(column.id, (c) => ({ ...c, width: undefined })))
+  void setColumns(
+    columnsWith(column.id, (c) => ({ ...c, width: undefined })),
+    'Resize a column',
+  )
 }
 
 // The note's page goes full width while a table is wider than its text (see notes/[id].vue).
@@ -341,21 +351,8 @@ const sortedBy = computed(() => {
 
 // --- Rows ------------------------------------------------------------------------------------
 
+/** Deletes a row, without asking: ⌘Z brings it back. */
 async function removeRow(rowId: string) {
-  const row = database.value?.rows.find((r) => r.id === rowId)
-  const used =
-    row &&
-    Object.values(row.cells).some((value) => value !== null && value !== undefined && value !== '')
-  if (used) {
-    const ok = await confirm({
-      title: 'Delete this row?',
-      description: 'Its values are deleted. This cannot be undone.',
-      confirmLabel: 'Delete',
-      confirmColor: 'error',
-      icon: 'i-lucide-trash-2',
-    })
-    if (!ok) return
-  }
   await deleteRow(rowId)
 }
 

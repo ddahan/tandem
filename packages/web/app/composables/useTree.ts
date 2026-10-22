@@ -1,5 +1,7 @@
-// The tree of pages and folders, shared by the sidebar, breadcrumbs, links and search.
+// The tree of pages and folders, shared by the sidebar, breadcrumbs, links and search. Making,
+// renaming, moving a page and moving it to the trash are steps of the undo history (useUndo).
 import { CALENDAR_DIR, calendarDateOf, type NodeKind, type TreeNode } from '@tandem/shared'
+import type { UndoStep } from '~/utils/undo-history'
 
 export interface TreeItem {
   id: string
@@ -23,6 +25,7 @@ export function useTree() {
   const api = useApi()
   const showError = useApiErrorToast()
   const toast = useToast()
+  const undoHistory = useUndo()
 
   const byId = computed(() => new Map(nodes.value.map((node) => [node.id, node])))
 
@@ -87,6 +90,15 @@ export function useTree() {
     try {
       const node = await unwrap(api.notes.$post({ json: { parentId, title } }))
       nodes.value = [...nodes.value, node]
+      // Undone: to the trash (a page can't be made again with its id); redone: back from it.
+      let trashId = ''
+      undoHistory.record({
+        label: 'New page',
+        undo: async () => {
+          trashId = await trash(node.id)
+        },
+        redo: () => restore(trashId),
+      })
       await navigateTo(`/notes/${node.id}?new=1`)
       return node
     } catch (error) {
@@ -105,14 +117,22 @@ export function useTree() {
     const siblings = childrenOf.value.get(current.parentId) ?? []
     const index = siblings.findIndex((n) => n.id === current.id) + 1
     const node = await createPage(current.parentId)
-    if (node) await move(node.id, current.parentId, index)
+    // Part of making it: not a step of its own.
+    if (node) await place(node.id, current.parentId, index)
     return node
   }
 
   async function rename(id: string, title: string) {
+    const before = byId.value.get(id)?.title
     try {
-      const node = await unwrap(api.nodes[':id'].$patch({ param: { id }, json: { title } }))
-      await refresh()
+      const node = await setTitle(id, title)
+      if (before !== undefined && before !== node.title) {
+        undoHistory.record({
+          label: 'Rename',
+          undo: () => setTitle(id, before).then(() => true),
+          redo: () => setTitle(id, title).then(() => true),
+        })
+      }
       return node
     } catch (error) {
       showError(error, 'Could not rename')
@@ -120,7 +140,32 @@ export function useTree() {
     }
   }
 
+  async function setTitle(id: string, title: string) {
+    const node = await unwrap(api.nodes[':id'].$patch({ param: { id }, json: { title } }))
+    await refresh()
+    return node
+  }
+
+  /** Moves a node into `parentId` (null: the top), at `index` among its pages (default: last). */
   async function move(id: string, parentId: string | null, index?: number) {
+    const node = byId.value.get(id)
+    const from = node?.parentId ?? null
+    const at = (childrenOf.value.get(from) ?? []).findIndex((n) => n.id === id)
+    await place(id, parentId, index)
+    const moved = byId.value.get(id)
+    if (!node || !moved) return
+    const to = moved.parentId
+    const now = (childrenOf.value.get(to) ?? []).findIndex((n) => n.id === id)
+    if (to === from && now === at) return
+    undoHistory.record({
+      label: 'Move',
+      undo: () => place(id, from, at),
+      redo: () => place(id, to, now),
+    })
+  }
+
+  /** Moves a node (optimistic: shown at once), without an undo step. */
+  async function place(id: string, parentId: string | null, index?: number) {
     // Optimistic: reorder locally, then let the server decide paths.
     const node = byId.value.get(id)
     if (node) {
@@ -140,18 +185,46 @@ export function useTree() {
       await unwrap(api.nodes[':id'].move.$post({ param: { id }, json: { parentId, index } }))
     } catch (error) {
       showError(error, 'Could not move')
+      await refresh()
+      return false
     }
+    await refresh()
+    return true
+  }
+
+  /** Moves a node to the trash; its id there (to restore it). */
+  async function trash(id: string) {
+    const { trashId } = await unwrap(api.nodes[':id'].$delete({ param: { id } }))
+    await refresh()
+    return trashId
+  }
+
+  async function restore(trashId: string) {
+    await unwrap(api.trash[':id'].restore.$post({ param: { id: trashId } }))
     await refresh()
   }
 
+  /** Moves a node to the trash, as a step of the undo history (⌘Z restores it). */
   async function remove(id: string) {
+    return (await trashWithUndo(id)) !== null
+  }
+
+  async function trashWithUndo(id: string) {
+    const title = byId.value.get(id)?.title ?? 'Item'
     try {
-      await unwrap(api.nodes[':id'].$delete({ param: { id } }))
-      await refresh()
-      return true
+      let trashId = await trash(id)
+      const step: UndoStep = {
+        label: `Move “${title}” to the trash`,
+        undo: () => restore(trashId),
+        redo: async () => {
+          trashId = await trash(id)
+        },
+      }
+      undoHistory.record(step)
+      return { title, step }
     } catch (error) {
       showError(error, 'Could not delete')
-      return false
+      return null
     }
   }
 
@@ -172,37 +245,24 @@ export function useTree() {
     }
   }
 
-  /** Moves a node to the trash right away, with an "Undo" in the toast (no confirmation). */
+  /** Moves a node to the trash right away, with an "Undo" in the toast (and ⌘Z). */
   async function moveToTrash(id: string): Promise<boolean> {
-    const title = byId.value.get(id)?.title ?? 'Item'
-    try {
-      const { trashId } = await unwrap(api.nodes[':id'].$delete({ param: { id } }))
-      await refresh()
-      toast.add({
-        title: `“${title}” moved to the trash`,
-        icon: 'i-lucide-trash-2',
-        actions: [
-          {
-            label: 'Undo',
-            icon: 'i-lucide-undo-2',
-            color: 'neutral',
-            variant: 'outline',
-            onClick: async () => {
-              try {
-                await unwrap(api.trash[':id'].restore.$post({ param: { id: trashId } }))
-                await refresh()
-              } catch (error) {
-                showError(error, 'Could not restore')
-              }
-            },
-          },
-        ],
-      })
-      return true
-    } catch (error) {
-      showError(error, 'Could not delete')
-      return false
-    }
+    const trashed = await trashWithUndo(id)
+    if (!trashed) return false
+    toast.add({
+      title: `“${trashed.title}” moved to the trash`,
+      icon: 'i-lucide-trash-2',
+      actions: [
+        {
+          label: 'Undo',
+          icon: 'i-lucide-undo-2',
+          color: 'neutral',
+          variant: 'outline',
+          onClick: () => void undoHistory.revert(trashed.step),
+        },
+      ],
+    })
+    return true
   }
 
   /** Is `id` the node `ancestorId` or below it? */

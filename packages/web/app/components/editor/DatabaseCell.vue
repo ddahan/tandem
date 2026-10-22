@@ -21,8 +21,10 @@ const shown = computed(() => cellText(props.value, props.column))
 
 const draft = ref(shown.value)
 const editing = ref(false)
-watch(shown, (value) => {
-  if (!editing.value) draft.value = value
+// Being edited, the cell follows the saved value only while nothing is typed in it (⌘Z can
+// change it then).
+watch(shown, (value, old) => {
+  if (!editing.value || draft.value === old) draft.value = value
 })
 
 async function commit(text: string) {

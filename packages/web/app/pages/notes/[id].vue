@@ -307,13 +307,31 @@ if (route.query.todo !== undefined) {
 // --- Tags ------------------------------------------------------------------------------------
 
 const tags = ref<string[]>(doc.note.value?.tags ?? [])
+const undoHistory = useUndo()
+
+/** Saves the tags, as a step of the undo history. */
 async function saveTags(value: string[]) {
+  const before = tags.value
+  const target = id.value
+  if (!(await putTags(target, value))) return
+  undoHistory.record({
+    label: 'Change the tags',
+    noteId: target,
+    undo: () => putTags(target, before),
+    redo: () => putTags(target, value),
+  })
+}
+
+async function putTags(target: string, value: string[]) {
   try {
-    tags.value = await unwrap(
-      api.notes[':id'].tags.$put({ param: { id: id.value }, json: { tags: value } }),
+    const saved = await unwrap(
+      api.notes[':id'].tags.$put({ param: { id: target }, json: { tags: value } }),
     )
+    if (target === id.value) tags.value = saved
+    return true
   } catch (error) {
     showError(error, 'Could not save tags')
+    return false
   }
 }
 

@@ -209,7 +209,11 @@ are checked with `toCellValue` (`@tandem/shared`'s `databases.ts`); a column cha
 converts its values (`convertCell`), and one becoming a `select` takes its values as choices.
 The view (filter, then sort: `viewRows`) is applied by readers, in the same shared code: the
 table, the agents' tools and the CLI show the same rows. Column ids stay when columns are
-renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them.
+renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them. Undo and
+redo send `databaseChanges(after, before)` (shared: only what differs) to
+`POST /databases/:id/restore`, which sets columns with their ids (a deleted one comes back),
+deletes rows, then changes or re-creates rows (ids and creation times kept) in order; rows
+deleted since by others aren't brought back by a change to their values.
 
 ### Bookmarks (`bookmarks.ts`, `web-pages.ts`)
 
@@ -280,6 +284,15 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   folder's page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks`
   closes the tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for bookmarks
   dragged from the sidebar: `application/x-tandem-bookmark`) with `BookmarkView.vue`.
+- Undo: one history for the app (`useUndo`, logic in `utils/undo-history.ts`): steps with
+  `undo`/`redo` functions, run one at a time, recorded by the code that changes things
+  (`useDatabase`, `useTree`, `useBookmarks`, tags, `IconPicker`); nothing is recorded while a
+  step runs. A note's text steps stay in TipTap's history: `NoteEditor` records a step each
+  time its undo depth grows (undone with the editor's own `undo`), and closes the editor's
+  current group when another step is recorded, so typing after a database change is a step
+  of its own. `plugins/undo-keys.client.ts` takes ⌘Z/⌘⇧Z on `window` in the capture phase
+  (before the editor's keymap), leaving them to a text field whose value changed since it
+  got the focus.
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at
   runtime; remembers the last settings in the browser and applies them before the first paint,
   so a reload never flashes the default theme: plugin `remembered-settings.client.ts`, and a
