@@ -253,7 +253,9 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
 - `/api/events`: Server-Sent Events (`tree`, `note`, `trash`, `settings`, `database`,
   `bookmarks`), with a ping every 25 s.
 - `/api/bookmarks…`: the bookmarks (above); `/api/extension`: the extension's folder, when the
-  app has one (the standalone app's `extension/`), for Docs › Extension.
+  app has one (the standalone app's `extension/`), for Docs › Extension; `POST
+  /api/extension/reveal` shows it in the file manager (`open -R` on macOS, `xdg-open` on Linux:
+  `revealFolder` in `folders.ts`), as Chrome's dialog hides `~/Library`.
 - `/files/<path>`: files of the data folder (never hidden ones), with ETag, and a CSP that keeps
   SVG scripts from running.
 - `/mcp` (`api/mcp.ts`): MCP over Streamable HTTP, stateless (one MCP server per request,

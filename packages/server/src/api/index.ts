@@ -31,6 +31,7 @@ import {
   DEFAULT_READ_ONLY_REASON,
   folderProblem,
   listFolder,
+  revealFolder,
   type NotesFolderControl,
 } from '../folders.ts'
 import {
@@ -172,6 +173,8 @@ export interface ApiOptions {
   forbiddenFolders?: string[]
   /** The Chrome extension's folder, to load it from (the standalone app's; none in Docker). */
   extensionDir?: string
+  /** Shows a folder in the file manager (default: Finder's, or the system's). */
+  reveal?: (path: string) => Promise<void>
 }
 
 export function createApi(vault: Vault, options: ApiOptions = {}) {
@@ -180,6 +183,10 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     change: () => Promise.reject(new ValidationError(DEFAULT_READ_ONLY_REASON)),
   }
   const forbidden = options.forbiddenFolders ?? []
+  const extensionFolder = () =>
+    options.extensionDir && existsSync(join(options.extensionDir, 'manifest.json'))
+      ? options.extensionDir
+      : null
   const api = new Hono()
     .onError((error, c) => {
       if (error instanceof NotFoundError) return c.json({ error: error.message }, 404)
@@ -493,14 +500,14 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
 
     // --- Bookmarks -----------------------------------------------------------------------------
     // Where Chrome loads the extension from (Docs › Extension), when this app has it.
-    .get('/extension', (c) =>
-      c.json({
-        folder:
-          options.extensionDir && existsSync(join(options.extensionDir, 'manifest.json'))
-            ? options.extensionDir
-            : null,
-      }),
-    )
+    .get('/extension', (c) => c.json({ folder: extensionFolder() }))
+    // Chrome's folder dialog doesn't show ~/Library: Finder shows the folder, to drag it there.
+    .post('/extension/reveal', async (c) => {
+      const folder = extensionFolder()
+      if (!folder) return c.json({ error: 'This app has no extension folder' }, 404)
+      await (options.reveal ?? revealFolder)(folder)
+      return c.json({ ok: true })
+    })
     // Whether bookmarks are on, for the browser extension (which says so when they aren't).
     .get('/bookmarks/status', async (c) =>
       c.json({ enabled: (await vault.getSettings()).bookmarks }),

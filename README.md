@@ -160,8 +160,10 @@ To save pages to Tandem from Chrome (its button, or ⌥⇧D) and find them from 
 1. In Tandem, turn on **Settings › Features › Bookmarks**.
 2. In Chrome, open `chrome://extensions` and turn on **Developer mode**.
 3. **Load unpacked**, and choose the extension's folder, installed with the app:
-   `~/Library/Application Support/Tandem/app/extension` on macOS (`⌘⇧G` in the dialog to paste
-   it), `~/.local/share/tandem/app/extension` on Linux. From a clone: build it with
+   `~/Library/Application Support/Tandem/app/extension` on macOS,
+   `~/.local/share/tandem/app/extension` on Linux. Chrome's dialog hides `Library`: in Tandem,
+   **Docs › Extension › Show in Finder** shows the folder, to drag it into the dialog (or `⌘⇧G`
+   in the dialog to paste its path). From a clone: build it with
    `./td pnpm --filter @tandem/extension build`, then choose `packages/extension/dist`.
 4. Pin it (the puzzle piece, then the pin). If Tandem isn't at `http://localhost:3864`, set
    its address in the extension's options.
