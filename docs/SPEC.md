@@ -85,8 +85,8 @@ inside OneDrive so that it is backed up and synced.
 - **Attachments** of `Note.md` live in `Note.assets/`, next to it, and are referenced with
   relative paths (`![](Note.assets/diagram.png)`, `[report.pdf](Note.assets/report.pdf)`).
 - **Structured data lives in SQLite**: stable note ids, tags, creation and update dates, tree
-  order, history metadata, line authorship, settings, and databases (their columns, view and
-  rows: a note only has a block naming one, see Databases). The live database is in the app's own
+  order, history metadata, line authorship, settings, databases (their columns, view and
+  rows: a note only has a block naming one, see Databases) and bookmarks (see Bookmarks). The live database is in the app's own
   folder (`~/Library/Application Support/Tandem/` on macOS) or on a Docker volume, never inside
   OneDrive (SQLite and file sync don't mix). About a minute after
   any change, and on shutdown, a consistent copy is written to `<data>/.tandem/tandem.db`;
@@ -215,7 +215,9 @@ inside OneDrive so that it is backed up and synced.
 
 - One search: the `Cmd+Shift+F` palette (also the sidebar's search button, the Home page's Search
   button, and tags on Home, which open it filtered on the tag), over note titles, note text and
-  attachment file names. With an empty query it lists recent notes and the search syntax.
+  attachment file names, and bookmarks when they're on (a group of their own, under the notes;
+  picking one opens its website). With an empty query it lists recent notes and the search
+  syntax.
 - Prefix matching while typing, accent-insensitive (`ete` finds `été`), typo-tolerant (a
   word without matches is replaced by the closest known word, with "Showing results for…"),
   quoted phrases, and filters: `tag:<tag>`, `in:<folder>`, `-word` to exclude. With tags off,
@@ -239,8 +241,9 @@ inside OneDrive so that it is backed up and synced.
 
 - **CLI** `tandem` (run in the container; `bin/tandem` wraps `docker compose exec`):
   search, tree, read, create, write, append, replace text, move, delete, tags, history,
-  restore, attach files, and databases (list a note's, read rows as the saved view shows
-  them, create one, add, change and delete rows; columns by name).
+  restore, attach files, databases (list a note's, read rows as the saved view shows
+  them, create one, add, change and delete rows; columns by name), and bookmarks (list, search,
+  add, change, move, delete; a card added to a note).
 - **MCP server** over HTTP at `http://localhost:3864/mcp` with the same operations, so any
   MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
@@ -288,9 +291,51 @@ inside OneDrive so that it is backed up and synced.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
 
+## Bookmarks
+
+- Links to websites, kept in Tandem instead of the browser: optional (Settings › Features, off
+  by default). Off, the sidebar's section and `/bookmark` go, and the extension says so; cards
+  already in notes still show, and agents still use them.
+- **Folders and bookmarks**, as in a browser: a bookmark is not a page and holds nothing;
+  folders hold bookmarks and folders. Stored in SQLite (and its backup), never in the notes'
+  Markdown. A bookmark has a name, a web address (http or https only), an optional
+  description, and its site's favicon (`.tandem/icons/`; a globe without one). One bookmark per
+  page: an address already saved (give or take `www.`, `http`/`https`, a `#fragment` or a final
+  `/`) is refused, naming the bookmark that has it.
+- **Sidebar**: a Bookmarks section below the pages, folded by default (open or folded is then
+  remembered); open, it scrolls by itself beyond 40% of the window. A tree like the pages'
+  (drag and drop, ⌥↑ ⌥↓, F2, a menu on each row: open, info, edit, rename, move, copy the
+  address, delete); "+" makes a bookmark or a folder (renamed in place). A click on a
+  bookmark shows its **information** in a popover next to it (favicon, name, address,
+  description, site, folder, dates, the pages showing its card, and Open website, Edit,
+  Delete), as browsing them with ↑ ↓ does; a double click or ↵ opens the website in a new
+  browser tab (from the installed app, in the default browser). A click on a folder unfolds it.
+- **New and edit**: a dialog with the address, name, description and folder. A new bookmark's
+  name and description are read from its page by the server (best effort, a few seconds at
+  most), as its favicon; a page already saved offers to edit its bookmark instead.
+- **Deleting** asks first (bookmarks have no trash), naming the pages that show its card, as
+  links: they lose it (each page's history keeps the version with it, and an open note shows
+  the change at once). A folder goes with everything in it.
+- **Cards in notes**: `/bookmark` picks one (a search over names, addresses and descriptions,
+  the latest first; a pasted address that isn't saved yet can be added from there), and a
+  bookmark dragged from the sidebar into a note becomes one. A card shows the bookmark as it is
+  now (favicon, name, site, two lines of description): a click opens the website; its menu
+  shows the information, edits the bookmark, puts another one there or removes the card. The
+  note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is gone
+  says so.
+- **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded
+  unpacked: Docs › Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
+  title), address and description (its meta tags), the folder last used (or a new one), Cancel
+  and Create; its favicon is the browser's. A page already in Tandem shows "Already in Tandem"
+  and edits its bookmark, and the button shows ✓ on it. In the address bar, `tb` then Tab
+  searches the bookmarks; ↵ opens one. Tandem not running at its address (options; default
+  `http://localhost:3864`), or bookmarks off: the popup says so, and how to fix it (the
+  extension can't start Tandem; the login item restarts it anyway). Chrome only for now.
+- Importing the browser's bookmarks, exporting them, and Safari may come later.
+
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree; TODOs and Trash when on, Settings and Docs at the
+- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Bookmarks when on; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
   and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
@@ -362,19 +407,25 @@ inside OneDrive so that it is backed up and synced.
     updating Tandem: the one-command install, with a copy button (or a newer download's
     installer), and how to uninstall.
   - **Concepts**: in three groups. Organize: pages and folders, tabs, icons and tags, search.
-    Write: Markdown on disk, autosave and conflicts, links, files, databases, TODOs. Keep track:
+    Write: Markdown on disk, autosave and conflicts, links, files, databases, bookmarks, daily
+    notes, TODOs. Keep track:
     authorship, history, trash. Agents have their own tab.
   - **Security**: who could read the notes, and what to turn on against each: someone with the
     computer or its disk (FileVault, an encrypted Time Machine disk), the cloud the notes
     folder syncs with (iCloud's Advanced Data Protection; other drives aren't end-to-end
-    encrypted), apps and agents on the computer. Tandem doesn't encrypt notes itself, and says
+    encrypted), websites visited (Tandem answers only to its own address and takes changes
+    only from its pages and its extension), apps and agents on the computer. Tandem doesn't encrypt notes itself, and says
     why, and where the notes' text is (the notes folder, its `.tandem`, Tandem's database).
   - **Blocks**: every block and inline element the editor writes, grouped (text, lists,
     blocks, files), each shown by the editor itself (read-only) next to its Markdown, as saved,
     with how to add it (`/` menu item, typed Markdown, keys). Links and files there lead
-    nowhere; a database's example is a drawing (its rows aren't in the Markdown).
+    nowhere; a database's and a bookmark's examples are drawings (their data isn't in the
+    Markdown).
   - **Agents**: the MCP command at Tandem's own address and the CLI, both with a copy button,
     what agents can do, and their guide (`docs/agents.md`).
+  - **Extension**: setting up the Chrome extension (bookmarks on, Developer mode, Load
+    unpacked with the installed app's extension folder, shown with a copy button, pinning it,
+    its address when Tandem isn't on 3864) and using it.
   - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
@@ -417,4 +468,5 @@ inside OneDrive so that it is backed up and synced.
 Templates, export (PDF/HTML), daily notes, favorites, search inside attachments, multiple
 computers on one data folder, authentication (bound to 127.0.0.1 only). For databases:
 relations, formulas, other views (board, calendar), per-database history, converting a table
-into a database.
+into a database. For bookmarks: importing and exporting the
+browser's, Safari.

@@ -19,6 +19,7 @@ source, no admin rights: one command downloads the repository from github.com an
 | `packages/cli`               | The `tandem` CLI                                                               |
 | `packages/web`               | The Nuxt UI single-page app, its editor extensions, its Playwright tests       |
 | `packages/standalone`        | The standalone app (server + CLI + web app, run by Node) and its build         |
+| `packages/extension`         | The Chrome extension (bookmarks), built into `dist/` and shipped with the app  |
 | `app/`                       | The app people install (`tandem/`, built) and its `install.sh`                 |
 | `bin/tandem`                 | Runs the CLI in the running container, from the Mac                            |
 | `td`                         | The one command for development (`./td` alone lists the commands)              |
@@ -38,7 +39,7 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 | Demo notes in the dev data folder | `./td pnpm --filter @tandem/server seed http://server:3011`                                |
 | All checks                        | `./td check` (format, lint with 0 warnings, builds, type checks, unit tests with coverage) |
 | End-to-end tests                  | `./td e2e` (builds the web app, runs Playwright against the real server)                   |
-| Unit tests of one package         | `./td test server` (`shared`, `server`, `cli`, `web`, `standalone`)                        |
+| Unit tests of one package         | `./td test server` (`shared`, `server`, `cli`, `web`, `standalone`, `extension`)           |
 | Server benchmark                  | `./td pnpm --filter @tandem/server bench [pages]` (large generated vault, API timings)     |
 | Format / lint                     | `./td format` · `./td lint`                                                                |
 | Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
@@ -82,7 +83,10 @@ different data folders. **Never point the dev servers or tests at the owner's da
 - **Shortcuts**: a new or changed keyboard shortcut or typing rule goes in
   `packages/web/app/utils/shortcuts.ts` too: Docs › Shortcuts shows that list.
 - **Security**: the app has no authentication and binds to 127.0.0.1; notes can be written by
-  anyone, so rendered HTML is sanitized and `/files` never serves hidden files.
+  anyone, so rendered HTML is sanitized and `/files` never serves hidden files. Every request
+  passes `api/guard.ts`: a local `Host` only (DNS rebinding), and changes only without an
+  `Origin` or from a local one or the extension's. A new name the server must answer to goes
+  in `TANDEM_ALLOWED_HOSTS`; never loosen the checks.
 
 ## Tests
 
@@ -91,7 +95,7 @@ different data folders. **Never point the dev servers or tests at the owner's da
 | Unit (pure logic)    | `packages/*/test`      | shared rules, blame, search parsing, Markdown round-trips, authorship blocks  |
 | Integration (server) | `packages/server/test` | vault on a temporary folder and in-memory database, API, MCP, watcher, backup |
 | CLI                  | `packages/cli/test`    | commands against an in-memory app                                             |
-| End-to-end           | `packages/web/e2e`     | the built web app and the real server in Chromium                             |
+| End-to-end           | `packages/web/e2e`     | the built web app and the real server in Chromium, and the built extension    |
 
 New behavior gets tests at the lowest level that covers it, and an end-to-end test when it is
 a user-facing flow. `createTestVault()` (`packages/server/test/helpers.ts`) gives a vault with a

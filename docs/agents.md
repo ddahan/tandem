@@ -65,6 +65,7 @@ GitHub-flavored Markdown, plus:
 | TODO                | `TODO: what to do` (capitals; highlighted, and listed on the owner's TODOs page)        |
 | Diagram             | a ` ```mermaid ` code block                                                             |
 | Database            | a ` ```database ` block with `id: …` (from `create_database`; see Databases)            |
+| Bookmark card       | a ` ```bookmark ` block with `id: …` (from `add_bookmark`; see Bookmarks)               |
 | Image with a width  | `<img src="Note.assets/a.png" alt="…" width="320">`                                     |
 | Attachment          | `[report.pdf](Note.assets/report.pdf)` (shown as a file chip)                           |
 
@@ -98,3 +99,26 @@ writing the block's content.
   `12,5`, checkboxes `true`/`false` (or yes/no), choices by name. A value that doesn't fit its
   column is refused with the reason. A choice column with `allowEmpty: false` always has a
   value: rows added without one get its first choice, and it can't be set to null.
+
+## Bookmarks
+
+Links to websites, in folders, which the owner keeps in Tandem instead of their browser (saved
+from Chrome with Tandem's extension, or in the app). Like databases, their data is in Tandem: a
+note shows one as a card with a ` ```bookmark ` block holding only its id. `read_note` (and
+`tandem read --meta`) name the bookmarks a note shows, with their titles and addresses.
+
+- MCP: `list_bookmarks` (the tree, with ids and addresses), `search_bookmarks` (title, address
+  and description: prefixes, `"phrases"`, `-word`, `in:Folder`, typos corrected),
+  `add_bookmark` (`url`; `title` and `description` read from the page when not given; `folder`
+  by id or path, `Work/Tools`, made if missing; `note` to add its card at that note's end),
+  `update_bookmark` (title, address, description, or `folder` to move it; `""` is the top),
+  `delete_bookmark` (a bookmark, or a folder with everything in it; only when asked: it removes
+  their cards from the notes showing them, and there is no trash for bookmarks).
+- CLI: `tandem bookmarks [query]`, `tandem bookmark-add <url> [--title …] [--description …]
+  [--folder Work/Tools] [--note <note>]`, `tandem bookmark-set <id> [new address] [--title …]
+  [--description …] [--folder …]`, `tandem bookmark-delete <id>`.
+- One bookmark per page: an address already bookmarked (give or take `www.`, `http`/`https`, a
+  `#fragment` or a final `/`) is refused, naming its bookmark. Only web addresses (http,
+  https).
+- The owner may turn bookmarks off in the app (Settings › Features): they are still there for
+  agents.

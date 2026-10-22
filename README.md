@@ -30,8 +30,11 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **Trash** with restore and permanent delete.
 - **Daily notes** (optional): a note per day, `Calendar/2026-10-21.md`, opened from Today in the
   sidebar or a calendar showing which days have notes and to-dos left; agents write in them too.
-- **Optional features**, in Settings › Features: tags, TODOs, daily notes and spell check are off by
-  default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
+- **Bookmarks** (optional): links to websites in folders, in the sidebar below the pages,
+  shown in notes as cards (`/bookmark`), found by `⌘⇧F`; saved from Chrome with Tandem's
+  extension (see below), which also finds them from the address bar (`tb`, then Tab).
+- **Optional features**, in Settings › Features: tags, TODOs, bookmarks, daily notes and spell
+  check are off by default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
   its data stays.
 - **For agents**: an MCP server and a CLI with the same operations.
 - Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.
@@ -150,6 +153,22 @@ OneDrive's online-only files: keep the folder on the device.
 
 It then opens in its own window, with the Tandem icon in the Dock.
 
+### The Chrome extension (bookmarks)
+
+To save pages to Tandem from Chrome (its button, or ⌥⇧D) and find them from the address bar:
+
+1. In Tandem, turn on **Settings › Features › Bookmarks**.
+2. In Chrome, open `chrome://extensions` and turn on **Developer mode**.
+3. **Load unpacked**, and choose the extension's folder, installed with the app:
+   `~/Library/Application Support/Tandem/app/extension` on macOS (`⌘⇧G` in the dialog to paste
+   it), `~/.local/share/tandem/app/extension` on Linux. From a clone: build it with
+   `./td pnpm --filter @tandem/extension build`, then choose `packages/extension/dist`.
+4. Pin it (the puzzle piece, then the pin). If Tandem isn't at `http://localhost:3864`, set
+   its address in the extension's options.
+
+Tandem's **Docs › Extension** shows the same steps, with your folder. Updating Tandem updates
+the extension (Chrome reads it again when it restarts). Chrome only for now.
+
 ## Agents
 
 ### MCP (Claude Code, Claude Desktop, any MCP client)
@@ -194,13 +213,13 @@ instructions).
   .tandem/
     tandem.db              backup of the app's database (refreshed every minute)
     history/<note id>/        past versions of notes
-    icons/                    image icons of pages and folders
+    icons/                    image icons of pages and folders, bookmarks' favicons
     trash/                    deleted notes
 ```
 
 - Notes are plain Markdown, without front matter: readable and editable by any tool. Edits
   made outside the app (an agent, a text editor, Finder) are picked up live.
-- Ids, tags, order, history and authorship are in a SQLite database outside the notes folder
+- Ids, tags, order, history, authorship, databases and bookmarks are in a SQLite database outside the notes folder
   (`~/Library/Application Support/Tandem/` on macOS, `~/.local/share/tandem/` on Linux, a
   volume with Docker), backed up into `.tandem/tandem.db`. If it is lost, the backup is
   restored automatically on the next start; this is also how you move from Docker to the
