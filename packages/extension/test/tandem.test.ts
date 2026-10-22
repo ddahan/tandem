@@ -4,7 +4,6 @@ import {
   DEFAULT_ADDRESS,
   TandemError,
   createTandem,
-  folderOptions,
   folderPath,
   normalizeAddress,
 } from '../src/tandem.ts'
@@ -73,14 +72,13 @@ describe('the extension’s Tandem client', () => {
       'PATCH /api/bookmarks/old': { body: existing },
     })
     const tandem = createTandem(DEFAULT_ADDRESS, fetcher)
-    const fields = { url: 'https://e.com', title: 'E', description: '', parentId: null }
+    const fields = { url: 'https://e.com', title: 'E', description: '' }
     expect(await tandem.create(fields)).toEqual({ bookmark: created, duplicate: false })
     expect(JSON.parse(String(calls[0]?.init?.body))).toEqual(fields)
     expect(await tandem.update('old', { title: 'T' })).toEqual({
       bookmark: existing,
       duplicate: false,
     })
-    expect(await tandem.createFolder('F', null)).toEqual(created)
 
     const duplicate = createTandem(
       DEFAULT_ADDRESS,
@@ -114,24 +112,18 @@ describe('the extension’s Tandem client', () => {
       message: 'Tandem answered with an error (500).',
     })
     const error = await broken
-      .create({ url: 'x', title: '', description: '', parentId: null })
+      .create({ url: 'x', title: '', description: '' })
       .catch((e: unknown) => e)
     expect(error).toBeInstanceOf(TandemError)
     expect(error).toMatchObject({ message: 'Bad address', status: 400 })
   })
 
-  it('lists folders in tree order, and a bookmark’s folders', () => {
+  it('names a bookmark’s folders', () => {
     const work = bookmark({ id: 'w', kind: 'folder', title: 'Work', position: 2 })
     const home = bookmark({ id: 'h', kind: 'folder', title: 'Home', position: 1 })
     const tools = bookmark({ id: 't', kind: 'folder', title: 'Tools', parentId: 'w' })
     const link = bookmark({ parentId: 't' })
     const all = [work, home, tools, link]
-    expect(folderOptions(all)).toEqual([
-      { id: null, label: 'Bookmarks', depth: 0 },
-      { id: 'h', label: 'Home', depth: 1 },
-      { id: 'w', label: 'Work', depth: 1 },
-      { id: 't', label: 'Tools', depth: 2 },
-    ])
     expect(folderPath(all, link)).toBe('Work / Tools')
     expect(folderPath(all, bookmark({}))).toBe('Bookmarks')
   })

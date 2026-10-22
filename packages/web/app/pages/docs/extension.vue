@@ -140,8 +140,8 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
             value="shift"
           /><UKbd value="d" />, changed in
           <code :class="code">chrome://extensions/shortcuts</code>). Its name, address and
-          description are filled in from the page; pick a folder (the last one used is chosen) and
-          Create.
+          description are filled in from the page; Create, and it’s saved at the top of your
+          bookmarks, to sort in Tandem.
         </li>
         <li>
           <strong>Already saved</strong>: the button shows ✓, and opens the bookmark to change it.

@@ -1,20 +1,26 @@
 // The extension's service worker: a ✓ on the toolbar button when the page is already in Tandem
-// (checked when the tab changes, or once the popup saved it), and Tandem's bookmarks in the
-// address bar (the keyword `tb`, then Tab and words). Tandem not running, or bookmarks off: no
-// ✓, and the address bar says so.
+// (checked when the tab changes), the popup's saves (made here, so that the popup closes at
+// once: the ✓ shows meanwhile, a ! if it fails), and Tandem's bookmarks in the address bar (the
+// keyword `tb`, then Tab and words). Tandem not running, or bookmarks off: no ✓, and the address
+// bar says so.
 import { siteOf } from '@tandem/shared'
 import { bookmarkable } from './page.ts'
 import { getAddress } from './settings.ts'
-import { createTandem, TandemError } from './tandem.ts'
+import { createTandem, TandemError, type SaveMessage } from './tandem.ts'
 
 const BADGE_COLOR = '#f59e0b'
+const ERROR_COLOR = '#dc2626'
 
 async function tandem() {
   return createTandem(await getAddress())
 }
 
+/** Tabs whose page is being saved: a look-up meanwhile (the popup closing) would miss it. */
+const saving = new Set<number>()
+
 /** Shows whether the tab's page is bookmarked (nothing when it can't be known). */
 async function refreshBadge(tabId: number, url: string | undefined) {
+  if (saving.has(tabId)) return
   const page = bookmarkable(url)
   let saved = false
   if (page) {
@@ -24,10 +30,30 @@ async function refreshBadge(tabId: number, url: string | undefined) {
       // Not running, or bookmarks off: no ✓.
     }
   }
-  await chrome.action.setBadgeText({ tabId, text: saved ? '✓' : '' }).catch(() => {})
-  await chrome.action
-    .setTitle({ tabId, title: saved ? 'Already in Tandem' : 'Add to Tandem' })
-    .catch(() => {})
+  if (saving.has(tabId)) return
+  await badge(tabId, saved ? '✓' : '', saved ? 'Already in Tandem' : 'Add to Tandem')
+}
+
+async function badge(tabId: number, text: string, title: string, color = BADGE_COLOR) {
+  await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {})
+  await chrome.action.setBadgeText({ tabId, text }).catch(() => {})
+  await chrome.action.setTitle({ tabId, title }).catch(() => {})
+}
+
+/** The popup's save: shown as done at once; a failure turns the ✓ into a ! that says why. */
+async function save({ tabId, id, fields }: SaveMessage) {
+  saving.add(tabId)
+  await badge(tabId, '✓', 'Already in Tandem')
+  try {
+    const client = await tandem()
+    // A duplicate (saved meanwhile, elsewhere) is saved all the same.
+    await (id ? client.update(id, fields) : client.create(fields))
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    await badge(tabId, '!', `Couldn’t save in Tandem: ${reason}`, ERROR_COLOR)
+  } finally {
+    saving.delete(tabId)
+  }
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -42,10 +68,11 @@ chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
   if (change.url || change.status === 'complete') void refreshBadge(tabId, tab.url)
 })
 
-chrome.runtime.onMessage.addListener((message: { type?: string; tabId?: number }) => {
-  if (message.type !== 'bookmarked' || !message.tabId) return
-  const tabId = message.tabId
-  void chrome.tabs.get(tabId).then((tab) => refreshBadge(tabId, tab.url))
+chrome.runtime.onMessage.addListener((message: SaveMessage, _sender, respond) => {
+  if (message.type !== 'save') return
+  // Received: the popup can close; the save goes on here.
+  respond({ received: true })
+  void save(message)
 })
 
 // --- The address bar ---------------------------------------------------------------------------

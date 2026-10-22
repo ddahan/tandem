@@ -334,9 +334,11 @@ inside OneDrive so that it is backed up and synced.
   says so.
 - **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded
   unpacked: Docs › Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
-  title), address and description (its meta tags), the folder last used (or a new one), Cancel
-  and Create; its favicon is the browser's. A page already in Tandem shows "Already in Tandem"
-  and edits its bookmark, and the button shows ✓ on it. In the address bar, `tb` then Tab
+  title), address and description (its meta tags; the field grows with the text), Cancel and
+  Create; its favicon is the browser's. No folder to pick: new bookmarks go to the top, sorted
+  in the app. Create closes the popup at once and the button shows ✓; the save goes on behind
+  (a failure turns the ✓ into a red ! that says why). A page already in Tandem shows "Already
+  in Tandem" and edits its bookmark (Save, the same way), and the button shows ✓ on it. In the address bar, `tb` then Tab
   searches the bookmarks; ↵ opens one. Tandem not running at its address (options; default
   `http://localhost:3864`), or bookmarks off: the popup says so, and how to fix it (the
   extension can't start Tandem; the login item restarts it anyway). Chrome only for now.

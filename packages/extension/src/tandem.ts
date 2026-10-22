@@ -27,7 +27,6 @@ export interface BookmarkFields {
   url: string
   title: string
   description: string
-  parentId: string | null
   /** The favicon, as a `data:` URL (the browser has it). */
   iconDataUrl?: string
 }
@@ -35,11 +34,15 @@ export interface BookmarkFields {
 /** A saved bookmark, or the one already saved for this page. */
 export type Saved = { bookmark: Bookmark; duplicate: boolean }
 
-/** A folder for the popup's picker: its name, indented by depth. */
-export interface FolderOption {
-  id: string | null
-  label: string
-  depth: number
+/**
+ * The popup's save, sent to the service worker, which makes it: the popup closes at once (its
+ * requests would stop with it), and the ✓ shows meanwhile. `id`: the bookmark to change.
+ */
+export interface SaveMessage {
+  type: 'save'
+  tabId: number
+  id?: string
+  fields: BookmarkFields
 }
 
 /** A Tandem address as typed: trimmed, without a final `/`, `http://` added when missing. */
@@ -115,31 +118,10 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
     create: (fields: BookmarkFields) => save('/api/bookmarks', 'POST', fields),
     update: (id: string, fields: Partial<BookmarkFields>) =>
       save(`/api/bookmarks/${encodeURIComponent(id)}`, 'PATCH', fields),
-    createFolder: (title: string, parentId: string | null) =>
-      request<Bookmark>('/api/bookmarks', {
-        method: 'POST',
-        body: JSON.stringify({ kind: 'folder', title, parentId }),
-      }),
   }
 }
 
 export type Tandem = ReturnType<typeof createTandem>
-
-/** Every folder (the top first), in tree order, for the popup's picker. */
-export function folderOptions(bookmarks: Bookmark[]): FolderOption[] {
-  const options: FolderOption[] = [{ id: null, label: 'Bookmarks', depth: 0 }]
-  const walk = (parentId: string | null, depth: number) => {
-    const folders = bookmarks
-      .filter((bookmark) => bookmark.kind === 'folder' && bookmark.parentId === parentId)
-      .toSorted((a, b) => a.position - b.position)
-    for (const folder of folders) {
-      options.push({ id: folder.id, label: folder.title, depth })
-      walk(folder.id, depth + 1)
-    }
-  }
-  walk(null, 1)
-  return options
-}
 
 /** A bookmark's folders, `Work / Tools`, or `Bookmarks` at the top. */
 export function folderPath(bookmarks: Bookmark[], bookmark: Bookmark): string {

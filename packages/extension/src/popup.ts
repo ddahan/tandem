@@ -1,16 +1,14 @@
 // The popup ("Add to Tandem"): the current page as a bookmark, its name, address and
-// description filled from the tab, in the last folder used. A page already in Tandem is edited
-// instead (as Chrome's star does). Tandem not running, or bookmarks off, says so plainly.
+// description filled from the tab. New bookmarks go to the top: they're sorted in the app. A
+// page already in Tandem is edited instead (as Chrome's star does). Tandem not running, or
+// bookmarks off, says so plainly. Saving is the service worker's (background.ts): the popup
+// closes at once.
 import type { Bookmark } from '@tandem/shared'
 import { bookmarkable, faviconDataUrl, pageDescription } from './page.ts'
-import { getAddress, getLastFolder, setLastFolder } from './settings.ts'
-import { createTandem, folderOptions, folderPath, TandemError, type Tandem } from './tandem.ts'
+import { getAddress } from './settings.ts'
+import { createTandem, folderPath, TandemError, type SaveMessage, type Tandem } from './tandem.ts'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
-
-const NEW_FOLDER = '+new'
-/** The top of the bookmarks, in the folder picker. */
-const TOP = ''
 
 let tandem: Tandem
 let tab: chrome.tabs.Tab
@@ -18,8 +16,8 @@ let existing: Bookmark | null = null
 let bookmarks: Bookmark[] = []
 let iconDataUrl: string | undefined
 
-function show(section: 'loading' | 'problem' | 'form' | 'saved') {
-  for (const id of ['loading', 'problem', 'form', 'saved']) $(id).hidden = id !== section
+function show(section: 'loading' | 'problem' | 'form') {
+  for (const id of ['loading', 'problem', 'form']) $(id).hidden = id !== section
 }
 
 function button(label: string, onClick: () => void, primary = false) {
@@ -65,21 +63,6 @@ function failed(error: unknown) {
   }
 }
 
-function fillFolders(selected: string | null) {
-  const select = $<HTMLSelectElement>('folder')
-  const options = folderOptions(bookmarks).map((folder) => {
-    const option = document.createElement('option')
-    option.value = folder.id ?? TOP
-    option.textContent = `${' '.repeat(Math.max(0, folder.depth - 1))}${folder.label}`
-    return option
-  })
-  const add = document.createElement('option')
-  add.value = NEW_FOLDER
-  add.textContent = 'New folder…'
-  select.replaceChildren(...options, add)
-  select.value = selected && bookmarks.some((b) => b.id === selected) ? selected : TOP
-}
-
 function useExisting(bookmark: Bookmark) {
   existing = bookmark
   $('heading').textContent = 'Already in Tandem'
@@ -89,7 +72,6 @@ function useExisting(bookmark: Bookmark) {
   $<HTMLInputElement>('title').value = bookmark.title
   $<HTMLInputElement>('url').value = bookmark.url
   $<HTMLTextAreaElement>('description').value = bookmark.description
-  fillFolders(bookmark.parentId)
   $('save').textContent = 'Save'
 }
 
@@ -116,12 +98,11 @@ async function start() {
   tab = current
   try {
     if (!(await tandem.enabled())) throw new TandemError('off', 'Bookmarks are off in Tandem.')
-    const [all, found, description, icon, lastFolder] = await Promise.all([
+    const [all, found, description, icon] = await Promise.all([
       tandem.list(),
       tandem.lookup(url),
       pageDescription(current.id),
       faviconDataUrl(url, current.favIconUrl),
-      getLastFolder(),
     ])
     bookmarks = all
     iconDataUrl = icon
@@ -130,7 +111,6 @@ async function start() {
       $<HTMLInputElement>('title').value = current.title?.trim() || url
       $<HTMLInputElement>('url').value = url
       $<HTMLTextAreaElement>('description').value = description
-      fillFolders(lastFolder)
     }
     show('form')
     const title = $<HTMLInputElement>('title')
@@ -141,61 +121,22 @@ async function start() {
   }
 }
 
-async function addFolder() {
-  const name = $<HTMLInputElement>('new-folder-name').value.trim()
-  if (!name) return
-  try {
-    const folder = await tandem.createFolder(name, null)
-    bookmarks = [...bookmarks, folder]
-    fillFolders(folder.id)
-    $('new-folder').hidden = true
-    $<HTMLInputElement>('new-folder-name').value = ''
-  } catch (error) {
-    formError(error)
-  }
-}
-
-function formError(error: unknown) {
-  if (error instanceof TandemError && error.problem !== 'error') return failed(error)
-  const element = $('form-error')
-  element.textContent = error instanceof Error ? error.message : String(error)
-  element.hidden = false
-}
-
 async function save(event: Event) {
   event.preventDefault()
-  const saveButton = $<HTMLButtonElement>('save')
-  saveButton.disabled = true
-  $('form-error').hidden = true
-  const folder = $<HTMLSelectElement>('folder').value
-  const parentId = folder === TOP || folder === NEW_FOLDER ? null : folder
-  const fields = {
-    title: $<HTMLInputElement>('title').value,
-    url: $<HTMLInputElement>('url').value,
-    description: $<HTMLTextAreaElement>('description').value,
-    parentId,
+  const message: SaveMessage = {
+    type: 'save',
+    tabId: tab.id!,
+    id: existing?.id,
+    fields: {
+      title: $<HTMLInputElement>('title').value,
+      url: $<HTMLInputElement>('url').value,
+      description: $<HTMLTextAreaElement>('description').value,
+      ...(existing ? {} : { iconDataUrl }),
+    },
   }
-  try {
-    const result = existing
-      ? await tandem.update(existing.id, fields)
-      : await tandem.create({ ...fields, iconDataUrl })
-    if (result.duplicate && !existing) {
-      // Saved meanwhile (another window): edit that one.
-      useExisting(result.bookmark)
-      saveButton.disabled = false
-      return
-    }
-    await setLastFolder(parentId)
-    $('saved-text').textContent =
-      `“${result.bookmark.title}” is in ${folderPath(bookmarks, result.bookmark)}.`
-    show('saved')
-    void chrome.runtime.sendMessage({ type: 'bookmarked', tabId: tab.id }).catch(() => {})
-    setTimeout(() => window.close(), 900)
-  } catch (error) {
-    formError(error)
-  } finally {
-    saveButton.disabled = false
-  }
+  // Received (not saved yet) once it answers: closing earlier could lose it.
+  await chrome.runtime.sendMessage(message).catch(() => {})
+  window.close()
 }
 
 $('form').addEventListener('submit', (event) => void save(event))
@@ -204,17 +145,6 @@ $('cancel').addEventListener('click', () => window.close())
 $('description').addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && (event.metaKey || event.ctrlKey))
     $<HTMLFormElement>('form').requestSubmit()
-})
-$('folder').addEventListener('change', () => {
-  const adding = $<HTMLSelectElement>('folder').value === NEW_FOLDER
-  $('new-folder').hidden = !adding
-  if (adding) $('new-folder-name').focus()
-})
-$('new-folder-add').addEventListener('click', () => void addFolder())
-$('new-folder-name').addEventListener('keydown', (event) => {
-  if (event.key !== 'Enter') return
-  event.preventDefault()
-  void addFolder()
 })
 
 void start()

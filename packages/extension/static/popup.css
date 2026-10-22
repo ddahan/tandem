@@ -104,8 +104,7 @@ label em {
 }
 
 input,
-textarea,
-select {
+textarea {
   box-sizing: border-box;
   width: 100%;
   padding: 6px 8px;
@@ -116,21 +115,19 @@ select {
   font: inherit;
 }
 
+/* As tall as its text (a long description: up to 12 lines, then it scrolls). */
 textarea {
-  resize: vertical;
+  field-sizing: content;
+  min-height: calc(2lh + 14px);
+  max-height: calc(12lh + 14px);
+  resize: none;
 }
 
 input:focus,
 textarea:focus,
-select:focus,
 button:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -1px;
-}
-
-.row {
-  display: flex;
-  gap: 6px;
 }
 
 .actions {

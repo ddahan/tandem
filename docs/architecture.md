@@ -499,9 +499,11 @@ its requests need no CORS.
   errors as `offline` (nothing answers), `off` (`bookmarks_off`) or `error`.
 - `popup.ts`: the active tab (`?tab=<id>` when opened as a page: tests), its description read in
   the page (`chrome.scripting`, `page.ts`'s `readDescription`, self-contained), its favicon from
-  the tab (a `data:` URL) or Chrome's `_favicon` service; an existing bookmark is edited.
+  the tab (a `data:` URL) or Chrome's `_favicon` service; an existing bookmark is edited. Saving
+  is a message to the service worker (`SaveMessage`): the popup closes once it's received, as
+  its own requests would stop with it.
 - `background.ts` (service worker): the ✓ badge on bookmarked pages (looked up when a tab is
-  activated or loads, and when the popup saves), and the address bar's `tb` keyword
+  activated or loads, and set at once when the popup saves: a ! if the save fails), the saves, and the address bar's `tb` keyword
   (`chrome.omnibox`: Tandem's search, its `<mark>`s as `<match>`).
 - `options.ts`: Tandem's address (`chrome.storage.sync`), checked when saved.
 - Tests: units for the client and the page helpers; `packages/web/e2e/extension.spec.ts` loads

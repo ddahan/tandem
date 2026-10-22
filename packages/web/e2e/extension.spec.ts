@@ -77,7 +77,7 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
   await popup.reload()
   await expect(popup.locator('#problem')).toContainText('Bookmarks are off in Tandem')
 
-  // On: the page's title and description, in a new folder.
+  // On: the page's title and description, at the top (no folder to pick: the app sorts).
   await api(request, 'PATCH', '/settings', { bookmarks: true })
   await popup.getByRole('button', { name: 'Try again' }).click()
   await expect(popup.locator('#url')).toHaveValue(PAGE)
@@ -88,12 +88,16 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
     .getAttribute('content')
     .catch(() => null)
   if (description) await expect(popup.locator('#description')).toHaveValue(description)
-  await popup.locator('#folder').selectOption('+new')
-  await popup.locator('#new-folder-name').fill('From Chrome')
-  await popup.locator('#new-folder-name').press('Enter')
-  await expect(popup.locator('#folder option:checked')).toHaveText('From Chrome')
+  await expect(popup.locator('#folder')).toHaveCount(0)
+  // The description is as tall as its text.
+  const field = popup.locator('#description')
+  await field.fill('One line')
+  const short = (await field.boundingBox())!.height
+  await field.fill(Array.from({ length: 6 }, (_, i) => `Line ${i + 1}`).join('\n'))
+  expect((await field.boundingBox())!.height).toBeGreaterThan(short + 40)
+  await field.fill(description ?? '')
+  // Create closes the popup at once (a page opened by a test stays); the service worker saves.
   await popup.getByRole('button', { name: 'Create' }).click()
-  await expect(popup.locator('#saved')).toContainText('is in From Chrome')
 
   interface Saved {
     id: string
@@ -103,27 +107,29 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
     icon: string | null
     parentId: string | null
   }
-  const saved = await api<Saved[]>(request, 'GET', '/bookmarks')
-  const folder = saved.find((b) => b.kind === 'folder' && b.title === 'From Chrome')
-  const bookmark = saved.find((b) => b.url === PAGE)
-  expect(bookmark).toMatchObject({ title, parentId: folder?.id })
+  await expect
+    .poll(async () =>
+      (await api<Saved[]>(request, 'GET', '/bookmarks')).find((b) => b.url === PAGE),
+    )
+    .toMatchObject({ title, parentId: null })
+  const bookmark = (await api<Saved[]>(request, 'GET', '/bookmarks')).find((b) => b.url === PAGE)
 
   // The toolbar button shows it's saved; the popup now edits it.
   await expect
     .poll(() => worker.evaluate((id) => chrome.action.getBadgeText({ tabId: id }), tabId))
     .toBe('✓')
-  await popup.goto(`chrome-extension://${EXTENSION_ID}/popup.html?tab=${tabId}`)
-  await expect(popup.locator('#heading')).toHaveText('Already in Tandem')
-  await expect(popup.locator('#existing')).toContainText('In From Chrome')
-  await popup.locator('#title').fill('Renamed from Chrome')
-  await popup.getByRole('button', { name: 'Save' }).click()
-  await expect(popup.locator('#saved')).toBeVisible()
-  expect((await api<Saved>(request, 'GET', `/bookmarks/${bookmark!.id}`)).title).toBe(
-    'Renamed from Chrome',
-  )
+  const again = await context.newPage()
+  await again.goto(`chrome-extension://${EXTENSION_ID}/popup.html?tab=${tabId}`)
+  await expect(again.locator('#heading')).toHaveText('Already in Tandem')
+  await expect(again.locator('#existing')).toContainText('In Bookmarks')
+  await again.locator('#title').fill('Renamed from Chrome')
+  await again.getByRole('button', { name: 'Save' }).click()
+  await expect
+    .poll(async () => (await api<Saved>(request, 'GET', `/bookmarks/${bookmark!.id}`)).title)
+    .toBe('Renamed from Chrome')
 
   // Cleaned up for the other tests.
-  await api(request, 'DELETE', `/bookmarks/${folder!.id}`)
+  await api(request, 'DELETE', `/bookmarks/${bookmark!.id}`)
 })
 
 test('says when a page can’t be bookmarked', async ({ context }) => {
