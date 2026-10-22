@@ -275,7 +275,7 @@ describe('bookmarks', () => {
     expect(existsSync(join(dataDir, '.tandem', 'icons'))).toBe(true)
   })
 
-  it('says where the extension is, when the app has it, and shows it in Finder', async () => {
+  it('says where the extension is, when the app has it', async () => {
     const { vault, dataDir } = await createTestVault()
     const without = createApp(vault)
     expect(await (await without.request('http://localhost/api/extension')).json()).toEqual({
@@ -283,20 +283,10 @@ describe('bookmarks', () => {
     })
     await mkdir(join(dataDir, 'extension'))
     await writeFile(join(dataDir, 'extension', 'manifest.json'), '{}')
-    const revealed: string[] = []
-    const reveal = async (path: string) => void revealed.push(path)
-    const app = createApp(vault, { extensionDir: join(dataDir, 'extension'), reveal })
+    const app = createApp(vault, { extensionDir: join(dataDir, 'extension') })
     expect(await (await app.request('http://localhost/api/extension')).json()).toEqual({
       folder: join(dataDir, 'extension'),
     })
-
-    // Shown in Finder, to drag it into Chrome's dialog; not without a folder.
-    const post = { method: 'POST' }
-    expect((await app.request('http://localhost/api/extension/reveal', post)).status).toBe(200)
-    expect(revealed).toEqual([join(dataDir, 'extension')])
-    const none = createApp(vault, { reveal })
-    expect((await none.request('http://localhost/api/extension/reveal', post)).status).toBe(404)
-    expect(revealed).toHaveLength(1)
   })
 
   it('is reachable through the API, and tells the extension when bookmarks are off', async () => {

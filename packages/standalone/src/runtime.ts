@@ -43,7 +43,7 @@ export interface Runtime {
   webDir: string
   /** Undefined in development: the server's own `drizzle/` folder. */
   migrationsFolder?: string
-  /** The Chrome extension, built: Chrome loads it unpacked from there (Docs › Extension). */
+  /** The Chrome extension, built: Chrome loads it unpacked from there (Docs › Browser Extension). */
   extensionDir: string
 }
 

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-// Docs › Extension: setting up Tandem's Chrome extension (loaded unpacked from the installed
+// Docs › Browser Extension: setting up Tandem's Chrome extension (loaded unpacked from the installed
 // app's folder, which the server says: /api/extension), and what it does once there.
 import { copyText } from '~/utils/copy-text'
-import { isMac } from '~/utils/platform-keys'
 
-useHead({ title: 'Extension' })
+useHead({ title: 'Browser Extension' })
 
 const api = useApi()
 const toast = useToast()
@@ -15,15 +14,6 @@ const folder = ref<string | null>(null)
 onMounted(async () => {
   folder.value = (await unwrap(api.extension.$get()).catch(() => ({ folder: null }))).folder
 })
-
-// Chrome's folder dialog hides ~/Library, where the folder is: the file manager shows it, and
-// dragging it into the dialog opens it there.
-const revealLabel = isMac() ? 'Show in Finder' : 'Show the folder'
-async function reveal() {
-  await unwrap(api.extension.reveal.$post()).catch(() =>
-    toast.add({ title: "Couldn't show the folder: copy it instead", color: 'error' }),
-  )
-}
 
 async function copy(text: string) {
   if (await copyText(text)) toast.add({ title: 'Copied', icon: 'i-lucide-check' })
@@ -67,38 +57,14 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
           />
         </li>
         <li>
-          <template v-if="folder">
-            <p>
-              Click <strong>{{ revealLabel }}</strong
-              >: it shows Tandem’s <code :class="code">extension</code> folder.
-            </p>
-            <UButton
-              class="mt-2"
-              :label="revealLabel"
-              icon="i-lucide-folder-search"
-              size="sm"
-              data-testid="extension-reveal"
-              @click="reveal"
-            />
-          </template>
-          <p v-else>
-            Find Tandem’s extension folder. It comes with the installed app, in its folder:
-            <code :class="code">~/Library/Application Support/Tandem/app/extension</code> on macOS,
-            <code :class="code">~/.local/share/tandem/app/extension</code> on Linux. From a clone of
-            the repository, build it with
-            <code :class="code">./td pnpm --filter @tandem/extension build</code> and choose
-            <code :class="code">packages/extension/dist</code>.
-          </p>
-        </li>
-        <li>
           <p>
-            In Chrome, click <strong>Load unpacked</strong>, drag that folder into the dialog, then
-            click <strong>Select</strong>.
+            In Chrome, click <strong>Load unpacked</strong> and choose Tandem’s
+            <code :class="code">extension</code> folder.
           </p>
           <template v-if="folder">
             <p class="mt-2 text-muted">
-              Or, in the dialog, <UKbd value="meta" /><UKbd value="shift" /><UKbd value="g" />
-              opens a field: paste the folder there.
+              In the dialog, <UKbd value="meta" /><UKbd value="shift" /><UKbd value="g" /> opens a
+              field: paste the folder there, then click <strong>Select</strong>.
             </p>
             <div
               class="mt-2 flex items-center gap-2 rounded-md border border-default bg-muted px-3 py-2"
@@ -118,6 +84,14 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
               />
             </div>
           </template>
+          <p v-else class="mt-2 text-muted">
+            It comes with the installed app, in its folder:
+            <code :class="code">~/Library/Application Support/Tandem/app/extension</code> on macOS,
+            <code :class="code">~/.local/share/tandem/app/extension</code> on Linux. From a clone of
+            the repository, build it with
+            <code :class="code">./td pnpm --filter @tandem/extension build</code> and choose
+            <code :class="code">packages/extension/dist</code>.
+          </p>
         </li>
         <li>Pin it: the puzzle piece next to the address bar, then the pin next to Tandem.</li>
         <li>

@@ -8,7 +8,7 @@ const tabs: NavigationMenuItem[] = [
   { label: 'Concepts', icon: 'i-lucide-lightbulb', to: '/docs/concepts' },
   { label: 'Blocks', icon: 'i-lucide-blocks', to: '/docs/blocks' },
   { label: 'Agents', icon: 'i-lucide-bot', to: '/docs/agents' },
-  { label: 'Extension', icon: 'i-lucide-puzzle', to: '/docs/extension' },
+  { label: 'Browser Extension', icon: 'i-lucide-puzzle', to: '/docs/extension' },
   { label: 'Security', icon: 'i-lucide-shield-check', to: '/docs/security' },
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/docs/shortcuts' },
 ]

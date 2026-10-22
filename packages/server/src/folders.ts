@@ -2,7 +2,6 @@
 // browser can't), and checking a candidate. Switching is up to whoever runs the server
 // (NotesFolderControl): the standalone app restarts on the new folder; in Docker the folder is
 // a mount and can't change from the app.
-import { execFile } from 'node:child_process'
 import { existsSync, readdirSync } from 'node:fs'
 import { access, constants, mkdir, readdir, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
@@ -163,21 +162,4 @@ export async function createFolder(parent: string, name: string): Promise<string
   if (existsSync(path)) throw new ValidationError('A folder with this name already exists.')
   await mkdir(path)
   return path
-}
-
-/**
- * Shows `path` in the computer's file manager, selected where it can be (Finder): a folder
- * the app ships in a hidden place (~/Library) can then be dragged where it's needed. The
- * server runs on the person's computer, so its file manager is theirs.
- */
-export function revealFolder(path: string): Promise<void> {
-  const [command, args] =
-    process.platform === 'darwin'
-      ? ['open', ['-R', path]]
-      : process.platform === 'win32'
-        ? ['explorer', [`/select,${path}`]]
-        : ['xdg-open', [path]]
-  return new Promise((done, fail) => {
-    execFile(command, args, (error) => (error ? fail(error) : done()))
-  })
 }

@@ -35,7 +35,7 @@ export interface ServerOptions {
   welcome?: boolean
   /** Host names answered besides localhost (api/guard.ts), e.g. a container's name. */
   allowedHosts?: string[]
-  /** Where the Chrome extension is, shown in Docs › Extension (the standalone app's). */
+  /** Where the Chrome extension is, shown in Docs › Browser Extension (the standalone app's). */
   extensionDir?: string
 }
 

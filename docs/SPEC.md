@@ -333,7 +333,7 @@ inside OneDrive so that it is backed up and synced.
   note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is gone
   says so.
 - **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded
-  unpacked: Docs › Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
+  unpacked: Docs › Browser Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
   title), address and description (its meta tags; the field grows with the text), Cancel and
   Create; its favicon is the browser's. No folder to pick: new bookmarks go to the top, sorted
   in the app. Create closes the popup at once and the button shows ✓; the save goes on behind
@@ -434,10 +434,9 @@ inside OneDrive so that it is backed up and synced.
     Markdown).
   - **Agents**: the MCP command at Tandem's own address and the CLI, both with a copy button,
     what agents can do, and their guide (`docs/agents.md`).
-  - **Extension**: setting up the Chrome extension (bookmarks on, Developer mode, Load
-    unpacked with the installed app's extension folder, shown with a copy button and a Show in
-    Finder button, since Chrome's dialog hides `~/Library`: dragging the folder into it, pinning it,
-    its address when Tandem isn't on 3864) and using it.
+  - **Browser Extension**: setting up the Chrome extension (bookmarks on, Developer mode, Load
+    unpacked with the installed app's extension folder, shown with a copy button to paste it in
+    Chrome's dialog with ⌘⇧G, pinning it, its address when Tandem isn't on 3864) and using it.
   - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
