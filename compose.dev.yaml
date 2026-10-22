@@ -39,6 +39,8 @@ services:
       TANDEM_DB_PATH: /repo/.data/db/tandem.db
       # Bind mounts on macOS don't always forward file events to Linux.
       TANDEM_WATCH_POLLING: 'true'
+      # The web app's dev server and the tools container call it by this name (api/guard.ts).
+      TANDEM_ALLOWED_HOSTS: server
     ports:
       - '127.0.0.1:3011:3011'
 

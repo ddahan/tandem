@@ -9,6 +9,8 @@ import { z } from 'zod'
 import {
   COLUMN_TYPES,
   DEFAULT_AGENT,
+  bookmarkBlock,
+  bookmarkIdsIn,
   cellsByName,
   databaseBlock,
   databaseIdsIn,
@@ -16,6 +18,7 @@ import {
   isoDate,
   normalizeAuthor,
   rowsByName,
+  type Bookmark,
   type Database,
   type TreeNode,
 } from '@tandem/shared'
@@ -30,7 +33,10 @@ id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
 Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
-Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.`
+Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.
+Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
+\`\`\`bookmark block naming it (id: …). Use the bookmark tools for them; add_bookmark can put
+its card in a note.`
 
 type Text = { content: { type: 'text'; text: string }[]; isError?: boolean }
 
@@ -69,6 +75,23 @@ function describeTree(nodes: TreeNode[]): string {
   return lines.join('\n') || '(no notes yet)'
 }
 
+/** Bookmarks and folders as an indented list, with ids and addresses. */
+function describeBookmarks(all: Bookmark[]): string {
+  const lines: string[] = []
+  const walk = (parentId: string | null, depth: number) => {
+    for (const bookmark of all.filter((b) => b.parentId === parentId)) {
+      lines.push(
+        bookmark.kind === 'folder'
+          ? `${'  '.repeat(depth)}- 📁 ${bookmark.title}  (id ${bookmark.id})`
+          : `${'  '.repeat(depth)}- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id})${bookmark.description ? ` — ${bookmark.description}` : ''}`,
+      )
+      walk(bookmark.id, depth + 1)
+    }
+  }
+  walk(null, 0)
+  return lines.join('\n') || '(no bookmarks yet)'
+}
+
 /** A database's columns for agents (choices of `select` columns). */
 function describeColumns(database: Database) {
   return database.columns.map((c) => ({
@@ -80,6 +103,20 @@ function describeColumns(database: Database) {
 }
 
 export function createMcpServer(vault: Vault, author: string): McpServer {
+  /** The bookmarks a note's blocks name (the Markdown only has their ids). */
+  const bookmarkLines = async (content: string) => {
+    const lines: string[] = []
+    for (const id of new Set(bookmarkIdsIn(content))) {
+      const bookmark = await vault.getBookmark(id).catch(() => null)
+      lines.push(
+        bookmark
+          ? `bookmark ${id}: ${bookmark.title} <${bookmark.url}>`
+          : `bookmark ${id}: deleted`,
+      )
+    }
+    return lines
+  }
+
   const server = new McpServer({ name: 'tandem', version: '1.0.0' }, { instructions: INSTRUCTIONS })
   const ref = z.string().describe('Note id, path (e.g. "Projects/Roadmap") or title')
 
@@ -142,6 +179,7 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
             ? `attachments: ${detail.attachments.map((a) => a.markdownPath).join(', ')}`
             : null,
           backlinks.length ? `linked from: ${backlinks.map((b) => b.path).join(', ')}` : null,
+          ...(await bookmarkLines(detail.content)),
         ]
           .filter(Boolean)
           .join('\n')
@@ -535,6 +573,108 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
       attempt(async () => {
         await vault.deleteDatabaseRow(id, row)
         return text('Deleted')
+      }),
+  )
+
+  const folder = z
+    .string()
+    .describe(
+      'A folder: its id, or its path of names ("Work/Tools"), made if missing; "" for the top',
+    )
+
+  server.registerTool(
+    'list_bookmarks',
+    {
+      title: 'List bookmarks',
+      description: 'All bookmarks and their folders, with ids, addresses and descriptions.',
+      inputSchema: {},
+      annotations: { readOnlyHint: true },
+    },
+    async () => attempt(async () => text(describeBookmarks(await vault.listBookmarks()))),
+  )
+
+  server.registerTool(
+    'search_bookmarks',
+    {
+      title: 'Search bookmarks',
+      description:
+        'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder; typos corrected).',
+      inputSchema: { query: z.string(), limit: z.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true },
+    },
+    async ({ query, limit }) =>
+      attempt(async () =>
+        json(
+          (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark, folders }) => ({
+            id: bookmark.id,
+            title: bookmark.title,
+            url: bookmark.url,
+            description: bookmark.description,
+            folders,
+          })),
+        ),
+      ),
+  )
+
+  server.registerTool(
+    'add_bookmark',
+    {
+      title: 'Add a bookmark',
+      description:
+        'Bookmarks a web page (its title, description and favicon read from it when not given). A page already bookmarked is refused, naming its bookmark. With `note`, its card is added at the end of that note.',
+      inputSchema: {
+        url: z.string(),
+        title: z.string().optional(),
+        description: z.string().optional(),
+        folder: folder.optional(),
+        note: ref.optional().describe('A note to show its card in (at the end)'),
+      },
+    },
+    async ({ url, title, description, folder: path, note }) =>
+      attempt(async () => {
+        const node = note ? await vault.resolveRef(note) : null
+        const bookmark = await vault.createBookmark({ url, title, description, folder: path })
+        if (node) await vault.appendContent(node.id, bookmarkBlock(bookmark.id), author)
+        return json({ id: bookmark.id, title: bookmark.title, url: bookmark.url })
+      }),
+  )
+
+  server.registerTool(
+    'update_bookmark',
+    {
+      title: 'Change or move a bookmark',
+      description:
+        'Changes a bookmark’s title, address or description, or moves it (or a folder) to another folder. Its cards in notes show the change.',
+      inputSchema: {
+        bookmark: z.string().describe('Bookmark or folder id'),
+        title: z.string().optional(),
+        url: z.string().optional(),
+        description: z.string().optional(),
+        folder: folder.optional(),
+      },
+    },
+    async ({ bookmark: id, ...patch }) =>
+      attempt(async () => {
+        const bookmark = await vault.updateBookmark(id, patch)
+        return json({ id: bookmark.id, title: bookmark.title, url: bookmark.url })
+      }),
+  )
+
+  server.registerTool(
+    'delete_bookmark',
+    {
+      title: 'Delete a bookmark',
+      description:
+        'Deletes a bookmark, or a folder with everything in it, for good; its cards are removed from the notes showing them. Only when the user asked.',
+      inputSchema: { bookmark: z.string().describe('Bookmark or folder id') },
+      annotations: { destructiveHint: true },
+    },
+    async ({ bookmark: id }) =>
+      attempt(async () => {
+        const { deleted, pages } = await vault.deleteBookmark(id, author)
+        return text(
+          `Deleted ${deleted === 1 ? 'it' : `${deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(', ')}` : ''}`,
+        )
       }),
   )
 

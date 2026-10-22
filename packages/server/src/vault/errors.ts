@@ -1,4 +1,5 @@
 // Errors the API turns into HTTP statuses (404, 409, 400).
+import type { Bookmark } from '@tandem/shared'
 
 export class NotFoundError extends Error {
   override name = 'NotFoundError'
@@ -12,6 +13,17 @@ export class ConflictError extends Error {
   constructor(message: string, current?: { content: string; hash: string }) {
     super(message)
     this.current = current
+  }
+}
+
+/** A page that is already bookmarked: its bookmark comes along (the extension edits it). */
+export class DuplicateBookmarkError extends ConflictError {
+  override name = 'DuplicateBookmarkError'
+  readonly bookmark: Bookmark
+
+  constructor(bookmark: Bookmark) {
+    super(`Already bookmarked as “${bookmark.title}”`)
+    this.bookmark = bookmark
   }
 }
 

@@ -33,6 +33,10 @@ export interface ServerOptions {
   forbiddenFolders?: string[]
   /** Writes the welcome note in a folder that never had notes (see welcome.ts). */
   welcome?: boolean
+  /** Host names answered besides localhost (api/guard.ts), e.g. a container's name. */
+  allowedHosts?: string[]
+  /** Where the Chrome extension is, shown in Docs › Extension (the standalone app's). */
+  extensionDir?: string
 }
 
 const README = `# Tandem internal folder
@@ -40,11 +44,11 @@ const README = `# Tandem internal folder
 Managed by Tandem: don't edit by hand.
 
 - \`tandem.db\`: a backup of the app's database (ids, tags, order, history index,
-  authorship, settings), refreshed about every minute. Restored automatically if the app's
-  own database is lost.
+  authorship, settings, databases, bookmarks), refreshed about every minute. Restored
+  automatically if the app's own database is lost.
 - \`history/<note id>/\`: past versions of notes.
 - \`trash/\`: deleted notes, until the trash is emptied.
-- \`icons/\`: image icons of pages and folders.
+- \`icons/\`: image icons of pages and folders, and bookmarks' favicons.
 `
 
 /** Starts the app; `stop()` backs up the database and closes everything. */
@@ -62,7 +66,8 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   const database = await openDatabase(dbPath, backupPath, {
     migrationsFolder: options.migrationsFolder,
   })
-  const vault = new Vault({ dataDir, database, sessionIdleMs })
+  // It reads web pages for bookmarks (their titles and favicons).
+  const vault = new Vault({ dataDir, database, sessionIdleMs, fetch: globalThis.fetch })
 
   console.log(`Data folder: ${dataDir}`)
   await vault.reconcile()
@@ -99,6 +104,8 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
         webDir,
         notesFolder: options.notesFolder,
         forbiddenFolders: options.forbiddenFolders,
+        allowedHosts: options.allowedHosts,
+        extensionDir: options.extensionDir,
       }).fetch,
       port,
       hostname,

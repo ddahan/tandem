@@ -225,7 +225,7 @@ describe('databases', () => {
     const { vault, page } = await setup()
     const app = createApp(vault)
     const fetcher = ((...args: Parameters<typeof fetch>) => app.request(...args)) as typeof fetch
-    const client = createClient('http://test', { author: OWNER, fetch: fetcher })
+    const client = createClient('http://localhost', { author: OWNER, fetch: fetcher })
     const created = await client.notes[':id'].databases.$post({
       param: { id: page.id },
       json: { title: 'Books' },

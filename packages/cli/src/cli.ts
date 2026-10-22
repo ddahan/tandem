@@ -7,6 +7,8 @@ import { parseArgs } from 'node:util'
 import { createClient, type Client } from '@tandem/server/client'
 import {
   COLUMN_TYPES,
+  bookmarkBlock,
+  bookmarkIdsIn,
   cellText,
   cellsByName,
   databaseBlock,
@@ -17,6 +19,7 @@ import {
   normalizeAuthor,
   rowsByName,
   viewRows,
+  type Bookmark,
   type ColumnType,
   type Database,
   type TreeNode,
@@ -70,6 +73,16 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-set <database> <row> <Column=value…>  change values (Column= empties one)
   row-delete <database> <row>               delete a row
 
+Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookmark block)
+  bookmarks [query…]            all bookmarks and folders, or those matching a query
+  bookmark-add <web address>    bookmark a page (title and description read from it unless
+                                given: --title, --description); --folder Work/Tools (made if
+                                missing); --note <note> to add its card at the note's end
+  bookmark-set <bookmark> [new address]
+                                change it (--title, --description), or move it (--folder;
+                                "" for the top)
+  bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
+
 Options
   --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3864)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
@@ -97,16 +110,22 @@ type Values = {
   clear?: boolean
   limit?: string
   date?: string
+  title?: string
+  description?: string
+  folder?: string
+  note?: string
+}
+
+function unreachable(error: unknown): never {
+  throw new CliError(
+    `Cannot reach Tandem (${error instanceof Error ? error.message : String(error)}). Is it running?`,
+  )
 }
 
 async function call<T>(
   request: Promise<{ ok: boolean; status: number; json(): Promise<T> }>,
 ): Promise<T> {
-  const response = await request.catch((error: unknown) => {
-    throw new CliError(
-      `Cannot reach Tandem (${error instanceof Error ? error.message : String(error)}). Is it running?`,
-    )
-  })
+  const response = await request.catch(unreachable)
   const body = await response.json().catch(() => null)
   if (!response.ok)
     throw new CliError(
@@ -176,6 +195,22 @@ function cellsOf(database: Database, values: Record<string, string | null>) {
   }
 }
 
+function describeBookmarks(all: Bookmark[]): string {
+  const lines: string[] = []
+  const walk = (parentId: string | null, prefix: string) => {
+    const list = all.filter((bookmark) => bookmark.parentId === parentId)
+    list.forEach((bookmark, index) => {
+      const last = index === list.length - 1
+      lines.push(
+        `${prefix}${last ? '└─ ' : '├─ '}${bookmark.kind === 'folder' ? `${bookmark.title}/` : `${bookmark.title}  ${bookmark.url}`}  (${bookmark.id})`,
+      )
+      walk(bookmark.id, `${prefix}${last ? '   ' : '│  '}`)
+    })
+  }
+  walk(null, '')
+  return lines.join('\n') || '(no bookmarks yet)'
+}
+
 function describeTree(nodes: TreeNode[]): string {
   const children = new Map<string | null, TreeNode[]>()
   for (const node of nodes)
@@ -223,6 +258,10 @@ export async function run(
         clear: { type: 'boolean' },
         limit: { type: 'string' },
         date: { type: 'string' },
+        title: { type: 'string' },
+        description: { type: 'string' },
+        folder: { type: 'string' },
+        note: { type: 'string' },
       },
     })
   } catch (error) {
@@ -362,6 +401,76 @@ async function execute(
       await call(client.databases[':id'].rows[':rowId'].$delete({ param: { id, rowId } }))
       return print(`Deleted row ${rowId}`)
     }
+    case 'bookmarks': {
+      if (!args.length) {
+        const all = await call(client.bookmarks.$get())
+        return print(describeBookmarks(all), all)
+      }
+      const results = await call(
+        client.bookmarks.search.$get({ query: { q: args.join(' '), limit: values.limit ?? '20' } }),
+      )
+      const lines = results.map(
+        ({ bookmark, folders }) =>
+          `${folders ? `${folders} / ` : ''}${bookmark.title}  (${bookmark.id})\n  ${bookmark.url}${bookmark.description ? `\n  ${bookmark.description}` : ''}`,
+      )
+      return print(lines.join('\n\n') || 'No bookmarks found.', results)
+    }
+    case 'bookmark-add': {
+      const url = need(0, 'web address')
+      const node = values.note ? await resolve(values.note) : null
+      // What isn't given (title, description, favicon) is read from the page by Tandem.
+      const { title, description } = values
+      const response = await client.bookmarks
+        .$post({ json: { url, title, description, folder: values.folder } })
+        .catch(unreachable)
+      if (!response.ok) {
+        // A page already bookmarked: Tandem names its bookmark.
+        const body = (await response.json().catch(() => null)) as {
+          error?: string
+          bookmark?: Bookmark
+        } | null
+        throw new CliError(
+          body?.bookmark
+            ? `Already bookmarked: ${body.bookmark.title} (${body.bookmark.id})`
+            : (body?.error ?? `Request failed (${response.status})`),
+        )
+      }
+      const bookmark = await response.json()
+      if (node) {
+        await call(
+          client.notes[':id'].append.$post({
+            param: { id: node.id },
+            json: { content: bookmarkBlock(bookmark.id) },
+          }),
+        )
+      }
+      return print(
+        `Bookmarked ${bookmark.title} (${bookmark.id})${node ? `, its card in ${node.path}` : ''}`,
+        bookmark,
+      )
+    }
+    case 'bookmark-set': {
+      const id = need(0, 'bookmark id')
+      const json = {
+        ...(args[1] ? { url: args[1] } : {}),
+        ...(values.title !== undefined ? { title: values.title } : {}),
+        ...(values.description !== undefined ? { description: values.description } : {}),
+        ...(values.folder !== undefined ? { folder: values.folder } : {}),
+      }
+      if (!Object.keys(json).length)
+        throw new CliError('Nothing to change: a new address, --title, --description or --folder.')
+      const bookmark = await call(client.bookmarks[':id'].$patch({ param: { id }, json }))
+      return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark)
+    }
+    case 'bookmark-delete': {
+      const id = need(0, 'bookmark id')
+      const result = await call(client.bookmarks[':id'].$delete({ param: { id } }))
+      const pages = result.pages.map((page) => page.path)
+      return print(
+        `Deleted ${result.deleted === 1 ? id : `${result.deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.join(', ')}` : ''}`,
+        result,
+      )
+    }
     case 'search': {
       const query = args.join(' ')
       const response = await call(
@@ -407,6 +516,12 @@ async function execute(
         `attachments: ${note.attachments.map((a) => a.markdownPath).join(', ') || '—'}`,
         `linked from: ${backlinks.map((b) => b.path).join(', ') || '—'}`,
       ]
+      // The Markdown only names its bookmarks (ids).
+      for (const id of new Set(bookmarkIdsIn(note.content))) {
+        const response = await client.bookmarks[':id'].$get({ param: { id } })
+        const bookmark = response.ok ? await response.json() : null
+        meta.push(`bookmark ${id}: ${bookmark ? `${bookmark.title} <${bookmark.url}>` : 'deleted'}`)
+      }
       return print(`${meta.join('\n')}\n---\n${note.content.replace(/\n$/, '')}`)
     }
     case 'tags': {

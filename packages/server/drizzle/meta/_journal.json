@@ -36,6 +36,13 @@
       "when": 1792438106622,
       "tag": "0004_databases",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792665795759,
+      "tag": "0005_bookmarks",
+      "breakpoints": true
     }
   ]
 }

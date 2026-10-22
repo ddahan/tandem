@@ -8,7 +8,7 @@ async function setup(author = OWNER) {
   const test = await createTestVault()
   const app = createApp(test.vault)
   const fetcher = ((...args: Parameters<typeof fetch>) => app.request(...args)) as typeof fetch
-  const client = createClient('http://test', { author, fetch: fetcher })
+  const client = createClient('http://localhost', { author, fetch: fetcher })
   return { ...test, app, client }
 }
 

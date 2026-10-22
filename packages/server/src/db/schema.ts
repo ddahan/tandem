@@ -1,6 +1,6 @@
 // Structured data that doesn't belong in the Markdown files. The files are the source of truth
 // for content and tree shape; these tables add identity, order, tags, history and authorship,
-// and hold the databases (a note only has a `database` block naming one).
+// and hold the databases and bookmarks (a note only has a block naming one).
 // The full-text index (`notes_fts`) is a raw FTS5 table, created in the migrations.
 import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
@@ -132,4 +132,46 @@ export const databaseRows = sqliteTable(
     updatedAt: integer('updated_at').notNull(),
   },
   (table) => [index('database_rows_order').on(table.databaseId, table.position)],
+)
+
+/** Bookmarks and their folders (shared/bookmarks.ts); a note shows one with a `bookmark` block. */
+export const bookmarks = sqliteTable(
+  'bookmarks',
+  {
+    id: text('id').primaryKey(),
+    kind: text('kind', { enum: ['folder', 'bookmark'] }).notNull(),
+    /** A folder's id, or null at the top. Deleting a folder deletes its contents (the store). */
+    parentId: text('parent_id'),
+    title: text('title').notNull(),
+    /** Empty for a folder. */
+    url: text('url').notNull().default(''),
+    /** `urlKey(url)`: two bookmarks of one page are duplicates. Empty for a folder. */
+    urlKey: text('url_key').notNull().default(''),
+    description: text('description').notNull().default(''),
+    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, or null. */
+    icon: text('icon'),
+    /** Order among siblings (ascending). */
+    position: real('position').notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    index('bookmarks_parent').on(table.parentId, table.position),
+    index('bookmarks_url_key').on(table.urlKey),
+  ],
+)
+
+/** The bookmarks each page shows (its `bookmark` blocks), as `links` for wiki links. */
+export const bookmarkRefs = sqliteTable(
+  'bookmark_refs',
+  {
+    nodeId: text('node_id')
+      .notNull()
+      .references(() => nodes.id, { onDelete: 'cascade' }),
+    bookmarkId: text('bookmark_id').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.nodeId, table.bookmarkId] }),
+    index('bookmark_refs_bookmark').on(table.bookmarkId),
+  ],
 )

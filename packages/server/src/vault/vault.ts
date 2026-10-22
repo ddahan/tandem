@@ -25,7 +25,14 @@ import {
   sanitizeTitle,
   titleFromPath,
   findTodos,
+  bookmarkIdsIn,
+  removeBookmarkBlocks,
+  webUrl,
   type Attachment,
+  type Bookmark,
+  type BookmarkRef,
+  type BookmarkSearchResult,
+  type PagePreview,
   type Backlink,
   type BlameRange,
   type Database as DatabaseData,
@@ -49,10 +56,16 @@ import {
   type CalendarDay,
 } from '@tandem/shared'
 import type { Database, Db } from '../db/client.ts'
-import { links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
+import { bookmarkRefs, links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
+import {
+  BOOKMARK_ICON_PREFIX,
+  BookmarkStore,
+  type BookmarkInput,
+  type BookmarkPatch,
+} from './bookmarks.ts'
 import { DatabaseStore, type ColumnInput, type DatabasePatch } from './databases.ts'
-import { ConflictError, NotFoundError, ValidationError } from './errors.ts'
+import { ConflictError, DuplicateBookmarkError, NotFoundError, ValidationError } from './errors.ts'
 import {
   atomicWrite,
   hashContent,
@@ -66,6 +79,7 @@ import {
 import { Lock } from './lock.ts'
 import { SearchIndex, matchesFilters, parseQuery, type Candidate } from './search.ts'
 import { markdownToText } from './text.ts'
+import { ICON_TYPES, previewPage, readSite, type Favicon, type Fetcher } from './web-pages.ts'
 
 export type NodeRow = typeof nodes.$inferSelect
 /** A row without the page's content and authorship: what listings need (much smaller). */
@@ -91,6 +105,8 @@ export interface VaultOptions {
   now?: () => number
   /** A history snapshot is taken after this long without saves. */
   sessionIdleMs?: number
+  /** Reads web pages (bookmarks' titles and favicons); none in tests, unless given. */
+  fetch?: Fetcher
 }
 
 interface SaveOptions {
@@ -118,6 +134,8 @@ export class Vault {
   private readonly now: () => number
   private readonly sessionIdleMs: number
   private readonly databases: DatabaseStore
+  private readonly bookmarks: BookmarkStore
+  private readonly fetcher: Fetcher | null
 
   constructor(options: VaultOptions) {
     this.dataDir = options.dataDir
@@ -127,6 +145,8 @@ export class Vault {
     this.now = options.now ?? Date.now
     this.sessionIdleMs = options.sessionIdleMs ?? 30_000
     this.databases = new DatabaseStore(this.db, this.now)
+    this.bookmarks = new BookmarkStore(this.db, this.now)
+    this.fetcher = options.fetch ?? null
   }
 
   // --- Reading -------------------------------------------------------------------------------
@@ -775,6 +795,160 @@ export class Vault {
     )
   }
 
+  // --- Bookmarks (bookmarks.ts) ----------------------------------------------------------------
+
+  async listBookmarks(): Promise<Bookmark[]> {
+    return this.bookmarks.list()
+  }
+
+  async getBookmark(id: string): Promise<Bookmark> {
+    return this.bookmarks.get(id)
+  }
+
+  /** The bookmark of a page (duplicates: same address, give or take `www.`, `#…`, a final `/`). */
+  async findBookmark(url: string): Promise<Bookmark | null> {
+    return this.bookmarks.findByUrl(url)
+  }
+
+  async searchBookmarks(query: string, limit = 20): Promise<BookmarkSearchResult[]> {
+    return this.bookmarks.search(query, limit)
+  }
+
+  /** The pages showing a bookmark, or any bookmark in a folder, by title. */
+  async bookmarkRefs(id: string): Promise<BookmarkRef[]> {
+    const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id)
+    return this.refsTo(ids)
+  }
+
+  /** A web page's title and description, for a bookmark being made (empty when unreadable). */
+  async previewPage(url: string): Promise<PagePreview> {
+    if (!this.fetcher) return { url, title: '', description: '' }
+    return previewPage(this.fetcher, url)
+  }
+
+  /**
+   * A new bookmark or folder. A page already bookmarked is refused (with its bookmark). What
+   * isn't given is read from its page: its favicon (the extension sends the browser's), its
+   * title and description.
+   */
+  async createBookmark(input: BookmarkInput, icon?: Favicon | null): Promise<Bookmark> {
+    const kind = input.kind ?? 'bookmark'
+    let favicon = icon ?? null
+    const missing = icon === undefined || !input.title?.trim() || input.description === undefined
+    const url = webUrl(input.url ?? '')
+    if (kind === 'bookmark' && missing && this.fetcher && url) {
+      const existing = await this.bookmarks.findByUrl(url)
+      if (!existing) {
+        const site = await readSite(this.fetcher, url, { favicon: icon === undefined })
+        if (icon === undefined) favicon = site.favicon
+        input = {
+          ...input,
+          title: input.title?.trim() ? input.title : site.preview.title,
+          description: input.description ?? site.preview.description,
+        }
+      }
+    }
+    return this.lock.run(async () => {
+      if (kind === 'bookmark' && input.url) {
+        const existing = await this.bookmarks.findByUrl(input.url)
+        if (existing) throw new DuplicateBookmarkError(existing)
+      }
+      const bookmark = await this.bookmarks.create(input)
+      if (favicon) await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension)
+      this.changed({ type: 'bookmarks' })
+      return this.bookmarks.get(bookmark.id)
+    })
+  }
+
+  /** Changes a bookmark (another page already bookmarked is refused), or moves it. */
+  async updateBookmark(id: string, patch: BookmarkPatch): Promise<Bookmark> {
+    return this.lock.run(async () => {
+      if (patch.url !== undefined) {
+        const existing = await this.bookmarks.findByUrl(patch.url)
+        if (existing && existing.id !== id) throw new DuplicateBookmarkError(existing)
+      }
+      const bookmark = await this.bookmarks.update(id, patch)
+      this.changed({ type: 'bookmarks' })
+      return bookmark
+    })
+  }
+
+  /**
+   * Deletes a bookmark, or a folder with everything in it, for good (bookmarks have no trash).
+   * Their cards are removed from the pages showing them, as `author`: each page's history keeps
+   * the version with them.
+   */
+  async deleteBookmark(
+    id: string,
+    author: string,
+  ): Promise<{ deleted: number; pages: BookmarkRef[] }> {
+    return this.lock.run(async () => {
+      const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id)
+      const pages = await this.refsTo(ids)
+      for (const page of pages) {
+        let row = await this.freshPage(page.id)
+        const content = removeBookmarkBlocks(row.content ?? '', ids)
+        if (content === row.content) continue
+        // A version with the cards, even in the middle of an editing session.
+        if (row.pendingSnapshot) {
+          await this.snapshot(row)
+          row = await this.requireRow(row.id)
+        }
+        await this.saveOrFold(row, content, author)
+      }
+      for (const removed of ids) await this.removeBookmarkIconFiles(removed)
+      await this.bookmarks.deleteMany(ids)
+      await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids))
+      this.changed({ type: 'bookmarks' })
+      return { deleted: ids.length, pages }
+    })
+  }
+
+  /** Sets a bookmark's favicon (an image file: PNG, ICO, SVG…). */
+  async setBookmarkIcon(id: string, fileName: string, data: Uint8Array): Promise<Bookmark> {
+    const extension = fileName.split('.').pop()?.toLowerCase() ?? ''
+    if (!Object.values(ICON_TYPES).includes(extension)) {
+      throw new ValidationError('The icon must be an image (PNG, ICO, SVG, JPEG, GIF, WebP, AVIF)')
+    }
+    if (data.byteLength > ICON_MAX_BYTES)
+      throw new ValidationError('The icon image must be under 5 MB')
+    return this.lock.run(async () => {
+      await this.bookmarks.get(id)
+      await this.writeBookmarkIcon(id, data, extension)
+      this.changed({ type: 'bookmarks' })
+      return this.bookmarks.get(id)
+    })
+  }
+
+  /** The file of a bookmark's favicon. */
+  async bookmarkIconFile(id: string): Promise<string> {
+    return join(this.metaDir, 'icons', await this.bookmarks.iconFile(id))
+  }
+
+  private async writeBookmarkIcon(id: string, data: Uint8Array, extension: string) {
+    await this.removeBookmarkIconFiles(id)
+    const file = `${BOOKMARK_ICON_PREFIX}${id}-${this.now()}.${extension}`
+    await atomicWrite(join(this.metaDir, 'icons', file), data)
+    await this.bookmarks.setIcon(id, file)
+  }
+
+  private async removeBookmarkIconFiles(id: string) {
+    await this.removeIconFiles(`${BOOKMARK_ICON_PREFIX}${id}`)
+  }
+
+  /** The pages showing any of these bookmarks, by title. */
+  private async refsTo(ids: string[]): Promise<BookmarkRef[]> {
+    if (!ids.length) return []
+    const rows = await this.db
+      .selectDistinct({ id: nodes.id, path: nodes.path })
+      .from(bookmarkRefs)
+      .innerJoin(nodes, eq(nodes.id, bookmarkRefs.nodeId))
+      .where(inArray(bookmarkRefs.bookmarkId, ids))
+    return rows
+      .map((row) => ({ id: row.id, title: titleFromPath(row.path), path: row.path }))
+      .toSorted((a, b) => a.title.localeCompare(b.title))
+  }
+
   private databaseChanged(database: DatabaseData): DatabaseData {
     this.changed({ type: 'database', id: database.id })
     return database
@@ -1090,6 +1264,7 @@ export class Vault {
       .where(eq(nodes.id, row.id))
     this.search.remove(row.id)
     await this.db.delete(links).where(eq(links.sourceId, row.id))
+    await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id))
     this.changed({ type: 'tree' })
     this.changed({ type: 'note', id: row.id, hash: hashContent(''), author })
     return this.requireRow(row.id)
@@ -1319,6 +1494,13 @@ export class Vault {
     await this.db.delete(links).where(eq(links.sourceId, row.id))
     if (targets.length)
       await this.db.insert(links).values(targets.map((target) => ({ sourceId: row.id, target })))
+    const shown = [...new Set(bookmarkIdsIn(content))]
+    await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id))
+    if (shown.length) {
+      await this.db
+        .insert(bookmarkRefs)
+        .values(shown.map((bookmarkId) => ({ nodeId: row.id, bookmarkId })))
+    }
   }
 
   private async listAttachments(row: NodeRow): Promise<Attachment[]> {

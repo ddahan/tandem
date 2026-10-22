@@ -182,6 +182,8 @@ export interface Settings {
   /** Off: a deleted page is deleted for good, once confirmed, instead of going to the trash. */
   trash: boolean
   todos: boolean
+  /** Bookmarks: links to websites, in the sidebar and in notes (shared/bookmarks.ts). */
+  bookmarks: boolean
   /** Daily notes: a note per day, reached from a calendar (shared/calendar.ts). */
   daily: boolean
   /** Home lists the recently updated pages. */
@@ -205,6 +207,7 @@ export const DEFAULT_SETTINGS: Settings = {
   tags: false,
   trash: true,
   todos: false,
+  bookmarks: false,
   daily: false,
   homeRecent: true,
   shortcutHints: true,
@@ -218,3 +221,5 @@ export type ServerEvent =
   | { type: 'settings' }
   /** A database changed (its columns, view or rows). */
   | { type: 'database'; id: string }
+  /** Bookmarks changed (one, or the tree of them). */
+  | { type: 'bookmarks' }

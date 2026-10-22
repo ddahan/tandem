@@ -14,7 +14,7 @@ async function cli(argv: string[], input = '') {
     readFile: async () => new TextEncoder().encode('file content'),
   }
   const code = await run(argv, io, {
-    TANDEM_URL: 'http://test',
+    TANDEM_URL: 'http://localhost',
     TANDEM_AUTHOR: 'Claude Code',
   })
   return { code, out, err }
@@ -152,5 +152,69 @@ describe('CLI', () => {
     expect(read.out).toBe('Calendar/2026-10-21.md\n---\nCalled the notary\n')
     const node = await vault.resolveRef('Calendar/2026-10-21')
     expect((await vault.getNote(node.id)).lastAuthor).toBe('claude-code')
+  })
+
+  it('lists, searches, adds, changes and deletes bookmarks', async () => {
+    const { vault } = await setup()
+    await cli(['new', 'Reading'])
+    const added = await cli([
+      'bookmark-add',
+      'example.com/post',
+      '--title',
+      'A post',
+      '--description',
+      'Worth reading',
+      '--folder',
+      'Read/Later',
+      '--note',
+      'Reading',
+    ])
+    expect(added.code).toBe(0)
+    expect(added.out).toContain('Bookmarked A post')
+    expect(added.out).toContain('its card in Reading.md')
+    const [folder, inner, bookmark] = await vault.listBookmarks()
+    expect([folder?.title, inner?.title, bookmark?.url]).toEqual([
+      'Read',
+      'Later',
+      'https://example.com/post',
+    ])
+    expect((await cli(['read', 'Reading', '--meta'])).out).toContain(
+      `bookmark ${bookmark!.id}: A post <https://example.com/post>`,
+    )
+    // No title given, none read (no web in tests): the site's name.
+    expect((await cli(['bookmark-add', 'https://other.org'])).out).toContain('Bookmarked other.org')
+    const duplicate = await cli(['bookmark-add', 'http://www.example.com/post/'])
+    expect(duplicate.code).toBe(1)
+    expect(duplicate.err).toContain(`Already bookmarked: A post (${bookmark!.id})`)
+
+    const tree = (await cli(['bookmarks'])).out
+    expect(tree).toContain('├─ Read/')
+    expect(tree).toContain('│  └─ Later/')
+    expect(tree).toContain('A post  https://example.com/post')
+    expect((await cli(['bookmarks', 'worth'])).out).toContain('Read / Later / A post')
+    expect((await cli(['bookmarks', 'zzz'])).out).toContain('No bookmarks found.')
+
+    expect((await cli(['bookmark-set', bookmark!.id])).err).toContain('Nothing to change')
+    await cli([
+      'bookmark-set',
+      bookmark!.id,
+      'https://example.com/v2',
+      '--title',
+      'V2',
+      '--folder',
+      '',
+    ])
+    expect(await vault.getBookmark(bookmark!.id)).toMatchObject({
+      url: 'https://example.com/v2',
+      title: 'V2',
+      parentId: null,
+    })
+
+    const deleted = await cli(['bookmark-delete', bookmark!.id])
+    expect(deleted.out).toContain('cards removed from Reading.md')
+    expect((await cli(['read', 'Reading'])).out).toBe('\n')
+    expect((await cli(['bookmark-delete', folder!.id])).out).toContain(
+      'Deleted 2 bookmarks and folders',
+    )
   })
 })

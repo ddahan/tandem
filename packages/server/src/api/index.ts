@@ -3,21 +3,27 @@
 //
 // Who is writing comes from the `X-Tandem-Author` header: the web app sends `owner`, the CLI
 // the agent's name; without it, writes are credited to a generic `agent`.
-import { createReadStream } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { join, normalize } from 'node:path'
 import { Readable } from 'node:stream'
 import { zValidator as baseValidator } from '@hono/zod-validator'
-import { Hono, type Context } from 'hono'
+import { Hono, type Context, type MiddlewareHandler } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
 import {
+  BOOKMARKS_OFF,
+  BOOKMARK_DESCRIPTION_MAX,
+  BOOKMARK_TITLE_MAX,
+  BOOKMARK_URL_MAX,
   CODE_THEMES,
   COLUMN_TYPES,
   DEFAULT_AGENT,
+  EXTENSION_ORIGIN,
   FILTER_OPERATORS,
   normalizeAuthor,
+  webUrl,
   type ServerEvent,
 } from '@tandem/shared'
 import {
@@ -27,8 +33,14 @@ import {
   listFolder,
   type NotesFolderControl,
 } from '../folders.ts'
-import { ConflictError, NotFoundError, ValidationError } from '../vault/errors.ts'
+import {
+  ConflictError,
+  DuplicateBookmarkError,
+  NotFoundError,
+  ValidationError,
+} from '../vault/errors.ts'
 import type { Vault } from '../vault/vault.ts'
+import { ICON_TYPES } from '../vault/web-pages.ts'
 
 export const AUTHOR_HEADER = 'x-tandem-author'
 
@@ -68,6 +80,7 @@ const settingsPatch = z
     tags: z.boolean(),
     trash: z.boolean(),
     todos: z.boolean(),
+    bookmarks: z.boolean(),
     daily: z.boolean(),
     homeRecent: z.boolean(),
     shortcutHints: z.boolean(),
@@ -105,11 +118,60 @@ const databasePatch = databaseInput.extend({
 })
 const rowParam = z.object({ id: z.string().min(1), rowId: z.string().min(1) })
 
+// A favicon sent along (the extension has it): a `data:` URL, small.
+const iconDataUrl = z
+  .string()
+  .max(700_000)
+  .regex(/^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/, 'not an image data URL')
+const bookmarkFields = {
+  title: z
+    .string()
+    .max(BOOKMARK_TITLE_MAX * 2)
+    .optional(),
+  url: z.string().max(BOOKMARK_URL_MAX).optional(),
+  description: z
+    .string()
+    .max(BOOKMARK_DESCRIPTION_MAX * 2)
+    .optional(),
+  parentId: z.string().nullable().optional(),
+  index: z.number().int().min(0).optional(),
+  folder: z.string().max(1000).optional(),
+  iconDataUrl: iconDataUrl.optional(),
+}
+const bookmarkInput = z.object({
+  kind: z.enum(['folder', 'bookmark']).optional(),
+  ...bookmarkFields,
+})
+
+/**
+ * Bookmarks off, the extension is told so (a 409 with a code); the app hides them, and agents
+ * can still use them, as any feature's data.
+ */
+function bookmarksOn(vault: Vault): MiddlewareHandler {
+  return async (c, next) => {
+    const fromExtension = c.req.header('origin') === EXTENSION_ORIGIN
+    if (fromExtension && !(await vault.getSettings()).bookmarks) {
+      return c.json({ error: 'Bookmarks are off in Tandem', code: BOOKMARKS_OFF }, 409)
+    }
+    await next()
+  }
+}
+
+/** A `data:` URL's image, when its type is one a favicon may have. */
+function iconOf(dataUrl: string | undefined) {
+  if (!dataUrl) return undefined
+  const [head = '', base64 = ''] = dataUrl.split(',')
+  const extension = ICON_TYPES[head.slice(5).split(';')[0]!.toLowerCase()]
+  return extension ? { data: new Uint8Array(Buffer.from(base64, 'base64')), extension } : null
+}
+
 export interface ApiOptions {
   /** How the notes folder can change (default: it can't, from the app). */
   notesFolder?: NotesFolderControl
   /** Folders that can't be the notes folder (the app's own). */
   forbiddenFolders?: string[]
+  /** The Chrome extension's folder, to load it from (the standalone app's; none in Docker). */
+  extensionDir?: string
 }
 
 export function createApi(vault: Vault, options: ApiOptions = {}) {
@@ -121,6 +183,9 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
   const api = new Hono()
     .onError((error, c) => {
       if (error instanceof NotFoundError) return c.json({ error: error.message }, 404)
+      if (error instanceof DuplicateBookmarkError) {
+        return c.json({ error: error.message, bookmark: error.bookmark }, 409)
+      }
       if (error instanceof ConflictError) {
         return c.json({ error: error.message, current: error.current ?? null }, 409)
       }
@@ -425,6 +490,80 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     .patch('/settings', zValidator('json', settingsPatch), async (c) =>
       c.json(await vault.updateSettings(c.req.valid('json'))),
     )
+
+    // --- Bookmarks -----------------------------------------------------------------------------
+    // Where Chrome loads the extension from (Docs › Extension), when this app has it.
+    .get('/extension', (c) =>
+      c.json({
+        folder:
+          options.extensionDir && existsSync(join(options.extensionDir, 'manifest.json'))
+            ? options.extensionDir
+            : null,
+      }),
+    )
+    // Whether bookmarks are on, for the browser extension (which says so when they aren't).
+    .get('/bookmarks/status', async (c) =>
+      c.json({ enabled: (await vault.getSettings()).bookmarks }),
+    )
+    .use('/bookmarks', bookmarksOn(vault))
+    .use('/bookmarks/*', bookmarksOn(vault))
+    .get('/bookmarks', async (c) => c.json(await vault.listBookmarks()))
+    .post('/bookmarks', zValidator('json', bookmarkInput), async (c) => {
+      const { iconDataUrl: icon, ...input } = c.req.valid('json')
+      return c.json(await vault.createBookmark(input, iconOf(icon)), 201)
+    })
+    .get('/bookmarks/lookup', zValidator('query', z.object({ url: z.string() })), async (c) =>
+      c.json({ bookmark: await vault.findBookmark(c.req.valid('query').url) }),
+    )
+    .get(
+      '/bookmarks/search',
+      zValidator('query', z.object({ q: z.string().default(''), limit: z.string().optional() })),
+      async (c) => {
+        const { q, limit } = c.req.valid('query')
+        return c.json(await vault.searchBookmarks(q, Math.min(100, Number(limit) || 20)))
+      },
+    )
+    // A POST: it makes the server fetch a page, which only Tandem's own pages may ask for.
+    .post(
+      '/bookmarks/preview',
+      zValidator('json', z.object({ url: z.string().max(BOOKMARK_URL_MAX) })),
+      async (c) => {
+        const url = webUrl(c.req.valid('json').url)
+        if (!url) throw new ValidationError('Not a web address (http or https)')
+        return c.json(await vault.previewPage(url))
+      },
+    )
+    .get('/bookmarks/:id', zValidator('param', idParam), async (c) =>
+      c.json(await vault.getBookmark(c.req.valid('param').id)),
+    )
+    .get('/bookmarks/:id/refs', zValidator('param', idParam), async (c) =>
+      c.json(await vault.bookmarkRefs(c.req.valid('param').id)),
+    )
+    .patch(
+      '/bookmarks/:id',
+      zValidator('param', idParam),
+      zValidator('json', z.object(bookmarkFields)),
+      async (c) => {
+        const { id } = c.req.valid('param')
+        const { iconDataUrl: icon, ...patch } = c.req.valid('json')
+        const favicon = iconOf(icon)
+        if (favicon) await vault.setBookmarkIcon(id, `icon.${favicon.extension}`, favicon.data)
+        return c.json(await vault.updateBookmark(id, patch))
+      },
+    )
+    .delete('/bookmarks/:id', zValidator('param', idParam), async (c) =>
+      c.json(await vault.deleteBookmark(c.req.valid('param').id, authorOf(c))),
+    )
+    .get('/bookmarks/:id/icon', zValidator('param', idParam), async (c) => {
+      const path = await vault.bookmarkIconFile(c.req.valid('param').id)
+      const info = await stat(path).catch(() => null)
+      if (!info?.isFile()) throw new NotFoundError('Icon file missing')
+      c.header('Content-Type', getMimeType(path) ?? 'application/octet-stream')
+      // The URL changes with each new image (?v=…): cache it for good.
+      c.header('Cache-Control', 'public, max-age=31536000, immutable')
+      c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'")
+      return c.body(Readable.toWeb(createReadStream(path)) as ReadableStream)
+    })
 
     // --- Live updates ------------------------------------------------------------------------
     .get('/events', (c) =>

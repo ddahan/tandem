@@ -6,11 +6,17 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { etag } from 'hono/etag'
 import { createApi, createFileRoutes, type ApiOptions } from './api/index.ts'
+import { guard, type GuardOptions } from './api/guard.ts'
 import { createMcpRoutes } from './api/mcp.ts'
 import type { Vault } from './vault/vault.ts'
 
-export function createApp(vault: Vault, options: { webDir?: string } & ApiOptions = {}) {
+export function createApp(
+  vault: Vault,
+  options: { webDir?: string } & ApiOptions & GuardOptions = {},
+) {
   const app = new Hono()
+    // Before anything: who may talk to Tandem (guard.ts).
+    .use(guard({ allowedHosts: options.allowedHosts }))
     .route('/api', createApi(vault, options))
     .route('/mcp', createMcpRoutes(vault))
     .route('/files', createFileRoutes(vault))

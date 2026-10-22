@@ -32,6 +32,17 @@ describe('plain text for the index', () => {
       expect(text).toContain(word)
     expect(text).not.toContain('http')
   })
+
+  it('leaves out database and bookmark blocks (only ids), not code', () => {
+    const text = markdownToText(
+      'Before\n\n```bookmark\nid: Bk1\n```\n\n```database\nid: Db1\n```\n\n```js\nconst code = 1\n```\n\nAfter',
+    )
+    expect(text).toContain('Before')
+    expect(text).toContain('const code = 1')
+    expect(text).toContain('After')
+    expect(text).not.toContain('Bk1')
+    expect(text).not.toContain('Db1')
+  })
 })
 
 async function seeded() {

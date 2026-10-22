@@ -15,6 +15,10 @@ const app = await startServer({
   watchPolling: env.TANDEM_WATCH_POLLING === 'true',
   // The welcome note in a folder that never had notes (compose.yaml asks for it; tests don't).
   welcome: env.TANDEM_WELCOME === 'true',
+  // Names it answers to besides localhost: the dev servers reach it as `server` (compose.dev.yaml).
+  allowedHosts: env.TANDEM_ALLOWED_HOSTS?.split(',')
+    .map((host) => host.trim())
+    .filter(Boolean),
 })
 
 async function shutdown() {

@@ -5,6 +5,8 @@
 export function markdownToText(markdown: string): string {
   return (
     markdown
+      // Database and bookmark blocks: only an id (their text is in Tandem, not in the note).
+      .replace(/^```(?:database|bookmark)[ \t]*\n[\s\S]*?^```[ \t]*$/gm, '')
       // Code fences: keep the code, drop the fence lines.
       .replace(/^(```|~~~).*$/gm, '')
       // Images and links: keep the alt text / label.
