@@ -34,6 +34,8 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   const calendar = page.getByTestId('side-calendar')
   await expect(calendar).toBeVisible()
   await expect(calendar.locator('[aria-current="date"]')).toHaveAttribute('data-date', today)
+  // Under it, the keys that browse days and weeks.
+  await expect(calendar.getByTestId('calendar-keys')).toContainText('Previous or next week')
 
   // Written, with a to-do left: marked in the calendar.
   await page.locator('.ProseMirror').click()

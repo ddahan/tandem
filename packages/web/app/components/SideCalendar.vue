@@ -69,6 +69,24 @@ const weeks = computed(() => {
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+// As in Docs › Shortcuts (utils/shortcuts.ts).
+const KEYS = [
+  {
+    label: 'Previous or next day',
+    keys: [
+      ['meta', 'alt', 'arrowleft'],
+      ['meta', 'alt', 'arrowright'],
+    ],
+  },
+  {
+    label: 'Previous or next week',
+    keys: [
+      ['meta', 'alt', 'arrowup'],
+      ['meta', 'alt', 'arrowdown'],
+    ],
+  },
+]
+
 function marksOf(iso: string) {
   const day = days.value.get(iso)
   return {
@@ -168,5 +186,17 @@ function labelOf(iso: string) {
         </tr>
       </tbody>
     </table>
+
+    <!-- The keys that browse days, on a day's note (where they work). -->
+    <dl
+      v-if="date"
+      class="space-y-2 border-t border-default pt-3 text-xs text-muted"
+      data-testid="calendar-keys"
+    >
+      <div v-for="hint in KEYS" :key="hint.label" class="flex items-center justify-between gap-2">
+        <dt>{{ hint.label }}</dt>
+        <dd><DocsKeys :keys="hint.keys" /></dd>
+      </div>
+    </dl>
   </div>
 </template>
