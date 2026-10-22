@@ -42,6 +42,18 @@ const RISKS: Risk[] = [
     ],
   },
   {
+    id: 'web',
+    icon: 'i-lucide-globe',
+    title: 'Websites you visit',
+    paragraphs: [
+      'A web page can send requests to your computer, Tandem’s address included. Tandem answers only when it is called by its own address (localhost), so a page can’t read your notes, even one that tricks the browser into thinking it is local; and it takes changes only from its own pages and its Chrome extension.',
+    ],
+    steps: [
+      'Nothing to turn on: these checks are always there.',
+      'Keep your browser up to date, and install extensions you trust only: an extension can read the pages you open, Tandem’s too.',
+    ],
+  },
+  {
     id: 'apps',
     icon: 'i-lucide-bot',
     title: 'Apps and agents on your computer',

@@ -11,6 +11,7 @@ import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
 import { Marked } from 'marked'
 import { BlockKeys } from './block-keys'
+import { Bookmark } from './bookmark'
 import { Callout } from './callout'
 import { Database } from './database'
 import { Details, DetailsContent, DetailsSummary } from './details'
@@ -57,6 +58,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     TaskItem.configure({ nested: true }),
     Callout,
     Database,
+    Bookmark,
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,

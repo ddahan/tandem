@@ -325,21 +325,27 @@ useServerEvents(async (event) => {
     if (latest) await applyExternal(latest.hash, 'someone')
     return
   }
+  if (event.type === 'cards-removed' && event.id === id.value) {
+    // A new hash, whatever it is: the note is read again (the deletion's toast said why).
+    await applyExternal('', OWNER, { quiet: true })
+    return
+  }
   if (event.type !== 'note' || event.id !== id.value || event.author === OWNER) return
   await applyExternal(event.hash, event.author)
 })
 
-async function applyExternal(hash: string, author: string) {
+async function applyExternal(hash: string, author: string, options: { quiet?: boolean } = {}) {
   const updated = await doc.externalChange(hash)
   if (updated === null) return
   content.value = updated
   checkLosses()
   if (mode.value === 'edit') editor.value?.setContent(toEditorMarkdown(updated, notePath.value))
-  toast.add({
-    title: `Updated by ${authorLabel(author, settings.value.displayName)}`,
-    icon: 'i-lucide-sparkles',
-    duration: 2500,
-  })
+  if (!options.quiet)
+    toast.add({
+      title: `Updated by ${authorLabel(author, settings.value.displayName)}`,
+      icon: 'i-lucide-sparkles',
+      duration: 2500,
+    })
   authorshipKey.value++
 }
 

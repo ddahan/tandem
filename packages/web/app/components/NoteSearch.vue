@@ -1,20 +1,23 @@
 <script setup lang="ts">
 // The search palette (⌘⇧F), the app's only search: full-text search on the server as you type,
 // syntax tips while the query is empty, and a few actions. Opened from anywhere with
-// useSearchPalette().
+// useSearchPalette(). With bookmarks on, they're searched too: picking one opens its website.
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
-import type { SearchResponse } from '@tandem/shared'
+import { siteOf, type BookmarkSearchResult, type SearchResponse } from '@tandem/shared'
+import { openWebsite } from '~/composables/useBookmarks'
 
 const api = useApi()
 const tree = useTree()
 const colorMode = useColorMode()
 const { settings } = useSettings()
 const daily = useDaily()
+const bookmarkActions = useBookmarkActions()
 
 const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
 const response = ref<SearchResponse | null>(null)
+const bookmarkResults = ref<BookmarkSearchResult[]>([])
 const loading = ref(false)
 let latest = 0
 
@@ -24,8 +27,17 @@ watch(
     const request = ++latest
     loading.value = true
     try {
-      const result = await unwrap(api.search.$get({ query: { q, limit: '20' } }))
-      if (request === latest) response.value = result
+      // Bookmarks only for words typed: before, the palette shows recent notes.
+      const [result, found] = await Promise.all([
+        unwrap(api.search.$get({ query: { q, limit: '20' } })),
+        settings.value.bookmarks && q.trim()
+          ? unwrap(api.bookmarks.search.$get({ query: { q, limit: '8' } })).catch(() => [])
+          : Promise.resolve([]),
+      ])
+      if (request === latest) {
+        response.value = result
+        bookmarkResults.value = found
+      }
     } finally {
       if (request === latest) loading.value = false
     }
@@ -70,6 +82,25 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         }
       }),
     },
+    ...(bookmarkResults.value.length
+      ? [
+          {
+            id: 'bookmarks',
+            label: 'Bookmarks',
+            ignoreFilter: true,
+            items: bookmarkResults.value.map(({ bookmark, titleHtml, folders }) => ({
+              id: `bookmark-${bookmark.id}`,
+              label: bookmark.title,
+              labelHtml: titleHtml,
+              suffix: [siteOf(bookmark.url), folders].filter(Boolean).join(' · '),
+              slot: 'bookmark' as const,
+              bookmark,
+              class: 'search-snippet',
+              onSelect: () => openWebsite(bookmark.url),
+            })),
+          },
+        ]
+      : []),
     ...(searchTerm.value.trim()
       ? []
       : [
@@ -101,6 +132,15 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
           kbds: ['meta', 'alt', 'n'],
           onSelect: () => void tree.createPage(),
         },
+        ...(settings.value.bookmarks
+          ? [
+              {
+                label: 'New bookmark',
+                icon: 'i-lucide-bookmark-plus',
+                onSelect: () => void bookmarkActions.create(),
+              },
+            ]
+          : []),
         ...(settings.value.daily
           ? [
               {
@@ -145,6 +185,9 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
   >
     <template #note-leading="{ item }">
       <NodeIcon :icon="item.nodeIcon" kind="page" size="md" />
+    </template>
+    <template #bookmark-leading="{ item }">
+      <BookmarkIcon :bookmark="item.bookmark" size="md" />
     </template>
   </UDashboardSearch>
 </template>

@@ -14,7 +14,8 @@ export interface DocsBlock {
   /** The Markdown, as saved in the note. */
   markdown: string
   /** What the editor shows, when it differs from `markdown` (attachments the docs don't have),
-   * or null when it can't be shown here (a database lives in Tandem, not in the Markdown). */
+   * or null when it can't be shown here (a database or a bookmark lives in Tandem, not in the
+   * Markdown): a drawing of it. */
   preview?: string | null
 }
 
@@ -202,6 +203,16 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
           'Rows with typed columns (text, number, date, checkbox, choice), sorted and filtered, edited in place. Its data is in Tandem: the note only has a block naming it. Agents read and change it with their tools.',
         slash: 'Database',
         markdown: '```database\nid: 01JB7Q2V9X3K8M4N5P6R7S8T9V\n```',
+        preview: null,
+      },
+      {
+        id: 'bookmark',
+        title: 'Bookmark',
+        icon: 'i-lucide-bookmark',
+        description:
+          'A website’s card (its favicon, name, site and description), from your bookmarks (Settings › Features). A click opens the website; changing the bookmark changes every card. Its data is in Tandem: the note only has a block naming it.',
+        slash: 'Bookmark',
+        markdown: '```bookmark\nid: Kx3fq9P2mZ0a\n```',
         preview: null,
       },
       {

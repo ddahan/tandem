@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // The Docs: how to install the app and connect agents, Tandem's concepts, a tour of the
-// blocks, keeping the notes private, and the keyboard shortcuts. One tab per page (docs/*), so each has its address.
+// blocks, the Chrome extension, keeping the notes private, and the keyboard shortcuts. One tab per page (docs/*), so each has its address.
 import type { NavigationMenuItem } from '@nuxt/ui'
 
 const tabs: NavigationMenuItem[] = [
@@ -8,6 +8,7 @@ const tabs: NavigationMenuItem[] = [
   { label: 'Concepts', icon: 'i-lucide-lightbulb', to: '/docs/concepts' },
   { label: 'Blocks', icon: 'i-lucide-blocks', to: '/docs/blocks' },
   { label: 'Agents', icon: 'i-lucide-bot', to: '/docs/agents' },
+  { label: 'Extension', icon: 'i-lucide-puzzle', to: '/docs/extension' },
   { label: 'Security', icon: 'i-lucide-shield-check', to: '/docs/security' },
   { label: 'Shortcuts', icon: 'i-lucide-keyboard', to: '/docs/shortcuts' },
 ]

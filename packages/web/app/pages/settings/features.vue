@@ -5,7 +5,7 @@ const set = useSettingsSave()
 useHead({ title: 'Features' })
 
 const features: {
-  key: 'tags' | 'trash' | 'todos' | 'daily' | 'spellcheck'
+  key: 'tags' | 'trash' | 'todos' | 'bookmarks' | 'daily' | 'spellcheck'
   label: string
   description: string
 }[] = [
@@ -24,6 +24,12 @@ const features: {
     key: 'todos',
     label: 'TODOs',
     description: 'Highlight TODO: lines in notes, and list them on a TODOs page.',
+  },
+  {
+    key: 'bookmarks',
+    label: 'Bookmarks',
+    description:
+      'Links to websites in the sidebar, below the pages, shown in notes as cards (/bookmark), and saved from Chrome with Tandem’s extension. Off, cards already in notes still show.',
   },
   {
     key: 'daily',

@@ -427,12 +427,14 @@ html.dark[data-tone='cool'] {
   pointer-events: none;
 }
 
-/* Databases (DatabaseView): cells are edited in place, their controls fill them */
+/* Bookmark cards (BookmarkView) and databases (DatabaseView): framed when selected */
+.note-editor .bookmark-block.is-selected,
 .note-editor .database-block.is-selected {
   outline: 2px solid var(--ui-primary);
   outline-offset: 4px;
   border-radius: var(--ui-radius);
 }
+/* Databases: cells are edited in place, their controls fill them */
 .note-editor .database-table :is(td, th) {
   padding: 0;
   vertical-align: middle;

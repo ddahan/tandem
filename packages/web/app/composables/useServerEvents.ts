@@ -1,8 +1,14 @@
 // Live updates from the server (`/api/events`): one EventSource for the whole app. After a
-// reconnection, listeners receive a `resync` event, since events may have been missed.
+// reconnection, listeners receive a `resync` event, since events may have been missed. The app
+// announces some changes of its own too (`announce`): the server credits them to the owner,
+// whose changes a note doesn't reload (they're its own saves).
 import type { ServerEvent } from '@tandem/shared'
 
-export type AppEvent = ServerEvent | { type: 'resync' }
+export type AppEvent =
+  | ServerEvent
+  | { type: 'resync' }
+  /** Deleting a bookmark removed its cards from this page (as the owner, in this window). */
+  | { type: 'cards-removed'; id: string }
 
 const listeners = new Set<(event: AppEvent) => void>()
 let source: EventSource | null = null
@@ -24,6 +30,11 @@ function connect() {
     disconnected = false
     for (const listener of listeners) listener({ type: 'resync' })
   })
+}
+
+/** Sends an event of the app's own to every listener. */
+export function announce(event: AppEvent) {
+  for (const listener of listeners) listener(event)
 }
 
 /** Calls `handler` for every server event while the current component is mounted. */

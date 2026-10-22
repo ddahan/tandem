@@ -31,6 +31,10 @@ const abilities = [
     icon: 'i-lucide-sheet',
     text: 'Read and change databases: rows, as your saved view shows them.',
   },
+  {
+    icon: 'i-lucide-bookmark',
+    text: 'Search, add, change and delete bookmarks, and show one’s card in a note.',
+  },
   { icon: 'i-lucide-history', text: 'Read a note’s history and its past versions.' },
   { icon: 'i-lucide-calendar-days', text: 'Read and write in a day’s note, today’s by default.' },
 ]

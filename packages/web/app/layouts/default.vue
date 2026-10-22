@@ -9,6 +9,8 @@ const { settings } = useSettings()
 const { openSearch } = useSearchPalette()
 const todos = useTodos()
 todos.follow()
+// Loaded even when off: cards already in notes still show.
+useBookmarks().follow()
 
 // At the bottom of the sidebar; the logo leads Home. TODOs and Trash as Settings › Features say.
 const navigation = computed<NavigationMenuItem[]>(() => [
@@ -203,6 +205,7 @@ defineShortcuts({
         </UNavigationMenu>
 
         <NoteTree v-if="!collapsed" class="-mx-1 min-h-0 flex-1" />
+        <BookmarkTree v-if="settings.bookmarks && !collapsed" class="-mx-1 shrink-0" />
         <div v-else class="flex justify-center">
           <UTooltip text="New page">
             <UButton

@@ -112,6 +112,23 @@ describe('Markdown round-trip', () => {
     expect(editor!.getJSON().content?.[1]?.attrs).toEqual({ id: 'Kx3fq9P2mZ0a' })
   })
 
+  it('keeps bookmarks as their block, apart from databases and code blocks', () => {
+    const markdown =
+      'Read:\n\n```bookmark\nid: Kx3fq9P2mZ0a\n```\n\n```bookmark\nid: Zz9\n```\n\n```database\nid: D1\n```\n\n```text\nid: not-a-bookmark\n```'
+    expect(roundTrip(markdown)).toBe(markdown)
+    expect(editor!.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'bookmark',
+      'bookmark',
+      'database',
+      'codeBlock',
+    ])
+    expect(editor!.getJSON().content?.[1]?.attrs).toEqual({ id: 'Kx3fq9P2mZ0a' })
+    // A bookmark block without an id is a code block.
+    expect(roundTrip('```bookmark\nno id\n```')).toBe('```bookmark\nno id\n```')
+    expect(editor!.getJSON().content?.[0]?.type).toBe('codeBlock')
+  })
+
   it('keeps plain quotes apart from callouts', () => {
     expect(roundTrip('> just a quote')).toBe('> just a quote')
     expect(editor!.getJSON().content?.[0]?.type).toBe('blockquote')

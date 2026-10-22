@@ -99,6 +99,18 @@ function parts(text: string) {
               v-if="block.preview !== null"
               :markdown="block.preview ?? block.markdown"
             />
+            <!-- A bookmark is in Tandem, not in the Markdown: a drawing of its card. -->
+            <div
+              v-else-if="block.id === 'bookmark'"
+              class="flex items-center gap-3 rounded-md border border-default px-3 py-2.5"
+            >
+              <UIcon name="i-lucide-globe" class="size-8 shrink-0 text-dimmed" />
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium text-highlighted">MDN Web Docs</p>
+                <p class="truncate text-xs text-muted">developer.mozilla.org</p>
+                <p class="mt-0.5 line-clamp-2 text-sm">Resources for developers, by developers.</p>
+              </div>
+            </div>
             <!-- A database's rows are in Tandem, not in the Markdown: a drawing of one. -->
             <div v-else class="overflow-hidden rounded-md border border-default text-sm">
               <div

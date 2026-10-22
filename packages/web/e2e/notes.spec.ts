@@ -994,7 +994,8 @@ test('edits with VS Code shortcuts, listed in Docs › Shortcuts', async ({ page
   // ⌘/ opens the page listing them.
   await page.keyboard.press('ControlOrMeta+/')
   await expect(page).toHaveURL(/\/docs\/shortcuts$/)
-  await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toHaveCount(2)
+  // The pages tree's, the bookmarks', and the blocks'.
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Move up or down' })).toHaveCount(3)
   await expect(
     page.getByTestId('shortcut').filter({ hasText: 'Select all occurrences' }),
   ).toBeVisible()

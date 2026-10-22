@@ -12,6 +12,8 @@ import { linkKey } from '@tandem/shared'
 import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import DatabaseView from '~/components/editor/DatabaseView.vue'
+import BookmarkView from '~/components/editor/BookmarkView.vue'
+import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
 import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
@@ -135,6 +137,9 @@ const extensions = createExtensions({
   if (extension.name === Database.name) {
     return Database.extend({ addNodeView: () => VueNodeViewRenderer(DatabaseView) })
   }
+  if (extension.name === Bookmark.name) {
+    return Bookmark.extend({ addNodeView: () => VueNodeViewRenderer(BookmarkView) })
+  }
   return extension
 })
 
@@ -207,6 +212,22 @@ async function insertDatabase(editor: CoreEditor) {
   } catch (error) {
     showError(error, 'Could not create the database')
   }
+}
+
+/** A bookmark's card where the cursor was (taken before the picker opens). */
+const bookmarkActions = useBookmarkActions()
+async function insertBookmark(editor: CoreEditor) {
+  const at = editor.state.selection.from
+  const id = await bookmarkActions.pick()
+  if (!id) return
+  editor
+    .chain()
+    .insertContentAt(Math.min(at, editor.state.doc.content.size), [
+      { type: 'bookmark', attrs: { id } },
+      { type: 'paragraph' },
+    ])
+    .focus()
+    .run()
 }
 
 function pickFiles() {
@@ -327,6 +348,14 @@ const handlers = {
     },
     isActive: () => false,
   },
+  bookmark: {
+    canExecute: () => true,
+    execute: (editor: Editor) => {
+      void insertBookmark(editor)
+      return editor.chain()
+    },
+    isActive: () => false,
+  },
   mermaid: {
     canExecute: () => true,
     execute: (editor: Editor) =>
@@ -370,7 +399,9 @@ const handlers = {
 
 type Handlers = typeof handlers
 
-const slashItems: EditorSuggestionMenuItem<Handlers>[][] = [
+// Bookmarks only when they're on (Settings › Features); cards already in notes still show.
+const { settings } = useSettings()
+const slashItems = computed<EditorSuggestionMenuItem<Handlers>[][]>(() => [
   [
     { type: 'label', label: 'Text' },
     { kind: 'paragraph', label: 'Paragraph', icon: 'i-lucide-type' },
@@ -392,6 +423,16 @@ const slashItems: EditorSuggestionMenuItem<Handlers>[][] = [
       description: 'Rows you can sort and filter',
       icon: 'i-lucide-database',
     },
+    ...(settings.value.bookmarks
+      ? [
+          {
+            kind: 'bookmark' as const,
+            label: 'Bookmark',
+            description: 'A website’s card, from your bookmarks',
+            icon: 'i-lucide-bookmark',
+          },
+        ]
+      : []),
     { kind: 'callout', calloutType: 'note', label: 'Callout: note', icon: 'i-lucide-info' },
     { kind: 'callout', calloutType: 'tip', label: 'Callout: tip', icon: 'i-lucide-lightbulb' },
     {
@@ -419,7 +460,7 @@ const slashItems: EditorSuggestionMenuItem<Handlers>[][] = [
       icon: 'i-lucide-paperclip',
     },
   ],
-]
+])
 
 const toolbarItems: EditorToolbarItem<Handlers>[][] = [
   [
@@ -801,6 +842,7 @@ defineExpose({
             !e.isActive('codeBlock') &&
             !e.isActive('image') &&
             !e.isActive('database') &&
+            !e.isActive('bookmark') &&
             view.hasFocus() &&
             !state.selection.empty
         "
