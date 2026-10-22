@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Tandem",
+  "description": "Bookmark pages in Tandem, the notes app on your computer, and find them from the address bar.",
+  "version": "0.6.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA19lZUa1h53uaNuKRia52GiN5ycTqrQQlM3p8Xn/qgWZgDu7Ks27Kv+rcJgcopfj65gNZW98l+l3DCNU9GxuwpwqX8bP/0JzbN9gSA0l28PGkE+vKHwZMrI5vw4DQTvG/BOhtwwGPsh7vIlmziytTAvDDtbiN14UpH4exhaurbeOYogvmsAIAzOtu9gjkTSP1S+npmgiXoGYsa3g2ZMnwNnfwHliKzP4EoC9ByF9GeniITbFEKX6uIJJvdRwDOK/I6ZzOVycLRcyMjKmlP0BKA49yDCFyYPaxDgpVjGNsE1NT0lYO+RPpKdKqWpnX2vmhBsxLxO2ToM1ovRA3Qirs5QIDAQAB",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Add to Tandem",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "omnibox": {
+    "keyword": "tb"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "Add the page to Tandem"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "favicon"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ]
+}

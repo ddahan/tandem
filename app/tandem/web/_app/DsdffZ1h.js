@@ -1,0 +1,1 @@
+import{Q as e}from"./CypcBDzw.js";function t(){let t=e()?.vnode?.scopeId;return t?{[t]:``}:{}}export{t};

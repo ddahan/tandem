@@ -7685,6 +7685,7 @@ var DEFAULT_SETTINGS = {
   tags: false,
   trash: true,
   todos: false,
+  bookmarks: false,
   daily: false,
   homeRecent: true,
   shortcutHints: true
@@ -8037,6 +8038,74 @@ function taskCounts(markdown) {
   return { open: open3, done };
 }
 
+// ../shared/src/bookmarks.ts
+var EXTENSION_ID = "kmecpgdldjmbehndpobipnndopjdgkci";
+var EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}`;
+var BOOKMARKS_OFF = "bookmarks_off";
+var BOOKMARK_TITLE_MAX = 300;
+var BOOKMARK_DESCRIPTION_MAX = 1e3;
+var BOOKMARK_URL_MAX = 4e3;
+function webUrl(input2) {
+  let text3 = input2.trim();
+  if (!text3) return null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(text3)) text3 = `https://${text3}`;
+  let url2;
+  try {
+    url2 = new URL(text3);
+  } catch {
+    return null;
+  }
+  if (url2.protocol !== "http:" && url2.protocol !== "https:") return null;
+  if (!url2.hostname) return null;
+  return url2.href.length > BOOKMARK_URL_MAX ? null : url2.href;
+}
+function urlKey(input2) {
+  try {
+    const url2 = new URL(input2);
+    const host = url2.hostname.toLowerCase().replace(/^www\./, "");
+    const port = url2.port ? `:${url2.port}` : "";
+    const path = url2.pathname.replace(/\/+$/, "");
+    return `${host}${port}${path}${url2.search}`;
+  } catch {
+    return input2.trim();
+  }
+}
+function siteOf(input2) {
+  try {
+    return new URL(input2).hostname.replace(/^www\./, "");
+  } catch {
+    return input2;
+  }
+}
+function bookmarkBlock(id) {
+  return `\`\`\`bookmark
+id: ${id}
+\`\`\``;
+}
+var BLOCKS = /^```bookmark[ \t]*\n([\s\S]*?)^```[ \t]*$/gm;
+function bookmarkIdsIn(markdown) {
+  const ids = [];
+  for (const match2 of markdown.matchAll(BLOCKS)) {
+    const id = /^id:[ \t]*(\S+)/m.exec(match2[1] ?? "")?.[1];
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+function removeBookmarkBlocks(markdown, ids) {
+  const gone = new Set(ids);
+  let removed = false;
+  const result = markdown.replace(
+    /^```bookmark[ \t]*\n([\s\S]*?)^```[ \t]*(?:\n|$)/gm,
+    (block, body) => {
+      const id = /^id:[ \t]*(\S+)/m.exec(body)?.[1];
+      if (!id || !gone.has(id)) return block;
+      removed = true;
+      return "";
+    }
+  );
+  return removed ? result.replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "") : markdown;
+}
+
 // ../cli/src/cli.ts
 var USAGE = `Usage: tandem <command> [arguments] [options]
 
@@ -8075,6 +8144,16 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-set <database> <row> <Column=value\u2026>  change values (Column= empties one)
   row-delete <database> <row>               delete a row
 
+Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookmark block)
+  bookmarks [query\u2026]            all bookmarks and folders, or those matching a query
+  bookmark-add <web address>    bookmark a page (title and description read from it unless
+                                given: --title, --description); --folder Work/Tools (made if
+                                missing); --note <note> to add its card at the note's end
+  bookmark-set <bookmark> [new address]
+                                change it (--title, --description), or move it (--folder;
+                                "" for the top)
+  bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
+
 Options
   --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3864)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
@@ -8083,12 +8162,13 @@ Options
 `;
 var CliError = class extends Error {
 };
+function unreachable(error62) {
+  throw new CliError(
+    `Cannot reach Tandem (${error62 instanceof Error ? error62.message : String(error62)}). Is it running?`
+  );
+}
 async function call(request) {
-  const response = await request.catch((error62) => {
-    throw new CliError(
-      `Cannot reach Tandem (${error62 instanceof Error ? error62.message : String(error62)}). Is it running?`
-    );
-  });
+  const response = await request.catch(unreachable);
   const body = await response.json().catch(() => null);
   if (!response.ok)
     throw new CliError(
@@ -8150,6 +8230,21 @@ function cellsOf(database, values) {
     throw new CliError(error62 instanceof Error ? error62.message : String(error62));
   }
 }
+function describeBookmarks(all) {
+  const lines = [];
+  const walk = (parentId, prefix) => {
+    const list = all.filter((bookmark) => bookmark.parentId === parentId);
+    list.forEach((bookmark, index2) => {
+      const last = index2 === list.length - 1;
+      lines.push(
+        `${prefix}${last ? "\u2514\u2500 " : "\u251C\u2500 "}${bookmark.kind === "folder" ? `${bookmark.title}/` : `${bookmark.title}  ${bookmark.url}`}  (${bookmark.id})`
+      );
+      walk(bookmark.id, `${prefix}${last ? "   " : "\u2502  "}`);
+    });
+  };
+  walk(null, "");
+  return lines.join("\n") || "(no bookmarks yet)";
+}
 function describeTree(nodes2) {
   const children = /* @__PURE__ */ new Map();
   for (const node2 of nodes2)
@@ -8191,7 +8286,11 @@ async function run(argv, io, env = process.env) {
         meta: { type: "boolean" },
         clear: { type: "boolean" },
         limit: { type: "string" },
-        date: { type: "string" }
+        date: { type: "string" },
+        title: { type: "string" },
+        description: { type: "string" },
+        folder: { type: "string" },
+        note: { type: "string" }
       }
     });
   } catch (error62) {
@@ -8324,6 +8423,68 @@ ${note.content.replace(/\n$/, "")}`);
       await call(client.databases[":id"].rows[":rowId"].$delete({ param: { id, rowId } }));
       return print(`Deleted row ${rowId}`);
     }
+    case "bookmarks": {
+      if (!args.length) {
+        const all = await call(client.bookmarks.$get());
+        return print(describeBookmarks(all), all);
+      }
+      const results = await call(
+        client.bookmarks.search.$get({ query: { q: args.join(" "), limit: values.limit ?? "20" } })
+      );
+      const lines = results.map(
+        ({ bookmark, folders }) => `${folders ? `${folders} / ` : ""}${bookmark.title}  (${bookmark.id})
+  ${bookmark.url}${bookmark.description ? `
+  ${bookmark.description}` : ""}`
+      );
+      return print(lines.join("\n\n") || "No bookmarks found.", results);
+    }
+    case "bookmark-add": {
+      const url2 = need(0, "web address");
+      const node2 = values.note ? await resolve5(values.note) : null;
+      const { title, description } = values;
+      const response = await client.bookmarks.$post({ json: { url: url2, title, description, folder: values.folder } }).catch(unreachable);
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new CliError(
+          body?.bookmark ? `Already bookmarked: ${body.bookmark.title} (${body.bookmark.id})` : body?.error ?? `Request failed (${response.status})`
+        );
+      }
+      const bookmark = await response.json();
+      if (node2) {
+        await call(
+          client.notes[":id"].append.$post({
+            param: { id: node2.id },
+            json: { content: bookmarkBlock(bookmark.id) }
+          })
+        );
+      }
+      return print(
+        `Bookmarked ${bookmark.title} (${bookmark.id})${node2 ? `, its card in ${node2.path}` : ""}`,
+        bookmark
+      );
+    }
+    case "bookmark-set": {
+      const id = need(0, "bookmark id");
+      const json4 = {
+        ...args[1] ? { url: args[1] } : {},
+        ...values.title !== void 0 ? { title: values.title } : {},
+        ...values.description !== void 0 ? { description: values.description } : {},
+        ...values.folder !== void 0 ? { folder: values.folder } : {}
+      };
+      if (!Object.keys(json4).length)
+        throw new CliError("Nothing to change: a new address, --title, --description or --folder.");
+      const bookmark = await call(client.bookmarks[":id"].$patch({ param: { id }, json: json4 }));
+      return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark);
+    }
+    case "bookmark-delete": {
+      const id = need(0, "bookmark id");
+      const result = await call(client.bookmarks[":id"].$delete({ param: { id } }));
+      const pages = result.pages.map((page) => page.path);
+      return print(
+        `Deleted ${result.deleted === 1 ? id : `${result.deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.join(", ")}` : ""}`,
+        result
+      );
+    }
     case "search": {
       const query = args.join(" ");
       const response = await call(
@@ -8364,6 +8525,11 @@ ${note.content.replace(/\n$/, "")}`);
         `attachments: ${note.attachments.map((a) => a.markdownPath).join(", ") || "\u2014"}`,
         `linked from: ${backlinks.map((b) => b.path).join(", ") || "\u2014"}`
       ];
+      for (const id of new Set(bookmarkIdsIn(note.content))) {
+        const response = await client.bookmarks[":id"].$get({ param: { id } });
+        const bookmark = response.ok ? await response.json() : null;
+        meta3.push(`bookmark ${id}: ${bookmark ? `${bookmark.title} <${bookmark.url}>` : "deleted"}`);
+      }
       return print(`${meta3.join("\n")}
 ---
 ${note.content.replace(/\n$/, "")}`);
@@ -8843,7 +9009,7 @@ var newRequestFromIncoming = (method, url2, headers, incoming, abortController) 
 var getRequestCache = /* @__PURE__ */ Symbol("getRequestCache");
 var requestCache = /* @__PURE__ */ Symbol("requestCache");
 var incomingKey = /* @__PURE__ */ Symbol("incomingKey");
-var urlKey = /* @__PURE__ */ Symbol("urlKey");
+var urlKey2 = /* @__PURE__ */ Symbol("urlKey");
 var methodKey = /* @__PURE__ */ Symbol("methodKey");
 var headersKey = /* @__PURE__ */ Symbol("headersKey");
 var abortControllerKey = /* @__PURE__ */ Symbol("abortControllerKey");
@@ -9022,7 +9188,7 @@ var requestPrototype = {
     return this[methodKey];
   },
   get url() {
-    return this[urlKey];
+    return this[urlKey2];
   },
   get headers() {
     return this[headersKey] ||= newHeadersFromIncoming(this[incomingKey]);
@@ -9054,13 +9220,13 @@ var requestPrototype = {
         } });
         init.duplex = "half";
       }
-      const req = new Request$1(this[urlKey], init);
+      const req = new Request$1(this[urlKey2], init);
       if (method === "TRACE") Object.defineProperty(req, "method", { get() {
         return "TRACE";
       } });
       return this[requestCache] = req;
     }
-    return this[requestCache] = newRequestFromIncoming(this.method, this[urlKey], this.headers, this[incomingKey], abortController);
+    return this[requestCache] = newRequestFromIncoming(this.method, this[urlKey2], this.headers, this[incomingKey], abortController);
   },
   get body() {
     if (!this[bodyConsumedDirectlyKey]) return this[getRequestCache]().body;
@@ -9138,7 +9304,7 @@ var newRequest = (incoming, defaultHostname) => {
   if (incomingUrl[0] !== "/" && (incomingUrl.startsWith("http://") || incomingUrl.startsWith("https://"))) {
     if (incoming instanceof Http2ServerRequest) throw new RequestError("Absolute URL for :path is not allowed in HTTP/2");
     try {
-      req[urlKey] = new URL(incomingUrl).href;
+      req[urlKey2] = new URL(incomingUrl).href;
     } catch (e) {
       throw new RequestError("Invalid absolute URL", { cause: e });
     }
@@ -9152,7 +9318,7 @@ var newRequest = (incoming, defaultHostname) => {
     if (!(scheme === "http" || scheme === "https")) throw new RequestError("Unsupported scheme");
   } else scheme = incoming.socket && incoming.socket.encrypted ? "https" : "http";
   try {
-    req[urlKey] = buildUrl(scheme, host, incomingUrl);
+    req[urlKey2] = buildUrl(scheme, host, incomingUrl);
   } catch (e) {
     if (e instanceof RequestError) throw e;
     else throw new RequestError("Invalid URL", { cause: e });
@@ -9863,7 +10029,7 @@ var serve = (options, listeningListener) => {
 };
 
 // ../server/src/app.ts
-import { existsSync as existsSync3 } from "node:fs";
+import { existsSync as existsSync4 } from "node:fs";
 import { readFile as readFile2 } from "node:fs/promises";
 import { join as join4 } from "node:path";
 
@@ -11878,7 +12044,7 @@ var etag = (options) => {
 };
 
 // ../server/src/api/index.ts
-import { createReadStream as createReadStream2 } from "node:fs";
+import { createReadStream as createReadStream2, existsSync as existsSync3 } from "node:fs";
 import { stat as stat2 } from "node:fs/promises";
 import { join as join3, normalize } from "node:path";
 import { Readable as Readable3 } from "node:stream";
@@ -15666,14 +15832,14 @@ var $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
   const desc2 = Object.getOwnPropertyDescriptor(def, "shape");
   const sh = desc2?.get ? desc2.get.raw : def.shape ?? {};
   if (sh) {
-    const get = () => {
+    const get2 = () => {
       const newSh = { ...sh };
       Object.defineProperty(def, "shape", { value: newSh });
-      get.raw = newSh;
+      get2.raw = newSh;
       return newSh;
     };
-    get.raw = sh;
-    Object.defineProperty(def, "shape", { get });
+    get2.raw = sh;
+    Object.defineProperty(def, "shape", { get: get2 });
   }
   const _normalized = cached(() => normalizeDef(def));
   defineLazyInternal(inst, "propValues", (zod) => {
@@ -31008,7 +31174,7 @@ function resolveRef(ref, ctx) {
   throw new Error(`Reference not found: ${ref}`);
 }
 function checkObjectGuards(objectSchema, guards) {
-  const guard = z.transform((value) => value).check((payload) => {
+  const guard2 = z.transform((value) => value).check((payload) => {
     const value = payload.value;
     if (typeof value !== "object" || value === null || Array.isArray(value))
       return;
@@ -31053,7 +31219,7 @@ function checkObjectGuards(objectSchema, guards) {
       }
     }
   });
-  return guard.pipe(objectSchema);
+  return guard2.pipe(objectSchema);
 }
 function canonicalKey(value, seen) {
   if (value === null)
@@ -31137,7 +31303,7 @@ function plural(n) {
   return n === 1 ? "element" : "elements";
 }
 function checkArrayGuards(arraySchema, guards) {
-  const guard = z.transform((value) => value).check((payload) => {
+  const guard2 = z.transform((value) => value).check((payload) => {
     const items = payload.value;
     if (!Array.isArray(items))
       return;
@@ -31187,7 +31353,7 @@ function checkArrayGuards(arraySchema, guards) {
       }
     }
   });
-  return guard.pipe(arraySchema);
+  return guard2.pipe(arraySchema);
 }
 function getTupleRest(restSchema, ctx) {
   if (restSchema === false) {
@@ -31867,6 +32033,14 @@ var ConflictError = class extends Error {
     this.current = current;
   }
 };
+var DuplicateBookmarkError = class extends ConflictError {
+  name = "DuplicateBookmarkError";
+  bookmark;
+  constructor(bookmark) {
+    super(`Already bookmarked as \u201C${bookmark.title}\u201D`);
+    this.bookmark = bookmark;
+  }
+};
 var ValidationError = class extends Error {
   name = "ValidationError";
 };
@@ -31977,6 +32151,131 @@ async function createFolder(parent, name) {
   return path;
 }
 
+// ../server/src/vault/web-pages.ts
+var TIMEOUT_MS = 5e3;
+var MAX_PAGE_BYTES = 1024 * 1024;
+var MAX_ICON_BYTES = 512 * 1024;
+var ICON_TYPES = {
+  "image/png": "png",
+  "image/x-icon": "ico",
+  "image/vnd.microsoft.icon": "ico",
+  "image/svg+xml": "svg",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/avif": "avif"
+};
+async function get(fetcher, url2, accept) {
+  return fetcher(url2, {
+    headers: { accept, "user-agent": "Mozilla/5.0 (compatible; Tandem bookmarks)" },
+    redirect: "follow",
+    signal: AbortSignal.timeout(TIMEOUT_MS)
+  });
+}
+async function bodyOf(response, max) {
+  const declared = Number(response.headers.get("content-length") ?? 0);
+  if (declared > max) return null;
+  const data = new Uint8Array(await response.arrayBuffer());
+  return data.byteLength > max ? null : data;
+}
+async function readPage(fetcher, url2) {
+  const empty = { preview: { url: url2, title: "", description: "" }, icons: [] };
+  const response = await get(fetcher, url2, "text/html,application/xhtml+xml");
+  if (!response.ok || !/html/i.test(response.headers.get("content-type") ?? "")) return empty;
+  const data = await bodyOf(response, MAX_PAGE_BYTES);
+  if (!data) return empty;
+  const html = new TextDecoder().decode(data).split(/<\/head>/i)[0] ?? "";
+  const base = response.url || url2;
+  return {
+    preview: {
+      url: url2,
+      title: decodeEntities(
+        metaContent(html, "og:title") ?? /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? ""
+      ).replace(/\s+/g, " ").trim(),
+      description: decodeEntities(
+        metaContent(html, "description") ?? metaContent(html, "og:description") ?? ""
+      ).replace(/\s+/g, " ").trim()
+    },
+    icons: iconLinks(html, base)
+  };
+}
+async function previewPage(fetcher, url2) {
+  try {
+    return (await readPage(fetcher, url2)).preview;
+  } catch {
+    return { url: url2, title: "", description: "" };
+  }
+}
+async function readSite(fetcher, url2, options = {}) {
+  let page = { preview: { url: url2, title: "", description: "" }, icons: [] };
+  try {
+    page = await readPage(fetcher, url2);
+  } catch {
+  }
+  if (options.favicon === false) return { preview: page.preview, favicon: null };
+  return {
+    preview: page.preview,
+    favicon: await firstIcon(fetcher, [...page.icons, new URL("/favicon.ico", url2).href])
+  };
+}
+async function firstIcon(fetcher, candidates) {
+  for (const candidate of candidates) {
+    try {
+      const response = await get(fetcher, candidate, "image/*");
+      const type = (response.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+      const extension = ICON_TYPES[type];
+      if (!response.ok || !extension) continue;
+      const data = await bodyOf(response, MAX_ICON_BYTES);
+      if (data?.byteLength) return { data, extension };
+    } catch {
+    }
+  }
+  return null;
+}
+function metaContent(html, name) {
+  for (const tag of html.match(/<meta\b[^>]*>/gi) ?? []) {
+    const key = attribute(tag, "name") ?? attribute(tag, "property");
+    if (key?.toLowerCase() === name) return attribute(tag, "content");
+  }
+  return null;
+}
+function iconLinks(html, base) {
+  const result = [];
+  for (const tag of html.match(/<link\b[^>]*>/gi) ?? []) {
+    const rel = attribute(tag, "rel")?.toLowerCase().split(/\s+/) ?? [];
+    if (!rel.includes("icon") && !rel.includes("apple-touch-icon")) continue;
+    const href = attribute(tag, "href");
+    if (!href) continue;
+    try {
+      const url2 = new URL(decodeEntities(href), base);
+      if (url2.protocol === "http:" || url2.protocol === "https:") result.push(url2.href);
+    } catch {
+    }
+  }
+  return result.toSorted((a, b) => Number(/apple/i.test(a)) - Number(/apple/i.test(b)));
+}
+function attribute(tag, name) {
+  const match2 = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i").exec(tag);
+  return match2 ? match2[1] ?? match2[2] ?? match2[3] ?? "" : null;
+}
+var ENTITIES = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " "
+};
+function decodeEntities(text3) {
+  return text3.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code) => {
+    if (code[0] === "#") {
+      const value = code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
+      return Number.isFinite(value) && value > 0 && value < 1114112 ? String.fromCodePoint(value) : entity;
+    }
+    return ENTITIES[code.toLowerCase()] ?? entity;
+  });
+}
+
 // ../server/src/api/index.ts
 var AUTHOR_HEADER = "x-tandem-author";
 function zValidator2(target, schema) {
@@ -32008,6 +32307,7 @@ var settingsPatch = external_exports.object({
   tags: external_exports.boolean(),
   trash: external_exports.boolean(),
   todos: external_exports.boolean(),
+  bookmarks: external_exports.boolean(),
   daily: external_exports.boolean(),
   homeRecent: external_exports.boolean(),
   shortcutHints: external_exports.boolean()
@@ -32036,6 +32336,35 @@ var databasePatch = databaseInput.extend({
   ).max(20).optional()
 });
 var rowParam = external_exports.object({ id: external_exports.string().min(1), rowId: external_exports.string().min(1) });
+var iconDataUrl = external_exports.string().max(7e5).regex(/^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/, "not an image data URL");
+var bookmarkFields = {
+  title: external_exports.string().max(BOOKMARK_TITLE_MAX * 2).optional(),
+  url: external_exports.string().max(BOOKMARK_URL_MAX).optional(),
+  description: external_exports.string().max(BOOKMARK_DESCRIPTION_MAX * 2).optional(),
+  parentId: external_exports.string().nullable().optional(),
+  index: external_exports.number().int().min(0).optional(),
+  folder: external_exports.string().max(1e3).optional(),
+  iconDataUrl: iconDataUrl.optional()
+};
+var bookmarkInput = external_exports.object({
+  kind: external_exports.enum(["folder", "bookmark"]).optional(),
+  ...bookmarkFields
+});
+function bookmarksOn(vault) {
+  return async (c, next) => {
+    const fromExtension = c.req.header("origin") === EXTENSION_ORIGIN;
+    if (fromExtension && !(await vault.getSettings()).bookmarks) {
+      return c.json({ error: "Bookmarks are off in Tandem", code: BOOKMARKS_OFF }, 409);
+    }
+    await next();
+  };
+}
+function iconOf(dataUrl) {
+  if (!dataUrl) return void 0;
+  const [head = "", base643 = ""] = dataUrl.split(",");
+  const extension = ICON_TYPES[head.slice(5).split(";")[0].toLowerCase()];
+  return extension ? { data: new Uint8Array(Buffer.from(base643, "base64")), extension } : null;
+}
 function createApi(vault, options = {}) {
   const notesFolder = options.notesFolder ?? {
     readOnlyReason: DEFAULT_READ_ONLY_REASON,
@@ -32044,6 +32373,9 @@ function createApi(vault, options = {}) {
   const forbidden = options.forbiddenFolders ?? [];
   const api = new Hono3().onError((error62, c) => {
     if (error62 instanceof NotFoundError) return c.json({ error: error62.message }, 404);
+    if (error62 instanceof DuplicateBookmarkError) {
+      return c.json({ error: error62.message, bookmark: error62.bookmark }, 409);
+    }
     if (error62 instanceof ConflictError) {
       return c.json({ error: error62.message, current: error62.current ?? null }, 409);
     }
@@ -32306,6 +32638,67 @@ function createApi(vault, options = {}) {
     zValidator2("json", settingsPatch),
     async (c) => c.json(await vault.updateSettings(c.req.valid("json")))
   ).get(
+    "/extension",
+    (c) => c.json({
+      folder: options.extensionDir && existsSync3(join3(options.extensionDir, "manifest.json")) ? options.extensionDir : null
+    })
+  ).get(
+    "/bookmarks/status",
+    async (c) => c.json({ enabled: (await vault.getSettings()).bookmarks })
+  ).use("/bookmarks", bookmarksOn(vault)).use("/bookmarks/*", bookmarksOn(vault)).get("/bookmarks", async (c) => c.json(await vault.listBookmarks())).post("/bookmarks", zValidator2("json", bookmarkInput), async (c) => {
+    const { iconDataUrl: icon, ...input2 } = c.req.valid("json");
+    return c.json(await vault.createBookmark(input2, iconOf(icon)), 201);
+  }).get(
+    "/bookmarks/lookup",
+    zValidator2("query", external_exports.object({ url: external_exports.string() })),
+    async (c) => c.json({ bookmark: await vault.findBookmark(c.req.valid("query").url) })
+  ).get(
+    "/bookmarks/search",
+    zValidator2("query", external_exports.object({ q: external_exports.string().default(""), limit: external_exports.string().optional() })),
+    async (c) => {
+      const { q, limit } = c.req.valid("query");
+      return c.json(await vault.searchBookmarks(q, Math.min(100, Number(limit) || 20)));
+    }
+  ).post(
+    "/bookmarks/preview",
+    zValidator2("json", external_exports.object({ url: external_exports.string().max(BOOKMARK_URL_MAX) })),
+    async (c) => {
+      const url2 = webUrl(c.req.valid("json").url);
+      if (!url2) throw new ValidationError("Not a web address (http or https)");
+      return c.json(await vault.previewPage(url2));
+    }
+  ).get(
+    "/bookmarks/:id",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.getBookmark(c.req.valid("param").id))
+  ).get(
+    "/bookmarks/:id/refs",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.bookmarkRefs(c.req.valid("param").id))
+  ).patch(
+    "/bookmarks/:id",
+    zValidator2("param", idParam),
+    zValidator2("json", external_exports.object(bookmarkFields)),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { iconDataUrl: icon, ...patch } = c.req.valid("json");
+      const favicon = iconOf(icon);
+      if (favicon) await vault.setBookmarkIcon(id, `icon.${favicon.extension}`, favicon.data);
+      return c.json(await vault.updateBookmark(id, patch));
+    }
+  ).delete(
+    "/bookmarks/:id",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.deleteBookmark(c.req.valid("param").id, authorOf(c)))
+  ).get("/bookmarks/:id/icon", zValidator2("param", idParam), async (c) => {
+    const path = await vault.bookmarkIconFile(c.req.valid("param").id);
+    const info = await stat2(path).catch(() => null);
+    if (!info?.isFile()) throw new NotFoundError("Icon file missing");
+    c.header("Content-Type", getMimeType(path) ?? "application/octet-stream");
+    c.header("Cache-Control", "public, max-age=31536000, immutable");
+    c.header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'");
+    return c.body(Readable3.toWeb(createReadStream2(path)));
+  }).get(
     "/events",
     (c) => streamSSE(c, async (stream2) => {
       const send = (event) => void stream2.writeSSE({ data: JSON.stringify(event) });
@@ -32343,6 +32736,37 @@ function createFileRoutes(vault) {
     );
     return c.body(Readable3.toWeb(createReadStream2(path)));
   });
+}
+
+// ../server/src/api/guard.ts
+var LOCAL_HOSTS = /* @__PURE__ */ new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+function isLocalHost(hostname3) {
+  const host = hostname3.toLowerCase();
+  return LOCAL_HOSTS.has(host) || host.endsWith(".localhost");
+}
+function isTrustedOrigin(origin) {
+  if (origin === void 0) return true;
+  if (origin === EXTENSION_ORIGIN) return true;
+  try {
+    const url2 = new URL(origin);
+    return (url2.protocol === "http:" || url2.protocol === "https:") && isLocalHost(url2.hostname);
+  } catch {
+    return false;
+  }
+}
+function guard(options = {}) {
+  const extra = new Set((options.allowedHosts ?? []).map((host) => host.toLowerCase()));
+  return async (c, next) => {
+    const { hostname: hostname3 } = new URL(c.req.url);
+    if (!isLocalHost(hostname3) && !extra.has(hostname3.toLowerCase())) {
+      return c.json({ error: `Tandem only answers to localhost, not to ${hostname3}` }, 403);
+    }
+    const write = c.req.method !== "GET" && c.req.method !== "HEAD";
+    if (write && !isTrustedOrigin(c.req.header("origin"))) {
+      return c.json({ error: "Tandem only accepts changes from itself and its extension" }, 403);
+    }
+    await next();
+  };
 }
 
 // ../../node_modules/.pnpm/@modelcontextprotocol+sdk@1.32.1_supports-color@10.2.2_zod@4.6.7/node_modules/@modelcontextprotocol/sdk/dist/esm/server/auth/errors.js
@@ -42661,7 +43085,10 @@ id, path ("Projects/Roadmap") or title. Links between notes are written [[Title]
 so that the user's lines keep their authorship. Never delete notes unless the user asked.
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
 Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
-Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.`;
+Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.
+Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
+\`\`\`bookmark block naming it (id: \u2026). Use the bookmark tools for them; add_bookmark can put
+its card in a note.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
@@ -42692,6 +43119,19 @@ function describeTree2(nodes2) {
   walk(null, 0);
   return lines.join("\n") || "(no notes yet)";
 }
+function describeBookmarks2(all) {
+  const lines = [];
+  const walk = (parentId, depth) => {
+    for (const bookmark of all.filter((b) => b.parentId === parentId)) {
+      lines.push(
+        bookmark.kind === "folder" ? `${"  ".repeat(depth)}- \u{1F4C1} ${bookmark.title}  (id ${bookmark.id})` : `${"  ".repeat(depth)}- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id})${bookmark.description ? ` \u2014 ${bookmark.description}` : ""}`
+      );
+      walk(bookmark.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return lines.join("\n") || "(no bookmarks yet)";
+}
 function describeColumns(database) {
   return database.columns.map((c) => ({
     name: c.name,
@@ -42701,6 +43141,16 @@ function describeColumns(database) {
   }));
 }
 function createMcpServer(vault, author) {
+  const bookmarkLines = async (content) => {
+    const lines = [];
+    for (const id of new Set(bookmarkIdsIn(content))) {
+      const bookmark = await vault.getBookmark(id).catch(() => null);
+      lines.push(
+        bookmark ? `bookmark ${id}: ${bookmark.title} <${bookmark.url}>` : `bookmark ${id}: deleted`
+      );
+    }
+    return lines;
+  };
   const server = new McpServer({ name: "tandem", version: "1.0.0" }, { instructions: INSTRUCTIONS });
   const ref = external_exports.string().describe('Note id, path (e.g. "Projects/Roadmap") or title');
   server.registerTool(
@@ -42754,7 +43204,8 @@ function createMcpServer(vault, author) {
         `path: ${node2.path} \xB7 id: ${node2.id} \xB7 updated: ${formatDateTime(node2.updatedAt)}`,
         detail.tags.length ? `tags: ${detail.tags.join(", ")}` : null,
         detail.attachments.length ? `attachments: ${detail.attachments.map((a) => a.markdownPath).join(", ")}` : null,
-        backlinks.length ? `linked from: ${backlinks.map((b) => b.path).join(", ")}` : null
+        backlinks.length ? `linked from: ${backlinks.map((b) => b.path).join(", ")}` : null,
+        ...await bookmarkLines(detail.content)
       ].filter(Boolean).join("\n");
       return text(`${header}
 
@@ -43095,6 +43546,92 @@ ${detail.content}`
       return text("Deleted");
     })
   );
+  const folder = external_exports.string().describe(
+    'A folder: its id, or its path of names ("Work/Tools"), made if missing; "" for the top'
+  );
+  server.registerTool(
+    "list_bookmarks",
+    {
+      title: "List bookmarks",
+      description: "All bookmarks and their folders, with ids, addresses and descriptions.",
+      inputSchema: {},
+      annotations: { readOnlyHint: true }
+    },
+    async () => attempt(async () => text(describeBookmarks2(await vault.listBookmarks())))
+  );
+  server.registerTool(
+    "search_bookmarks",
+    {
+      title: "Search bookmarks",
+      description: 'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder; typos corrected).',
+      inputSchema: { query: external_exports.string(), limit: external_exports.number().int().min(1).max(100).optional() },
+      annotations: { readOnlyHint: true }
+    },
+    async ({ query, limit }) => attempt(
+      async () => json3(
+        (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark, folders }) => ({
+          id: bookmark.id,
+          title: bookmark.title,
+          url: bookmark.url,
+          description: bookmark.description,
+          folders
+        }))
+      )
+    )
+  );
+  server.registerTool(
+    "add_bookmark",
+    {
+      title: "Add a bookmark",
+      description: "Bookmarks a web page (its title, description and favicon read from it when not given). A page already bookmarked is refused, naming its bookmark. With `note`, its card is added at the end of that note.",
+      inputSchema: {
+        url: external_exports.string(),
+        title: external_exports.string().optional(),
+        description: external_exports.string().optional(),
+        folder: folder.optional(),
+        note: ref.optional().describe("A note to show its card in (at the end)")
+      }
+    },
+    async ({ url: url2, title, description, folder: path, note }) => attempt(async () => {
+      const node2 = note ? await vault.resolveRef(note) : null;
+      const bookmark = await vault.createBookmark({ url: url2, title, description, folder: path });
+      if (node2) await vault.appendContent(node2.id, bookmarkBlock(bookmark.id), author);
+      return json3({ id: bookmark.id, title: bookmark.title, url: bookmark.url });
+    })
+  );
+  server.registerTool(
+    "update_bookmark",
+    {
+      title: "Change or move a bookmark",
+      description: "Changes a bookmark\u2019s title, address or description, or moves it (or a folder) to another folder. Its cards in notes show the change.",
+      inputSchema: {
+        bookmark: external_exports.string().describe("Bookmark or folder id"),
+        title: external_exports.string().optional(),
+        url: external_exports.string().optional(),
+        description: external_exports.string().optional(),
+        folder: folder.optional()
+      }
+    },
+    async ({ bookmark: id, ...patch }) => attempt(async () => {
+      const bookmark = await vault.updateBookmark(id, patch);
+      return json3({ id: bookmark.id, title: bookmark.title, url: bookmark.url });
+    })
+  );
+  server.registerTool(
+    "delete_bookmark",
+    {
+      title: "Delete a bookmark",
+      description: "Deletes a bookmark, or a folder with everything in it, for good; its cards are removed from the notes showing them. Only when the user asked.",
+      inputSchema: { bookmark: external_exports.string().describe("Bookmark or folder id") },
+      annotations: { destructiveHint: true }
+    },
+    async ({ bookmark: id }) => attempt(async () => {
+      const { deleted, pages } = await vault.deleteBookmark(id, author);
+      return text(
+        `Deleted ${deleted === 1 ? "it" : `${deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(", ")}` : ""}`
+      );
+    })
+  );
   return server;
 }
 function createMcpRoutes(vault) {
@@ -43112,9 +43649,9 @@ function createMcpRoutes(vault) {
 
 // ../server/src/app.ts
 function createApp(vault, options = {}) {
-  const app = new Hono3().route("/api", createApi(vault, options)).route("/mcp", createMcpRoutes(vault)).route("/files", createFileRoutes(vault)).get("/health", (c) => c.json({ ok: true }));
+  const app = new Hono3().use(guard({ allowedHosts: options.allowedHosts })).route("/api", createApi(vault, options)).route("/mcp", createMcpRoutes(vault)).route("/files", createFileRoutes(vault)).get("/health", (c) => c.json({ ok: true }));
   const webDir = options.webDir;
-  if (webDir && existsSync3(webDir)) {
+  if (webDir && existsSync4(webDir)) {
     app.use("/*", async (c, next) => {
       await next();
       if (!c.res.headers.has("cache-control")) {
@@ -43153,7 +43690,7 @@ async function waitForPort(port, hostname3, options = {}) {
 }
 
 // ../server/src/db/client.ts
-import { copyFileSync, existsSync as existsSync4, mkdirSync, renameSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync as existsSync5, mkdirSync, renameSync, rmSync } from "node:fs";
 import { dirname as dirname2, join as join5 } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
@@ -48738,6 +49275,8 @@ async function migrate(db, callback, config2) {
 // ../server/src/db/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
+  bookmarkRefs: () => bookmarkRefs,
+  bookmarks: () => bookmarks,
   databaseRows: () => databaseRows,
   databases: () => databases,
   links: () => links,
@@ -48855,6 +49394,42 @@ var databaseRows = sqliteTable(
   },
   (table) => [index("database_rows_order").on(table.databaseId, table.position)]
 );
+var bookmarks = sqliteTable(
+  "bookmarks",
+  {
+    id: text2("id").primaryKey(),
+    kind: text2("kind", { enum: ["folder", "bookmark"] }).notNull(),
+    /** A folder's id, or null at the top. Deleting a folder deletes its contents (the store). */
+    parentId: text2("parent_id"),
+    title: text2("title").notNull(),
+    /** Empty for a folder. */
+    url: text2("url").notNull().default(""),
+    /** `urlKey(url)`: two bookmarks of one page are duplicates. Empty for a folder. */
+    urlKey: text2("url_key").notNull().default(""),
+    description: text2("description").notNull().default(""),
+    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, or null. */
+    icon: text2("icon"),
+    /** Order among siblings (ascending). */
+    position: real("position").notNull(),
+    createdAt: integer2("created_at").notNull(),
+    updatedAt: integer2("updated_at").notNull()
+  },
+  (table) => [
+    index("bookmarks_parent").on(table.parentId, table.position),
+    index("bookmarks_url_key").on(table.urlKey)
+  ]
+);
+var bookmarkRefs = sqliteTable(
+  "bookmark_refs",
+  {
+    nodeId: text2("node_id").notNull().references(() => nodes.id, { onDelete: "cascade" }),
+    bookmarkId: text2("bookmark_id").notNull()
+  },
+  (table) => [
+    primaryKey({ columns: [table.nodeId, table.bookmarkId] }),
+    index("bookmark_refs_bookmark").on(table.bookmarkId)
+  ]
+);
 
 // ../server/src/db/client.ts
 async function openDatabase(path, restoreFrom, options = {}) {
@@ -48862,7 +49437,7 @@ async function openDatabase(path, restoreFrom, options = {}) {
   let restored = false;
   if (path !== ":memory:") {
     mkdirSync(dirname2(path), { recursive: true });
-    if (!existsSync4(path) && restoreFrom && existsSync4(restoreFrom)) {
+    if (!existsSync5(path) && restoreFrom && existsSync5(restoreFrom)) {
       copyFileSync(restoreFrom, path);
       restored = true;
     }
@@ -48926,7 +49501,7 @@ async function openDatabase(path, restoreFrom, options = {}) {
 
 // ../server/src/vault/vault.ts
 import { EventEmitter } from "node:events";
-import { existsSync as existsSync6 } from "node:fs";
+import { existsSync as existsSync7 } from "node:fs";
 import { mkdir as mkdir3, readdir as readdir3, readFile as readFile3, rename as rename2, rm as rm2, stat as stat4 } from "node:fs/promises";
 import { join as join7 } from "node:path";
 
@@ -49346,358 +49921,9 @@ function parseBlame(json4) {
   }
 }
 
-// ../server/src/vault/databases.ts
-var DEFAULT_COLUMNS = [{ name: "Name", type: "text" }];
-var ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-var newId = customAlphabet(ALPHANUMERIC, 12);
-var newColumnId = customAlphabet(ALPHANUMERIC, 8);
-var MAX_OPTIONS = 50;
-var DatabaseStore = class {
-  db;
-  now;
-  constructor(db, now) {
-    this.db = db;
-    this.now = now;
-  }
-  /** A new database for page `nodeId`, with one empty row. */
-  async create(nodeId, input2 = {}) {
-    const id = newId();
-    const now = this.now();
-    const columns = checkColumns(input2.columns?.length ? input2.columns : DEFAULT_COLUMNS, []);
-    await this.db.insert(databases).values({
-      id,
-      nodeId,
-      title: input2.title?.trim() ?? "",
-      columns: JSON.stringify(columns),
-      createdAt: now,
-      updatedAt: now
-    });
-    await this.db.insert(databaseRows).values({
-      id: newId(),
-      databaseId: id,
-      position: 1,
-      cells: JSON.stringify(defaultCells(columns)),
-      createdAt: now,
-      updatedAt: now
-    });
-    return this.get(id);
-  }
-  async get(id) {
-    const record2 = await this.record(id);
-    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
-    return toDatabase(record2, rows);
-  }
-  /** The databases of a page, oldest first. */
-  async listForNode(nodeId) {
-    const records = await this.db.select().from(databases).where(eq(databases.nodeId, nodeId)).orderBy(asc(databases.createdAt));
-    const result = [];
-    for (const record2 of records) {
-      const rows = await this.db.select({ id: databaseRows.id }).from(databaseRows).where(eq(databaseRows.databaseId, record2.id));
-      result.push({ id: record2.id, title: record2.title, rowCount: rows.length });
-    }
-    return result;
-  }
-  async update(id, patch) {
-    const record2 = await this.record(id);
-    const before = JSON.parse(record2.columns);
-    const changes = { updatedAt: this.now() };
-    if (patch.title !== void 0) changes.title = patch.title.trim();
-    let columns = before;
-    if (patch.columns) {
-      columns = checkColumns(await this.withChoices(id, patch.columns, before), before);
-      await this.convertRows(id, before, columns);
-      await this.fillRequired(id, columns);
-      changes.columns = JSON.stringify(columns);
-    }
-    const known = new Set(columns.map((column) => column.id));
-    const sort = patch.sort !== void 0 ? patch.sort : JSON.parse(record2.sort ?? "null");
-    if (sort && !known.has(sort.column)) {
-      if (patch.sort) throw new ValidationError("sort: no such column");
-    }
-    changes.sort = JSON.stringify(sort && known.has(sort.column) ? sort : null);
-    const filters = patch.filters ?? JSON.parse(record2.filters);
-    changes.filters = JSON.stringify(checkFilters(filters, columns, patch.filters !== void 0));
-    await this.db.update(databases).set(changes).where(eq(databases.id, id));
-    return this.get(id);
-  }
-  /** A row (after row `after`, or last), with `cells` by column id. */
-  async addRow(id, input2 = {}) {
-    const record2 = await this.record(id);
-    const columns = JSON.parse(record2.columns);
-    const rows = await this.db.select({ id: databaseRows.id, position: databaseRows.position }).from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
-    let position = (rows.at(-1)?.position ?? 0) + 1;
-    if (input2.after) {
-      const index2 = rows.findIndex((row) => row.id === input2.after);
-      if (index2 < 0) throw new NotFoundError("No such row");
-      const next = rows[index2 + 1];
-      position = next ? (rows[index2].position + next.position) / 2 : rows[index2].position + 1;
-    }
-    const now = this.now();
-    await this.db.insert(databaseRows).values({
-      id: newId(),
-      databaseId: id,
-      position,
-      cells: JSON.stringify(checkCells(input2.cells ?? {}, columns, defaultCells(columns))),
-      createdAt: now,
-      updatedAt: now
-    });
-    await this.touch(id, now);
-    return this.get(id);
-  }
-  /** Changes some cells of a row (by column id; null empties one). */
-  async updateRow(id, rowId, cells2) {
-    const record2 = await this.record(id);
-    const row = await this.row(id, rowId);
-    const columns = JSON.parse(record2.columns);
-    const next = checkCells(cells2, columns, JSON.parse(row.cells));
-    const now = this.now();
-    await this.db.update(databaseRows).set({ cells: JSON.stringify(next), updatedAt: now }).where(eq(databaseRows.id, rowId));
-    await this.touch(id, now);
-    return this.get(id);
-  }
-  async deleteRow(id, rowId) {
-    await this.row(id, rowId);
-    await this.db.delete(databaseRows).where(eq(databaseRows.id, rowId));
-    await this.touch(id, this.now());
-    return this.get(id);
-  }
-  /** Deletes the databases of these pages (deleted for good). */
-  async deleteForNodes(nodeIds) {
-    if (nodeIds.length) await this.db.delete(databases).where(inArray(databases.nodeId, nodeIds));
-  }
-  async record(id) {
-    const record2 = await this.db.select().from(databases).where(eq(databases.id, id)).get();
-    if (!record2) throw new NotFoundError("No such database");
-    return record2;
-  }
-  async row(id, rowId) {
-    const row = await this.db.select().from(databaseRows).where(eq(databaseRows.id, rowId)).get();
-    if (!row || row.databaseId !== id) throw new NotFoundError("No such row");
-    return row;
-  }
-  async touch(id, now) {
-    await this.db.update(databases).set({ updatedAt: now }).where(eq(databases.id, id));
-  }
-  /** Empty cells of columns that require a value take its default (the first choice). */
-  async fillRequired(id, columns) {
-    const defaults = defaultCells(columns);
-    if (!Object.keys(defaults).length) return;
-    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
-    for (const row of rows) {
-      const cells2 = JSON.parse(row.cells);
-      const missing = Object.keys(defaults).filter(
-        (columnId) => cells2[columnId] === null || cells2[columnId] === void 0
-      );
-      if (!missing.length) continue;
-      for (const columnId of missing) cells2[columnId] = defaults[columnId];
-      await this.db.update(databaseRows).set({ cells: JSON.stringify(cells2) }).where(eq(databaseRows.id, row.id));
-    }
-  }
-  /** Columns becoming a `select` without choices: their values become the choices. */
-  async withChoices(id, input2, before) {
-    const previous = new Map(before.map((column) => [column.id, column]));
-    const turning = input2.filter((column) => {
-      const old = column.id ? previous.get(column.id) : void 0;
-      return column.type === "select" && !column.options?.length && old && old.type !== "select";
-    });
-    if (!turning.length) return input2;
-    const database = await this.get(id);
-    return input2.map(
-      (column) => turning.includes(column) ? { ...column, options: distinctTexts(database, previous.get(column.id)) } : column
-    );
-  }
-  /** Values of a column whose type changed are converted; those of removed columns go. */
-  async convertRows(id, before, after) {
-    const previous = new Map(before.map((column) => [column.id, column]));
-    const kept = new Set(after.map((column) => column.id));
-    const changed = after.filter((column) => {
-      const old = previous.get(column.id);
-      return old && old.type !== column.type;
-    });
-    const removed = before.some((column) => !kept.has(column.id));
-    if (!changed.length && !removed) return;
-    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
-    for (const row of rows) {
-      const cells2 = JSON.parse(row.cells);
-      const next = {};
-      for (const [columnId, value] of Object.entries(cells2)) {
-        if (kept.has(columnId)) next[columnId] = value;
-      }
-      for (const column of changed) {
-        next[column.id] = convertCell(cells2[column.id], previous.get(column.id), column);
-      }
-      await this.db.update(databaseRows).set({ cells: JSON.stringify(next) }).where(eq(databaseRows.id, row.id));
-    }
-  }
-};
-function toDatabase(record2, rows) {
-  return {
-    id: record2.id,
-    nodeId: record2.nodeId,
-    title: record2.title,
-    columns: JSON.parse(record2.columns),
-    sort: JSON.parse(record2.sort ?? "null"),
-    filters: JSON.parse(record2.filters),
-    rows: rows.map((row) => ({
-      id: row.id,
-      cells: JSON.parse(row.cells),
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt
-    })),
-    createdAt: record2.createdAt,
-    updatedAt: record2.updatedAt
-  };
-}
-function checkColumns(input2, before) {
-  if (!input2.length) throw new ValidationError("A database needs at least one column");
-  const names = /* @__PURE__ */ new Set();
-  const previous = new Map(before.map((column) => [column.id, column]));
-  return input2.map((column) => {
-    const name = column.name.trim();
-    if (!name) throw new ValidationError("A column needs a name");
-    if (names.has(name.toLowerCase())) throw new ValidationError(`Two columns named \u201C${name}\u201D`);
-    names.add(name.toLowerCase());
-    if (!COLUMN_TYPES.includes(column.type)) {
-      throw new ValidationError(`${name}: unknown type \u201C${column.type}\u201D`);
-    }
-    if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`);
-    const result = { id: column.id ?? newColumnId(), name, type: column.type };
-    if (column.type === "select") {
-      const options = [
-        ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean))
-      ];
-      result.options = options;
-      if (column.allowEmpty === false) {
-        if (!options.length) {
-          throw new ValidationError(`${name}: a value is required, so it needs a choice`);
-        }
-        result.allowEmpty = false;
-      }
-    }
-    return result;
-  });
-}
-function checkFilters(filters, columns, strict) {
-  const known = new Set(columns.map((column) => column.id));
-  return filters.filter((filter) => {
-    const ok = known.has(filter.column) && FILTER_OPERATORS.includes(filter.operator);
-    if (!ok && strict) throw new ValidationError("filters: no such column or operator");
-    return ok;
-  });
-}
-function checkCells(cells2, columns, current) {
-  const byId = new Map(columns.map((column) => [column.id, column]));
-  const next = { ...current };
-  for (const [columnId, value] of Object.entries(cells2)) {
-    const column = byId.get(columnId);
-    if (!column) throw new ValidationError(`No column \u201C${columnId}\u201D`);
-    const cell = toCellValue(value, column);
-    if (cell === void 0) {
-      throw new ValidationError(
-        column.type === "select" ? `${column.name}: \u201C${String(value)}\u201D is not one of ${column.options?.join(", ") || "its choices (none yet)"}` : `${column.name}: \u201C${String(value)}\u201D is not a ${column.type === "checkbox" ? "yes or no" : column.type}`
-      );
-    }
-    if (cell === null && requiresValue(column)) {
-      throw new ValidationError(`${column.name} can't be empty`);
-    }
-    if (cell === null) delete next[columnId];
-    else next[columnId] = cell;
-  }
-  return next;
-}
-function distinctTexts(database, column) {
-  const values = /* @__PURE__ */ new Set();
-  for (const row of database.rows) {
-    const text3 = cellText(row.cells[column.id], column).trim();
-    if (text3) values.add(text3);
-    if (values.size >= MAX_OPTIONS) break;
-  }
-  return [...values];
-}
-
-// ../server/src/vault/files.ts
-import { createHash } from "node:crypto";
-import { existsSync as existsSync5 } from "node:fs";
-import { mkdir as mkdir2, readdir as readdir2, rename, rm, stat as stat3, writeFile } from "node:fs/promises";
-import { basename as basename3, dirname as dirname3, join as join6 } from "node:path";
-function hashContent(content) {
-  return createHash("sha1").update(content).digest("hex");
-}
-async function atomicWrite(path, content) {
-  await mkdir2(dirname3(path), { recursive: true });
-  const temporary = join6(dirname3(path), `.${basename3(path)}.${process.pid}.tandem-tmp`);
-  await writeFile(temporary, content);
-  await rename(temporary, path);
-}
-async function moveIfExists(from, to) {
-  if (!existsSync5(from)) return false;
-  await mkdir2(dirname3(to), { recursive: true });
-  await rename(from, to);
-  return true;
-}
-async function removeIfEmpty(path) {
-  try {
-    const entries = (await readdir2(path)).filter((name) => name !== ".DS_Store");
-    if (entries.length === 0) await rm(path, { recursive: true, force: true });
-  } catch {
-  }
-}
-async function statFile(path) {
-  try {
-    const info = await stat3(path);
-    return { mtime: info.mtimeMs, size: info.size };
-  } catch {
-    return null;
-  }
-}
-function isIgnoredName(name) {
-  return name.startsWith(".") || name.startsWith("~$") || name.endsWith(".tandem-tmp");
-}
-async function scanTree(root) {
-  const pages = /* @__PURE__ */ new Map();
-  const dirs = /* @__PURE__ */ new Set();
-  async function walk(relative4) {
-    let entries;
-    try {
-      entries = await readdir2(join6(root, relative4), { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const entry of entries) {
-      if (isIgnoredName(entry.name)) continue;
-      const path = relative4 ? `${relative4}/${entry.name}` : entry.name;
-      if (entry.isDirectory()) {
-        if (entry.name.endsWith(".assets")) continue;
-        dirs.add(path);
-        await walk(path);
-      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
-        const info = await statFile(join6(root, path));
-        if (info) pages.set(path, { path, ...info });
-      }
-    }
-  }
-  await walk("");
-  return { pages, dirs };
-}
-function uniqueName(base, extension, taken) {
-  let candidate = `${base}${extension}`;
-  for (let i = 2; taken.has(candidate.toLowerCase()); i++) candidate = `${base} ${i}${extension}`;
-  return candidate;
-}
-
-// ../server/src/vault/lock.ts
-var Lock = class {
-  tail = Promise.resolve();
-  run(task) {
-    const result = this.tail.then(task, task);
-    this.tail = result.catch(() => void 0);
-    return result;
-  }
-};
-
 // ../server/src/vault/text.ts
 function markdownToText(markdown) {
-  return markdown.replace(/^(```|~~~).*$/gm, "").replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(
+  return markdown.replace(/^```(?:database|bookmark)[ \t]*\n[\s\S]*?^```[ \t]*$/gm, "").replace(/^(```|~~~).*$/gm, "").replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(
     /\[\[([^\]|]+?)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g,
     (_, target, label) => (label ?? target).trim()
   ).replace(/^\s*>\s*\[!\w+\]/gm, "").replace(/<\/?[a-z][^>]*>/gi, " ").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*>+\s?/gm, "").replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/gm, "").replace(/^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*$/gm, "").replace(/\|/g, " ").replace(/(\*\*|__|~~|\*|_|`)/g, "").replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
@@ -49977,6 +50203,622 @@ function rebuildQuery(query, original, replaced) {
   return result;
 }
 
+// ../server/src/vault/bookmarks.ts
+var newId = customAlphabet("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz", 12);
+var BOOKMARK_ICON_PREFIX = "bookmark-";
+var BookmarkStore = class {
+  db;
+  now;
+  constructor(db, now) {
+    this.db = db;
+    this.now = now;
+  }
+  /** Every bookmark and folder, in order within each folder. */
+  async list() {
+    const records = await this.db.select().from(bookmarks).orderBy(asc(bookmarks.position));
+    return records.map(toBookmark);
+  }
+  async get(id) {
+    return toBookmark(await this.record(id));
+  }
+  /** The bookmark of this page (same `urlKey`), if there is one. */
+  async findByUrl(url2) {
+    const valid = webUrl(url2);
+    if (!valid) return null;
+    const record2 = await this.db.select().from(bookmarks).where(eq(bookmarks.urlKey, urlKey(valid))).get();
+    return record2 ? toBookmark(record2) : null;
+  }
+  /** A new bookmark or folder. Duplicates are the vault's to refuse (findByUrl). */
+  async create(input2) {
+    const kind = input2.kind ?? "bookmark";
+    const parentId = input2.folder !== void 0 ? await this.folder(input2.folder) : input2.parentId ?? null;
+    await this.checkParent(parentId);
+    let url2 = "";
+    if (kind === "bookmark") {
+      url2 = webUrl(input2.url ?? "") ?? "";
+      if (!url2) throw new ValidationError("A bookmark needs a web address (http or https)");
+    }
+    const title = clip(input2.title ?? "", BOOKMARK_TITLE_MAX) || (kind === "folder" ? "" : siteOf(url2));
+    if (!title) throw new ValidationError("A folder needs a name");
+    const id = newId();
+    const now = this.now();
+    await this.db.insert(bookmarks).values({
+      id,
+      kind,
+      parentId,
+      title,
+      url: url2,
+      urlKey: url2 ? urlKey(url2) : "",
+      description: kind === "folder" ? "" : clip(input2.description ?? "", BOOKMARK_DESCRIPTION_MAX),
+      position: 0,
+      createdAt: now,
+      updatedAt: now
+    });
+    await this.place(id, parentId, input2.index);
+    return this.get(id);
+  }
+  async update(id, patch) {
+    const record2 = await this.record(id);
+    const changes = { updatedAt: this.now() };
+    if (patch.title !== void 0) {
+      const title = clip(patch.title, BOOKMARK_TITLE_MAX);
+      if (!title) throw new ValidationError("The name can\u2019t be empty");
+      changes.title = title;
+    }
+    if (patch.url !== void 0 && record2.kind === "bookmark") {
+      const url2 = webUrl(patch.url);
+      if (!url2) throw new ValidationError("A bookmark needs a web address (http or https)");
+      changes.url = url2;
+      changes.urlKey = urlKey(url2);
+    }
+    if (patch.description !== void 0 && record2.kind === "bookmark") {
+      changes.description = clip(patch.description, BOOKMARK_DESCRIPTION_MAX);
+    }
+    await this.db.update(bookmarks).set(changes).where(eq(bookmarks.id, id));
+    if (patch.folder !== void 0 || patch.parentId !== void 0 || patch.index !== void 0) {
+      const parentId = patch.folder !== void 0 ? await this.folder(patch.folder) : patch.parentId === void 0 ? record2.parentId : patch.parentId;
+      await this.checkParent(parentId, id);
+      await this.db.update(bookmarks).set({ parentId }).where(eq(bookmarks.id, id));
+      await this.place(id, parentId, patch.index);
+    }
+    return this.get(id);
+  }
+  /** The bookmark or folder and everything inside it, by id. */
+  async subtree(id) {
+    const all = await this.list();
+    const root = all.find((bookmark) => bookmark.id === id);
+    if (!root) throw new NotFoundError("No such bookmark");
+    const result = [root];
+    for (let i = 0; i < result.length; i++) {
+      result.push(...all.filter((bookmark) => bookmark.parentId === result[i].id));
+    }
+    return result;
+  }
+  async deleteMany(ids) {
+    if (ids.length) await this.db.delete(bookmarks).where(inArray(bookmarks.id, ids));
+  }
+  /** Sets (or clears) the favicon file; returns the previous one, to delete. */
+  async setIcon(id, file2) {
+    const record2 = await this.record(id);
+    await this.db.update(bookmarks).set({ icon: file2 ? `image:${file2}` : null }).where(eq(bookmarks.id, id));
+    return record2.icon?.startsWith("image:") ? record2.icon.slice(6) : null;
+  }
+  /** The favicon's file name in `.tandem/icons/`. */
+  async iconFile(id) {
+    const record2 = await this.record(id);
+    if (!record2.icon?.startsWith("image:")) throw new NotFoundError("No icon");
+    return record2.icon.slice(6);
+  }
+  /** Bookmarks matching a query, best first; with no words, the most recently changed. */
+  async search(query, limit = 20) {
+    const all = await this.list();
+    const byId = new Map(all.map((bookmark) => [bookmark.id, bookmark]));
+    const folders = (bookmark) => {
+      const names = [];
+      let parent = bookmark.parentId ? byId.get(bookmark.parentId) : void 0;
+      while (parent) {
+        names.unshift(parent.title);
+        parent = parent.parentId ? byId.get(parent.parentId) : void 0;
+      }
+      return names;
+    };
+    const parsed = parseQuery(query);
+    if (parsed.tags.length) return [];
+    const candidates = all.filter((bookmark) => bookmark.kind === "bookmark").map((bookmark) => ({ bookmark, folders: folders(bookmark), fields: fieldsOf(bookmark) })).filter(
+      ({ folders: names }) => parsed.folders.every((folder) => {
+        const prefix = foldText(folder);
+        const path = foldText(names.join("/"));
+        return path === prefix || path.startsWith(`${prefix}/`) || path.includes(`/${prefix}`);
+      })
+    );
+    if (!parsed.words.length && !parsed.phrases.length) {
+      return candidates.filter(({ fields }) => !parsed.excluded.some((word) => matchIn(fields, word))).toSorted((a, b) => b.bookmark.updatedAt - a.bookmark.updatedAt).slice(0, limit).map(({ bookmark, folders: names }) => toResult(bookmark, names, []));
+    }
+    const vocabulary = new Set(candidates.flatMap(({ fields }) => fields.flatMap((f) => f.words)));
+    const words = parsed.words.map(
+      (word) => [...vocabulary].some((known) => known.startsWith(word)) ? word : closest(word, vocabulary) ?? word
+    );
+    const scored = [];
+    for (const { bookmark, folders: names, fields } of candidates) {
+      if (parsed.excluded.some((word) => matchIn(fields, word))) continue;
+      if (!parsed.phrases.every((phrase) => fields.some((field) => field.text.includes(phrase))))
+        continue;
+      let score = parsed.phrases.length * 5;
+      let matched = true;
+      for (const word of words) {
+        const best = Math.max(...fields.map((field) => fieldScore(field, word)));
+        if (best === 0) {
+          matched = false;
+          break;
+        }
+        score += best;
+      }
+      if (matched) scored.push({ score, bookmark, folders: names });
+    }
+    return scored.toSorted((a, b) => b.score - a.score || b.bookmark.updatedAt - a.bookmark.updatedAt).slice(0, limit).map(({ bookmark, folders: names }) => toResult(bookmark, names, words));
+  }
+  /** A folder by id, or by path of names (any case), its missing folders made; '' is the top. */
+  async folder(ref) {
+    const all = await this.list();
+    const byId = all.find((bookmark) => bookmark.id === ref && bookmark.kind === "folder");
+    if (byId) return byId.id;
+    let parentId = null;
+    for (const name of ref.split("/").map((part) => part.trim()).filter(Boolean)) {
+      const existing = all.find(
+        (bookmark) => bookmark.kind === "folder" && bookmark.parentId === parentId && bookmark.title.toLowerCase() === name.toLowerCase()
+      );
+      parentId = existing ? existing.id : (await this.create({ kind: "folder", title: name, parentId })).id;
+    }
+    return parentId;
+  }
+  async record(id) {
+    const record2 = await this.db.select().from(bookmarks).where(eq(bookmarks.id, id)).get();
+    if (!record2) throw new NotFoundError("No such bookmark");
+    return record2;
+  }
+  /** A folder (or the top), never inside the bookmark being moved (`moving`). */
+  async checkParent(parentId, moving) {
+    if (!parentId) return;
+    const parent = await this.db.select().from(bookmarks).where(eq(bookmarks.id, parentId)).get();
+    if (!parent) throw new NotFoundError("No such folder");
+    if (parent.kind !== "folder") throw new ValidationError("Bookmarks go in folders only");
+    if (moving && (await this.subtree(moving)).some((bookmark) => bookmark.id === parentId)) {
+      throw new ValidationError("A folder can\u2019t go inside itself");
+    }
+  }
+  /** Puts a bookmark at `index` among its folder's (default: last), renumbering them. */
+  async place(id, parentId, index2) {
+    const siblings = (await this.list()).filter(
+      (bookmark) => bookmark.parentId === parentId && bookmark.id !== id
+    );
+    const at = Math.max(0, Math.min(index2 ?? siblings.length, siblings.length));
+    const ordered = [
+      ...siblings.slice(0, at).map((b) => b.id),
+      id,
+      ...siblings.slice(at).map((b) => b.id)
+    ];
+    for (const [position, sibling] of ordered.entries()) {
+      await this.db.update(bookmarks).set({ position: position + 1 }).where(eq(bookmarks.id, sibling));
+    }
+  }
+};
+function toResult(bookmark, folders, words) {
+  return { bookmark, titleHtml: markWords(bookmark.title, words), folders: folders.join(" / ") };
+}
+function toBookmark(record2) {
+  return {
+    id: record2.id,
+    kind: record2.kind,
+    parentId: record2.parentId,
+    title: record2.title,
+    url: record2.url,
+    description: record2.description,
+    icon: record2.icon?.startsWith("image:") ? `/api/bookmarks/${record2.id}/icon?v=${encodeURIComponent(record2.icon.slice(6))}` : null,
+    position: record2.position,
+    createdAt: record2.createdAt,
+    updatedAt: record2.updatedAt
+  };
+}
+function clip(text3, max) {
+  return text3.replace(/\s+/g, " ").trim().slice(0, max).trim();
+}
+function wordsOf2(text3) {
+  return text3.match(/[\p{L}\p{N}]+/gu) ?? [];
+}
+function toField(text3, weight) {
+  const folded = foldText(text3);
+  return { text: folded, words: wordsOf2(folded), weight };
+}
+function fieldsOf(bookmark) {
+  return [
+    toField(bookmark.title, 10),
+    toField(`${siteOf(bookmark.url)} ${bookmark.url}`, 4),
+    toField(bookmark.description, 1)
+  ];
+}
+function fieldScore(field, word) {
+  if (field.words.some((known) => known.startsWith(word))) return field.weight;
+  if (word.length >= 3 && field.text.includes(word)) return field.weight / 2;
+  return 0;
+}
+function matchIn(fields, word) {
+  return fields.some((field) => field.words.some((known) => known.startsWith(word)));
+}
+function closest(word, vocabulary) {
+  const max = word.length <= 3 ? 0 : word.length <= 6 ? 1 : 2;
+  if (max === 0) return null;
+  let best = null;
+  for (const term of vocabulary) {
+    const distance = Math.min(
+      editDistance(word, term, max),
+      term.length > word.length ? editDistance(word, term.slice(0, word.length), max) : max + 1
+    );
+    if (distance <= max && (!best || distance < best.distance)) best = { term, distance };
+  }
+  return best?.term ?? null;
+}
+function markWords(title, words) {
+  if (!words.length) return escapeHtml(title);
+  let html = "";
+  let last = 0;
+  for (const match2 of title.matchAll(/[\p{L}\p{N}]+/gu)) {
+    const folded = foldText(match2[0]);
+    if (!words.some((word) => folded.startsWith(word))) continue;
+    html += `${escapeHtml(title.slice(last, match2.index))}<mark>${escapeHtml(match2[0])}</mark>`;
+    last = match2.index + match2[0].length;
+  }
+  return html + escapeHtml(title.slice(last));
+}
+
+// ../server/src/vault/databases.ts
+var DEFAULT_COLUMNS = [{ name: "Name", type: "text" }];
+var ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+var newId2 = customAlphabet(ALPHANUMERIC, 12);
+var newColumnId = customAlphabet(ALPHANUMERIC, 8);
+var MAX_OPTIONS = 50;
+var DatabaseStore = class {
+  db;
+  now;
+  constructor(db, now) {
+    this.db = db;
+    this.now = now;
+  }
+  /** A new database for page `nodeId`, with one empty row. */
+  async create(nodeId, input2 = {}) {
+    const id = newId2();
+    const now = this.now();
+    const columns = checkColumns(input2.columns?.length ? input2.columns : DEFAULT_COLUMNS, []);
+    await this.db.insert(databases).values({
+      id,
+      nodeId,
+      title: input2.title?.trim() ?? "",
+      columns: JSON.stringify(columns),
+      createdAt: now,
+      updatedAt: now
+    });
+    await this.db.insert(databaseRows).values({
+      id: newId2(),
+      databaseId: id,
+      position: 1,
+      cells: JSON.stringify(defaultCells(columns)),
+      createdAt: now,
+      updatedAt: now
+    });
+    return this.get(id);
+  }
+  async get(id) {
+    const record2 = await this.record(id);
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+    return toDatabase(record2, rows);
+  }
+  /** The databases of a page, oldest first. */
+  async listForNode(nodeId) {
+    const records = await this.db.select().from(databases).where(eq(databases.nodeId, nodeId)).orderBy(asc(databases.createdAt));
+    const result = [];
+    for (const record2 of records) {
+      const rows = await this.db.select({ id: databaseRows.id }).from(databaseRows).where(eq(databaseRows.databaseId, record2.id));
+      result.push({ id: record2.id, title: record2.title, rowCount: rows.length });
+    }
+    return result;
+  }
+  async update(id, patch) {
+    const record2 = await this.record(id);
+    const before = JSON.parse(record2.columns);
+    const changes = { updatedAt: this.now() };
+    if (patch.title !== void 0) changes.title = patch.title.trim();
+    let columns = before;
+    if (patch.columns) {
+      columns = checkColumns(await this.withChoices(id, patch.columns, before), before);
+      await this.convertRows(id, before, columns);
+      await this.fillRequired(id, columns);
+      changes.columns = JSON.stringify(columns);
+    }
+    const known = new Set(columns.map((column) => column.id));
+    const sort = patch.sort !== void 0 ? patch.sort : JSON.parse(record2.sort ?? "null");
+    if (sort && !known.has(sort.column)) {
+      if (patch.sort) throw new ValidationError("sort: no such column");
+    }
+    changes.sort = JSON.stringify(sort && known.has(sort.column) ? sort : null);
+    const filters = patch.filters ?? JSON.parse(record2.filters);
+    changes.filters = JSON.stringify(checkFilters(filters, columns, patch.filters !== void 0));
+    await this.db.update(databases).set(changes).where(eq(databases.id, id));
+    return this.get(id);
+  }
+  /** A row (after row `after`, or last), with `cells` by column id. */
+  async addRow(id, input2 = {}) {
+    const record2 = await this.record(id);
+    const columns = JSON.parse(record2.columns);
+    const rows = await this.db.select({ id: databaseRows.id, position: databaseRows.position }).from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+    let position = (rows.at(-1)?.position ?? 0) + 1;
+    if (input2.after) {
+      const index2 = rows.findIndex((row) => row.id === input2.after);
+      if (index2 < 0) throw new NotFoundError("No such row");
+      const next = rows[index2 + 1];
+      position = next ? (rows[index2].position + next.position) / 2 : rows[index2].position + 1;
+    }
+    const now = this.now();
+    await this.db.insert(databaseRows).values({
+      id: newId2(),
+      databaseId: id,
+      position,
+      cells: JSON.stringify(checkCells(input2.cells ?? {}, columns, defaultCells(columns))),
+      createdAt: now,
+      updatedAt: now
+    });
+    await this.touch(id, now);
+    return this.get(id);
+  }
+  /** Changes some cells of a row (by column id; null empties one). */
+  async updateRow(id, rowId, cells2) {
+    const record2 = await this.record(id);
+    const row = await this.row(id, rowId);
+    const columns = JSON.parse(record2.columns);
+    const next = checkCells(cells2, columns, JSON.parse(row.cells));
+    const now = this.now();
+    await this.db.update(databaseRows).set({ cells: JSON.stringify(next), updatedAt: now }).where(eq(databaseRows.id, rowId));
+    await this.touch(id, now);
+    return this.get(id);
+  }
+  async deleteRow(id, rowId) {
+    await this.row(id, rowId);
+    await this.db.delete(databaseRows).where(eq(databaseRows.id, rowId));
+    await this.touch(id, this.now());
+    return this.get(id);
+  }
+  /** Deletes the databases of these pages (deleted for good). */
+  async deleteForNodes(nodeIds) {
+    if (nodeIds.length) await this.db.delete(databases).where(inArray(databases.nodeId, nodeIds));
+  }
+  async record(id) {
+    const record2 = await this.db.select().from(databases).where(eq(databases.id, id)).get();
+    if (!record2) throw new NotFoundError("No such database");
+    return record2;
+  }
+  async row(id, rowId) {
+    const row = await this.db.select().from(databaseRows).where(eq(databaseRows.id, rowId)).get();
+    if (!row || row.databaseId !== id) throw new NotFoundError("No such row");
+    return row;
+  }
+  async touch(id, now) {
+    await this.db.update(databases).set({ updatedAt: now }).where(eq(databases.id, id));
+  }
+  /** Empty cells of columns that require a value take its default (the first choice). */
+  async fillRequired(id, columns) {
+    const defaults = defaultCells(columns);
+    if (!Object.keys(defaults).length) return;
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
+    for (const row of rows) {
+      const cells2 = JSON.parse(row.cells);
+      const missing = Object.keys(defaults).filter(
+        (columnId) => cells2[columnId] === null || cells2[columnId] === void 0
+      );
+      if (!missing.length) continue;
+      for (const columnId of missing) cells2[columnId] = defaults[columnId];
+      await this.db.update(databaseRows).set({ cells: JSON.stringify(cells2) }).where(eq(databaseRows.id, row.id));
+    }
+  }
+  /** Columns becoming a `select` without choices: their values become the choices. */
+  async withChoices(id, input2, before) {
+    const previous = new Map(before.map((column) => [column.id, column]));
+    const turning = input2.filter((column) => {
+      const old = column.id ? previous.get(column.id) : void 0;
+      return column.type === "select" && !column.options?.length && old && old.type !== "select";
+    });
+    if (!turning.length) return input2;
+    const database = await this.get(id);
+    return input2.map(
+      (column) => turning.includes(column) ? { ...column, options: distinctTexts(database, previous.get(column.id)) } : column
+    );
+  }
+  /** Values of a column whose type changed are converted; those of removed columns go. */
+  async convertRows(id, before, after) {
+    const previous = new Map(before.map((column) => [column.id, column]));
+    const kept = new Set(after.map((column) => column.id));
+    const changed = after.filter((column) => {
+      const old = previous.get(column.id);
+      return old && old.type !== column.type;
+    });
+    const removed = before.some((column) => !kept.has(column.id));
+    if (!changed.length && !removed) return;
+    const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id));
+    for (const row of rows) {
+      const cells2 = JSON.parse(row.cells);
+      const next = {};
+      for (const [columnId, value] of Object.entries(cells2)) {
+        if (kept.has(columnId)) next[columnId] = value;
+      }
+      for (const column of changed) {
+        next[column.id] = convertCell(cells2[column.id], previous.get(column.id), column);
+      }
+      await this.db.update(databaseRows).set({ cells: JSON.stringify(next) }).where(eq(databaseRows.id, row.id));
+    }
+  }
+};
+function toDatabase(record2, rows) {
+  return {
+    id: record2.id,
+    nodeId: record2.nodeId,
+    title: record2.title,
+    columns: JSON.parse(record2.columns),
+    sort: JSON.parse(record2.sort ?? "null"),
+    filters: JSON.parse(record2.filters),
+    rows: rows.map((row) => ({
+      id: row.id,
+      cells: JSON.parse(row.cells),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    })),
+    createdAt: record2.createdAt,
+    updatedAt: record2.updatedAt
+  };
+}
+function checkColumns(input2, before) {
+  if (!input2.length) throw new ValidationError("A database needs at least one column");
+  const names = /* @__PURE__ */ new Set();
+  const previous = new Map(before.map((column) => [column.id, column]));
+  return input2.map((column) => {
+    const name = column.name.trim();
+    if (!name) throw new ValidationError("A column needs a name");
+    if (names.has(name.toLowerCase())) throw new ValidationError(`Two columns named \u201C${name}\u201D`);
+    names.add(name.toLowerCase());
+    if (!COLUMN_TYPES.includes(column.type)) {
+      throw new ValidationError(`${name}: unknown type \u201C${column.type}\u201D`);
+    }
+    if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`);
+    const result = { id: column.id ?? newColumnId(), name, type: column.type };
+    if (column.type === "select") {
+      const options = [
+        ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean))
+      ];
+      result.options = options;
+      if (column.allowEmpty === false) {
+        if (!options.length) {
+          throw new ValidationError(`${name}: a value is required, so it needs a choice`);
+        }
+        result.allowEmpty = false;
+      }
+    }
+    return result;
+  });
+}
+function checkFilters(filters, columns, strict) {
+  const known = new Set(columns.map((column) => column.id));
+  return filters.filter((filter) => {
+    const ok = known.has(filter.column) && FILTER_OPERATORS.includes(filter.operator);
+    if (!ok && strict) throw new ValidationError("filters: no such column or operator");
+    return ok;
+  });
+}
+function checkCells(cells2, columns, current) {
+  const byId = new Map(columns.map((column) => [column.id, column]));
+  const next = { ...current };
+  for (const [columnId, value] of Object.entries(cells2)) {
+    const column = byId.get(columnId);
+    if (!column) throw new ValidationError(`No column \u201C${columnId}\u201D`);
+    const cell = toCellValue(value, column);
+    if (cell === void 0) {
+      throw new ValidationError(
+        column.type === "select" ? `${column.name}: \u201C${String(value)}\u201D is not one of ${column.options?.join(", ") || "its choices (none yet)"}` : `${column.name}: \u201C${String(value)}\u201D is not a ${column.type === "checkbox" ? "yes or no" : column.type}`
+      );
+    }
+    if (cell === null && requiresValue(column)) {
+      throw new ValidationError(`${column.name} can't be empty`);
+    }
+    if (cell === null) delete next[columnId];
+    else next[columnId] = cell;
+  }
+  return next;
+}
+function distinctTexts(database, column) {
+  const values = /* @__PURE__ */ new Set();
+  for (const row of database.rows) {
+    const text3 = cellText(row.cells[column.id], column).trim();
+    if (text3) values.add(text3);
+    if (values.size >= MAX_OPTIONS) break;
+  }
+  return [...values];
+}
+
+// ../server/src/vault/files.ts
+import { createHash } from "node:crypto";
+import { existsSync as existsSync6 } from "node:fs";
+import { mkdir as mkdir2, readdir as readdir2, rename, rm, stat as stat3, writeFile } from "node:fs/promises";
+import { basename as basename3, dirname as dirname3, join as join6 } from "node:path";
+function hashContent(content) {
+  return createHash("sha1").update(content).digest("hex");
+}
+async function atomicWrite(path, content) {
+  await mkdir2(dirname3(path), { recursive: true });
+  const temporary = join6(dirname3(path), `.${basename3(path)}.${process.pid}.tandem-tmp`);
+  await writeFile(temporary, content);
+  await rename(temporary, path);
+}
+async function moveIfExists(from, to) {
+  if (!existsSync6(from)) return false;
+  await mkdir2(dirname3(to), { recursive: true });
+  await rename(from, to);
+  return true;
+}
+async function removeIfEmpty(path) {
+  try {
+    const entries = (await readdir2(path)).filter((name) => name !== ".DS_Store");
+    if (entries.length === 0) await rm(path, { recursive: true, force: true });
+  } catch {
+  }
+}
+async function statFile(path) {
+  try {
+    const info = await stat3(path);
+    return { mtime: info.mtimeMs, size: info.size };
+  } catch {
+    return null;
+  }
+}
+function isIgnoredName(name) {
+  return name.startsWith(".") || name.startsWith("~$") || name.endsWith(".tandem-tmp");
+}
+async function scanTree(root) {
+  const pages = /* @__PURE__ */ new Map();
+  const dirs = /* @__PURE__ */ new Set();
+  async function walk(relative4) {
+    let entries;
+    try {
+      entries = await readdir2(join6(root, relative4), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (isIgnoredName(entry.name)) continue;
+      const path = relative4 ? `${relative4}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (entry.name.endsWith(".assets")) continue;
+        dirs.add(path);
+        await walk(path);
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        const info = await statFile(join6(root, path));
+        if (info) pages.set(path, { path, ...info });
+      }
+    }
+  }
+  await walk("");
+  return { pages, dirs };
+}
+function uniqueName(base, extension, taken) {
+  let candidate = `${base}${extension}`;
+  for (let i = 2; taken.has(candidate.toLowerCase()); i++) candidate = `${base} ${i}${extension}`;
+  return candidate;
+}
+
+// ../server/src/vault/lock.ts
+var Lock = class {
+  tail = Promise.resolve();
+  run(task) {
+    const result = this.tail.then(task, task);
+    this.tail = result.catch(() => void 0);
+    return result;
+  }
+};
+
 // ../server/src/vault/vault.ts
 var { content: _content, blame: _blame, ...tableColumns } = getTableColumns(nodes);
 var metaColumns = {
@@ -49999,6 +50841,8 @@ var Vault = class {
   now;
   sessionIdleMs;
   databases;
+  bookmarks;
+  fetcher;
   constructor(options) {
     this.dataDir = options.dataDir;
     this.metaDir = join7(options.dataDir, ".tandem");
@@ -50007,6 +50851,8 @@ var Vault = class {
     this.now = options.now ?? Date.now;
     this.sessionIdleMs = options.sessionIdleMs ?? 3e4;
     this.databases = new DatabaseStore(this.db, this.now);
+    this.bookmarks = new BookmarkStore(this.db, this.now);
+    this.fetcher = options.fetch ?? null;
   }
   // --- Reading -------------------------------------------------------------------------------
   async tree() {
@@ -50294,7 +51140,7 @@ var Vault = class {
       if (!isBlank(row.content ?? "") || row.pendingSnapshot || await this.hasChildren(row))
         return false;
       const version3 = await this.db.select({ id: versions2.id }).from(versions2).where(eq(versions2.nodeId, id)).get();
-      if (version3 || existsSync6(this.abs(assetsDirOf(row.path)))) return false;
+      if (version3 || existsSync7(this.abs(assetsDirOf(row.path)))) return false;
       await rm2(this.abs(row.path), { force: true });
       await this.db.delete(nodes).where(eq(nodes.id, id));
       this.search.remove(id);
@@ -50303,7 +51149,7 @@ var Vault = class {
       const folder = await this.rowByPath(dir);
       if (folder?.kind === "folder" && !await this.hasChildren(folder)) {
         await removeIfEmpty(this.abs(dir));
-        if (!existsSync6(this.abs(dir))) await this.db.delete(nodes).where(eq(nodes.id, folder.id));
+        if (!existsSync7(this.abs(dir))) await this.db.delete(nodes).where(eq(nodes.id, folder.id));
       }
       this.changed({ type: "tree" });
       return true;
@@ -50523,6 +51369,135 @@ var Vault = class {
     return this.lock.run(
       async () => this.databaseChanged(await this.databases.deleteRow(id, rowId))
     );
+  }
+  // --- Bookmarks (bookmarks.ts) ----------------------------------------------------------------
+  async listBookmarks() {
+    return this.bookmarks.list();
+  }
+  async getBookmark(id) {
+    return this.bookmarks.get(id);
+  }
+  /** The bookmark of a page (duplicates: same address, give or take `www.`, `#…`, a final `/`). */
+  async findBookmark(url2) {
+    return this.bookmarks.findByUrl(url2);
+  }
+  async searchBookmarks(query, limit = 20) {
+    return this.bookmarks.search(query, limit);
+  }
+  /** The pages showing a bookmark, or any bookmark in a folder, by title. */
+  async bookmarkRefs(id) {
+    const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id);
+    return this.refsTo(ids);
+  }
+  /** A web page's title and description, for a bookmark being made (empty when unreadable). */
+  async previewPage(url2) {
+    if (!this.fetcher) return { url: url2, title: "", description: "" };
+    return previewPage(this.fetcher, url2);
+  }
+  /**
+   * A new bookmark or folder. A page already bookmarked is refused (with its bookmark). What
+   * isn't given is read from its page: its favicon (the extension sends the browser's), its
+   * title and description.
+   */
+  async createBookmark(input2, icon) {
+    const kind = input2.kind ?? "bookmark";
+    let favicon = icon ?? null;
+    const missing = icon === void 0 || !input2.title?.trim() || input2.description === void 0;
+    const url2 = webUrl(input2.url ?? "");
+    if (kind === "bookmark" && missing && this.fetcher && url2) {
+      const existing = await this.bookmarks.findByUrl(url2);
+      if (!existing) {
+        const site = await readSite(this.fetcher, url2, { favicon: icon === void 0 });
+        if (icon === void 0) favicon = site.favicon;
+        input2 = {
+          ...input2,
+          title: input2.title?.trim() ? input2.title : site.preview.title,
+          description: input2.description ?? site.preview.description
+        };
+      }
+    }
+    return this.lock.run(async () => {
+      if (kind === "bookmark" && input2.url) {
+        const existing = await this.bookmarks.findByUrl(input2.url);
+        if (existing) throw new DuplicateBookmarkError(existing);
+      }
+      const bookmark = await this.bookmarks.create(input2);
+      if (favicon) await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension);
+      this.changed({ type: "bookmarks" });
+      return this.bookmarks.get(bookmark.id);
+    });
+  }
+  /** Changes a bookmark (another page already bookmarked is refused), or moves it. */
+  async updateBookmark(id, patch) {
+    return this.lock.run(async () => {
+      if (patch.url !== void 0) {
+        const existing = await this.bookmarks.findByUrl(patch.url);
+        if (existing && existing.id !== id) throw new DuplicateBookmarkError(existing);
+      }
+      const bookmark = await this.bookmarks.update(id, patch);
+      this.changed({ type: "bookmarks" });
+      return bookmark;
+    });
+  }
+  /**
+   * Deletes a bookmark, or a folder with everything in it, for good (bookmarks have no trash).
+   * Their cards are removed from the pages showing them, as `author`: each page's history keeps
+   * the version with them.
+   */
+  async deleteBookmark(id, author) {
+    return this.lock.run(async () => {
+      const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id);
+      const pages = await this.refsTo(ids);
+      for (const page of pages) {
+        let row = await this.freshPage(page.id);
+        const content = removeBookmarkBlocks(row.content ?? "", ids);
+        if (content === row.content) continue;
+        if (row.pendingSnapshot) {
+          await this.snapshot(row);
+          row = await this.requireRow(row.id);
+        }
+        await this.saveOrFold(row, content, author);
+      }
+      for (const removed of ids) await this.removeBookmarkIconFiles(removed);
+      await this.bookmarks.deleteMany(ids);
+      await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids));
+      this.changed({ type: "bookmarks" });
+      return { deleted: ids.length, pages };
+    });
+  }
+  /** Sets a bookmark's favicon (an image file: PNG, ICO, SVG…). */
+  async setBookmarkIcon(id, fileName, data) {
+    const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+    if (!Object.values(ICON_TYPES).includes(extension)) {
+      throw new ValidationError("The icon must be an image (PNG, ICO, SVG, JPEG, GIF, WebP, AVIF)");
+    }
+    if (data.byteLength > ICON_MAX_BYTES)
+      throw new ValidationError("The icon image must be under 5 MB");
+    return this.lock.run(async () => {
+      await this.bookmarks.get(id);
+      await this.writeBookmarkIcon(id, data, extension);
+      this.changed({ type: "bookmarks" });
+      return this.bookmarks.get(id);
+    });
+  }
+  /** The file of a bookmark's favicon. */
+  async bookmarkIconFile(id) {
+    return join7(this.metaDir, "icons", await this.bookmarks.iconFile(id));
+  }
+  async writeBookmarkIcon(id, data, extension) {
+    await this.removeBookmarkIconFiles(id);
+    const file2 = `${BOOKMARK_ICON_PREFIX}${id}-${this.now()}.${extension}`;
+    await atomicWrite(join7(this.metaDir, "icons", file2), data);
+    await this.bookmarks.setIcon(id, file2);
+  }
+  async removeBookmarkIconFiles(id) {
+    await this.removeIconFiles(`${BOOKMARK_ICON_PREFIX}${id}`);
+  }
+  /** The pages showing any of these bookmarks, by title. */
+  async refsTo(ids) {
+    if (!ids.length) return [];
+    const rows = await this.db.selectDistinct({ id: nodes.id, path: nodes.path }).from(bookmarkRefs).innerJoin(nodes, eq(nodes.id, bookmarkRefs.nodeId)).where(inArray(bookmarkRefs.bookmarkId, ids));
+    return rows.map((row) => ({ id: row.id, title: titleFromPath(row.path), path: row.path })).toSorted((a, b) => a.title.localeCompare(b.title));
   }
   databaseChanged(database) {
     this.changed({ type: "database", id: database.id });
@@ -50775,6 +51750,7 @@ var Vault = class {
     }).where(eq(nodes.id, row.id));
     this.search.remove(row.id);
     await this.db.delete(links).where(eq(links.sourceId, row.id));
+    await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id));
     this.changed({ type: "tree" });
     this.changed({ type: "note", id: row.id, hash: hashContent(""), author });
     return this.requireRow(row.id);
@@ -50952,6 +51928,11 @@ var Vault = class {
     await this.db.delete(links).where(eq(links.sourceId, row.id));
     if (targets.length)
       await this.db.insert(links).values(targets.map((target) => ({ sourceId: row.id, target })));
+    const shown = [...new Set(bookmarkIdsIn(content))];
+    await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id));
+    if (shown.length) {
+      await this.db.insert(bookmarkRefs).values(shown.map((bookmarkId) => ({ nodeId: row.id, bookmarkId })));
+    }
   }
   async listAttachments(row) {
     const dir = this.abs(assetsDirOf(row.path));
@@ -50988,7 +51969,7 @@ var Vault = class {
       [`${oldBase}.assets`, `${newBase}.assets`]
     ] : [[oldBase, newBase]];
     for (const [from, to] of moves) {
-      if (caseOnly && existsSync6(this.abs(from))) {
+      if (caseOnly && existsSync7(this.abs(from))) {
         const temporary = `${to}.${nanoid3(6)}.tandem-tmp`;
         await rename2(this.abs(from), this.abs(temporary));
         await rename2(this.abs(temporary), this.abs(to));
@@ -53011,7 +53992,7 @@ function watchVault(vault, options = {}) {
 }
 
 // ../server/src/welcome.ts
-import { existsSync as existsSync7 } from "node:fs";
+import { existsSync as existsSync8 } from "node:fs";
 import { mkdir as mkdir4, writeFile as writeFile2 } from "node:fs/promises";
 import { join as join10 } from "node:path";
 var WELCOME_AUTHOR = "tandem";
@@ -53076,7 +54057,7 @@ var THINGS_TO_TRY = [
 ];
 async function welcome(vault, dataDir, port) {
   const marker = join10(dataDir, ".tandem", "welcomed");
-  if (existsSync7(marker)) return null;
+  if (existsSync8(marker)) return null;
   const fresh = !(await vault.tree()).length && !(await vault.trashList()).length;
   await mkdir4(join10(dataDir, ".tandem"), { recursive: true });
   await writeFile2(marker, "The welcome note was offered (or the folder had notes already).\n");
@@ -53119,11 +54100,11 @@ var README = `# Tandem internal folder
 Managed by Tandem: don't edit by hand.
 
 - \`tandem.db\`: a backup of the app's database (ids, tags, order, history index,
-  authorship, settings), refreshed about every minute. Restored automatically if the app's
-  own database is lost.
+  authorship, settings, databases, bookmarks), refreshed about every minute. Restored
+  automatically if the app's own database is lost.
 - \`history/<note id>/\`: past versions of notes.
 - \`trash/\`: deleted notes, until the trash is emptied.
-- \`icons/\`: image icons of pages and folders.
+- \`icons/\`: image icons of pages and folders, and bookmarks' favicons.
 `;
 async function startServer(options) {
   const { dataDir, dbPath, webDir, port, hostname: hostname3 } = options;
@@ -53135,7 +54116,7 @@ async function startServer(options) {
   const database = await openDatabase(dbPath, backupPath, {
     migrationsFolder: options.migrationsFolder
   });
-  const vault = new Vault({ dataDir, database, sessionIdleMs });
+  const vault = new Vault({ dataDir, database, sessionIdleMs, fetch: globalThis.fetch });
   console.log(`Data folder: ${dataDir}`);
   await vault.reconcile();
   await vault.reindexAll();
@@ -53166,7 +54147,9 @@ async function startServer(options) {
       fetch: createApp(vault, {
         webDir,
         notesFolder: options.notesFolder,
-        forbiddenFolders: options.forbiddenFolders
+        forbiddenFolders: options.forbiddenFolders,
+        allowedHosts: options.allowedHosts,
+        extensionDir: options.extensionDir
       }).fetch,
       port,
       hostname: hostname3
@@ -53244,18 +54227,20 @@ function runtimeFiles(dir = here) {
   if (!built) {
     return {
       version: "dev",
-      webDir: fileURLToPath2(new URL("../../web/.output/public", import.meta.url))
+      webDir: fileURLToPath2(new URL("../../web/.output/public", import.meta.url)),
+      extensionDir: fileURLToPath2(new URL("../../extension/dist", import.meta.url))
     };
   }
   return {
     version: built.version,
     webDir: join12(dir, "web"),
-    migrationsFolder: join12(dir, "drizzle")
+    migrationsFolder: join12(dir, "drizzle"),
+    extensionDir: join12(dir, "extension")
   };
 }
 
 // src/settings.ts
-import { existsSync as existsSync8, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync2, readFileSync as readFileSync2, renameSync as renameSync2, writeFileSync } from "node:fs";
 import { createHash as createHash2 } from "node:crypto";
 import { dirname as dirname7, join as join13 } from "node:path";
 function settingsFile(home) {
@@ -53265,7 +54250,7 @@ var quote = (value) => `'${value.replace(/'/g, `'\\''`)}'`;
 var unquote = (value) => value.startsWith("'") ? value.slice(1, -1).replace(/'\\''/g, "'") : value;
 function readSettings(home) {
   const path = settingsFile(home);
-  if (!existsSync8(path)) return {};
+  if (!existsSync9(path)) return {};
   const values = /* @__PURE__ */ new Map();
   for (const line of readFileSync2(path, "utf8").split("\n")) {
     const match2 = /^(\w+)=(.*)$/.exec(line.trim());
@@ -53292,10 +54277,10 @@ function databaseFor(home, dataDir) {
   const key = createHash2("sha256").update(dataDir).digest("hex").slice(0, 16);
   const path = join13(home, "databases", `${key}.db`);
   const legacy = join13(home, "tandem.db");
-  if (!existsSync8(path) && existsSync8(legacy)) {
+  if (!existsSync9(path) && existsSync9(legacy)) {
     mkdirSync2(dirname7(path), { recursive: true });
     for (const suffix of ["", "-wal", "-shm"]) {
-      if (existsSync8(legacy + suffix)) renameSync2(legacy + suffix, path + suffix);
+      if (existsSync9(legacy + suffix)) renameSync2(legacy + suffix, path + suffix);
     }
   }
   return path;
@@ -53306,7 +54291,7 @@ async function serve2(args) {
   const home = appDir();
   const saved = readSettings(home);
   const { dataDir, port, asService } = serveOptions(args, process.env, saved);
-  const { version: version3, webDir, migrationsFolder } = runtimeFiles();
+  const { version: version3, webDir, migrationsFolder, extensionDir } = runtimeFiles();
   console.log(`Tandem ${version3}`);
   const app = await startServer({
     dataDir,
@@ -53317,6 +54302,7 @@ async function serve2(args) {
     // Local only: there is no authentication.
     hostname: "127.0.0.1",
     forbiddenFolders: [home],
+    extensionDir,
     // A first page to play with, in a folder that never had notes.
     welcome: true,
     notesFolder: {
