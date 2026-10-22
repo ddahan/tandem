@@ -145,6 +145,8 @@ function onTreeFocusin(event: FocusEvent) {
 // --- Menu ------------------------------------------------------------------------------------
 
 async function createInside(item: TreeItem | null) {
+  // Its title takes the focus once the page shows: the menu must not take it back meanwhile.
+  focusWillMove()
   if (item && !expanded.value.includes(item.id)) expanded.value = [...expanded.value, item.id]
   await tree.createPage(item?.id ?? null)
 }
