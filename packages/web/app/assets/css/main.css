@@ -434,19 +434,14 @@ html.dark[data-tone='cool'] {
   outline-offset: 4px;
   border-radius: var(--ui-radius);
 }
-/* Databases: cells are edited in place, their controls fill them */
+/* Databases: cells are edited in place, their controls fill them. Columns have the widths of
+   their <col> (DatabaseView), not of their content. */
+.note-editor .database-table {
+  table-layout: fixed;
+}
 .note-editor .database-table :is(td, th) {
   padding: 0;
-  vertical-align: middle;
-  min-width: 8rem;
-}
-/* The first column usually names the row: more room. */
-.note-editor .database-table :is(td, th):first-child {
-  width: 35%;
-  min-width: 13rem;
-}
-.note-editor .database-table :is(td, th):is(:last-child) {
-  min-width: 0;
+  vertical-align: top;
 }
 /* The wrapper draws the outer border. */
 .note-editor .database-table tr > :first-child {
@@ -486,6 +481,46 @@ html.dark[data-tone='cool'] {
 .database-input:focus {
   box-shadow: inset 0 0 0 2px var(--ui-primary);
   border-radius: 2px;
+}
+/* Text cells: the textarea and a hidden copy of its text share one grid cell, so the cell is
+   as tall as the text's lines (wrapped at the column's width). */
+.database-text {
+  display: grid;
+}
+.database-text > textarea,
+.database-text::after {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: none;
+}
+.database-text::after {
+  /* The space keeps a last empty line (after Shift+Enter) its height. */
+  content: attr(data-value) ' ';
+  visibility: hidden;
+  padding: 0.35rem 0.6rem;
+}
+.database-select {
+  padding-inline: 0.6rem;
+  border-radius: 0;
+}
+.database-select:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ui-primary);
+}
+/* The edge of a column's heading: dragged to resize the column. */
+.database-resize {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -4px;
+  z-index: 1;
+  width: 7px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.database-resize:hover,
+.database-resize.is-resizing {
+  background: linear-gradient(var(--ui-primary), var(--ui-primary)) center / 2px 100% no-repeat;
 }
 .database-checkbox {
   display: block;

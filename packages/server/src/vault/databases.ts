@@ -5,6 +5,7 @@ import { asc, eq, inArray } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import {
   COLUMN_TYPES,
+  COLUMN_WIDTH,
   FILTER_OPERATORS,
   cellText,
   convertCell,
@@ -31,6 +32,7 @@ export interface ColumnInput {
   type: ColumnType
   options?: string[]
   allowEmpty?: boolean
+  width?: number
 }
 
 export interface DatabasePatch {
@@ -315,6 +317,11 @@ function checkColumns(input: ColumnInput[], before: DatabaseColumn[]): DatabaseC
     }
     if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`)
     const result: DatabaseColumn = { id: column.id ?? newColumnId(), name, type: column.type }
+    if (column.width !== undefined) {
+      result.width = Math.round(
+        Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, column.width)),
+      )
+    }
     if (column.type === 'select') {
       const options = [
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean)),

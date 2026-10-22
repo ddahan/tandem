@@ -190,6 +190,24 @@ describe('databases', () => {
     expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
   })
 
+  it('keeps the width a column was resized to, within bounds', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      columns: [
+        { name: 'Name', type: 'text', width: 320.4 },
+        { name: 'Pages', type: 'number', width: 5 },
+        { name: 'Notes', type: 'text', width: 99_999 },
+        { name: 'Done', type: 'checkbox' },
+      ],
+    })
+    expect(database.columns.map((column) => column.width)).toEqual([320, 60, 1200, undefined])
+    // Back to the default: no width.
+    database = await vault.updateDatabase(database.id, {
+      columns: database.columns.map((column) => ({ ...column, width: undefined })),
+    })
+    expect(database.columns.some((column) => 'width' in column)).toBe(false)
+  })
+
   it('refuses bad columns', async () => {
     const { vault, page } = await setup()
     const database = await vault.createDatabase(page.id)

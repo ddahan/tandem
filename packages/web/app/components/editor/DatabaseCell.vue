@@ -1,9 +1,10 @@
 <script setup lang="ts">
-// A database cell, edited in place with the control of its column's type. Native controls:
-// a table can have hundreds of rows. A value is saved when it is committed (Enter, leaving
-// the cell, a pick), not at each keystroke; the server checks it. While a cell is being
-// edited it keeps what is typed: the table reloads with every change (yours, an agent's),
-// which would otherwise put the saved value back under the cursor.
+// A database cell, edited in place with the control of its column's type: native fields for
+// text, numbers and checkboxes (a table can have hundreds of rows), Nuxt UI's for dates and
+// choices (as everywhere else in the app). A value is saved when it is committed (Enter,
+// leaving the cell, a pick), not at each keystroke; the server checks it. While a cell is
+// being edited it keeps what is typed: the table reloads with every change (yours, an
+// agent's), which would otherwise put the saved value back under the cursor.
 import { cellText, requiresValue, type CellValue, type DatabaseColumn } from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
@@ -30,7 +31,7 @@ async function commit(text: string) {
 }
 
 function onInput(event: Event) {
-  draft.value = (event.target as HTMLInputElement).value
+  draft.value = (event.target as HTMLInputElement | HTMLTextAreaElement).value
 }
 
 function onBlur() {
@@ -38,18 +39,35 @@ function onBlur() {
   void commit(draft.value)
 }
 
-/** Enter commits (by leaving the cell), Escape puts the value back. */
+/**
+ * Enter commits (by leaving the cell), Escape puts the value back. In text cells, Shift+Enter
+ * starts a new line (not while an input method composes: its Enter picks a word).
+ */
 function onKey(event: KeyboardEvent) {
-  const input = event.target as HTMLInputElement
-  if (event.key === 'Enter') input.blur()
-  else if (event.key === 'Escape') {
+  const input = event.target as HTMLInputElement | HTMLTextAreaElement
+  if (event.key === 'Enter' && !event.isComposing) {
+    if (event.shiftKey && input instanceof HTMLTextAreaElement) return
+    event.preventDefault()
+    input.blur()
+  } else if (event.key === 'Escape') {
     draft.value = shown.value
     input.blur()
   }
 }
 
-function pick(event: Event) {
-  draft.value = (event.target as HTMLSelectElement).value
+// Nuxt UI's select can't have an empty value: "no choice" is an item of its own.
+const NONE = '\u0000none'
+const choices = computed(() => {
+  const items = (props.column.options ?? []).map((option) => ({ label: option, value: option }))
+  // A value that is no longer a choice (renamed or removed): shown as it is.
+  if (draft.value && !props.column.options?.includes(draft.value)) {
+    items.push({ label: draft.value, value: draft.value })
+  }
+  return requiresValue(props.column) ? items : [{ label: '—', value: NONE }, ...items]
+})
+
+function pick(value: unknown) {
+  draft.value = value === NONE ? '' : String(value ?? '')
   void commit(draft.value)
 }
 
@@ -66,22 +84,18 @@ const label = computed(() => props.column.name)
     :aria-label="label"
     @change="save(($event.target as HTMLInputElement).checked)"
   />
-  <select
+  <USelect
     v-else-if="column.type === 'select'"
-    class="database-input"
-    :class="!draft && 'text-dimmed'"
-    :value="draft"
+    :model-value="draft || undefined"
+    :items="choices"
+    placeholder="—"
+    variant="none"
+    size="sm"
+    class="database-select w-full"
     :disabled="readonly"
     :aria-label="label"
-    @change="pick"
-  >
-    <option v-if="!requiresValue(column)" value="">—</option>
-    <option v-for="option in column.options ?? []" :key="option" :value="option">
-      {{ option }}
-    </option>
-    <!-- A value that is no longer a choice (renamed or removed): shown as it is. -->
-    <option v-if="draft && !column.options?.includes(draft)" :value="draft">{{ draft }}</option>
-  </select>
+    @update:model-value="pick"
+  />
   <DatabaseDate
     v-else-if="column.type === 'date'"
     :model-value="typeof value === 'string' ? value : null"
@@ -89,12 +103,25 @@ const label = computed(() => props.column.name)
     :readonly="readonly"
     @update:model-value="save"
   />
+  <!-- Text wraps and grows with its lines: a hidden copy of it (::after) sizes the cell. -->
+  <div v-else-if="column.type === 'text'" class="database-text" :data-value="draft">
+    <textarea
+      class="database-input"
+      rows="1"
+      :value="draft"
+      :readonly="readonly"
+      :aria-label="label"
+      @focus="editing = true"
+      @input="onInput"
+      @blur="onBlur"
+      @keydown="onKey"
+    />
+  </div>
   <input
     v-else
     type="text"
-    class="database-input"
-    :class="column.type === 'number' && 'text-end tabular-nums'"
-    :inputmode="column.type === 'number' ? 'decimal' : undefined"
+    class="database-input text-end tabular-nums"
+    inputmode="decimal"
     :value="draft"
     :readonly="readonly"
     :aria-label="label"

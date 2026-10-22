@@ -321,9 +321,15 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
 - Databases: `editor/database.ts` is an atom block read from and written to the fenced block
   (its own Markdown tokenizer, before code blocks); `components/editor/DatabaseView.vue` draws
   it (title, sort and filter controls, the table with a menu per column), with
-  `DatabaseCell.vue` (native controls per type, a draft while edited: the table reloads with
-  every change; dates: `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
-  locale `en-GB` for day-first dates and English words) and `DatabaseFilters.vue`. `useDatabase` loads one, reloads it on its
+  `DatabaseCell.vue` (native controls for text, numbers and checkboxes, Nuxt UI's `USelect`
+  for choices; a draft while edited: the table reloads with every change; text cells are
+  textareas sized by a hidden copy of their text in the same grid cell; dates:
+  `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
+  locale `en-GB` for day-first dates and English words) and `DatabaseFilters.vue`. The table
+  has a fixed layout: each column's `<col>` has its saved `width` or a default for its type,
+  and the table is `max(100%, sum of widths)` wide. Each block reports that sum to the note's
+  page (`BLOCK_WIDTHS`, provided by `pages/notes/[id].vue`), which goes full width while one
+  is wider than the text column. `useDatabase` loads one, reloads it on its
   `database` events (only the latest load counts) and changes it through the API. The slash
   menu creates the database first, then inserts its block where the cursor was.
   `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles

@@ -95,6 +95,7 @@ const columnInput = z.object({
   type: z.enum(COLUMN_TYPES),
   options: z.array(z.string().max(80)).max(100).optional(),
   allowEmpty: z.boolean().optional(),
+  width: z.number().finite().optional(),
 })
 const databaseInput = z.object({
   title: z.string().max(200).optional(),

@@ -9,6 +9,13 @@ const EDITOR_WIDTHS: Record<Settings['editorWidth'], string> = {
   full: '100%',
 }
 
+/** The text column's width in pixels; null when it is the whole page. */
+export function editorWidthPixels(width: Settings['editorWidth']): number | null {
+  const value = EDITOR_WIDTHS[width]
+  if (!value.endsWith('rem')) return null
+  return parseFloat(value) * parseFloat(getComputedStyle(document.documentElement).fontSize)
+}
+
 /** Text size of notes; headings, code and the title scale with it (em units in main.css). */
 export const EDITOR_FONT_SIZES: Record<Settings['editorFontSize'], string> = {
   small: '15px',

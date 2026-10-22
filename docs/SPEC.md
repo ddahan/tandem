@@ -147,9 +147,15 @@ inside OneDrive so that it is backed up and synced.
 - **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
   whose rows and typed columns (text, number, date, checkbox, choice) are kept in Tandem, not
   in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
-  data is safe in the database and its backup copy. Cells are edited in place (dates typed day,
-  month, year, or picked in a calendar whose weeks start on Monday, shown `17/10/2026`; numbers
-  French; a value of the wrong type is refused). Each
+  data is safe in the database and its backup copy. Cells are edited in place (Enter saves,
+  Escape puts the saved value back; text wraps, Shift+Enter starts a new line, and the row
+  grows with it; dates typed day, month, year, or picked in a calendar whose weeks start on
+  Monday, shown `17/10/2026`; numbers French; choices picked in a menu; a value of the wrong
+  type is refused). Columns have a width for their type (the first one wider) until dragged
+  from the edge of their heading; the width is saved with the database, and a double-click on
+  the edge resets it. A database wider than the page's text makes the page full width while
+  the note is open (the ⋯ menu's width toggle then says so); wider still, it scrolls sideways.
+  Each
   column's menu renames it, changes its type (values converted when they can be; a column
   becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
   and deletes it. A choice list can require a value ("Allow empty" unchecked in its choices):

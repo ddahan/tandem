@@ -6,7 +6,7 @@ import { api, createNote, noteContent, openNote, waitSaved } from './helpers'
 
 interface Database {
   id: string
-  columns: { id: string; name: string; type: string }[]
+  columns: { id: string; name: string; type: string; width?: number }[]
   sort: { column: string; direction: string } | null
   filters: unknown[]
   rows: { id: string; cells: Record<string, unknown> }[]
@@ -228,7 +228,7 @@ test('a choice column can require a value: the first choice by default', async (
   await openNote(page, note.id)
   const block = page.getByTestId('database')
   const status = block.getByRole('combobox', { name: 'Status' }).first()
-  await expect(status).toHaveValue('')
+  await expect(status).toHaveText('—')
 
   await block.getByRole('button', { name: 'Status' }).click()
   await page.getByRole('menuitem', { name: 'Edit choices…' }).click()
@@ -240,10 +240,85 @@ test('a choice column can require a value: the first choice by default', async (
   await dialog.getByRole('button', { name: 'Save' }).click()
 
   // The empty cell took the first choice, which can't be emptied any more; new rows start with it.
-  await expect(status).toHaveValue('To do')
-  await expect(status.locator('option')).toHaveText(['To do', 'Done'])
+  await expect(status).toHaveText('To do')
+  await status.click()
+  await expect(page.getByRole('option')).toHaveText(['To do', 'Done'])
+  await page.getByRole('option', { name: 'Done' }).click()
+  await expect(status).toHaveText('Done')
   await block.getByRole('button', { name: 'New row' }).click()
-  await expect(block.getByRole('combobox', { name: 'Status' }).nth(1)).toHaveValue('To do')
+  await expect(block.getByRole('combobox', { name: 'Status' }).nth(1)).toHaveText('To do')
+})
+
+test('text cells take several lines: Shift+Enter starts one, Enter saves', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Long texts', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Task', type: 'text' }],
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const cell = page.getByTestId('database').getByRole('textbox', { name: 'Task' })
+  const before = (await cell.boundingBox())!.height
+  await cell.click()
+  await page.keyboard.type('Call the bank')
+  await page.keyboard.press('Shift+Enter')
+  await page.keyboard.type('before noon')
+  // The cell grows with its lines.
+  expect((await cell.boundingBox())!.height).toBeGreaterThan(before * 1.5)
+  await page.keyboard.press('Enter')
+  await expect(cell).not.toBeFocused()
+  await expect
+    .poll(async () => {
+      const latest = await api<Database>(request, 'GET', `/databases/${database.id}`)
+      return latest.rows[0]!.cells[database.columns[0]!.id]
+    })
+    .toBe('Call the bank\nbefore noon')
+})
+
+test('columns are resized from their edge; a wide database makes the page full width', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Wide table', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      { name: 'Points', type: 'number' },
+    ],
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await page.setViewportSize({ width: 1600, height: 900 })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  const notePage = block.locator('xpath=ancestor::div[contains(@class, "mx-auto")][1]')
+  const widthOf = async () => {
+    const latest = await api<Database>(request, 'GET', `/databases/${database.id}`)
+    return latest.columns[0]!.width ?? null
+  }
+
+  // Two columns fit in the text.
+  await expect(notePage).not.toHaveAttribute('style', /max-width: 100%/)
+
+  // Dragged wider: saved, and wider than the text, so the page goes full width.
+  const edge = block.getByRole('separator', { name: 'Resize Task' })
+  const box = (await edge.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 700, box.y + box.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(widthOf).toBeGreaterThan(900)
+  await expect(notePage).toHaveAttribute('style', /max-width: 100%/)
+
+  // A double-click on the edge: back to the default width, and to the text's width.
+  await edge.dblclick()
+  await expect.poll(widthOf).toBeNull()
+  await expect(notePage).not.toHaveAttribute('style', /max-width: 100%/)
 })
 
 test("filters from a column's menu: the filters open on a new condition for it", async ({

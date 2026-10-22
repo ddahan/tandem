@@ -18,7 +18,12 @@ export interface DatabaseColumn {
    * choice, and a cell can't be emptied. Absent: true.
    */
   allowEmpty?: boolean
+  /** Its width in the table, in pixels, once resized (absent: a default for its type). */
+  width?: number
 }
+
+/** Widths a column can be resized to, in pixels. */
+export const COLUMN_WIDTH = { min: 60, max: 1200 } as const
 
 /** Text, a number, a date (`2026-10-17`), a checkbox, a choice; null when empty. */
 export type CellValue = string | number | boolean | null

@@ -200,7 +200,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'Database',
         icon: 'i-lucide-sheet',
         description:
-          'Rows with typed columns (text, number, date, checkbox, choice), sorted and filtered, edited in place. Its data is in Tandem: the note only has a block naming it. Agents read and change it with their tools.',
+          'Rows with typed columns (text, number, date, checkbox, choice), sorted and filtered, edited in place (Shift+Enter for a new line in a text cell), columns resized from their edge. Its data is in Tandem: the note only has a block naming it. Agents read and change it with their tools.',
         slash: 'Database',
         markdown: '```database\nid: 01JB7Q2V9X3K8M4N5P6R7S8T9V\n```',
         preview: null,

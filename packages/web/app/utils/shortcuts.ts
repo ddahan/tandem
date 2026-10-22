@@ -257,6 +257,21 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    id: 'databases',
+    title: 'Database cells',
+    description: 'While a cell of a database is being edited.',
+    icon: 'i-lucide-database',
+    shortcuts: [
+      { keys: [['enter']], label: 'Save the value', description: 'Leaving the cell does too.' },
+      {
+        keys: [['shift', 'enter']],
+        label: 'New line',
+        description: 'In text cells: they grow with their lines.',
+      },
+      { keys: [['escape']], label: 'Put the saved value back' },
+    ],
+  },
+  {
     id: 'selections',
     title: 'Multiple selections',
     description: 'Edit every occurrence of a word at once, as with ⌘D in VS Code.',

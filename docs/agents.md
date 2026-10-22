@@ -95,7 +95,7 @@ writing the block's content.
   (`select!=…`: a value required),
   `tandem row-add <id> Name=Dune Pages=412`, `tandem row-set <id> <row> Status=Done`
   (`Column=` empties a value), `tandem row-delete <id> <row>`.
-- Values by column name (any case). Dates `2026-10-17` (or `17/10/2026`), numbers `12.5` or
+- Values by column name (any case). Text can hold line breaks (`\n`). Dates `2026-10-17` (or `17/10/2026`), numbers `12.5` or
   `12,5`, checkboxes `true`/`false` (or yes/no), choices by name. A value that doesn't fit its
   column is refused with the reason. A choice column with `allowEmpty: false` always has a
   value: rows added without one get its first choice, and it can't be set to null.

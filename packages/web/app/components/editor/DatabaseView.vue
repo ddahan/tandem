@@ -5,6 +5,7 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import {
   COLUMN_TYPES,
+  COLUMN_WIDTH,
   viewRows,
   type CellValue,
   type ColumnType,
@@ -13,6 +14,7 @@ import {
 import type { ColumnChange } from '~/composables/useDatabase'
 import DatabaseCell from '~/components/editor/DatabaseCell.vue'
 import DatabaseFilters from '~/components/editor/DatabaseFilters.vue'
+import { BLOCK_WIDTHS } from '~/utils/block-widths'
 
 const props = defineProps(nodeViewProps)
 
@@ -243,6 +245,81 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
   ]
 }
 
+// --- Widths ----------------------------------------------------------------------------------
+
+// Columns have a width (a default for their type until resized): the table is as wide as its
+// columns, scrolling when the page is narrower, the last column (its buttons) taking what is
+// left.
+const DEFAULT_WIDTHS: Record<ColumnType, number> = {
+  text: 200,
+  number: 110,
+  date: 160,
+  checkbox: 90,
+  select: 160,
+}
+/** The first column usually names the row: more room. */
+const FIRST_WIDTH = 260
+const ACTIONS_WIDTH = 40
+
+/** While a column is resized: its width, not saved yet. */
+const resizing = ref<{ id: string; width: number } | null>(null)
+
+function widthOf(column: DatabaseColumn) {
+  if (resizing.value?.id === column.id) return resizing.value.width
+  if (column.width) return column.width
+  return database.value?.columns[0]?.id === column.id ? FIRST_WIDTH : DEFAULT_WIDTHS[column.type]
+}
+
+const tableWidth = computed(
+  () => (database.value?.columns ?? []).reduce((sum, c) => sum + widthOf(c), 0) + ACTIONS_WIDTH,
+)
+
+/** Drags the edge of a column's heading; the width is saved when it is let go. */
+function startResize(event: PointerEvent, column: DatabaseColumn) {
+  if (readonly.value || event.button !== 0) return
+  event.preventDefault()
+  const handle = event.currentTarget as HTMLElement
+  handle.setPointerCapture(event.pointerId)
+  const startX = event.clientX
+  const start = widthOf(column)
+  resizing.value = { id: column.id, width: start }
+  const onMove = (pointer: PointerEvent) => {
+    const width = Math.round(start + pointer.clientX - startX)
+    resizing.value = {
+      id: column.id,
+      width: Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, width)),
+    }
+  }
+  const onUp = async () => {
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+    handle.removeEventListener('pointercancel', onUp)
+    const width = resizing.value?.width ?? start
+    // Kept until saved: the column doesn't jump back to its old width meanwhile.
+    if (width !== start) await setColumns(columnsWith(column.id, (c) => ({ ...c, width })))
+    resizing.value = null
+  }
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+  handle.addEventListener('pointercancel', onUp)
+}
+
+/** A double-click on the edge: back to the default width. */
+function resetWidth(column: DatabaseColumn) {
+  if (readonly.value || column.width === undefined) return
+  void setColumns(columnsWith(column.id, (c) => ({ ...c, width: undefined })))
+}
+
+// The note's page goes full width while a table is wider than its text (see notes/[id].vue).
+const blockWidths = inject(BLOCK_WIDTHS, null)
+const widthKey = Symbol('database')
+watch(
+  () => (database.value ? tableWidth.value : 0),
+  (width) => blockWidths?.set(widthKey, width),
+  { immediate: true },
+)
+onBeforeUnmount(() => blockWidths?.delete(widthKey))
+
 const sortedBy = computed(() => {
   const sort = database.value?.sort
   const column = sort && database.value?.columns.find((c) => c.id === sort.column)
@@ -328,7 +405,15 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
       </div>
 
       <div class="overflow-x-auto rounded-md border border-default">
-        <table class="database-table">
+        <table class="database-table" :style="{ width: `max(100%, ${tableWidth}px)` }">
+          <colgroup>
+            <col
+              v-for="column in database.columns"
+              :key="column.id"
+              :style="{ width: `${widthOf(column)}px` }"
+            />
+            <col />
+          </colgroup>
           <thead>
             <tr>
               <th v-for="column in database.columns" :key="column.id" scope="col">
@@ -362,8 +447,19 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                     />
                   </button>
                 </UDropdownMenu>
+                <div
+                  v-if="!readonly"
+                  class="database-resize"
+                  :class="resizing?.id === column.id && 'is-resizing'"
+                  role="separator"
+                  aria-orientation="vertical"
+                  :aria-label="`Resize ${column.name}`"
+                  title="Drag to resize, double-click for the default width"
+                  @pointerdown="startResize($event, column)"
+                  @dblclick="resetWidth(column)"
+                />
               </th>
-              <th class="w-8">
+              <th>
                 <UButton
                   v-if="!readonly"
                   icon="i-lucide-plus"
@@ -386,7 +482,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                   :save="(value: CellValue) => setCell(row.id, column.id, value)"
                 />
               </td>
-              <td class="w-8">
+              <td>
                 <UButton
                   v-if="!readonly"
                   icon="i-lucide-x"

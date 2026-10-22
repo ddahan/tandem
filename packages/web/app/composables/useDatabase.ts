@@ -7,6 +7,8 @@ export interface ColumnChange {
   name: string
   type: DatabaseColumn['type']
   options?: string[]
+  allowEmpty?: boolean
+  width?: number
 }
 
 export function useDatabase(id: Ref<string>) {

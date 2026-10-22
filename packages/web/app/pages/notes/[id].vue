@@ -11,7 +11,9 @@ import {
   isoDate,
 } from '@tandem/shared'
 import type { Heading } from '~/components/NoteEditor.vue'
+import { editorWidthPixels } from '~/composables/useSettings'
 import { DELETE_FOREVER } from '~/composables/useTree'
+import { BLOCK_WIDTHS } from '~/utils/block-widths'
 import { lostLines, markdownLosses, type Loss } from '~/utils/markdown-loss'
 import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
 
@@ -374,6 +376,15 @@ function goToDatabase(databaseId: string) {
 }
 
 const fullWidth = useLocalStorage('tandem-full-width', false)
+// A database wider than the text makes the page full width while it shows, instead of
+// scrolling sideways in a column with room left around it.
+const blockWidths = reactive(new Map<symbol, number>())
+provide(BLOCK_WIDTHS, blockWidths)
+const widthNeeded = computed(() => {
+  const text = editorWidthPixels(settings.value.editorWidth)
+  return text !== null && Math.max(0, ...blockWidths.values()) > text
+})
+const wide = computed(() => fullWidth.value || widthNeeded.value)
 const panelOpen = useLocalStorage('tandem-side-panel', true)
 const authorshipKey = ref(0)
 const iconPickerOpen = ref(false)
@@ -433,11 +444,13 @@ const moreItems = computed<DropdownMenuItem[][]>(() => [
       icon: 'i-lucide-file-plus',
       onSelect: () => void tree.createPage(id.value),
     },
-    {
-      label: fullWidth.value ? 'Normal width' : 'Full width',
-      icon: fullWidth.value ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2',
-      onSelect: () => (fullWidth.value = !fullWidth.value),
-    },
+    widthNeeded.value
+      ? { label: 'Full width: a database needs it', icon: 'i-lucide-maximize-2', disabled: true }
+      : {
+          label: fullWidth.value ? 'Normal width' : 'Full width',
+          icon: fullWidth.value ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2',
+          onSelect: () => (fullWidth.value = !fullWidth.value),
+        },
   ],
   [
     {
@@ -522,7 +535,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
       <div
         v-else-if="node"
         class="mx-auto w-full px-6 pt-10 pb-4 sm:px-12"
-        :style="{ maxWidth: fullWidth ? '100%' : 'calc(var(--editor-width) + 6rem)' }"
+        :style="{ maxWidth: wide ? '100%' : 'calc(var(--editor-width) + 6rem)' }"
       >
         <!-- Find bar: pinned to the top right of the note while it scrolls. -->
         <div
