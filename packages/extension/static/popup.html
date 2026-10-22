@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Add to Tandem</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <img src="icons/icon-32.png" alt="" width="20" height="20" />
+        <h1 id="heading">Add to Tandem</h1>
+      </header>
+
+      <p id="loading" class="muted">Looking for Tandem…</p>
+
+      <section id="problem" hidden>
+        <h2 id="problem-title"></h2>
+        <p id="problem-text" class="muted"></p>
+        <div class="actions" id="problem-actions"></div>
+      </section>
+
+      <form id="form" hidden>
+        <p id="existing" class="notice" hidden></p>
+        <label>
+          <span>Name</span>
+          <input id="title" name="title" required maxlength="300" autocomplete="off" />
+        </label>
+        <label>
+          <span>Address</span>
+          <input id="url" name="url" type="url" required autocomplete="off" />
+        </label>
+        <label>
+          <span>Description <em>Optional</em></span>
+          <textarea id="description" name="description" rows="2" maxlength="1000"></textarea>
+        </label>
+        <label>
+          <span>Folder</span>
+          <select id="folder" name="folder"></select>
+        </label>
+        <div id="new-folder" class="row" hidden>
+          <input id="new-folder-name" placeholder="New folder’s name" autocomplete="off" />
+          <button type="button" id="new-folder-add">Add</button>
+        </div>
+        <p id="form-error" class="error" hidden></p>
+        <div class="actions">
+          <button type="button" id="cancel">Cancel</button>
+          <button type="submit" id="save" class="primary">Create</button>
+        </div>
+      </form>
+
+      <section id="saved" hidden>
+        <h2>Saved in Tandem</h2>
+        <p id="saved-text" class="muted"></p>
+      </section>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

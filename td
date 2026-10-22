@@ -81,6 +81,7 @@ case "$cmd" in
     prepare
     pnpm_ --filter @tandem/web build
     pnpm_ --filter @tandem/web build:site
+    pnpm_ --filter @tandem/extension build
     pnpm_ --filter @tandem/web test:e2e "$@"
     ;;
   pnpm)
@@ -90,6 +91,7 @@ case "$cmd" in
   release)
     prepare
     pnpm_ --filter @tandem/web build
+    pnpm_ --filter @tandem/extension build
     pnpm_ --filter @tandem/standalone package
     # The app people install, committed in app/tandem/ (some networks only let a repository's
     # ZIP through): JavaScript and the web app, run by the computer's own Node.

@@ -1,0 +1,170 @@
+/* The extension's pages (popup, options): Tandem's look, light and dark as the browser is. */
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --text: #18181b;
+  --muted: #71717a;
+  --border: #e4e4e7;
+  --field: #ffffff;
+  --primary: #f59e0b;
+  --primary-text: #18181b;
+  --notice: #fffbeb;
+  --error: #dc2626;
+  font:
+    14px/1.4 ui-sans-serif,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18181b;
+    --text: #fafafa;
+    --muted: #a1a1aa;
+    --border: #3f3f46;
+    --field: #27272a;
+    --notice: #3a2a05;
+    --error: #f87171;
+  }
+}
+
+body {
+  margin: 0;
+  width: 360px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main {
+  padding: 14px 16px 16px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+h2 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+p {
+  margin: 0;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.notice {
+  margin-bottom: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--notice);
+}
+
+.error {
+  color: var(--error);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+label span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+label em {
+  float: right;
+  font-style: normal;
+  font-weight: 400;
+}
+
+input,
+textarea,
+select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+}
+
+.row {
+  display: flex;
+  gap: 6px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-text);
+  font-weight: 500;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The options page */
+.page {
+  width: auto;
+  max-width: 480px;
+  margin: 24px auto;
+}

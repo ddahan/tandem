@@ -3,7 +3,8 @@
 //   ./td pnpm --filter @tandem/standalone package
 //
 // dist/tandem/ holds tandem.mjs (src/main.ts: the server, the CLI and their dependencies, in one
-// JavaScript file), web/ (the web app), drizzle/ (the database migrations) and manifest.json.
+// JavaScript file), web/ (the web app), drizzle/ (the database migrations), extension/ (the
+// Chrome extension, loaded unpacked from there) and manifest.json.
 // No Node inside: it runs on the computer's own (see `nodeSupported`; app/install.sh checks).
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
@@ -16,10 +17,14 @@ const root = new URL('..', import.meta.url).pathname
 const repo = join(root, '..', '..')
 const webDir = join(repo, 'packages', 'web', '.output', 'public')
 const drizzleDir = join(repo, 'packages', 'server', 'drizzle')
+const extensionDir = join(repo, 'packages', 'extension', 'dist')
 const outDir = join(root, 'dist', 'tandem')
 
 if (!existsSync(join(webDir, 'index.html'))) {
   throw new Error('Build the web app first: ./td pnpm --filter @tandem/web build')
+}
+if (!existsSync(join(extensionDir, 'manifest.json'))) {
+  throw new Error('Build the extension first: ./td pnpm --filter @tandem/extension build')
 }
 const version = (
   JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as { version: string }
@@ -45,6 +50,7 @@ await build({
 })
 cpSync(webDir, join(outDir, 'web'), { recursive: true })
 cpSync(drizzleDir, join(outDir, 'drizzle'), { recursive: true })
+cpSync(extensionDir, join(outDir, 'extension'), { recursive: true })
 
 // A hash of everything: tells builds apart (`tandem version` shows the version).
 const hash = createHash('sha256').update(readFileSync(join(outDir, 'tandem.mjs')))

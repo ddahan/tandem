@@ -48,6 +48,7 @@ describe('app folder', () => {
   it("uses the repo's web app when not run as the executable", () => {
     expect(buildVersion()).toBe('dev')
     expect(runtimeFiles('/unused').webDir).toMatch(/packages\/web\/\.output\/public$/)
+    expect(runtimeFiles('/unused').extensionDir).toMatch(/packages\/extension\/dist$/)
   })
 })
 

@@ -11,7 +11,7 @@ async function serve(args: string[]) {
   const home = appDir()
   const saved = readSettings(home)
   const { dataDir, port, asService } = serveOptions(args, process.env, saved)
-  const { version, webDir, migrationsFolder } = runtimeFiles()
+  const { version, webDir, migrationsFolder, extensionDir } = runtimeFiles()
   console.log(`Tandem ${version}`)
   const app = await startServer({
     dataDir,
@@ -22,6 +22,7 @@ async function serve(args: string[]) {
     // Local only: there is no authentication.
     hostname: '127.0.0.1',
     forbiddenFolders: [home],
+    extensionDir,
     // A first page to play with, in a folder that never had notes.
     welcome: true,
     notesFolder: {

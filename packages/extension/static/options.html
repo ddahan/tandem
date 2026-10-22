@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tandem’s extension</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body class="page">
+    <main>
+      <header>
+        <img src="icons/icon-32.png" alt="" width="20" height="20" />
+        <h1>Tandem’s extension</h1>
+      </header>
+      <form id="form">
+        <label>
+          <span>Tandem’s address</span>
+          <input id="address" placeholder="http://localhost:3864" autocomplete="off" />
+        </label>
+        <p class="muted">
+          Where Tandem answers on this computer: the address its install command showed, usually
+          http://localhost:3864.
+        </p>
+        <p id="status" class="muted"></p>
+        <div class="actions">
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </main>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

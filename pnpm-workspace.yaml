@@ -32,6 +32,7 @@ catalog:
   '@tiptap/pm': ^3.32.0
   '@tiptap/starter-kit': ^3.32.0
   '@tiptap/vue-3': ^3.32.0
+  '@types/chrome': ^0.3.6
   '@types/node': ^26.6.5
   '@vitest/coverage-v8': ^5.0.5
   '@vueuse/core': ^15.0.0

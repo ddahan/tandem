@@ -43,6 +43,8 @@ export interface Runtime {
   webDir: string
   /** Undefined in development: the server's own `drizzle/` folder. */
   migrationsFolder?: string
+  /** The Chrome extension, built: Chrome loads it unpacked from there (Docs › Extension). */
+  extensionDir: string
 }
 
 /** The folder of the running code: the built app's, or src/ in development. */
@@ -69,11 +71,13 @@ export function runtimeFiles(dir = here): Runtime {
     return {
       version: 'dev',
       webDir: fileURLToPath(new URL('../../web/.output/public', import.meta.url)),
+      extensionDir: fileURLToPath(new URL('../../extension/dist', import.meta.url)),
     }
   }
   return {
     version: built.version,
     webDir: join(dir, 'web'),
     migrationsFolder: join(dir, 'drizzle'),
+    extensionDir: join(dir, 'extension'),
   }
 }
