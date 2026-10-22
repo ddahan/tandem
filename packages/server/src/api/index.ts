@@ -69,6 +69,7 @@ const settingsPatch = z
     trash: z.boolean(),
     todos: z.boolean(),
     daily: z.boolean(),
+    homeRecent: z.boolean(),
   })
   .partial()
 

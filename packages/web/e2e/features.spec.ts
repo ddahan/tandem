@@ -10,7 +10,12 @@ interface Settings {
 }
 
 test.afterEach(async ({ request }) => {
-  await api(request, 'PATCH', '/settings', { tags: false, trash: true, todos: false })
+  await api(request, 'PATCH', '/settings', {
+    tags: false,
+    trash: true,
+    todos: false,
+    homeRecent: true,
+  })
 })
 
 test('starts with tags, TODOs and spell check off, the trash on', async ({ page, request }) => {
@@ -89,4 +94,24 @@ test('with the trash off, deleting asks, then deletes forever', async ({ page, r
   expect(trash.map((item) => item.title)).not.toContain('Gone for good')
   expect(trash.map((item) => item.title)).not.toContain('Also gone')
   expect((await request.get(`/api/notes/${other.id}`)).status()).toBe(404)
+})
+
+test('shows Home’s recently updated pages, unless General says not to', async ({
+  page,
+  request,
+}) => {
+  await createNote(request, 'Recent on Home', 'Text.')
+  await page.goto('/')
+  await expect(page.getByTestId('home-recent')).toContainText('Recent on Home')
+
+  await page.goto('/settings/general')
+  await page.getByRole('switch', { name: 'Recently updated pages on Home' }).click()
+  await expect
+    .poll(async () => (await api<{ homeRecent: boolean }>(request, 'GET', '/settings')).homeRecent)
+    .toBe(false)
+  // Home, from the logo (opening / brings the last tab back).
+  await page.getByTestId('workspace-name').click()
+  await expect(page).toHaveURL(/\/$/)
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByTestId('home-recent')).toHaveCount(0)
 })

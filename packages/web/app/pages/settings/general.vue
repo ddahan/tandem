@@ -69,6 +69,22 @@ function saveWorkspaceName() {
 
     <USeparator />
 
+    <SettingsSection
+      title="Recently updated pages on Home"
+      description="The pages written in last, by you or an agent, under Home's buttons."
+      for="home-recent"
+    >
+      <template #action>
+        <USwitch
+          id="home-recent"
+          :model-value="settings.homeRecent"
+          @update:model-value="(value) => set({ homeRecent: value })"
+        />
+      </template>
+    </SettingsSection>
+
+    <USeparator />
+
     <p class="text-sm text-muted">
       To install Tandem as an app or connect an agent, see
       <ULink to="/docs/install" class="text-primary">Docs › Install</ULink> and

@@ -74,7 +74,7 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
           />
         </div>
 
-        <section class="mt-12">
+        <section v-if="settings.homeRecent" class="mt-12" data-testid="home-recent">
           <h2 class="mb-3 text-xs font-medium tracking-wide text-dimmed uppercase">
             Recently updated
           </h2>

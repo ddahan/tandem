@@ -209,7 +209,7 @@ inside OneDrive so that it is backed up and synced.
   Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in
   `<data>/.tandem/icons/`), never in the Markdown.
-- Nothing else (no favorites, recents, daily notes or templates for now).
+- Nothing else (no favorites or templates for now).
 
 ## Search
 
@@ -378,7 +378,8 @@ inside OneDrive so that it is backed up and synced.
 - **Settings**, in tabs with their own addresses, as the Docs (`/settings` opens General; the
   TODOs and Trash pages and Home's Settings button lead to their tab):
   - **General**: the workspace name (next to the logo and in the browser tab; Tandem by
-    default), the owner's display name, the notes folder; it ends with links to Docs › Install
+    default), the owner's display name, the notes folder, whether Home lists the recently
+    updated pages (on by default); it ends with links to Docs › Install
     and Agents (installing the app, connecting agents).
   - **Appearance**: light, dark or system color mode (a small preview of each), background
     tone (white, paper, sepia or cool, each with a light and a dark variant), primary (amber by
