@@ -32015,6 +32015,7 @@ function date4(params) {
 }
 
 // ../server/src/folders.ts
+import { execFile } from "node:child_process";
 import { existsSync as existsSync2, readdirSync } from "node:fs";
 import { access, constants as constants2, mkdir, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -32149,6 +32150,12 @@ async function createFolder(parent, name) {
   if (existsSync2(path)) throw new ValidationError("A folder with this name already exists.");
   await mkdir(path);
   return path;
+}
+function revealFolder(path) {
+  const [command2, args] = process.platform === "darwin" ? ["open", ["-R", path]] : process.platform === "win32" ? ["explorer", [`/select,${path}`]] : ["xdg-open", [path]];
+  return new Promise((done, fail) => {
+    execFile(command2, args, (error62) => error62 ? fail(error62) : done());
+  });
 }
 
 // ../server/src/vault/web-pages.ts
@@ -32371,6 +32378,7 @@ function createApi(vault, options = {}) {
     change: () => Promise.reject(new ValidationError(DEFAULT_READ_ONLY_REASON))
   };
   const forbidden = options.forbiddenFolders ?? [];
+  const extensionFolder = () => options.extensionDir && existsSync3(join3(options.extensionDir, "manifest.json")) ? options.extensionDir : null;
   const api = new Hono3().onError((error62, c) => {
     if (error62 instanceof NotFoundError) return c.json({ error: error62.message }, 404);
     if (error62 instanceof DuplicateBookmarkError) {
@@ -32637,12 +32645,12 @@ function createApi(vault, options = {}) {
     "/settings",
     zValidator2("json", settingsPatch),
     async (c) => c.json(await vault.updateSettings(c.req.valid("json")))
-  ).get(
-    "/extension",
-    (c) => c.json({
-      folder: options.extensionDir && existsSync3(join3(options.extensionDir, "manifest.json")) ? options.extensionDir : null
-    })
-  ).get(
+  ).get("/extension", (c) => c.json({ folder: extensionFolder() })).post("/extension/reveal", async (c) => {
+    const folder = extensionFolder();
+    if (!folder) return c.json({ error: "This app has no extension folder" }, 404);
+    await (options.reveal ?? revealFolder)(folder);
+    return c.json({ ok: true });
+  }).get(
     "/bookmarks/status",
     async (c) => c.json({ enabled: (await vault.getSettings()).bookmarks })
   ).use("/bookmarks", bookmarksOn(vault)).use("/bookmarks/*", bookmarksOn(vault)).get("/bookmarks", async (c) => c.json(await vault.listBookmarks())).post("/bookmarks", zValidator2("json", bookmarkInput), async (c) => {
