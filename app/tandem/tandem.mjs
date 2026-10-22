@@ -32606,6 +32606,14 @@ function createApi(vault, options = {}) {
       const { id, rowId } = c.req.valid("param");
       return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid("json").cells));
     }
+  ).post(
+    "/databases/:id/rows/:rowId/move",
+    zValidator2("param", rowParam),
+    zValidator2("json", external_exports.object({ after: external_exports.string().nullable() })),
+    async (c) => {
+      const { id, rowId } = c.req.valid("param");
+      return c.json(await vault.moveDatabaseRow(id, rowId, c.req.valid("json").after));
+    }
   ).delete("/databases/:id/rows/:rowId", zValidator2("param", rowParam), async (c) => {
     const { id, rowId } = c.req.valid("param");
     return c.json(await vault.deleteDatabaseRow(id, rowId));
@@ -50577,6 +50585,29 @@ var DatabaseStore = class {
     await this.touch(id, now);
     return this.get(id);
   }
+  /**
+   * Moves a row after row `after` (null: first). Positions are renumbered 1, 2, 3…: moving
+   * back and forth never runs out of room between two positions.
+   */
+  async moveRow(id, rowId, after) {
+    await this.row(id, rowId);
+    const rows = await this.db.select({ id: databaseRows.id, position: databaseRows.position }).from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+    const order2 = rows.filter((row) => row.id !== rowId);
+    const index2 = after === null ? -1 : order2.findIndex((row) => row.id === after);
+    if (after !== null && index2 < 0) throw new NotFoundError("No such row");
+    order2.splice(
+      index2 + 1,
+      0,
+      rows.find((row) => row.id === rowId)
+    );
+    for (const [i, row] of order2.entries()) {
+      if (row.position !== i + 1) {
+        await this.db.update(databaseRows).set({ position: i + 1 }).where(eq(databaseRows.id, row.id));
+      }
+    }
+    await this.touch(id, this.now());
+    return this.get(id);
+  }
   async deleteRow(id, rowId) {
     await this.row(id, rowId);
     await this.db.delete(databaseRows).where(eq(databaseRows.id, rowId));
@@ -51366,6 +51397,11 @@ var Vault = class {
   async updateDatabaseRow(id, rowId, cells2) {
     return this.lock.run(
       async () => this.databaseChanged(await this.databases.updateRow(id, rowId, cells2))
+    );
+  }
+  async moveDatabaseRow(id, rowId, after) {
+    return this.lock.run(
+      async () => this.databaseChanged(await this.databases.moveRow(id, rowId, after))
     );
   }
   async deleteDatabaseRow(id, rowId) {
