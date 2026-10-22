@@ -282,7 +282,8 @@ inside OneDrive so that it is backed up and synced.
   (other notes keep their tab): the month, Monday first, ISO week numbers (CW), ‹ › months and
   "Today". Under each day: a dot when its note has something written, a ring when it has to-dos
   left (`- [ ]`), a check when all its to-dos are done. A click opens the day. Below it, on a
-  day's note, the keys that browse days and weeks (key chips, as in Docs › Shortcuts). It follows
+  day's note in the installed app's window, the keys that browse days and weeks (key chips, as
+  in Docs › Shortcuts); not in a browser tab, where ⌥⌘← ⌥⌘→ switch its tabs. It follows
   changes live.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.

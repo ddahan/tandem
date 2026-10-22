@@ -2,6 +2,7 @@
 // The side panel's calendar (daily notes on): a month, weeks from Monday with their ISO number,
 // each day marked when its note has something written (a dot), to-dos left (a ring) or only
 // to-dos done (a check). A click opens the day's note (created when it has none).
+import { useMediaQuery } from '@vueuse/core'
 import { addDays, dateOf, isoDate, isoWeek, monthLabel, type CalendarDay } from '@tandem/shared'
 
 const props = defineProps<{
@@ -69,7 +70,9 @@ const weeks = computed(() => {
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-// As in Docs › Shortcuts (utils/shortcuts.ts).
+// As in Docs › Shortcuts (utils/shortcuts.ts). Only in the installed app's window: in a
+// browser tab, ⌥⌘← ⌥⌘→ switch the browser's tabs.
+const appWindow = useMediaQuery('(display-mode: standalone)')
 const KEYS = [
   {
     label: 'Previous or next day',
@@ -187,9 +190,9 @@ function labelOf(iso: string) {
       </tbody>
     </table>
 
-    <!-- The keys that browse days, on a day's note (where they work). -->
+    <!-- The keys that browse days, on a day's note in the app's window (where they work). -->
     <dl
-      v-if="date"
+      v-if="date && appWindow"
       class="space-y-2 border-t border-default pt-3 text-xs text-muted"
       data-testid="calendar-keys"
     >

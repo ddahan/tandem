@@ -146,6 +146,11 @@ test('shows shortcuts’ keys, unless Appearance says not to; Docs always do', a
   const today = page.getByRole('navigation', { name: 'Calendar notes' })
   await expect(search.locator('kbd').first()).toBeVisible()
   await expect(today.locator('kbd')).toHaveCount(2)
+  // In the app's window, the calendar shows the keys that browse days and weeks.
+  await today.getByText('Today').click()
+  await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next day')
+  await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next week')
+  await page.goto('/settings/appearance')
 
   await page.getByRole('switch', { name: 'Keyboard shortcuts' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-shortcut-hints', 'off')

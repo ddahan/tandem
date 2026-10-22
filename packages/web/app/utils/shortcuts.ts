@@ -107,7 +107,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         ],
         label: 'Next or previous tab, or day',
         description:
-          'On a day’s note, the next or previous day (in the same tab); elsewhere, the next or previous tab.',
+          'On a day’s note, the next or previous day (in the same tab); elsewhere, the next or previous tab. In the installed app: in a browser tab, they switch the browser’s tabs.',
       },
       {
         keys: [
