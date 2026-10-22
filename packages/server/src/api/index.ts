@@ -452,6 +452,15 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
         return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid('json').cells))
       },
     )
+    .post(
+      '/databases/:id/rows/:rowId/move',
+      zValidator('param', rowParam),
+      zValidator('json', z.object({ after: z.string().nullable() })),
+      async (c) => {
+        const { id, rowId } = c.req.valid('param')
+        return c.json(await vault.moveDatabaseRow(id, rowId, c.req.valid('json').after))
+      },
+    )
     .delete('/databases/:id/rows/:rowId', zValidator('param', rowParam), async (c) => {
       const { id, rowId } = c.req.valid('param')
       return c.json(await vault.deleteDatabaseRow(id, rowId))

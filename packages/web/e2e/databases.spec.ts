@@ -362,3 +362,64 @@ test("filters from a column's menu: the filters open on a new condition for it",
   await expect(block.getByTestId('database-row')).toHaveCount(1)
   await expect(block.getByRole('textbox', { name: 'Task' })).toHaveValue('Big')
 })
+
+test('inserts rows below another (its + or ⌘Enter) and moves them with ⌥↑ / ⌥↓', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Ordered table', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Task', type: 'text' }],
+  })
+  const [task] = database.columns
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'A' },
+  })
+  for (const name of ['B', 'C']) {
+    await api(request, 'POST', `/databases/${database.id}/rows`, { cells: { [task!.id]: name } })
+  }
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  const cells = block.getByRole('textbox', { name: 'Task' })
+  const order = async () => {
+    const latest = await api<Database>(request, 'GET', `/databases/${database.id}`)
+    return latest.rows.map((row) => row.cells[task!.id] ?? null)
+  }
+  await expect(cells).toHaveCount(3)
+
+  // The row's +: a row right below it, the cursor in it.
+  await block.getByTestId('database-row').first().hover()
+  await block.getByRole('button', { name: 'Insert a row below' }).first().click()
+  await expect(cells.nth(1)).toBeFocused()
+  await page.keyboard.type('A2')
+  // ⌘Enter: the value is saved, and another row comes below.
+  await page.keyboard.press('ControlOrMeta+Enter')
+  await expect(cells.nth(2)).toBeFocused()
+  await page.keyboard.type('A3')
+  await page.keyboard.press('Enter')
+  await expect.poll(order).toEqual(['A', 'A2', 'A3', 'B', 'C'])
+
+  // ⌥↑ / ⌥↓ move the row; the cursor stays in it.
+  await cells.nth(4).click()
+  await page.keyboard.press('Alt+ArrowUp')
+  await expect(cells.nth(3)).toBeFocused()
+  await page.keyboard.press('Alt+ArrowUp')
+  await expect(cells.nth(2)).toBeFocused()
+  await expect(cells.nth(2)).toHaveValue('C')
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect(cells.nth(3)).toBeFocused()
+  await expect.poll(order).toEqual(['A', 'A2', 'A3', 'C', 'B'])
+
+  // A sorted table has no order to change: it says so.
+  await api(request, 'PATCH', `/databases/${database.id}`, {
+    sort: { column: task!.id, direction: 'desc' },
+  })
+  await expect(cells.first()).toHaveValue('C')
+  await cells.first().click()
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect(page.getByText('The table is sorted')).toBeVisible()
+  await expect.poll(order).toEqual(['A', 'A2', 'A3', 'C', 'B'])
+})

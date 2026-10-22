@@ -269,6 +269,19 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description: 'In text cells: they grow with their lines.',
       },
       { keys: [['escape']], label: 'Put the saved value back' },
+      {
+        keys: [['meta', 'enter']],
+        label: 'Insert a row below',
+        description: 'The value is saved first; the cursor goes to the new row.',
+      },
+      {
+        keys: [
+          ['alt', 'arrowup'],
+          ['alt', 'arrowdown'],
+        ],
+        label: 'Move the row up or down',
+        description: 'Not while the table is sorted.',
+      },
     ],
   },
   {

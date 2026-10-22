@@ -75,6 +75,29 @@ describe('databases', () => {
     expect(database.rows.map((row) => row.cells[name])).toEqual(['Middle', 'Last'])
   })
 
+  it('moves rows: after another, or first', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id)
+    const name = database.columns[0]!.id
+    database = await vault.updateDatabaseRow(database.id, database.rows[0]!.id, { [name]: 'A' })
+    for (const value of ['B', 'C']) {
+      database = await vault.addDatabaseRow(database.id, { cells: { [name]: value } })
+    }
+    const [a, b, c] = database.rows.map((row) => row.id)
+    const names = () => database.rows.map((row) => row.cells[name])
+    database = await vault.moveDatabaseRow(database.id, c!, null)
+    expect(names()).toEqual(['C', 'A', 'B'])
+    database = await vault.moveDatabaseRow(database.id, c!, b!)
+    expect(names()).toEqual(['A', 'B', 'C'])
+    // Back and forth, many times: the order holds.
+    for (let i = 0; i < 100; i++) {
+      database = await vault.moveDatabaseRow(database.id, a!, i % 2 ? null : b!)
+    }
+    expect(names()).toEqual(['A', 'B', 'C'])
+    await expect(vault.moveDatabaseRow(database.id, a!, 'nope')).rejects.toThrow('No such row')
+    await expect(vault.moveDatabaseRow(database.id, 'nope', null)).rejects.toThrow('No such row')
+  })
+
   it('converts values when a column changes type, and drops removed columns', async () => {
     const { vault, page } = await setup()
     let database = await vault.createDatabase(page.id, {
@@ -255,12 +278,18 @@ describe('databases', () => {
       param: { id: database.id },
       json: { cells: { [name]: 'Dune' } },
     })
-    expect((await added.json()).rows).toHaveLength(2)
+    const withDune = await added.json()
+    expect(withDune.rows).toHaveLength(2)
     const bad = await client.databases[':id'].rows[':rowId'].$patch({
       param: { id: database.id, rowId: database.rows[0]!.id },
       json: { cells: { nope: 'x' } },
     })
     expect(bad.status).toBe(400)
+    const moved = await client.databases[':id'].rows[':rowId'].move.$post({
+      param: { id: database.id, rowId: withDune.rows[1]!.id },
+      json: { after: null },
+    })
+    expect((await moved.json()).rows.map((row) => row.cells[name] ?? null)).toEqual(['Dune', null])
     const missing = await client.databases[':id'].$get({ param: { id: 'nope' } })
     expect(missing.status).toBe(404)
     const list = await client.notes[':id'].databases.$get({ param: { id: page.id } })

@@ -192,6 +192,37 @@ export class DatabaseStore {
     return this.get(id)
   }
 
+  /**
+   * Moves a row after row `after` (null: first). Positions are renumbered 1, 2, 3…: moving
+   * back and forth never runs out of room between two positions.
+   */
+  async moveRow(id: string, rowId: string, after: string | null): Promise<Database> {
+    await this.row(id, rowId)
+    const rows = await this.db
+      .select({ id: databaseRows.id, position: databaseRows.position })
+      .from(databaseRows)
+      .where(eq(databaseRows.databaseId, id))
+      .orderBy(asc(databaseRows.position))
+    const order = rows.filter((row) => row.id !== rowId)
+    const index = after === null ? -1 : order.findIndex((row) => row.id === after)
+    if (after !== null && index < 0) throw new NotFoundError('No such row')
+    order.splice(
+      index + 1,
+      0,
+      rows.find((row) => row.id === rowId)!,
+    )
+    for (const [i, row] of order.entries()) {
+      if (row.position !== i + 1) {
+        await this.db
+          .update(databaseRows)
+          .set({ position: i + 1 })
+          .where(eq(databaseRows.id, row.id))
+      }
+    }
+    await this.touch(id, this.now())
+    return this.get(id)
+  }
+
   async deleteRow(id: string, rowId: string): Promise<Database> {
     await this.row(id, rowId)
     await this.db.delete(databaseRows).where(eq(databaseRows.id, rowId))

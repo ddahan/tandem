@@ -327,9 +327,14 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
   locale `en-GB` for day-first dates and English words) and `DatabaseFilters.vue`. The table
   has a fixed layout: each column's `<col>` has its saved `width` or a default for its type,
-  and the table is `max(100%, sum of widths)` wide. Each block reports that sum to the note's
-  page (`BLOCK_WIDTHS`, provided by `pages/notes/[id].vue`), which goes full width while one
-  is wider than the text column. `useDatabase` loads one, reloads it on its
+  and the table is exactly that sum wide (no column takes the rest). Each block reports it to
+  the note's page (`BLOCK_WIDTHS`, provided by `pages/notes/[id].vue`), which goes full width
+  while one is wider than the text column. A row's buttons are absolutely placed before its
+  first cell, in the scroll container's start padding (pulled into the page's margin from sm
+  up); the table's borders are separate (not collapsed) so the header's corners can be round.
+  `useDatabase` runs changes one after another, in order: a cell saved on blur, then the row
+  ⌘Enter adds, apply in that order. Moving a row (`POST /databases/:id/rows/:rowId/move`,
+  `after` a row or null for first) renumbers the rows' positions. `useDatabase` loads one, reloads it on its
   `database` events (only the latest load counts) and changes it through the API. The slash
   menu creates the database first, then inserts its block where the cursor was.
   `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles

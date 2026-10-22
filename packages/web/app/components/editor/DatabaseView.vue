@@ -15,13 +15,26 @@ import type { ColumnChange } from '~/composables/useDatabase'
 import DatabaseCell from '~/components/editor/DatabaseCell.vue'
 import DatabaseFilters from '~/components/editor/DatabaseFilters.vue'
 import { BLOCK_WIDTHS } from '~/utils/block-widths'
+import { keysText } from '~/utils/platform-keys'
 
 const props = defineProps(nodeViewProps)
 
 const id = computed(() => String(props.node.attrs.id ?? ''))
-const { database, missing, setTitle, setColumns, setSort, setFilters, addRow, setCell, deleteRow } =
-  useDatabase(id)
+const {
+  database,
+  missing,
+  setTitle,
+  setColumns,
+  setSort,
+  setFilters,
+  addRow,
+  setCell,
+  moveRow,
+  deleteRow,
+} = useDatabase(id)
 const confirm = useConfirm()
+const toast = useToast()
+const table = ref<HTMLTableElement | null>(null)
 
 const readonly = computed(() => !props.editor.isEditable)
 
@@ -248,8 +261,7 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
 // --- Widths ----------------------------------------------------------------------------------
 
 // Columns have a width (a default for their type until resized): the table is as wide as its
-// columns, scrolling when the page is narrower, the last column (its buttons) taking what is
-// left.
+// columns (no column filling what is left), scrolling when the page is narrower.
 const DEFAULT_WIDTHS: Record<ColumnType, number> = {
   text: 200,
   number: 110,
@@ -259,7 +271,8 @@ const DEFAULT_WIDTHS: Record<ColumnType, number> = {
 }
 /** The first column usually names the row: more room. */
 const FIRST_WIDTH = 260
-const ACTIONS_WIDTH = 40
+/** The "Add a column" button, after the table. */
+const ADD_COLUMN_WIDTH = 32
 
 /** While a column is resized: its width, not saved yet. */
 const resizing = ref<{ id: string; width: number } | null>(null)
@@ -270,8 +283,8 @@ function widthOf(column: DatabaseColumn) {
   return database.value?.columns[0]?.id === column.id ? FIRST_WIDTH : DEFAULT_WIDTHS[column.type]
 }
 
-const tableWidth = computed(
-  () => (database.value?.columns ?? []).reduce((sum, c) => sum + widthOf(c), 0) + ACTIONS_WIDTH,
+const tableWidth = computed(() =>
+  (database.value?.columns ?? []).reduce((sum, c) => sum + widthOf(c), 0),
 )
 
 /** Drags the edge of a column's heading; the width is saved when it is let go. */
@@ -314,7 +327,7 @@ function resetWidth(column: DatabaseColumn) {
 const blockWidths = inject(BLOCK_WIDTHS, null)
 const widthKey = Symbol('database')
 watch(
-  () => (database.value ? tableWidth.value : 0),
+  () => (database.value ? tableWidth.value + ADD_COLUMN_WIDTH : 0),
   (width) => blockWidths?.set(widthKey, width),
   { immediate: true },
 )
@@ -344,6 +357,72 @@ async function removeRow(rowId: string) {
     if (!ok) return
   }
   await deleteRow(rowId)
+}
+
+/** Puts the cursor in a row's cell (its column's position), once the table shows it. */
+async function focusCell(rowId: string, column: number) {
+  await nextTick()
+  const row = table.value?.querySelector(`tr[data-row-id="${CSS.escape(rowId)}"]`)
+  // A date's first part (day), not its calendar button.
+  row?.children[column]
+    ?.querySelector<HTMLElement>('textarea, input, [role="spinbutton"], button')
+    ?.focus()
+}
+
+/** Adds a row right below another, the cursor in its first cell. */
+async function insertBelow(rowId: string) {
+  const before = new Set(database.value?.rows.map((row) => row.id))
+  if (!(await addRow(rowId))) return
+  const added = database.value?.rows.find((row) => !before.has(row.id))
+  if (added) await focusCell(added.id, 0)
+}
+
+/**
+ * Moves a row one place up or down among the rows shown: before the one above it, after the
+ * one below (rows hidden by the filters in between keep their place). The cursor stays in its
+ * cell. A sorted table has no order of its own to change.
+ */
+async function moveRowBy(rowId: string, by: -1 | 1, column: number) {
+  const current = database.value
+  if (!current) return
+  if (current.sort) {
+    toast.add({
+      title: 'The table is sorted',
+      description: 'Stop sorting it to move rows.',
+      icon: 'i-lucide-arrow-down-up',
+      color: 'neutral',
+    })
+    return
+  }
+  const shown = rows.value
+  const neighbour = shown[shown.findIndex((row) => row.id === rowId) + by]
+  if (!neighbour) return
+  const others = current.rows.map((row) => row.id).filter((other) => other !== rowId)
+  const after = by === 1 ? neighbour.id : (others[others.indexOf(neighbour.id) - 1] ?? null)
+  if (await moveRow(rowId, after)) await focusCell(rowId, column)
+}
+
+/** ⌘Enter in a cell adds a row below (the value is saved first), ⌥↑ / ⌥↓ move the row. */
+function onRowKey(event: KeyboardEvent, rowId: string) {
+  if (readonly.value || event.isComposing) return
+  const cell = (event.target as HTMLElement).closest('td')
+  const column = cell ? [...cell.parentElement!.children].indexOf(cell) : 0
+  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+    event.preventDefault()
+    // The cell saves its value as it loses the focus: before the row is added (see useDatabase).
+    ;(event.target as HTMLElement).blur()
+    void insertBelow(rowId)
+  } else if (
+    (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
+    event.altKey &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey
+  ) {
+    event.preventDefault()
+    ;(event.target as HTMLElement).blur()
+    void moveRowBy(rowId, event.key === 'ArrowUp' ? -1 : 1, column)
+  }
 }
 
 const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.length)
@@ -404,99 +483,123 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
         />
       </div>
 
-      <div class="overflow-x-auto rounded-md border border-default">
-        <table class="database-table" :style="{ width: `max(100%, ${tableWidth}px)` }">
-          <colgroup>
-            <col
-              v-for="column in database.columns"
-              :key="column.id"
-              :style="{ width: `${widthOf(column)}px` }"
-            />
-            <col />
-          </colgroup>
-          <thead>
-            <tr>
-              <th v-for="column in database.columns" :key="column.id" scope="col">
-                <input
-                  v-if="renaming === column.id"
-                  :ref="focusRename"
-                  :value="nameDraft"
-                  class="database-input font-medium"
-                  aria-label="Column name"
-                  @input="nameDraft = ($event.target as HTMLInputElement).value"
-                  @blur="rename(column)"
-                  @keydown="onRenameKey"
+      <!-- The rows' buttons are on their start side: in the page's margin from sm up, room is
+           kept for them below. -->
+      <div class="database-scroll overflow-x-auto ps-11 sm:-ms-11">
+        <div class="flex w-max items-start">
+          <div class="rounded-md border border-default">
+            <table ref="table" class="database-table" :style="{ width: `${tableWidth}px` }">
+              <colgroup>
+                <col
+                  v-for="column in database.columns"
+                  :key="column.id"
+                  :style="{ width: `${widthOf(column)}px` }"
                 />
-                <UDropdownMenu
-                  v-else
-                  :items="columnMenu(column)"
-                  :disabled="readonly"
-                  :content="{ align: 'start', onCloseAutoFocus: onMenuClosed }"
-                >
-                  <button type="button" class="database-heading">
-                    <UIcon :name="TYPES[column.type].icon" class="size-3.5 shrink-0 text-dimmed" />
-                    <span class="truncate">{{ column.name }}</span>
-                    <UIcon
-                      v-if="database.sort?.column === column.id"
-                      :name="
-                        database.sort.direction === 'asc'
-                          ? 'i-lucide-arrow-up'
-                          : 'i-lucide-arrow-down'
-                      "
-                      class="size-3.5 shrink-0 text-primary"
+              </colgroup>
+              <thead>
+                <tr>
+                  <th v-for="column in database.columns" :key="column.id" scope="col">
+                    <input
+                      v-if="renaming === column.id"
+                      :ref="focusRename"
+                      :value="nameDraft"
+                      class="database-input font-medium"
+                      aria-label="Column name"
+                      @input="nameDraft = ($event.target as HTMLInputElement).value"
+                      @blur="rename(column)"
+                      @keydown="onRenameKey"
                     />
-                  </button>
-                </UDropdownMenu>
-                <div
-                  v-if="!readonly"
-                  class="database-resize"
-                  :class="resizing?.id === column.id && 'is-resizing'"
-                  role="separator"
-                  aria-orientation="vertical"
-                  :aria-label="`Resize ${column.name}`"
-                  title="Drag to resize, double-click for the default width"
-                  @pointerdown="startResize($event, column)"
-                  @dblclick="resetWidth(column)"
-                />
-              </th>
-              <th>
-                <UButton
-                  v-if="!readonly"
-                  icon="i-lucide-plus"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  aria-label="Add a column"
-                  @click="addColumn"
-                />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.id" class="group/row" data-testid="database-row">
-              <td v-for="column in database.columns" :key="column.id">
-                <DatabaseCell
-                  :column="column"
-                  :value="row.cells[column.id]"
-                  :readonly="readonly"
-                  :save="(value: CellValue) => setCell(row.id, column.id, value)"
-                />
-              </td>
-              <td>
-                <UButton
-                  v-if="!readonly"
-                  icon="i-lucide-x"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  class="opacity-0 group-hover/row:opacity-100 focus:opacity-100"
-                  aria-label="Delete the row"
-                  @click="removeRow(row.id)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                    <UDropdownMenu
+                      v-else
+                      :items="columnMenu(column)"
+                      :disabled="readonly"
+                      :content="{ align: 'start', onCloseAutoFocus: onMenuClosed }"
+                    >
+                      <button type="button" class="database-heading">
+                        <UIcon
+                          :name="TYPES[column.type].icon"
+                          class="size-3.5 shrink-0 text-dimmed"
+                        />
+                        <span class="truncate">{{ column.name }}</span>
+                        <UIcon
+                          v-if="database.sort?.column === column.id"
+                          :name="
+                            database.sort.direction === 'asc'
+                              ? 'i-lucide-arrow-up'
+                              : 'i-lucide-arrow-down'
+                          "
+                          class="size-3.5 shrink-0 text-primary"
+                        />
+                      </button>
+                    </UDropdownMenu>
+                    <div
+                      v-if="!readonly"
+                      class="database-resize"
+                      :class="resizing?.id === column.id && 'is-resizing'"
+                      role="separator"
+                      aria-orientation="vertical"
+                      :aria-label="`Resize ${column.name}`"
+                      title="Drag to resize, double-click for the default width"
+                      @pointerdown="startResize($event, column)"
+                      @dblclick="resetWidth(column)"
+                    />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in rows"
+                  :key="row.id"
+                  :data-row-id="row.id"
+                  data-testid="database-row"
+                  @keydown="onRowKey($event, row.id)"
+                >
+                  <td v-for="(column, index) in database.columns" :key="column.id">
+                    <DatabaseCell
+                      :column="column"
+                      :value="row.cells[column.id]"
+                      :readonly="readonly"
+                      :save="(value: CellValue) => setCell(row.id, column.id, value)"
+                    />
+                    <!-- After the cell's field: the first thing to focus in the cell is the field. -->
+                    <div v-if="index === 0 && !readonly" class="database-row-actions">
+                      <UButton
+                        icon="i-lucide-plus"
+                        size="xs"
+                        color="neutral"
+                        variant="ghost"
+                        class="p-0.5"
+                        aria-label="Insert a row below"
+                        :title="`Insert a row below (${keysText('⌘↵')})`"
+                        @click="insertBelow(row.id)"
+                      />
+                      <UButton
+                        icon="i-lucide-x"
+                        size="xs"
+                        color="neutral"
+                        variant="ghost"
+                        class="p-0.5"
+                        aria-label="Delete the row"
+                        title="Delete the row"
+                        @click="removeRow(row.id)"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <UButton
+            v-if="!readonly"
+            icon="i-lucide-plus"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            class="ms-1 mt-1"
+            aria-label="Add a column"
+            @click="addColumn"
+          />
+        </div>
       </div>
       <div class="mt-1 flex items-center gap-2 text-xs text-dimmed">
         <UButton

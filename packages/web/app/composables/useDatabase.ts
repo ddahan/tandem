@@ -34,18 +34,26 @@ export function useDatabase(id: Ref<string>) {
     }
   }
 
+  // Changes run one after another, in the order they are made: a value saved as its cell is
+  // left, then a row added below it (⌘Enter), are applied in that order.
+  let queue: Promise<unknown> = Promise.resolve()
+
   /** Runs a change; the database it returns replaces ours (reloaded when it fails). */
-  async function change(request: () => Promise<Database>, title = 'Could not save') {
-    try {
-      const changed = await request()
-      loads++
-      database.value = changed
-      return true
-    } catch (error) {
-      showError(error, title)
-      await load()
-      return false
-    }
+  function change(request: () => Promise<Database>, title = 'Could not save') {
+    const run = queue.then(async () => {
+      try {
+        const changed = await request()
+        loads++
+        database.value = changed
+        return true
+      } catch (error) {
+        showError(error, title)
+        await load()
+        return false
+      }
+    })
+    queue = run
+    return run
   }
 
   const param = () => ({ id: id.value })
@@ -71,6 +79,16 @@ export function useDatabase(id: Ref<string>) {
         }),
       ),
     )
+  /** Moves a row after row `after` (null: first). */
+  const moveRow = (rowId: string, after: string | null) =>
+    change(() =>
+      unwrap(
+        api.databases[':id'].rows[':rowId'].move.$post({
+          param: { ...param(), rowId },
+          json: { after },
+        }),
+      ),
+    )
   const deleteRow = (rowId: string) =>
     change(() =>
       unwrap(api.databases[':id'].rows[':rowId'].$delete({ param: { ...param(), rowId } })),
@@ -93,6 +111,7 @@ export function useDatabase(id: Ref<string>) {
     setFilters,
     addRow,
     setCell,
+    moveRow,
     deleteRow,
   }
 }

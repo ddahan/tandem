@@ -155,8 +155,12 @@ inside OneDrive so that it is backed up and synced.
   from the edge of their heading; the width is saved with the database, and a double-click on
   the edge resets it. A database wider than the page's text makes the page full width while
   the note is open (the ⋯ menu's width toggle then says so); wider still, it scrolls sideways.
-  Each
-  column's menu renames it, changes its type (values converted when they can be; a column
+  The table is as wide as its columns, an "Add a column" + right after its header. A row's
+  buttons show before it on hover (or while one of its cells is being edited): + inserts a row
+  right below it, the cursor in its first cell (⌘Enter in a cell too, saving the value first),
+  × deletes it (asking first when it has values). "New row" adds one at the end. ⌥↑ / ⌥↓ in a
+  cell move its row up or down among the rows shown, the cursor staying in it; a sorted table
+  says it must stop being sorted first. Each column's menu renames it, changes its type (values converted when they can be; a column
   becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
   and deletes it. A choice list can require a value ("Allow empty" unchecked in its choices):
   new rows then start with its first choice, empty cells take it at once, and a cell can't

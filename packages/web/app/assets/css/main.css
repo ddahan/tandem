@@ -435,26 +435,48 @@ html.dark[data-tone='cool'] {
   border-radius: var(--ui-radius);
 }
 /* Databases: cells are edited in place, their controls fill them. Columns have the widths of
-   their <col> (DatabaseView), not of their content. */
+   their <col> (DatabaseView), not of their content. The wrapper draws the outer border; cells
+   draw the lines between them (separate borders: the header's corners follow the wrapper's). */
 .note-editor .database-table {
   table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 .note-editor .database-table :is(td, th) {
   padding: 0;
   vertical-align: top;
-}
-/* The wrapper draws the outer border. */
-.note-editor .database-table tr > :first-child {
-  border-inline-start: 0;
+  border-width: 0 1px 1px 0;
 }
 .note-editor .database-table tr > :last-child {
-  border-inline-end: 0;
-}
-.note-editor .database-table thead tr > * {
-  border-top: 0;
+  border-inline-end-width: 0;
 }
 .note-editor .database-table tbody tr:last-child > * {
-  border-bottom: 0;
+  border-bottom-width: 0;
+}
+.note-editor .database-table thead th:first-child {
+  border-start-start-radius: calc(var(--ui-radius) * 1.5 - 1px);
+}
+.note-editor .database-table thead th:last-child {
+  border-start-end-radius: calc(var(--ui-radius) * 1.5 - 1px);
+}
+.note-editor .database-table tbody tr:last-child > :first-child {
+  border-end-start-radius: calc(var(--ui-radius) * 1.5 - 1px);
+}
+.note-editor .database-table tbody tr:last-child > :last-child {
+  border-end-end-radius: calc(var(--ui-radius) * 1.5 - 1px);
+}
+/* A row's buttons (insert below, delete), before its first cell: shown on hover or while one
+   of its cells has the focus. Their padding reaches the cell, so the hover holds on the way. */
+.database-row-actions {
+  position: absolute;
+  inset-block-start: 0.2rem;
+  inset-inline-end: 100%;
+  display: flex;
+  padding-inline-end: 0.25rem;
+  opacity: 0;
+}
+.database-table tr:is(:hover, :focus-within) .database-row-actions {
+  opacity: 1;
 }
 .database-heading {
   display: flex;

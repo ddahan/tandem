@@ -789,6 +789,12 @@ export class Vault {
     )
   }
 
+  async moveDatabaseRow(id: string, rowId: string, after: string | null): Promise<DatabaseData> {
+    return this.lock.run(async () =>
+      this.databaseChanged(await this.databases.moveRow(id, rowId, after)),
+    )
+  }
+
   async deleteDatabaseRow(id: string, rowId: string): Promise<DatabaseData> {
     return this.lock.run(async () =>
       this.databaseChanged(await this.databases.deleteRow(id, rowId)),
