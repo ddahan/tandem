@@ -1,6 +1,6 @@
-// What can be done with a bookmark from anywhere (the sidebar, a card, its info): edit it in a
-// dialog, make one, pick one for a note, delete one once confirmed (naming the pages that show
-// it).
+// What can be done with a bookmark from anywhere (the sidebar, a card, its page): make one in a
+// dialog, pick one for a note, delete one once confirmed (naming the pages that show it).
+// Editing one is done on its page (pages/bookmarks/[id].vue).
 import type { Bookmark } from '@tandem/shared'
 import BookmarkDeleteDialog from '~/components/BookmarkDeleteDialog.vue'
 import BookmarkDialog from '~/components/BookmarkDialog.vue'
@@ -15,12 +15,6 @@ export function useBookmarkActions() {
   const bookmarks = useBookmarks()
   const toast = useToast()
   const showError = useApiErrorToast()
-
-  /** Edits a bookmark or folder; resolves to it once saved (null: cancelled). */
-  async function edit(bookmark: Bookmark): Promise<Bookmark | null> {
-    editor ??= overlay.create(BookmarkDialog)
-    return ((await editor.open({ bookmark }).result) as Bookmark | null) ?? null
-  }
 
   /** A new bookmark (in a folder, for an address). */
   async function create(options: { parentId?: string | null; url?: string } = {}) {
@@ -74,5 +68,5 @@ export function useBookmarkActions() {
     return count
   }
 
-  return { edit, create, pick, remove }
+  return { create, pick, remove }
 }

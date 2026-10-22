@@ -302,25 +302,34 @@ inside OneDrive so that it is backed up and synced.
   description, and its site's favicon (`.tandem/icons/`; a globe without one). One bookmark per
   page: an address already saved (give or take `www.`, `http`/`https`, a `#fragment` or a final
   `/`) is refused, naming the bookmark that has it.
-- **Sidebar**: a Bookmarks section below the pages, folded by default (open or folded is then
-  remembered); open, it scrolls by itself beyond 40% of the window. A tree like the pages'
-  (drag and drop, ⌥↑ ⌥↓, F2, a menu on each row: open, info, edit, rename, move, copy the
-  address, delete); "+" makes a bookmark or a folder (renamed in place). A click on a
-  bookmark shows its **information** in a popover next to it (favicon, name, address,
-  description, site, folder, dates, the pages showing its card, and Open website, Edit,
-  Delete), as browsing them with ↑ ↓ does; a double click or ↵ opens the website in a new
-  browser tab (from the installed app, in the default browser). A click on a folder unfolds it.
-- **New and edit**: a dialog with the address, name, description and folder. A new bookmark's
-  name and description are read from its page by the server (best effort, a few seconds at
-  most), as its favicon; a page already saved offers to edit its bookmark instead.
+- **Sidebar**: a Bookmarks section right after the pages (they scroll together), folded by
+  default (open or folded is then remembered). A tree like the pages' (drag and drop, ⌥↑ ⌥↓,
+  F2, a menu on each row: open the website, open in a tab, rename, move, copy the address,
+  delete); "+" makes a bookmark or a folder (renamed in place). A click on a bookmark or a
+  folder opens its **page** in the preview tab, as a page's (a folder also unfolds), and so
+  does browsing them with ↑ ↓; a double click or ↵ opens a bookmark's website in a new browser
+  tab (from the installed app, in the default browser), a folder's page in a tab of its own.
+- **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): its folders as a
+  breadcrumb, then everything **edited in place**, saved when a field is left (↵ in one-line
+  fields, Esc puts a field back): name, address (an address already saved is refused, with a
+  link to its bookmark), description and folder; its site and dates; the pages showing its
+  card, as links; Open website and Delete above. Editing keeps a preview tab open. A
+  **folder's page**: its name and the folder it's in, edited the same way, and what it holds
+  (a click opens one's page, a double click a bookmark's website), with New bookmark and New
+  folder. A deleted bookmark's tab closes.
+- **New**: a dialog with the address, name, description and folder. Its name and description
+  are read from its page by the server (best effort, a few seconds at most), as its favicon;
+  a page already saved offers to show its bookmark instead.
 - **Deleting** asks first (bookmarks have no trash), naming the pages that show its card, as
   links: they lose it (each page's history keeps the version with it, and an open note shows
   the change at once). A folder goes with everything in it.
 - **Cards in notes**: `/bookmark` picks one (a search over names, addresses and descriptions,
   the latest first; a pasted address that isn't saved yet can be added from there), and a
   bookmark dragged from the sidebar into a note becomes one. A card shows the bookmark as it is
-  now (favicon, name, site, two lines of description): a click opens the website; its menu
-  shows the information, edits the bookmark, puts another one there or removes the card. The
+  now (favicon, name, site, two lines of description). A click selects it (framed, as any
+  block) and opens its menu, also on its ⋯ button: open the website, the bookmark's page, put
+  another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes the
+  selected card and ⌘Z brings it back, as any content. A double click opens the website. The
   note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is gone
   says so.
 - **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded

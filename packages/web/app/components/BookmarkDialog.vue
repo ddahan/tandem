@@ -1,14 +1,12 @@
 <script setup lang="ts">
-// Creating or editing a bookmark (or renaming and moving a folder), opened by
-// useBookmarkActions. A new bookmark's name and description are read from its page once its
-// address is typed (the server fetches it), unless already filled. A page already bookmarked
-// says so, and offers to edit that bookmark instead.
+// Making a bookmark, opened by useBookmarkActions (editing one is done in place, on its page).
+// Its name and description are read from its page once its address is typed (the server
+// fetches it), unless already filled. A page already bookmarked says so, and offers to show
+// that bookmark instead.
 import type { Bookmark } from '@tandem/shared'
 
 const props = defineProps<{
-  /** The bookmark to edit; none for a new one. */
-  bookmark?: Bookmark
-  /** A new bookmark's folder and address. */
+  /** Its folder and address. */
   parentId?: string | null
   url?: string
 }>()
@@ -16,16 +14,13 @@ const emit = defineEmits<{ close: [saved: Bookmark | null] }>()
 
 const bookmarks = useBookmarks()
 const api = useApi()
+const tabs = useTabs()
 const showError = useApiErrorToast()
 
-const editing = ref<Bookmark | null>(props.bookmark ?? null)
-const folder = computed(() => editing.value?.kind === 'folder')
-const url = ref(props.bookmark?.url ?? props.url ?? '')
-const title = ref(props.bookmark?.title ?? '')
-const description = ref(props.bookmark?.description ?? '')
-const parentId = ref<string | null>(
-  props.bookmark ? props.bookmark.parentId : (props.parentId ?? null),
-)
+const url = ref(props.url ?? '')
+const title = ref('')
+const description = ref('')
+const parentId = ref<string | null>(props.parentId ?? null)
 const saving = ref(false)
 const reading = ref(false)
 const duplicate = ref<Bookmark | null>(null)
@@ -33,24 +28,22 @@ const duplicate = ref<Bookmark | null>(null)
 // The top of the bookmarks, in the folder picker (whose values can't be empty).
 const TOP = 'top'
 const folders = computed(() =>
-  bookmarks
-    .folderOptions(editing.value?.kind === 'folder' ? editing.value.id : undefined)
-    .map((option) => ({
-      value: option.id ?? TOP,
-      label: option.label,
-      depth: option.depth,
-    })),
+  bookmarks.folderOptions().map((option) => ({
+    value: option.id ?? TOP,
+    label: option.label,
+    depth: option.depth,
+  })),
 )
 const folderValue = computed({
   get: () => parentId.value ?? TOP,
   set: (value: string) => (parentId.value = value === TOP ? null : value),
 })
 
-// A new bookmark's name and description, from its page (what the browser extension also does).
+// Its name and description, from its page (what the browser extension also does).
 let lastRead = ''
 async function readPage() {
   const address = url.value.trim()
-  if (editing.value || !address || address === lastRead) return
+  if (!address || address === lastRead) return
   lastRead = address
   reading.value = true
   try {
@@ -67,37 +60,30 @@ onMounted(() => {
   if (url.value) void readPage()
 })
 
-/** Edits the bookmark already saved for this page, instead of making another. */
-function editDuplicate() {
+/** Shows the bookmark already saved for this page, instead of making another. */
+function showDuplicate() {
   const existing = duplicate.value
   if (!existing) return
-  duplicate.value = null
-  editing.value = existing
-  url.value = existing.url
-  title.value = existing.title
-  description.value = existing.description
-  parentId.value = existing.parentId
+  emit('close', null)
+  void tabs.open(`/bookmarks/${existing.id}`)
 }
 
 async function save() {
   if (saving.value) return
   saving.value = true
   duplicate.value = null
-  // Enter typed in the address: its page is read first.
-  if (!editing.value && !title.value.trim()) await readPage()
-  const fields = folder.value
-    ? { title: title.value, parentId: parentId.value }
-    : {
+  // ↵ typed in the address: its page is read first.
+  if (!title.value.trim()) await readPage()
+  try {
+    emit(
+      'close',
+      await bookmarks.create({
         url: url.value,
         title: title.value,
         description: description.value,
         parentId: parentId.value,
-      }
-  try {
-    const saved = editing.value
-      ? await bookmarks.update(editing.value.id, fields)
-      : await bookmarks.create(fields)
-    emit('close', saved)
+      }),
+    )
   } catch (error) {
     const existing =
       error instanceof ApiError && error.status === 409
@@ -113,18 +99,18 @@ async function save() {
 
 <template>
   <UModal
-    :title="editing ? (folder ? 'Edit folder' : 'Edit bookmark') : 'New bookmark'"
+    title="New bookmark"
     :ui="{ content: 'max-w-lg' }"
     @update:open="(open) => !open && emit('close', null)"
   >
     <template #body>
       <form id="bookmark-form" class="flex flex-col gap-4" @submit.prevent="save">
-        <UFormField v-if="!folder" label="Address" name="url">
+        <UFormField label="Address" name="url">
           <UInput
             v-model="url"
             placeholder="https://…"
             class="w-full"
-            :autofocus="!editing"
+            autofocus
             :loading="reading"
             data-testid="bookmark-url"
             @blur="readPage"
@@ -133,13 +119,12 @@ async function save() {
         <UFormField label="Name" name="title">
           <UInput
             v-model="title"
-            :placeholder="folder ? 'Folder name' : 'The page’s title'"
+            placeholder="The page’s title"
             class="w-full"
-            :autofocus="!!editing"
             data-testid="bookmark-title"
           />
         </UFormField>
-        <UFormField v-if="!folder" label="Description" name="description" hint="Optional">
+        <UFormField label="Description" name="description" hint="Optional">
           <UTextarea
             v-model="description"
             :rows="2"
@@ -173,7 +158,7 @@ async function save() {
           icon="i-lucide-bookmark-check"
           :title="`Already bookmarked as “${duplicate.title}”`"
           :actions="[
-            { label: 'Edit it', color: 'neutral', variant: 'outline', onClick: editDuplicate },
+            { label: 'Show it', color: 'neutral', variant: 'outline', onClick: showDuplicate },
           ]"
           data-testid="bookmark-duplicate"
         />
@@ -185,7 +170,7 @@ async function save() {
         <UButton
           type="submit"
           form="bookmark-form"
-          :label="editing ? 'Save' : 'Create'"
+          label="Create"
           :loading="saving"
           data-testid="bookmark-save"
         />

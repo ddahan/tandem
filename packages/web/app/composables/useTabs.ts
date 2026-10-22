@@ -1,12 +1,12 @@
-// Open pages as tabs, as VS Code opens files in editors. A note, and the app's own pages (Docs,
-// Settings, TODOs, Trash), each have one tab; the route is the active tab. A single click in
-// the tree opens a note in the preview tab (one at most, in italics, replaced by the next
+// Open pages as tabs, as VS Code opens files in editors. A note, a bookmark (or folder of
+// bookmarks), and the app's own pages (Docs, Settings, TODOs, Trash), each have one tab; the
+// route is the active tab. A single click in the tree opens a note in the preview tab (one at most, in italics, replaced by the next
 // preview, and closed once another page shows); a double click, editing the note, or any other
-// way of opening it gives it a tab of its own. Days of daily notes follow each other in one tab
+// way of opening it gives it a tab of its own (a bookmark's: the same, from the Bookmarks). Days of daily notes follow each other in one tab
 // (`replace`). Closing the active tab shows the one used before it, or Home with none left. The
 // tabs, their order and the recently used ones are kept in localStorage.
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { noteIdOf, tabKeyOf } from '~/utils/tabs'
+import { bookmarkIdOf, noteIdOf, tabKeyOf } from '~/utils/tabs'
 
 export interface Tab {
   key: string
@@ -208,9 +208,18 @@ export function useTabs() {
 
   /** Closes the tabs of notes that are gone (trashed, deleted), without opening anything. */
   function forgetNotes(exists: (id: string) => boolean) {
+    return forget(noteIdOf, exists)
+  }
+
+  /** Closes the tabs of bookmarks that are gone (deleted here or elsewhere). */
+  function forgetBookmarks(exists: (id: string) => boolean) {
+    return forget(bookmarkIdOf, exists)
+  }
+
+  function forget(idOf: (key: string) => string | null, exists: (id: string) => boolean) {
     const gone = saved.value.tabs
       .filter((tab) => {
-        const id = noteIdOf(tab.key)
+        const id = idOf(tab.key)
         return id !== null && !exists(id)
       })
       .map((tab) => tab.key)
@@ -236,5 +245,6 @@ export function useTabs() {
     at,
     moveBefore,
     forgetNotes,
+    forgetBookmarks,
   }
 }

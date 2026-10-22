@@ -191,13 +191,13 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       {
         keys: [['arrowup'], ['arrowdown']],
         label: 'Previous or next bookmark',
-        description: 'Shows its information, as a click does, once you stop on it.',
+        description: 'Opens its page, as a click does, once you stop on it.',
       },
       { keys: [['arrowright'], ['arrowleft']], label: 'Expand or collapse a folder' },
       {
         keys: [['enter']],
         label: 'Open the website',
-        description: 'In a new browser tab, as a double click. On a folder, unfolds it.',
+        description: 'In a new browser tab, as a double click. On a folder, its page in a tab.',
       },
       { keys: [['F2']], label: 'Rename' },
       {

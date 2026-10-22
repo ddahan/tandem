@@ -273,11 +273,12 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
   history, files). The editor reports the heading being read (`currentHeading`: measured on
   scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
-- Bookmarks: `useBookmarks` (all of them, shared by the sidebar's `BookmarkTree`, the cards
-  and the palette; loaded even when off, for cards already in notes), `useBookmarkActions`
-  (dialogs: `BookmarkDialog`, `BookmarkPicker`, `BookmarkDeleteDialog`), `BookmarkInfo` (the
-  popover a click shows, anchored to its row with UPopover's `reference`, keeping the focus in
-  the tree). The block is `editor/bookmark.ts` (Markdown, and a drop handler for bookmarks
+- Bookmarks: `useBookmarks` (all of them, shared by the sidebar's `BookmarkTree`, the cards,
+  the palette and the tab bar; loaded even when off, for cards already in notes),
+  `useBookmarkActions` (dialogs, made when first opened: `BookmarkDialog` for a new one,
+  `BookmarkPicker`, `BookmarkDeleteDialog`), and `pages/bookmarks/[id].vue`, a bookmark's or
+  folder's page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks`
+  closes the tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for bookmarks
   dragged from the sidebar: `application/x-tandem-bookmark`) with `BookmarkView.vue`.
 - State: `useTree` (tree, shared), `useSettings` (applies colors, radius, font and width at
   runtime; remembers the last settings in the browser and applies them before the first paint,

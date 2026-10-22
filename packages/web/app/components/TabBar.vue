@@ -11,10 +11,11 @@ import type { ContextMenuItem, DropdownMenuItem } from '@nuxt/ui'
 import { useMediaQuery, useResizeObserver } from '@vueuse/core'
 import type { Tab } from '~/composables/useTabs'
 import { calendarDateOf, dayLabel } from '@tandem/shared'
-import { noteIdOf } from '~/utils/tabs'
+import { bookmarkIdOf, noteIdOf } from '~/utils/tabs'
 
 const tabs = useTabs()
 const tree = useTree()
+const bookmarks = useBookmarks()
 const toast = useToast()
 
 /** The app's own pages, with their sidebar titles and icons. */
@@ -29,6 +30,10 @@ function nodeOf(tab: Tab) {
   const id = noteIdOf(tab.key)
   return id ? tree.byId.value.get(id) : undefined
 }
+function bookmarkOf(tab: Tab) {
+  const id = bookmarkIdOf(tab.key)
+  return id ? bookmarks.byId.value.get(id) : undefined
+}
 const { settings } = useSettings()
 /** A daily note's day (daily notes on): its tab reads "Today", "Wed 14 Oct"… */
 function dayOf(tab: Tab) {
@@ -39,6 +44,7 @@ function titleOf(tab: Tab) {
   const day = dayOf(tab)
   if (day) return dayLabel(day).short
   if (noteIdOf(tab.key)) return nodeOf(tab)?.title ?? '…'
+  if (bookmarkIdOf(tab.key)) return bookmarkOf(tab)?.title ?? '…'
   return PAGES[tab.key]?.title ?? tab.key
 }
 function iconOf(tab: Tab) {
@@ -309,6 +315,7 @@ function onDragEnd() {
               :icon="nodeOf(tab)!.icon"
               :kind="tree.kindOf(nodeOf(tab)!)"
             />
+            <BookmarkIcon v-else-if="bookmarkOf(tab)" :bookmark="bookmarkOf(tab)!" />
             <UIcon v-else :name="iconOf(tab)" class="size-4 shrink-0" />
             <span class="min-w-0 truncate" :class="tab.preview && 'italic'">{{
               titleOf(tab)

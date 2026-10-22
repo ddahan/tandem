@@ -10,7 +10,8 @@ const { openSearch } = useSearchPalette()
 const todos = useTodos()
 todos.follow()
 // Loaded even when off: cards already in notes still show.
-useBookmarks().follow()
+const bookmarks = useBookmarks()
+bookmarks.follow()
 
 // At the bottom of the sidebar; the logo leads Home. TODOs and Trash as Settings › Features say.
 const navigation = computed<NavigationMenuItem[]>(() => [
@@ -64,6 +65,12 @@ watch(
   () => tree.byId.value,
   (byId) => {
     if (tree.loaded.value) void tabs.forgetNotes((id) => byId.has(id))
+  },
+)
+watch(
+  () => bookmarks.byId.value,
+  (byId) => {
+    if (bookmarks.loaded.value) void tabs.forgetBookmarks((id) => byId.has(id))
   },
 )
 
@@ -204,8 +211,13 @@ defineShortcuts({
           </template>
         </UNavigationMenu>
 
-        <NoteTree v-if="!collapsed" class="-mx-1 min-h-0 flex-1" />
-        <BookmarkTree v-if="settings.bookmarks && !collapsed" class="-mx-1 shrink-0" />
+        <!-- With bookmarks, right after the pages: both scroll together. Without, the pages
+             take the room (their empty space takes drops and right-clicks). -->
+        <div v-if="!collapsed && settings.bookmarks" class="-mx-1 min-h-0 flex-1 overflow-y-auto">
+          <NoteTree />
+          <BookmarkTree />
+        </div>
+        <NoteTree v-else-if="!collapsed" class="-mx-1 min-h-0 flex-1" />
         <div v-else class="flex justify-center">
           <UTooltip text="New page">
             <UButton

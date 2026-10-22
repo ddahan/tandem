@@ -113,7 +113,7 @@ const GROUPS: Group[] = [
         icon: 'i-lucide-bookmark',
         title: 'Bookmarks',
         paragraphs: [
-          'Once turned on in Settings › Features, keep your bookmarks in Tandem: in folders, below the pages in the sidebar, saved from Chrome with Tandem’s extension (Docs › Extension). A click shows one’s information, a double click opens the website; /bookmark shows one as a card in a note, and ⌘⇧F finds them. Like databases, they are kept in Tandem: a note only holds a block naming one.',
+          'Once turned on in Settings › Features, keep your bookmarks in Tandem: in folders, right after the pages in the sidebar, saved from Chrome with Tandem’s extension (Docs › Extension). A click opens one as a page, edited in place, a double click opens its website; /bookmark shows one as a card in a note, and ⌘⇧F finds them. Like databases, they are kept in Tandem: a note only holds a block naming one.',
         ],
       },
       {

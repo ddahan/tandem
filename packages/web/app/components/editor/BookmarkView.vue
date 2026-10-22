@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // A bookmark block: the bookmark's card (favicon, name, site, description), as it is now: the
-// data is in Tandem (useBookmarks), the note only names it. A click opens the website; its menu
-// shows its information, edits it, puts another bookmark here, or takes the card out.
+// data is in Tandem (useBookmarks), the note only names it. A click selects it, as any block
+// (framed), and opens its menu (the website, the bookmark's page, another bookmark, removing
+// it); the focus stays in the editor, so ⌫ deletes it and ⌘Z brings it back, as any content. A
+// double click opens the website.
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { siteOf } from '@tandem/shared'
@@ -15,11 +17,33 @@ const id = computed(() => String(props.node.attrs.id ?? ''))
 const bookmark = computed(() => bookmarks.byId.value.get(id.value) ?? null)
 const missing = computed(() => bookmarks.loaded.value && !bookmark.value)
 const editable = computed(() => props.editor.isEditable)
-const card = useTemplateRef<HTMLElement>('card')
-const showingInfo = ref(false)
+const tabs = useTabs()
+
+const menuOpen = ref(false)
 
 function open() {
   if (bookmark.value) openWebsite(bookmark.value.url)
+}
+
+/** Selects the card in the editor: keys go there (⌫ deletes it). */
+function selectNode() {
+  const pos = props.getPos()
+  if (props.editor.isEditable && typeof pos === 'number') {
+    props.editor.chain().focus().setNodeSelection(pos).run()
+  }
+}
+
+/** A click on the card: selected, its menu shown. */
+function select() {
+  selectNode()
+  if (bookmark.value) menuOpen.value = true
+}
+
+/** Out of the note, through the editor: ⌘Z brings it back. */
+function remove() {
+  const pos = props.getPos()
+  if (typeof pos !== 'number') return
+  props.editor.chain().focus().setNodeSelection(pos).deleteSelection().run()
 }
 
 async function change() {
@@ -30,11 +54,10 @@ async function change() {
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
     { label: 'Open website', icon: 'i-lucide-external-link', onSelect: open },
-    { label: 'Show info', icon: 'i-lucide-info', onSelect: () => (showingInfo.value = true) },
     {
-      label: 'Edit bookmark…',
-      icon: 'i-lucide-pencil-line',
-      onSelect: () => void (bookmark.value && actions.edit(bookmark.value)),
+      label: 'Show the bookmark',
+      icon: 'i-lucide-bookmark',
+      onSelect: () => void tabs.open(`/bookmarks/${id.value}`),
     },
   ],
   ...(editable.value
@@ -48,7 +71,8 @@ const menu = computed<DropdownMenuItem[][]>(() => [
           {
             label: 'Remove from the note',
             icon: 'i-lucide-x',
-            onSelect: () => props.deleteNode(),
+            kbds: ['backspace'],
+            onSelect: remove,
           },
         ],
       ]
@@ -67,6 +91,7 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     <div
       v-if="missing"
       class="flex items-center gap-2 rounded-md border border-dashed border-default px-3 py-2 text-sm text-muted"
+      @click="select"
     >
       <UIcon name="i-lucide-bookmark-x" class="size-4" />
       This bookmark doesn't exist anymore.
@@ -77,17 +102,15 @@ const menu = computed<DropdownMenuItem[][]>(() => [
         color="neutral"
         variant="ghost"
         class="ms-auto"
-        @click="deleteNode()"
+        @click.stop="remove"
       />
     </div>
     <div
       v-else
-      ref="card"
       class="group relative flex cursor-pointer items-center gap-3 rounded-md border border-default bg-default px-3 py-2.5 transition-colors hover:bg-elevated/50"
-      role="link"
       :title="bookmark?.url"
-      tabindex="-1"
-      @click="open"
+      @click="select"
+      @dblclick="open"
     >
       <BookmarkIcon :bookmark="bookmark" size="lg" />
       <div class="min-w-0 flex-1">
@@ -101,8 +124,23 @@ const menu = computed<DropdownMenuItem[][]>(() => [
           {{ bookmark.description }}
         </p>
       </div>
-      <div class="shrink-0 self-start opacity-0 group-hover:opacity-100" @click.stop>
-        <UDropdownMenu v-if="bookmark" :items="menu" :content="{ align: 'end' }">
+      <div
+        class="shrink-0 self-start group-hover:opacity-100"
+        :class="menuOpen || selected ? 'opacity-100' : 'opacity-0'"
+        @click.stop="selectNode"
+      >
+        <!-- Not modal, and the focus left in the editor: ⌫ deletes the selected card. -->
+        <UDropdownMenu
+          v-if="bookmark"
+          v-model:open="menuOpen"
+          :items="menu"
+          :modal="false"
+          :content="{
+            align: 'end',
+            onOpenAutoFocus: (event: Event) => event.preventDefault(),
+            onCloseAutoFocus: (event: Event) => event.preventDefault(),
+          }"
+        >
           <UButton
             icon="i-lucide-ellipsis"
             size="xs"
@@ -113,16 +151,5 @@ const menu = computed<DropdownMenuItem[][]>(() => [
         </UDropdownMenu>
       </div>
     </div>
-
-    <UPopover
-      :open="showingInfo"
-      :reference="card ?? undefined"
-      :content="{ side: 'bottom', align: 'start' }"
-      @update:open="(value: boolean) => (showingInfo = value)"
-    >
-      <template #content>
-        <BookmarkInfo v-if="showingInfo" :id="id" @done="showingInfo = false" />
-      </template>
-    </UPopover>
   </NodeViewWrapper>
 </template>

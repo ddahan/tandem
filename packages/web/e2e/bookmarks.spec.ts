@@ -26,12 +26,12 @@ test.afterEach(async ({ request }) => {
   await api(request, 'PATCH', '/settings', { bookmarks: false })
 })
 
-test('lists bookmarks below the pages, folded until opened, and shows one’s information', async ({
+test('lists bookmarks right after the pages, folded until opened, and opens one as a page', async ({
   page,
   request,
 }) => {
   const folder = await addBookmark(request, { kind: 'folder', title: 'Reading' })
-  await addBookmark(request, {
+  const article = await addBookmark(request, {
     url: 'https://example.com/article',
     title: 'An article',
     description: 'Worth a read',
@@ -41,16 +41,55 @@ test('lists bookmarks below the pages, folded until opened, and shows one’s in
   const section = page.getByTestId('bookmarks')
   await expect(section).toBeVisible()
   await expect(section.getByTestId('bookmark-Reading')).toBeHidden()
+  // Right after the pages, not at the bottom of the sidebar.
+  const pages = await page.getByTestId('tree-menu-area').boundingBox()
+  const bookmarks = await section.boundingBox()
+  expect(bookmarks!.y - (pages!.y + pages!.height)).toBeLessThan(40)
+
+  // A folder opens as a page, with what it holds.
   await section.getByTestId('bookmarks-toggle').click()
   await section.getByTestId('bookmark-Reading').click()
-  await section.getByTestId('bookmark-An article').click()
-  const info = page.getByTestId('bookmark-info')
-  await expect(info).toContainText('https://example.com/article')
-  await expect(info).toContainText('Worth a read')
-  await expect(info).toContainText('Reading')
-  await expect(info).toContainText('No page shows it.')
+  await expect(page).toHaveURL(`/bookmarks/${folder.id}`)
+  const view = page.getByTestId('bookmark-page')
+  await expect(view.getByTestId('bookmark-page-contents')).toContainText('An article')
 
-  // Opened, it stays open; off, the section goes.
+  // A bookmark too, its fields edited in place.
+  await section.getByTestId('bookmark-An article').click()
+  await expect(page).toHaveURL(`/bookmarks/${article.id}`)
+  await expect(view.getByTestId('bookmark-page-url')).toHaveValue('https://example.com/article')
+  await expect(view).toContainText('Reading')
+  await expect(view).toContainText('No page shows it yet')
+  await view.getByTestId('bookmark-page-title').fill('An article, renamed')
+  await view.getByTestId('bookmark-page-title').press('Enter')
+  await view.getByTestId('bookmark-page-description').fill('Read it twice')
+  await view.getByTestId('bookmark-page-description').blur()
+  await expect
+    .poll(async () =>
+      api<Bookmark & { description: string }>(request, 'GET', `/bookmarks/${article.id}`),
+    )
+    .toMatchObject({ title: 'An article, renamed', description: 'Read it twice' })
+  await expect(page.getByTestId('tab-An article, renamed')).toBeVisible()
+
+  // An address already saved is refused, and the field goes back.
+  await addBookmark(request, { url: 'https://example.com/other', title: 'Other' })
+  await view.getByTestId('bookmark-page-url').fill('https://example.com/other')
+  await view.getByTestId('bookmark-page-url').press('Enter')
+  await expect(page.getByText('Already bookmarked as “Other”', { exact: true })).toBeVisible()
+  await expect(view.getByTestId('bookmark-page-url')).toHaveValue('https://example.com/article')
+
+  // Moved to the top from its folder field.
+  await view.getByTestId('bookmark-page-folder').click()
+  await page.getByRole('option', { name: 'Bookmarks' }).click()
+  await expect
+    .poll(async () => (await api<Bookmark>(request, 'GET', `/bookmarks/${article.id}`)).parentId)
+    .toBeNull()
+
+  // Deleted from its page: its tab goes.
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByTestId('bookmark-delete-confirm').click()
+  await expect(page.getByTestId('tab-An article, renamed')).toHaveCount(0)
+
+  // Opened, the section stays open; off, it goes.
   await page.reload()
   await expect(section.getByTestId('bookmark-Reading')).toBeVisible()
   await api(request, 'PATCH', '/settings', { bookmarks: false })
@@ -78,18 +117,16 @@ test('makes a bookmark from the sidebar, and a folder, renamed in place', async 
   await section.getByTestId('bookmark-Tools').click()
   await expect(section.getByTestId('bookmark-Example tools')).toBeVisible()
 
-  // The same page again: it says so, and offers to edit that one.
+  // The same page again: it says so, and shows that one.
   await section.getByRole('button', { name: 'New bookmark or folder' }).click()
   await page.getByRole('menuitem', { name: 'New bookmark' }).click()
   await page.getByTestId('bookmark-url').fill('https://tools.example.com/')
   await page.getByTestId('bookmark-title').fill('Again')
   await page.getByTestId('bookmark-save').click()
   await expect(page.getByTestId('bookmark-duplicate')).toContainText('Example tools')
-  await page.getByRole('button', { name: 'Edit it' }).click()
-  await expect(page.getByTestId('bookmark-title')).toHaveValue('Example tools')
-  await page.getByTestId('bookmark-title').fill('Example tools, renamed')
-  await page.getByTestId('bookmark-save').click()
-  await expect(section.getByTestId('bookmark-Example tools, renamed')).toBeVisible()
+  await page.getByRole('button', { name: 'Show it' }).click()
+  await expect(page).toHaveURL(/\/bookmarks\//)
+  await expect(page.getByTestId('bookmark-page-title')).toHaveValue('Example tools')
 })
 
 test('shows a bookmark’s card in a note, from / and from the sidebar, found by ⌘⇧F', async ({
@@ -128,6 +165,21 @@ test('shows a bookmark’s card in a note, from / and from the sidebar, found by
   // Changing the bookmark changes its card.
   await api(request, 'PATCH', `/bookmarks/${docs.id}`, { title: 'Example documentation' })
   await expect(card).toContainText('Example documentation')
+
+  // A click selects it and opens its menu; ⌫ deletes it, ⌘Z brings it back, as any block.
+  await card.getByText('Example documentation').click()
+  await expect(card).toHaveClass(/is-selected/)
+  await expect(page.getByRole('menuitem', { name: 'Open website' })).toBeVisible()
+  await page.keyboard.press('Backspace')
+  await expect(page.getByTestId('bookmark-card')).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.getByTestId('bookmark-card')).toHaveCount(1)
+  // Removed from its menu: undone the same way.
+  await page.getByTestId('bookmark-card').getByText('Example documentation').click()
+  await page.getByRole('menuitem', { name: 'Remove from the note' }).click()
+  await expect(page.getByTestId('bookmark-card')).toHaveCount(0)
+  await page.keyboard.press('ControlOrMeta+z')
+  await expect(page.getByTestId('bookmark-card')).toHaveCount(1)
 
   // Dragged from the sidebar, a bookmark becomes a card.
   const section = page.getByTestId('bookmarks')

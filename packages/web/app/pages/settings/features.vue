@@ -29,7 +29,7 @@ const features: {
     key: 'bookmarks',
     label: 'Bookmarks',
     description:
-      'Links to websites in the sidebar, below the pages, shown in notes as cards (/bookmark), and saved from Chrome with Tandem’s extension. Off, cards already in notes still show.',
+      'Links to websites in the sidebar, right after the pages, shown in notes as cards (/bookmark), and saved from Chrome with Tandem’s extension. Off, cards already in notes still show.',
   },
   {
     key: 'daily',

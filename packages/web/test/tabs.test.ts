@@ -1,6 +1,6 @@
 // Which tab a page is shown in (useTabs): one per note, one per app page, none for Home.
 import { describe, expect, it } from 'vitest'
-import { noteIdOf, tabKeyOf } from '../app/utils/tabs'
+import { bookmarkIdOf, noteIdOf, tabKeyOf } from '../app/utils/tabs'
 
 describe('tabs', () => {
   it('gives a note, and each app page, its own tab', () => {
@@ -9,6 +9,7 @@ describe('tabs', () => {
     expect(tabKeyOf('/settings')).toBe('settings')
     expect(tabKeyOf('/todos')).toBe('todos')
     expect(tabKeyOf('/trash')).toBe('trash')
+    expect(tabKeyOf('/bookmarks/Kx3fq9P2mZ0a')).toBe('bookmark:Kx3fq9P2mZ0a')
   })
 
   it('keeps Docs in one tab, whatever its section', () => {
@@ -25,5 +26,11 @@ describe('tabs', () => {
   it('reads the note of a tab', () => {
     expect(noteIdOf('note:abc')).toBe('abc')
     expect(noteIdOf('settings')).toBeNull()
+    expect(noteIdOf('bookmark:abc')).toBeNull()
+  })
+
+  it('reads the bookmark of a tab', () => {
+    expect(bookmarkIdOf('bookmark:abc')).toBe('abc')
+    expect(bookmarkIdOf('note:abc')).toBeNull()
   })
 })

@@ -60,6 +60,8 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
 
   const page = await context.newPage()
   await page.goto(PAGE)
+  // Its title is set once the site's app has started: the popup reads the tab's.
+  await page.waitForLoadState('networkidle')
   const tabId = await worker.evaluate(
     async (url) => (await chrome.tabs.query({ url: `${url}*` }))[0]?.id,
     PAGE,

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// The sidebar's Bookmarks section, below the pages: folded until opened (remembered), then a
-// tree of folders and bookmarks like the pages' one (drag and drop, a menu on each row, F2), in
-// a box of its own that scrolls: hundreds of bookmarks don't push the rest of the sidebar away.
-// A click on a bookmark shows its information (BookmarkInfo), as browsing them with the arrows
-// does; a double click or Enter opens the website. A folder's row unfolds it. Dragged into a
-// note, a bookmark becomes its card (editor/bookmark.ts).
+// The sidebar's Bookmarks section, right after the pages: folded until opened (remembered),
+// then a tree of folders and bookmarks like the pages' one (drag and drop, a menu on each row,
+// F2). A click opens a bookmark or folder as a page (pages/bookmarks/[id].vue) in the preview
+// tab, as browsing them with the arrows does; a double click or ↵ opens a bookmark's website
+// (a folder's page in a tab of its own). Dragged into a note, a bookmark becomes its card
+// (editor/bookmark.ts).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import { openWebsite, type BookmarkItem } from '~/composables/useBookmarks'
@@ -27,30 +27,24 @@ function expand(id: string | null) {
   if (id && !expanded.value.includes(id)) expanded.value = [...expanded.value, id]
 }
 
-// --- Information (a click, or browsing with the arrows) -------------------------------------
+// --- Opening (a click, or browsing with the arrows) -------------------------------------------
 
-const info = ref<{ id: string; element: HTMLElement } | null>(null)
+const tabs = useTabs()
+const route = useRoute()
+const currentId = computed(() => (route.name === 'bookmarks-id' ? String(route.params.id) : null))
 
 function rowOf(id: string) {
   return document.querySelector<HTMLElement>(`[data-bookmark-id="${id}"]`)
 }
 
-function showInfo(item: BookmarkItem) {
-  const element = rowOf(item.id)
-  if (element) info.value = { id: item.id, element }
-}
-
-// A click on a folder unfolds it: the tree does it (UTree), on its own.
-function select(item: BookmarkItem) {
-  if (item.bookmark.kind === 'bookmark') showInfo(item)
+/** Its page, in the preview tab (a folder also unfolds: the tree does it, UTree). */
+function show(item: BookmarkItem) {
+  void tabs.preview(`/bookmarks/${item.id}`)
 }
 
 function activate(item: BookmarkItem) {
-  if (item.bookmark.kind === 'folder') toggle(item.id)
-  else {
-    info.value = null
-    openWebsite(item.bookmark.url)
-  }
+  if (item.bookmark.kind === 'folder') void tabs.open(`/bookmarks/${item.id}`)
+  else openWebsite(item.bookmark.url)
 }
 
 // As in the pages' tree: the row reached with the arrows shows, once the keys pause.
@@ -67,16 +61,9 @@ function onTreeFocusin(event: FocusEvent) {
   const target = event.target as HTMLElement
   const row = target.closest('[data-bookmark-id]') ?? target.querySelector('[data-bookmark-id]')
   const id = row?.getAttribute('data-bookmark-id')
-  const bookmark = id ? bookmarks.byId.value.get(id) : undefined
+  if (!id) return
   clearTimeout(browseTimer)
-  if (!bookmark || bookmark.kind === 'folder') {
-    info.value = null
-    return
-  }
-  browseTimer = setTimeout(() => {
-    const element = rowOf(bookmark.id)
-    if (element) info.value = { id: bookmark.id, element }
-  }, 150)
+  browseTimer = setTimeout(() => void tabs.preview(`/bookmarks/${id}`), 150)
 }
 
 // --- Renaming --------------------------------------------------------------------------------
@@ -85,7 +72,6 @@ const renamingId = ref<string | null>(null)
 const renameValue = ref('')
 
 function startRename(item: BookmarkItem) {
-  info.value = null
   renamingId.value = item.id
   renameValue.value = item.label
 }
@@ -121,7 +107,6 @@ async function newFolder(parentId: string | null = null) {
 }
 
 async function remove(item: BookmarkItem) {
-  info.value = null
   await actions.remove(item.bookmark)
 }
 
@@ -182,18 +167,13 @@ function menu(item: BookmarkItem): DropdownMenuItem[][] {
             kbds: ['enter'],
             onSelect: () => activate(item),
           },
-          { label: 'Show info', icon: 'i-lucide-info', onSelect: () => showInfo(item) },
+          {
+            label: 'Open in a tab',
+            icon: 'i-lucide-panel-top',
+            onSelect: () => void tabs.open(`/bookmarks/${item.id}`),
+          },
         ],
     [
-      ...(folder
-        ? []
-        : [
-            {
-              label: 'Edit…',
-              icon: 'i-lucide-pencil-line',
-              onSelect: () => void actions.edit(item.bookmark),
-            },
-          ]),
       { label: 'Rename', icon: 'i-lucide-pencil', kbds: ['F2'], onSelect: () => startRename(item) },
       {
         label: 'Move up',
@@ -262,7 +242,6 @@ const dragged = ref<string | null>(null)
 const dropTarget = ref<{ id: string; zone: DropZone } | null>(null)
 
 function onDragStart(event: DragEvent, item: BookmarkItem) {
-  info.value = null
   dragged.value = item.id
   if (!event.dataTransfer) return
   event.dataTransfer.setData(BOOKMARK_DRAG_TYPE, item.id)
@@ -329,7 +308,7 @@ function reset() {
 function rowClass(item: BookmarkItem) {
   const target = dropTarget.value?.id === item.id ? dropTarget.value.zone : null
   return [
-    info.value?.id === item.id
+    currentId.value === item.id
       ? 'bg-elevated text-highlighted font-medium'
       : 'text-default hover:bg-elevated/60',
     dragged.value === item.id && 'opacity-50',
@@ -370,7 +349,7 @@ function rowClass(item: BookmarkItem) {
 
     <div
       v-if="open"
-      class="max-h-[40vh] min-h-0 overflow-y-auto px-1"
+      class="px-1"
       @dragover.prevent
       @drop="onDropOnRoot"
       @dragend="reset"
@@ -395,8 +374,8 @@ function rowClass(item: BookmarkItem) {
                 :data-testid="`bookmark-${item.label}`"
                 :title="item.bookmark.kind === 'bookmark' ? item.bookmark.url : undefined"
                 @keydown.capture="onRowKeydown($event, item)"
-                @click="select(item)"
-                @dblclick="item.bookmark.kind === 'bookmark' && activate(item)"
+                @click="show(item)"
+                @dblclick="activate(item)"
                 @dragstart="onDragStart($event, item)"
                 @dragover.stop="onDragOver($event, item)"
                 @dragleave="dropTarget = null"
@@ -483,22 +462,5 @@ function rowClass(item: BookmarkItem) {
         </div>
       </UContextMenu>
     </div>
-
-    <UPopover
-      :open="!!info"
-      :reference="info?.element"
-      :content="{
-        side: 'right',
-        align: 'start',
-        sideOffset: 8,
-        onOpenAutoFocus: (event: Event) => event.preventDefault(),
-        onCloseAutoFocus: (event: Event) => event.preventDefault(),
-      }"
-      @update:open="(value: boolean) => !value && (info = null)"
-    >
-      <template #content>
-        <BookmarkInfo v-if="info" :id="info.id" @done="info = null" />
-      </template>
-    </UPopover>
   </div>
 </template>
