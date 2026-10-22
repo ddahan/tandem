@@ -186,6 +186,8 @@ export interface Settings {
   daily: boolean
   /** Home lists the recently updated pages. */
   homeRecent: boolean
+  /** Shortcuts' keys shown in the app (buttons, menus, tooltips); off, they still work. */
+  shortcutHints: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -205,6 +207,7 @@ export const DEFAULT_SETTINGS: Settings = {
   todos: false,
   daily: false,
   homeRecent: true,
+  shortcutHints: true,
 }
 
 /** Server-sent events, on `/api/events`. */

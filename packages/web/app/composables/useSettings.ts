@@ -76,6 +76,8 @@ export function useSettings() {
     document.documentElement.spellcheck = value.spellcheck
     // TODO lines read as any text when TODOs are off (main.css).
     document.documentElement.dataset.todos = value.todos ? 'on' : 'off'
+    // Shortcuts' keys hidden (main.css), except where Docs show them.
+    document.documentElement.dataset.shortcutHints = value.shortcutHints ? 'on' : 'off'
     remember(value)
     void nextTick(() => requestAnimationFrame(updateFavicon))
   }

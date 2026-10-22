@@ -188,6 +188,9 @@ earlier one), and one superseded by a newer press is skipped.
 
 ### Optional features
 
+Shortcuts' keys hide with one rule in `main.css` (`html[data-shortcut-hints='off'] kbd`, but not
+under `[data-keys-shown]`: Docs), set by `useSettings`, so no component needs to know.
+
 `tags`, `trash`, `todos`, `daily` and `spellcheck` are settings like the others (`Settings`, shared):
 the web app shows or hides what each one governs, and never changes the data (tags stay in
 SQLite, TODO lines in the Markdown). The server and agents ignore them.

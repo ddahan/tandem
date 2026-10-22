@@ -15,6 +15,8 @@ test.afterEach(async ({ request }) => {
     trash: true,
     todos: false,
     homeRecent: true,
+    shortcutHints: true,
+    daily: false,
   })
 })
 
@@ -114,4 +116,41 @@ test('shows Home’s recently updated pages, unless General says not to', async 
   await expect(page).toHaveURL(/\/$/)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByTestId('home-recent')).toHaveCount(0)
+})
+
+test('shows shortcuts’ keys, unless Appearance says not to; Docs always do', async ({
+  page,
+  request,
+}) => {
+  await api(request, 'PATCH', '/settings', { daily: true })
+  // The installed app's window (headless Chrome can't emulate display-mode): there, ⌘T is
+  // Tandem's, and Today shows it.
+  await page.addInitScript(() => {
+    const original = window.matchMedia.bind(window)
+    window.matchMedia = (query: string) => {
+      if (!query.includes('display-mode: standalone')) return original(query)
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      } as MediaQueryList
+    }
+  })
+  await page.goto('/settings/appearance')
+  const search = page.getByRole('button', { name: /Search/ }).first()
+  const today = page.getByRole('navigation', { name: 'Calendar notes' })
+  await expect(search.locator('kbd').first()).toBeVisible()
+  await expect(today.locator('kbd')).toHaveCount(2)
+
+  await page.getByRole('switch', { name: 'Keyboard shortcuts' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-shortcut-hints', 'off')
+  await expect(search.locator('kbd').first()).toBeHidden()
+  await expect(today.locator('kbd').first()).toBeHidden()
+  await page.goto('/docs/shortcuts')
+  await expect(page.getByTestId('shortcut').first().locator('kbd').first()).toBeVisible()
 })

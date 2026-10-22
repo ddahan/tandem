@@ -70,6 +70,7 @@ const settingsPatch = z
     todos: z.boolean(),
     daily: z.boolean(),
     homeRecent: z.boolean(),
+    shortcutHints: z.boolean(),
   })
   .partial()
 

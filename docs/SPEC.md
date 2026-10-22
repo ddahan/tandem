@@ -264,7 +264,8 @@ inside OneDrive so that it is backed up and synced.
 - Optional (Settings › Features, off by default). One note per day, `Calendar/<YYYY-MM-DD>.md`
   in the notes folder (ISO dates, the computer's time zone); weekly notes may come later.
 - On, the tree doesn't show them (nor their Calendar folder, when it holds nothing else): the
-  sidebar's **Today**, above the pages, opens today's (highlighted on a day's note), and so do
+  sidebar's **Today**, above the pages (with ⌘T on its right in the installed app's window),
+  opens today's (highlighted on a day's note), and so do
   ⌘T (installed app) and "Today's note" in the palette. `/daily` and `/daily/<date>` lead to one. Off, they are pages
   like any other, in Calendar.
 - A day's note is created when it is opened, empty (no template), by one server call under the
@@ -384,7 +385,9 @@ inside OneDrive so that it is backed up and synced.
     and Agents (installing the app, connecting agents).
   - **Appearance**: light, dark or system color mode (a small preview of each), background
     tone (white, paper, sepia or cool, each with a light and a dark variant), primary (amber by
-    default) and neutral colors, corner radius.
+    default) and neutral colors, corner radius, and whether shortcuts' keys show in the app
+    (buttons, menus, tooltips, palette, Home; on by default). Off, they still work, and Docs
+    (Shortcuts, Blocks) still show them.
   - **Editor**: font, text size (notes only: the interface keeps its size), page width, and
     the code blocks' theme (Tandem, GitHub, One, Dracula, Nord, Solarized or Tomorrow: each a
     light and a dark variant, used in its mode, as the background tones; Tomorrow's dark one is

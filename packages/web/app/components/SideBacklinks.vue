@@ -83,7 +83,7 @@ const outgoing = computed(() => {
         </span>
       </template>
       <p v-if="!outgoing.length" class="px-2 text-sm text-dimmed">
-        Type <UKbd>[[</UKbd> in the note to link another one.
+        Type <span data-keys-shown><UKbd>[[</UKbd></span> in the note to link another one.
       </p>
     </section>
   </div>

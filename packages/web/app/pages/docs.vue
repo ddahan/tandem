@@ -23,7 +23,7 @@ const tabs: NavigationMenuItem[] = [
     </template>
 
     <template #body>
-      <div class="mx-auto w-full max-w-3xl py-4">
+      <div class="mx-auto w-full max-w-3xl py-4" data-keys-shown>
         <NuxtPage />
       </div>
     </template>

@@ -173,5 +173,21 @@ const WINDOWS = [
         />
       </div>
     </SettingsSection>
+
+    <USeparator />
+
+    <SettingsSection
+      title="Keyboard shortcuts"
+      description="Show their keys in buttons, menus and tooltips. Off, they still work, and Docs › Shortcuts lists them."
+      for="shortcut-hints"
+    >
+      <template #action>
+        <USwitch
+          id="shortcut-hints"
+          :model-value="settings.shortcutHints"
+          @update:model-value="(value) => set({ shortcutHints: value })"
+        />
+      </template>
+    </SettingsSection>
   </div>
 </template>

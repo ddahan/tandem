@@ -352,6 +352,12 @@ html.dark[data-tone='cool'] {
   }
 }
 
+/* Shortcuts' keys hidden (Settings › Appearance): they still work. Docs show them anyway
+   (data-keys-shown), as does what to type (the [[ hint). */
+:root[data-shortcut-hints='off'] kbd:not([data-keys-shown] kbd) {
+  display: none;
+}
+
 /* TODOs turned off (Settings › Features): their lines read as any text. */
 :root[data-todos='off'] .note-editor :is(.todo-highlight, .todo-marker) {
   background: none;

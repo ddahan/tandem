@@ -29,6 +29,8 @@ const navigation = computed<NavigationMenuItem[]>(() => [
 
 // Daily notes, when on: above the tree, highlighted on a day's note.
 const daily = useDaily()
+// The installed app's own window: there, ⌘T reaches Tandem (in a browser tab, it's the browser's).
+const appWindow = useMediaQuery('(display-mode: standalone)')
 const onDailyNote = computed(() => {
   if (route.name !== 'notes-id') return false
   const node = tree.byId.value.get(String(route.params.id))
@@ -191,7 +193,14 @@ defineShortcuts({
           orientation="vertical"
           tooltip
           aria-label="Calendar notes"
-        />
+        >
+          <!-- ⌘T, as the search button shows its keys: only where ⌘T reaches Tandem. -->
+          <template #item-trailing>
+            <span v-if="appWindow && !collapsed" class="flex gap-0.5">
+              <UKbd value="meta" variant="subtle" /><UKbd value="t" variant="subtle" />
+            </span>
+          </template>
+        </UNavigationMenu>
 
         <NoteTree v-if="!collapsed" class="-mx-1 min-h-0 flex-1" />
         <div v-else class="flex justify-center">

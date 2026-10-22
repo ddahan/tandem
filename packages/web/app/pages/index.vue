@@ -54,9 +54,11 @@ const actions: { label: string; icon: string; to?: string; onClick?: () => void 
       <div class="mx-auto w-full max-w-3xl py-8">
         <h1 class="text-3xl font-bold tracking-tight text-highlighted">{{ greeting }}</h1>
         <p class="mt-1 text-muted">
-          {{ pageCount }} page{{ pageCount === 1 ? '' : 's' }} in your notes. Press
-          <UKbd value="meta" /> <UKbd value="shift" /> <UKbd value="F" /> to search,
-          <UKbd value="/" /> in a note for blocks.
+          {{ pageCount }} page{{ pageCount === 1 ? '' : 's' }} in your notes.
+          <template v-if="settings.shortcutHints">
+            Press <UKbd value="meta" /> <UKbd value="shift" /> <UKbd value="F" /> to search,
+            <UKbd value="/" /> in a note for blocks.
+          </template>
         </p>
 
         <div class="mt-10 grid gap-3 sm:grid-cols-3">
