@@ -142,24 +142,8 @@ function createTandem(address, fetcher = fetch) {
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
     create: (fields) => save2("/api/bookmarks", "POST", fields),
-    update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
-    createFolder: (title, parentId) => request("/api/bookmarks", {
-      method: "POST",
-      body: JSON.stringify({ kind: "folder", title, parentId })
-    })
+    update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields)
   };
-}
-function folderOptions(bookmarks2) {
-  const options = [{ id: null, label: "Bookmarks", depth: 0 }];
-  const walk = (parentId, depth) => {
-    const folders = bookmarks2.filter((bookmark) => bookmark.kind === "folder" && bookmark.parentId === parentId).toSorted((a, b) => a.position - b.position);
-    for (const folder of folders) {
-      options.push({ id: folder.id, label: folder.title, depth });
-      walk(folder.id, depth + 1);
-    }
-  };
-  walk(null, 1);
-  return options;
 }
 function folderPath(bookmarks2, bookmark) {
   const byId = new Map(bookmarks2.map((b) => [b.id, b]));
@@ -177,25 +161,16 @@ async function getAddress() {
   const { address } = await chrome.storage.sync.get("address");
   return normalizeAddress(address ?? DEFAULT_ADDRESS);
 }
-async function getLastFolder() {
-  const { lastFolder } = await chrome.storage.local.get("lastFolder");
-  return lastFolder ?? null;
-}
-async function setLastFolder(id) {
-  await chrome.storage.local.set({ lastFolder: id });
-}
 
 // src/popup.ts
 var $ = (id) => document.getElementById(id);
-var NEW_FOLDER = "+new";
-var TOP = "";
 var tandem;
 var tab;
 var existing = null;
 var bookmarks = [];
 var iconDataUrl;
 function show(section) {
-  for (const id of ["loading", "problem", "form", "saved"]) $(id).hidden = id !== section;
+  for (const id of ["loading", "problem", "form"]) $(id).hidden = id !== section;
 }
 function button(label, onClick, primary = false) {
   const element = document.createElement("button");
@@ -237,20 +212,6 @@ function failed(error) {
     ]);
   }
 }
-function fillFolders(selected) {
-  const select = $("folder");
-  const options = folderOptions(bookmarks).map((folder) => {
-    const option = document.createElement("option");
-    option.value = folder.id ?? TOP;
-    option.textContent = `${"\u2003".repeat(Math.max(0, folder.depth - 1))}${folder.label}`;
-    return option;
-  });
-  const add = document.createElement("option");
-  add.value = NEW_FOLDER;
-  add.textContent = "New folder\u2026";
-  select.replaceChildren(...options, add);
-  select.value = selected && bookmarks.some((b) => b.id === selected) ? selected : TOP;
-}
 function useExisting(bookmark) {
   existing = bookmark;
   $("heading").textContent = "Already in Tandem";
@@ -260,7 +221,6 @@ function useExisting(bookmark) {
   $("title").value = bookmark.title;
   $("url").value = bookmark.url;
   $("description").value = bookmark.description;
-  fillFolders(bookmark.parentId);
   $("save").textContent = "Save";
 }
 async function targetTab() {
@@ -284,12 +244,11 @@ async function start() {
   tab = current;
   try {
     if (!await tandem.enabled()) throw new TandemError("off", "Bookmarks are off in Tandem.");
-    const [all, found, description, icon, lastFolder] = await Promise.all([
+    const [all, found, description, icon] = await Promise.all([
       tandem.list(),
       tandem.lookup(url),
       pageDescription(current.id),
-      faviconDataUrl(url, current.favIconUrl),
-      getLastFolder()
+      faviconDataUrl(url, current.favIconUrl)
     ]);
     bookmarks = all;
     iconDataUrl = icon;
@@ -298,7 +257,6 @@ async function start() {
       $("title").value = current.title?.trim() || url;
       $("url").value = url;
       $("description").value = description;
-      fillFolders(lastFolder);
     }
     show("form");
     const title = $("title");
@@ -308,72 +266,27 @@ async function start() {
     failed(error);
   }
 }
-async function addFolder() {
-  const name = $("new-folder-name").value.trim();
-  if (!name) return;
-  try {
-    const folder = await tandem.createFolder(name, null);
-    bookmarks = [...bookmarks, folder];
-    fillFolders(folder.id);
-    $("new-folder").hidden = true;
-    $("new-folder-name").value = "";
-  } catch (error) {
-    formError(error);
-  }
-}
-function formError(error) {
-  if (error instanceof TandemError && error.problem !== "error") return failed(error);
-  const element = $("form-error");
-  element.textContent = error instanceof Error ? error.message : String(error);
-  element.hidden = false;
-}
 async function save(event) {
   event.preventDefault();
-  const saveButton = $("save");
-  saveButton.disabled = true;
-  $("form-error").hidden = true;
-  const folder = $("folder").value;
-  const parentId = folder === TOP || folder === NEW_FOLDER ? null : folder;
-  const fields = {
-    title: $("title").value,
-    url: $("url").value,
-    description: $("description").value,
-    parentId
-  };
-  try {
-    const result = existing ? await tandem.update(existing.id, fields) : await tandem.create({ ...fields, iconDataUrl });
-    if (result.duplicate && !existing) {
-      useExisting(result.bookmark);
-      saveButton.disabled = false;
-      return;
+  const message = {
+    type: "save",
+    tabId: tab.id,
+    id: existing?.id,
+    fields: {
+      title: $("title").value,
+      url: $("url").value,
+      description: $("description").value,
+      ...existing ? {} : { iconDataUrl }
     }
-    await setLastFolder(parentId);
-    $("saved-text").textContent = `\u201C${result.bookmark.title}\u201D is in ${folderPath(bookmarks, result.bookmark)}.`;
-    show("saved");
-    void chrome.runtime.sendMessage({ type: "bookmarked", tabId: tab.id }).catch(() => {
-    });
-    setTimeout(() => window.close(), 900);
-  } catch (error) {
-    formError(error);
-  } finally {
-    saveButton.disabled = false;
-  }
+  };
+  await chrome.runtime.sendMessage(message).catch(() => {
+  });
+  window.close();
 }
 $("form").addEventListener("submit", (event) => void save(event));
 $("cancel").addEventListener("click", () => window.close());
 $("description").addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.metaKey || event.ctrlKey))
     $("form").requestSubmit();
-});
-$("folder").addEventListener("change", () => {
-  const adding = $("folder").value === NEW_FOLDER;
-  $("new-folder").hidden = !adding;
-  if (adding) $("new-folder-name").focus();
-});
-$("new-folder-add").addEventListener("click", () => void addFolder());
-$("new-folder-name").addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  void addFolder();
 });
 void start();

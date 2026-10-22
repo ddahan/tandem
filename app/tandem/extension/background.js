@@ -90,7 +90,7 @@ function createTandem(address, fetcher = fetch) {
     }
     return body;
   }
-  async function save(path, method, fields) {
+  async function save2(path, method, fields) {
     try {
       const bookmark = await request(path, { method, body: JSON.stringify(fields) });
       return { bookmark, duplicate: false };
@@ -114,12 +114,8 @@ function createTandem(address, fetcher = fetch) {
     search: (query, limit = 6) => request(
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
-    create: (fields) => save("/api/bookmarks", "POST", fields),
-    update: (id, fields) => save(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
-    createFolder: (title, parentId) => request("/api/bookmarks", {
-      method: "POST",
-      body: JSON.stringify({ kind: "folder", title, parentId })
-    })
+    create: (fields) => save2("/api/bookmarks", "POST", fields),
+    update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields)
   };
 }
 
@@ -131,10 +127,13 @@ async function getAddress() {
 
 // src/background.ts
 var BADGE_COLOR = "#f59e0b";
+var ERROR_COLOR = "#dc2626";
 async function tandem() {
   return createTandem(await getAddress());
 }
+var saving = /* @__PURE__ */ new Set();
 async function refreshBadge(tabId, url) {
+  if (saving.has(tabId)) return;
   const page = bookmarkable(url);
   let saved = false;
   if (page) {
@@ -143,10 +142,29 @@ async function refreshBadge(tabId, url) {
     } catch {
     }
   }
-  await chrome.action.setBadgeText({ tabId, text: saved ? "\u2713" : "" }).catch(() => {
+  if (saving.has(tabId)) return;
+  await badge(tabId, saved ? "\u2713" : "", saved ? "Already in Tandem" : "Add to Tandem");
+}
+async function badge(tabId, text, title, color = BADGE_COLOR) {
+  await chrome.action.setBadgeBackgroundColor({ tabId, color }).catch(() => {
   });
-  await chrome.action.setTitle({ tabId, title: saved ? "Already in Tandem" : "Add to Tandem" }).catch(() => {
+  await chrome.action.setBadgeText({ tabId, text }).catch(() => {
   });
+  await chrome.action.setTitle({ tabId, title }).catch(() => {
+  });
+}
+async function save({ tabId, id, fields }) {
+  saving.add(tabId);
+  await badge(tabId, "\u2713", "Already in Tandem");
+  try {
+    const client = await tandem();
+    await (id ? client.update(id, fields) : client.create(fields));
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    await badge(tabId, "!", `Couldn\u2019t save in Tandem: ${reason}`, ERROR_COLOR);
+  } finally {
+    saving.delete(tabId);
+  }
 }
 chrome.runtime.onInstalled.addListener(() => {
   void chrome.action.setBadgeBackgroundColor({ color: BADGE_COLOR });
@@ -157,10 +175,10 @@ chrome.tabs.onActivated.addListener(({ tabId }) => {
 chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
   if (change.url || change.status === "complete") void refreshBadge(tabId, tab.url);
 });
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.type !== "bookmarked" || !message.tabId) return;
-  const tabId = message.tabId;
-  void chrome.tabs.get(tabId).then((tab) => refreshBadge(tabId, tab.url));
+chrome.runtime.onMessage.addListener((message, _sender, respond) => {
+  if (message.type !== "save") return;
+  respond({ received: true });
+  void save(message);
 });
 function xml(text) {
   return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");

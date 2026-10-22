@@ -87,11 +87,7 @@ function createTandem(address, fetcher = fetch) {
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
     create: (fields) => save("/api/bookmarks", "POST", fields),
-    update: (id, fields) => save(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
-    createFolder: (title, parentId) => request("/api/bookmarks", {
-      method: "POST",
-      body: JSON.stringify({ kind: "folder", title, parentId })
-    })
+    update: (id, fields) => save(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields)
   };
 }
 

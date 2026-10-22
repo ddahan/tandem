@@ -35,25 +35,11 @@
           <span>Description <em>Optional</em></span>
           <textarea id="description" name="description" rows="2" maxlength="1000"></textarea>
         </label>
-        <label>
-          <span>Folder</span>
-          <select id="folder" name="folder"></select>
-        </label>
-        <div id="new-folder" class="row" hidden>
-          <input id="new-folder-name" placeholder="New folder’s name" autocomplete="off" />
-          <button type="button" id="new-folder-add">Add</button>
-        </div>
-        <p id="form-error" class="error" hidden></p>
         <div class="actions">
           <button type="button" id="cancel">Cancel</button>
           <button type="submit" id="save" class="primary">Create</button>
         </div>
       </form>
-
-      <section id="saved" hidden>
-        <h2>Saved in Tandem</h2>
-        <p id="saved-text" class="muted"></p>
-      </section>
     </main>
     <script type="module" src="popup.js"></script>
   </body>
