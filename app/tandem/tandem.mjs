@@ -7685,7 +7685,8 @@ var DEFAULT_SETTINGS = {
   tags: false,
   trash: true,
   todos: false,
-  daily: false
+  daily: false,
+  homeRecent: true
 };
 
 // ../shared/src/titles.ts
@@ -32006,7 +32007,8 @@ var settingsPatch = external_exports.object({
   tags: external_exports.boolean(),
   trash: external_exports.boolean(),
   todos: external_exports.boolean(),
-  daily: external_exports.boolean()
+  daily: external_exports.boolean(),
+  homeRecent: external_exports.boolean()
 }).partial();
 var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
 var cells = external_exports.record(external_exports.string(), cellValue);
