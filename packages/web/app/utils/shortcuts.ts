@@ -94,11 +94,20 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: [['meta', 'shift', 't']], label: 'Reopen the closed tab' },
       {
         keys: [
+          ['ctrl', 'meta', 'arrowright'],
+          ['ctrl', 'meta', 'arrowleft'],
+        ],
+        label: 'Next or previous tab',
+        description: 'Anywhere, even on a day’s note. On a Mac (elsewhere, ⌃1…⌃9).',
+      },
+      {
+        keys: [
           ['meta', 'alt', 'arrowright'],
           ['meta', 'alt', 'arrowleft'],
         ],
-        label: 'Next or previous tab',
-        description: 'On a day’s note, the next or previous day (in the same tab).',
+        label: 'Next or previous tab, or day',
+        description:
+          'On a day’s note, the next or previous day (in the same tab); elsewhere, the next or previous tab.',
       },
       {
         keys: [
@@ -145,9 +154,17 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     description: 'On the page or folder focused in the sidebar (click it, or Tab to the tree).',
     icon: 'i-lucide-list-tree',
     shortcuts: [
-      { keys: [['arrowup'], ['arrowdown']], label: 'Previous or next item' },
+      {
+        keys: [['arrowup'], ['arrowdown']],
+        label: 'Previous or next item',
+        description: 'Previews it, as a click does, once you stop on it.',
+      },
       { keys: [['arrowright'], ['arrowleft']], label: 'Expand or collapse' },
-      { keys: [['enter']], label: 'Open' },
+      {
+        keys: [['enter']],
+        label: 'Open in its own tab',
+        description: 'As a double click: the preview is kept open.',
+      },
       { keys: [['F2']], label: 'Rename' },
       {
         keys: [

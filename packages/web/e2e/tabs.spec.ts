@@ -66,6 +66,32 @@ test('previews a page from the tree, keeps it with a double click or an edit', a
   await expect.poll(() => tabTitles(page)).toEqual(['Tab two', 'Tab one', 'Tab three*'])
 })
 
+test('browses the tree with the arrows, previewing, and keeps a page open with ↵', async ({
+  page,
+  request,
+}) => {
+  await createNote(request, 'Browse one', 'One.')
+  await createNote(request, 'Browse two', 'Two.')
+  await createNote(request, 'Browse three', 'Three.')
+  await page.goto('/')
+  await page.getByTestId('tree-Browse one').click()
+  await expect.poll(() => tabTitles(page)).toEqual(['Browse one*'])
+
+  // ↓ previews the page below, as a click would; the focus stays in the tree.
+  await page.keyboard.press('ArrowDown')
+  await expect.poll(() => tabTitles(page)).toEqual(['Browse two*'])
+  expect(await isPreview(page, 'Browse two')).toBe(true)
+  await page.keyboard.press('ArrowDown')
+  await expect.poll(() => tabTitles(page)).toEqual(['Browse three*'])
+
+  // ↵ keeps it open, as a double click; ↑ then previews the one above, next to it.
+  await page.keyboard.press('Enter')
+  await expect.poll(() => isPreview(page, 'Browse three')).toBe(false)
+  await page.keyboard.press('ArrowUp')
+  await expect.poll(() => tabTitles(page)).toEqual(['Browse three', 'Browse two*'])
+  expect(await isPreview(page, 'Browse two')).toBe(true)
+})
+
 test('closes tabs, showing the one used before, and reopens them', async ({ page, request }) => {
   await createNote(request, 'Close A', 'A.')
   await createNote(request, 'Close B', 'B.')
@@ -98,6 +124,11 @@ test('closes tabs, showing the one used before, and reopens them', async ({ page
   await page.keyboard.press('Control+2')
   await expect.poll(() => tabTitles(page)).toEqual(['Close A', 'Close C*'])
   await page.keyboard.press('ControlOrMeta+Alt+ArrowRight')
+  await expect.poll(() => tabTitles(page)).toEqual(['Close A*', 'Close C'])
+  // ⌃⌘← ⌃⌘→ too (tabs always, even on a day's note).
+  await page.keyboard.press('Control+Meta+ArrowLeft')
+  await expect.poll(() => tabTitles(page)).toEqual(['Close A', 'Close C*'])
+  await page.keyboard.press('Control+Meta+ArrowRight')
   await expect.poll(() => tabTitles(page)).toEqual(['Close A*', 'Close C'])
 
   // The menu closes the others; closing the last one shows Home.

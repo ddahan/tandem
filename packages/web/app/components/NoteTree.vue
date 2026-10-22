@@ -95,8 +95,9 @@ async function moveSibling(item: TreeItem, step: -1 | 1) {
 }
 
 /**
- * Keys on a focused row (arrows, ↵ and → ← are the tree's own): ⌘⌫ (or Delete) to the trash,
- * F2 to rename, ⌥↑/⌥↓ to reorder. Listed on the Shortcuts page and in the row's menu.
+ * Keys on a focused row (arrows, → ← are the tree's own): ↵ opens the page in a tab of its own
+ * (a double click), ⌘⌫ (or Delete) to the trash, F2 to rename, ⌥↑/⌥↓ to reorder. Listed on the
+ * Shortcuts page and in the row's menu.
  */
 function onRowKeydown(event: KeyboardEvent, item: TreeItem) {
   if (renamingId.value) return
@@ -106,13 +107,39 @@ function onRowKeydown(event: KeyboardEvent, item: TreeItem) {
     event.stopImmediatePropagation()
     void action()
   }
-  if ((event.key === 'Backspace' && (event.metaKey || event.ctrlKey)) || event.key === 'Delete') {
+  const plain = !event.metaKey && !event.ctrlKey && !event.altKey && !event.shiftKey
+  if (event.key === 'Enter' && plain) {
+    handle(() => openForGood(item))
+  } else if (
+    (event.key === 'Backspace' && (event.metaKey || event.ctrlKey)) ||
+    event.key === 'Delete'
+  ) {
     handle(() => trash(item))
   } else if (event.key === 'F2') {
     handle(() => startRename(item))
   } else if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
     handle(() => moveSibling(item, event.key === 'ArrowUp' ? -1 : 1))
   }
+}
+
+// Browsing with the arrows previews the page reached, as a click does (VS Code's explorer), once
+// the keys pause: holding ↓ doesn't open every page on the way.
+const BROWSE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'])
+let browsing = false
+let browseTimer: ReturnType<typeof setTimeout> | undefined
+onBeforeUnmount(() => clearTimeout(browseTimer))
+function onTreeKeydown(event: KeyboardEvent) {
+  browsing = BROWSE_KEYS.has(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey
+}
+function onTreeFocusin(event: FocusEvent) {
+  if (!browsing || renamingId.value) return
+  browsing = false
+  const target = event.target as HTMLElement
+  const row = target.closest('[data-node-id]') ?? target.querySelector('[data-node-id]')
+  const id = row?.getAttribute('data-node-id')
+  if (!id) return
+  clearTimeout(browseTimer)
+  browseTimer = setTimeout(() => void tabs.preview(`/notes/${id}`), 150)
 }
 
 // --- Menu ------------------------------------------------------------------------------------
@@ -298,7 +325,12 @@ function rowClass(item: TreeItem) {
       @contextmenu.capture="onContextMenu"
     >
       <UContextMenu :items="contextItems" :content="keepMovedFocus">
-        <div class="min-h-full pb-6" data-testid="tree-menu-area">
+        <div
+          class="min-h-full pb-6"
+          data-testid="tree-menu-area"
+          @keydown.capture="onTreeKeydown"
+          @focusin="onTreeFocusin"
+        >
           <UTree
             v-model:expanded="expanded"
             :items="tree.items.value"

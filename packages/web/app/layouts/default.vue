@@ -134,6 +134,9 @@ defineShortcuts({
     usingInput: true,
     handler: () => void (daily.onDay.value ? daily.step(-1) : tabs.step(-1)),
   },
+  // The next or previous tab, always (⌥⌘← ⌥⌘→ step days on a day's note).
+  meta_ctrl_arrowright: { usingInput: true, handler: () => void tabs.step(1) },
+  meta_ctrl_arrowleft: { usingInput: true, handler: () => void tabs.step(-1) },
   // On a day's note, a week later or earlier.
   meta_alt_arrowdown: {
     usingInput: true,

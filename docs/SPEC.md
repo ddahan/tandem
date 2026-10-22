@@ -319,7 +319,8 @@ inside OneDrive so that it is backed up and synced.
     menu (a right-click: Close, Close others, Close to the right, Close all; Keep open for the
     preview; Copy path for a note). Closing the active tab shows the tab used most recently;
     closing the last one shows Home. ⌘⇧T reopens closed tabs, last first (up to 20). ⌘N (and ⌥⌘N) makes a new page next to the open one: the same parent, right after it (a folder too: inside is the row menu's "New page inside"); with no note open, at the top level. ⌘T opens today's note with daily notes on, and makes a new page like ⌘N with them off. The sidebar's "+" and Home's button make one at the top level. In a browser tab, ⌘W, ⌘N, ⌘T and ⌘⇧T stay the browser's.
-  - ⌥⌘→ / ⌥⌘← go to the next or previous tab (wrapping around; on a day's note, the next or previous day), ⌃1…⌃8 to that tab and ⌃9 to
+  - ⌃⌘→ / ⌃⌘← go to the next or previous tab (wrapping around), always (on a Mac: elsewhere
+    it would be the system's Win+Ctrl); ⌥⌘→ / ⌥⌘← too, except on a day's note, where they go to the next or previous day; ⌃1…⌃8 to that tab and ⌃9 to
     the last one (⌘1…9 belong to the browser). Tabs are dragged to reorder them,
     from one row to the other too. A double click on the bar's empty space makes a new page.
   - A note moved to the trash or deleted (here or by an agent) loses its tab. Renamed or moved,
@@ -334,7 +335,8 @@ inside OneDrive so that it is backed up and synced.
   previous, match case, replace and replace all. The current match is always scrolled into view
   (a third down the note), however far it is. ⌘⇧F opens the search across all notes, with the
   selected text.
-- Pages tree from the keyboard: arrows to move and expand, ↵ to open, F2 to rename, ⌥↑/⌥↓ to
+- Pages tree from the keyboard: arrows to move and expand (↑ ↓ preview the page reached, as a
+  click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo. With the trash off, it asks, then deletes forever.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
