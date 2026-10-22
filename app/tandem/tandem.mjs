@@ -7808,6 +7808,7 @@ function formatSize(bytes) {
 
 // ../shared/src/databases.ts
 var COLUMN_TYPES = ["text", "number", "date", "checkbox", "select"];
+var COLUMN_WIDTH = { min: 60, max: 1200 };
 var FILTER_OPERATORS = [
   "contains",
   "is",
@@ -32319,7 +32320,8 @@ var columnInput = external_exports.object({
   name: external_exports.string().max(80),
   type: external_exports.enum(COLUMN_TYPES),
   options: external_exports.array(external_exports.string().max(80)).max(100).optional(),
-  allowEmpty: external_exports.boolean().optional()
+  allowEmpty: external_exports.boolean().optional(),
+  width: external_exports.number().finite().optional()
 });
 var databaseInput = external_exports.object({
   title: external_exports.string().max(200).optional(),
@@ -50682,6 +50684,11 @@ function checkColumns(input2, before) {
     }
     if (column.id && !previous.has(column.id)) throw new ValidationError(`${name}: no such column`);
     const result = { id: column.id ?? newColumnId(), name, type: column.type };
+    if (column.width !== void 0) {
+      result.width = Math.round(
+        Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, column.width))
+      );
+    }
     if (column.type === "select") {
       const options = [
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean))
