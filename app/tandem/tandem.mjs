@@ -32337,6 +32337,22 @@ var databasePatch = databaseInput.extend({
     })
   ).max(20).optional()
 });
+var databaseRestore = external_exports.object({
+  title: external_exports.string().max(200).optional(),
+  columns: external_exports.array(columnInput.extend({ id: external_exports.string().regex(/^[A-Za-z0-9]{1,64}$/) })).max(50).optional(),
+  sort: databasePatch.shape.sort,
+  filters: databasePatch.shape.filters,
+  deleteRows: external_exports.array(external_exports.string()).max(1e5).optional(),
+  rows: external_exports.array(
+    external_exports.object({
+      // Ids are typed in commands: letters and digits only (see vault/databases.ts).
+      id: external_exports.string().regex(/^[A-Za-z0-9]{1,64}$/),
+      cells: cells.optional(),
+      after: external_exports.string().nullable().optional(),
+      createdAt: external_exports.number().optional()
+    })
+  ).max(1e5).optional()
+});
 var rowParam = external_exports.object({ id: external_exports.string().min(1), rowId: external_exports.string().min(1) });
 var iconDataUrl = external_exports.string().max(7e5).regex(/^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/=]+$/, "not an image data URL");
 var bookmarkFields = {
@@ -32606,6 +32622,11 @@ function createApi(vault, options = {}) {
       const { id, rowId } = c.req.valid("param");
       return c.json(await vault.updateDatabaseRow(id, rowId, c.req.valid("json").cells));
     }
+  ).post(
+    "/databases/:id/restore",
+    zValidator2("param", idParam),
+    zValidator2("json", databaseRestore),
+    async (c) => c.json(await vault.restoreDatabase(c.req.valid("param").id, c.req.valid("json")))
   ).post(
     "/databases/:id/rows/:rowId/move",
     zValidator2("param", rowParam),
@@ -50586,6 +50607,78 @@ var DatabaseStore = class {
     return this.get(id);
   }
   /**
+   * Brings a database back to an earlier state, or forward again (undo, redo: see
+   * `databaseChanges`). Columns are set as given, ids kept (a deleted column comes back; its
+   * values come with the rows); rows are deleted, then changed or put back in order. Rows
+   * since deleted by others are skipped; a row placed after one that is gone stays where it is.
+   */
+  async restore(id, changes) {
+    const record2 = await this.record(id);
+    const before = JSON.parse(record2.columns);
+    const updates = { updatedAt: this.now() };
+    if (changes.title !== void 0) updates.title = changes.title.trim();
+    let columns = before;
+    if (changes.columns) {
+      columns = checkColumns(changes.columns, [...before, ...changes.columns]);
+      await this.convertRows(id, before, columns);
+      updates.columns = JSON.stringify(columns);
+    }
+    const known = new Set(columns.map((column) => column.id));
+    if (changes.sort !== void 0) {
+      updates.sort = JSON.stringify(
+        changes.sort && known.has(changes.sort.column) ? changes.sort : null
+      );
+    } else if (changes.columns) {
+      const sort = JSON.parse(record2.sort ?? "null");
+      if (sort && !known.has(sort.column)) updates.sort = "null";
+    }
+    if (changes.filters !== void 0 || changes.columns) {
+      const filters = changes.filters ?? JSON.parse(record2.filters);
+      updates.filters = JSON.stringify(checkFilters(filters, columns, false));
+    }
+    await this.db.update(databases).set(updates).where(eq(databases.id, id));
+    if (changes.deleteRows?.length) {
+      await this.db.delete(databaseRows).where(and(eq(databaseRows.databaseId, id), inArray(databaseRows.id, changes.deleteRows)));
+    }
+    if (changes.rows?.length) {
+      const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
+      const order2 = rows.map((row) => row.id);
+      const existing = new Map(rows.map((row) => [row.id, row]));
+      const now = this.now();
+      for (const change of changes.rows) {
+        const row = existing.get(change.id);
+        if (!row && change.createdAt === void 0) continue;
+        const cells2 = checkCells(
+          change.cells ?? {},
+          columns,
+          row ? JSON.parse(row.cells) : {}
+        );
+        if (!row) {
+          await this.db.insert(databaseRows).values({
+            id: change.id,
+            databaseId: id,
+            position: 0,
+            cells: JSON.stringify(cells2),
+            createdAt: change.createdAt ?? now,
+            updatedAt: now
+          });
+        } else if (change.cells) {
+          await this.db.update(databaseRows).set({ cells: JSON.stringify(cells2), updatedAt: now }).where(eq(databaseRows.id, row.id));
+        }
+        if (change.after === void 0 && row) continue;
+        const after = change.after ?? null;
+        if (after !== null && !order2.includes(after)) {
+          if (!row) order2.push(change.id);
+          continue;
+        }
+        if (row) order2.splice(order2.indexOf(change.id), 1);
+        order2.splice(after === null ? 0 : order2.indexOf(after) + 1, 0, change.id);
+      }
+      await this.renumber(id, order2);
+    }
+    return this.get(id);
+  }
+  /**
    * Moves a row after row `after` (null: first). Positions are renumbered 1, 2, 3…: moving
    * back and forth never runs out of room between two positions.
    */
@@ -50600,13 +50693,22 @@ var DatabaseStore = class {
       0,
       rows.find((row) => row.id === rowId)
     );
-    for (const [i, row] of order2.entries()) {
-      if (row.position !== i + 1) {
-        await this.db.update(databaseRows).set({ position: i + 1 }).where(eq(databaseRows.id, row.id));
-      }
-    }
+    await this.renumber(
+      id,
+      order2.map((row) => row.id)
+    );
     await this.touch(id, this.now());
     return this.get(id);
+  }
+  /** Positions 1, 2, 3… for the rows in this order (only those that change are written). */
+  async renumber(id, order2) {
+    const rows = await this.db.select({ id: databaseRows.id, position: databaseRows.position }).from(databaseRows).where(eq(databaseRows.databaseId, id));
+    const positions = new Map(rows.map((row) => [row.id, row.position]));
+    for (const [i, rowId] of order2.entries()) {
+      if (positions.has(rowId) && positions.get(rowId) !== i + 1) {
+        await this.db.update(databaseRows).set({ position: i + 1 }).where(eq(databaseRows.id, rowId));
+      }
+    }
   }
   async deleteRow(id, rowId) {
     await this.row(id, rowId);
@@ -50677,7 +50779,9 @@ var DatabaseStore = class {
         if (kept.has(columnId)) next[columnId] = value;
       }
       for (const column of changed) {
-        next[column.id] = convertCell(cells2[column.id], previous.get(column.id), column);
+        const value = convertCell(cells2[column.id], previous.get(column.id), column);
+        if (value === null) delete next[column.id];
+        else next[column.id] = value;
       }
       await this.db.update(databaseRows).set({ cells: JSON.stringify(next) }).where(eq(databaseRows.id, row.id));
     }
@@ -51397,6 +51501,12 @@ var Vault = class {
   async updateDatabaseRow(id, rowId, cells2) {
     return this.lock.run(
       async () => this.databaseChanged(await this.databases.updateRow(id, rowId, cells2))
+    );
+  }
+  /** Undo or redo of a database change (see `DatabaseStore.restore`). */
+  async restoreDatabase(id, changes) {
+    return this.lock.run(
+      async () => this.databaseChanged(await this.databases.restore(id, changes))
     );
   }
   async moveDatabaseRow(id, rowId, after) {
