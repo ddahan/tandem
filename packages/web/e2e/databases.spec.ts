@@ -173,7 +173,7 @@ test('a database shown again draws at once as last seen, then updates', async ({
   await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
     cells: { [task!.id]: 'Ship' },
   })
-  let release = () => {}
+  let release: (() => void) | undefined
   const held = new Promise<void>((resolve) => (release = resolve))
   await page.route(`**/api/databases/${database.id}`, async (route) => {
     await held
@@ -183,8 +183,27 @@ test('a database shown again draws at once as last seen, then updates', async ({
   // As it was last seen, without waiting for the server…
   await expect(cell).toHaveValue('Write')
   // …then as the server has it.
-  release()
+  release?.()
   await expect(cell).toHaveValue('Ship')
+})
+
+test('a note that starts with a database does not show it selected', async ({ page, request }) => {
+  const note = await createNote(request, 'Subscriptions', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Name', type: 'text' }],
+  })
+  await api(request, 'PUT', `/notes/${note.id}/content`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\`\n\nAfter`,
+  })
+  await openNote(page, note.id)
+  const block = page.locator('.database-block')
+  await expect(block.getByRole('textbox', { name: 'Name' })).toBeVisible()
+  await expect(block).not.toHaveClass(/is-selected/)
+
+  // Entering the note from its title (Enter) goes to its start, the database: framed then.
+  await page.getByLabel('Title', { exact: true }).click()
+  await page.keyboard.press('Enter')
+  await expect(block).toHaveClass(/is-selected/)
 })
 
 test('says when a database no longer exists', async ({ page, request }) => {

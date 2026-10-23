@@ -179,7 +179,9 @@ inside OneDrive so that it is backed up and synced.
   a value (a new one hides nothing while it is written). A page can have any number of
   databases; they go to the trash with their page and come back with it. Removing a block
   keeps its database (undo brings it back); pasting a block elsewhere shows the same
-  database, not a copy. A block whose database is gone says so. A database shown again (its note
+  database, not a copy. A block whose database is gone says so. A note that starts with a database
+  doesn't show it selected (framed) when opened: only a click, the keyboard or the block
+  handle select it (bookmark cards alike). A database shown again (its note
   reopened) appears at once as it was last seen, then updates if it changed meanwhile.
 - **Databases panel** (side panel): the databases the note shows, in order, with their row
   counts; a click scrolls to one.

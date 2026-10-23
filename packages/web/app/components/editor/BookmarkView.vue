@@ -20,6 +20,8 @@ const editable = computed(() => props.editor.isEditable)
 const tabs = useTabs()
 
 const menuOpen = ref(false)
+// Not merely because the note starts with it (useBlockSelected).
+const selected = useBlockSelected(props.editor, () => props.selected)
 
 function open() {
   if (bookmark.value) openWebsite(bookmark.value.url)

@@ -50,7 +50,9 @@ watch(
     if (!selected) touched.value = false
   },
 )
-const framed = computed(() => props.selected && !touched.value)
+// Not merely because the note starts with it (useBlockSelected).
+const selected = useBlockSelected(props.editor, () => props.selected)
+const framed = computed(() => selected.value && !touched.value)
 const rows = computed(() => (database.value ? viewRows(database.value) : []))
 // Money columns showing cents: decided on every row, not only those the filters show.
 const cents = computed(

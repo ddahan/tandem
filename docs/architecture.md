@@ -361,6 +361,9 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   first time keeps its room with a placeholder (faded in after 0,25 s, so a quick load doesn't
   flicker). The slash
   menu creates the database first, then inserts its block where the cursor was.
+  Atom blocks (database, bookmark card) show themselves selected through `useBlockSelected`:
+  only once the editor has had the focus, as a note starting with one has it selected from
+  the start.
   `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles
   and row counts.
 - Block handle (`UEditorDragHandle`, nested: list items move one by one): its distance from
