@@ -7,6 +7,17 @@ var dateFormat = new Intl.DateTimeFormat(LOCALE, {
 });
 var timeFormat = new Intl.DateTimeFormat(LOCALE, { hour: "2-digit", minute: "2-digit" });
 var numberFormat = new Intl.NumberFormat(LOCALE);
+var euros = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0
+});
+var eurosAndCents = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
 
 // ../shared/src/calendar.ts
 var CALENDAR_DIR = "Calendar";

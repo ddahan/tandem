@@ -7794,6 +7794,20 @@ function formatDateTime(ms) {
 function formatNumber(value) {
   return numberFormat.format(value);
 }
+var euros = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0
+});
+var eurosAndCents = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+});
+function formatMoney(value, cents = !Number.isInteger(value)) {
+  return (cents ? eurosAndCents : euros).format(value);
+}
 function formatSize(bytes) {
   const units = ["o", "Ko", "Mo", "Go"];
   let value = bytes;
@@ -7807,8 +7821,30 @@ function formatSize(bytes) {
 }
 
 // ../shared/src/databases.ts
-var COLUMN_TYPES = ["text", "number", "date", "checkbox", "select"];
+var COLUMN_TYPES = [
+  "text",
+  "number",
+  "money",
+  "date",
+  "checkbox",
+  "select",
+  "multiselect"
+];
+var CHOICE_COLORS = [
+  "gray",
+  "brown",
+  "orange",
+  "yellow",
+  "green",
+  "blue",
+  "purple",
+  "pink",
+  "red"
+];
 var COLUMN_WIDTH = { min: 60, max: 1200 };
+function hasChoices(column) {
+  return column.type === "select" || column.type === "multiselect";
+}
 var FILTER_OPERATORS = [
   "contains",
   "is",
@@ -7828,13 +7864,11 @@ function toCellValue(value, column) {
   switch (column.type) {
     case "text":
       return typeof value === "string" ? value : String(value);
-    case "number": {
-      if (typeof value === "number") return Number.isFinite(value) ? value : void 0;
-      if (typeof value !== "string") return void 0;
-      const number4 = Number(
-        value.trim().replace(/[\s ]/g, "").replace(",", ".")
-      );
-      return Number.isFinite(number4) ? number4 : void 0;
+    case "number":
+      return toNumber(value);
+    case "money": {
+      const number4 = toNumber(typeof value === "string" ? value.replace(/€|eur/gi, "") : value);
+      return number4 === void 0 ? void 0 : Math.round(number4 * 100) / 100;
     }
     case "date": {
       if (typeof value !== "string") return void 0;
@@ -7859,30 +7893,68 @@ function toCellValue(value, column) {
       if (!text3) return null;
       return column.options?.find((option) => option.toLowerCase() === text3.toLowerCase());
     }
+    case "multiselect": {
+      const given = Array.isArray(value) ? value : typeof value === "string" && !toCellValue(value, { ...column, type: "select" }) ? value.split(",") : [value];
+      const picked = /* @__PURE__ */ new Set();
+      for (const item of given) {
+        const choice = toCellValue(item, { ...column, type: "select" });
+        if (choice === void 0) return void 0;
+        if (choice !== null) picked.add(choice);
+      }
+      const choices = (column.options ?? []).filter((option) => picked.has(option));
+      return choices.length ? choices : null;
+    }
   }
 }
+function toNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : void 0;
+  if (typeof value !== "string") return void 0;
+  const number4 = Number(
+    value.trim().replace(/[\s ]/g, "").replace(",", ".")
+  );
+  return Number.isFinite(number4) ? number4 : void 0;
+}
+var isNumeric = (column) => column.type === "number" || column.type === "money";
 function convertCell(value, from, to) {
   if (value === null || value === void 0) return null;
   if (to.type === "text") return cellText(value, from) || null;
+  if (isNumeric(from) && isNumeric(to)) return toCellValue(value, to) ?? null;
+  if (Array.isArray(value)) return toCellValue(to.type === "select" ? value[0] : value, to) ?? null;
   return toCellValue(from.type === "date" ? value : cellText(value, from), to) ?? null;
 }
 function formatCellDate(value) {
   const match2 = DATE.exec(value);
   return match2 ? `${match2[3]}/${match2[2]}/${match2[1]}` : value;
 }
-function cellText(value, column) {
+function cellText(value, column, cents) {
   if (value === null || value === void 0) return "";
   if (column.type === "checkbox") return value ? "\u2713" : "";
   if (column.type === "date" && typeof value === "string") return formatCellDate(value);
   if (column.type === "number" && typeof value === "number") return formatNumber(value);
+  if (column.type === "money" && typeof value === "number") return formatMoney(value, cents);
+  if (Array.isArray(value)) return value.join(", ");
   return String(value);
 }
-var isEmpty = (value) => value === null || value === void 0 || value === "" || value === false;
+function withCents(column, rows) {
+  return column.type === "money" && rows.some((row) => {
+    const value = row.cells[column.id];
+    return typeof value === "number" && !Number.isInteger(value);
+  });
+}
+var isEmpty = (value) => value === null || value === void 0 || value === "" || value === false || Array.isArray(value) && !value.length;
 function compare(a, b, column) {
-  if (column.type === "number") return Number(a) - Number(b);
+  if (isNumeric(column)) return Number(a) - Number(b);
   if (column.type === "checkbox") return Number(Boolean(a)) - Number(Boolean(b));
   if (column.type === "select" && column.options) {
     return column.options.indexOf(String(a)) - column.options.indexOf(String(b));
+  }
+  if (column.type === "multiselect" && column.options) {
+    const ranks = (value) => (Array.isArray(value) ? value : []).map((option) => column.options.indexOf(option));
+    const [x, y] = [ranks(a), ranks(b)];
+    for (let index2 = 0; index2 < Math.min(x.length, y.length); index2++) {
+      if (x[index2] !== y[index2]) return x[index2] - y[index2];
+    }
+    return x.length - y.length;
   }
   return String(a).localeCompare(String(b), "fr", { numeric: true, sensitivity: "base" });
 }
@@ -7896,6 +7968,11 @@ function matches(value, filter, column) {
       return cellText(value, column).toLowerCase().includes(String(filter.value ?? "").toLowerCase());
     case "is":
     case "is-not": {
+      if (column.type === "multiselect") {
+        const wanted2 = toCellValue(filter.value, { ...column, type: "select" });
+        const has = Array.isArray(value) && value.some((choice) => choice === wanted2);
+        return filter.operator === "is" ? has : !has;
+      }
       const wanted = toCellValue(filter.value, column) ?? null;
       const same = column.type === "checkbox" ? Boolean(value) === Boolean(wanted) : column.type === "text" || column.type === "select" ? String(value ?? "").toLowerCase() === String(wanted ?? "").toLowerCase() : (value ?? null) === wanted;
       return filter.operator === "is" ? same : !same;
@@ -7935,12 +8012,14 @@ function viewRows(database) {
   return rows;
 }
 function requiresValue(column) {
-  return column.type === "select" && column.allowEmpty === false && Boolean(column.options?.length);
+  return hasChoices(column) && column.allowEmpty === false && Boolean(column.options?.length);
 }
 function defaultCells(columns) {
   const cells2 = {};
   for (const column of columns) {
-    if (requiresValue(column)) cells2[column.id] = column.options[0];
+    if (!requiresValue(column)) continue;
+    const first = column.options[0];
+    cells2[column.id] = column.type === "multiselect" ? [first] : first;
   }
   return cells2;
 }
@@ -8210,11 +8289,14 @@ function escapeCell(text3) {
 function describeRows(database, all) {
   const rows = all ? database.rows : viewRows(database);
   const header = ["id", ...database.columns.map((c) => escapeCell(c.name))];
+  const cents = new Set(
+    database.columns.filter((c) => withCents(c, database.rows)).map((c) => c.id)
+  );
   const lines = [
     `| ${header.join(" | ")} |`,
     `| ${header.map(() => "---").join(" | ")} |`,
     ...rows.map(
-      (row) => `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c)))].join(" | ")} |`
+      (row) => `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c, cents.has(c.id))))].join(" | ")} |`
     )
   ];
   const hidden = database.rows.length - rows.length;
@@ -32313,13 +32395,20 @@ var settingsPatch = external_exports.object({
   homeRecent: external_exports.boolean(),
   shortcutHints: external_exports.boolean()
 }).partial();
-var cellValue = external_exports.union([external_exports.string().max(1e4), external_exports.number(), external_exports.boolean(), external_exports.null()]);
+var cellValue = external_exports.union([
+  external_exports.string().max(1e4),
+  external_exports.number(),
+  external_exports.boolean(),
+  external_exports.array(external_exports.string().max(80)).max(100),
+  external_exports.null()
+]);
 var cells = external_exports.record(external_exports.string(), cellValue);
 var columnInput = external_exports.object({
   id: external_exports.string().optional(),
   name: external_exports.string().max(80),
   type: external_exports.enum(COLUMN_TYPES),
   options: external_exports.array(external_exports.string().max(80)).max(100).optional(),
+  colors: external_exports.record(external_exports.string().max(80), external_exports.enum(CHOICE_COLORS)).optional(),
   allowEmpty: external_exports.boolean().optional(),
   width: external_exports.number().finite().optional()
 });
@@ -43164,6 +43253,7 @@ function describeColumns(database) {
     name: c.name,
     type: c.type,
     ...c.options ? { choices: c.options } : {},
+    ...c.colors ? { colors: c.colors } : {},
     ...c.allowEmpty === false ? { allowEmpty: false } : {}
   }));
 }
@@ -43452,8 +43542,11 @@ ${detail.content}`
     })
   );
   const database = external_exports.string().describe("Database id (from list_databases)");
-  const values = external_exports.record(external_exports.string(), external_exports.union([external_exports.string(), external_exports.number(), external_exports.boolean(), external_exports.null()])).describe(
-    "Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name, null to empty a cell."
+  const values = external_exports.record(
+    external_exports.string(),
+    external_exports.union([external_exports.string(), external_exports.number(), external_exports.boolean(), external_exports.array(external_exports.string()), external_exports.null()])
+  ).describe(
+    "Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name (multiselect: a list of names), null to empty a cell."
   );
   server.registerTool(
     "list_databases",
@@ -43505,9 +43598,9 @@ ${detail.content}`
           external_exports.object({
             name: external_exports.string(),
             type: external_exports.enum(COLUMN_TYPES),
-            choices: external_exports.array(external_exports.string()).optional().describe("For select columns"),
+            choices: external_exports.array(external_exports.string()).optional().describe("For select and multiselect columns"),
             allowEmpty: external_exports.boolean().optional().describe(
-              "Select columns: false to require a value (new rows get the first choice). Default true."
+              "Choice columns: false to require a value (new rows get the first choice). Default true."
             )
           })
         ).min(1),
@@ -50503,6 +50596,15 @@ var ALPHANUMERIC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx
 var newId2 = customAlphabet(ALPHANUMERIC, 12);
 var newColumnId = customAlphabet(ALPHANUMERIC, 8);
 var MAX_OPTIONS = 50;
+var TYPE_NAMES = {
+  text: "a text",
+  number: "a number",
+  money: "an amount in euros",
+  date: "a date",
+  checkbox: "yes or no",
+  select: "a choice",
+  multiselect: "choices"
+};
 var DatabaseStore = class {
   db;
   now;
@@ -50753,12 +50855,19 @@ var DatabaseStore = class {
     const previous = new Map(before.map((column) => [column.id, column]));
     const turning = input2.filter((column) => {
       const old = column.id ? previous.get(column.id) : void 0;
-      return column.type === "select" && !column.options?.length && old && old.type !== "select";
+      return hasChoices(column) && !column.options?.length && old && !hasChoices(old);
     });
     if (!turning.length) return input2;
     const database = await this.get(id);
     return input2.map(
-      (column) => turning.includes(column) ? { ...column, options: distinctTexts(database, previous.get(column.id)) } : column
+      (column) => turning.includes(column) ? {
+        ...column,
+        options: distinctTexts(
+          database,
+          previous.get(column.id),
+          column.type === "multiselect"
+        )
+      } : column
     );
   }
   /** Values of a column whose type changed are converted; those of removed columns go. */
@@ -50824,11 +50933,19 @@ function checkColumns(input2, before) {
         Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, column.width))
       );
     }
-    if (column.type === "select") {
+    if (hasChoices(column)) {
       const options = [
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean))
       ];
       result.options = options;
+      const colors = {};
+      for (const [option, color] of Object.entries(column.colors ?? {})) {
+        if (!CHOICE_COLORS.includes(color)) {
+          throw new ValidationError(`${name}: unknown color \u201C${color}\u201D`);
+        }
+        if (options.includes(option.trim())) colors[option.trim()] = color;
+      }
+      if (Object.keys(colors).length) result.colors = colors;
       if (column.allowEmpty === false) {
         if (!options.length) {
           throw new ValidationError(`${name}: a value is required, so it needs a choice`);
@@ -50856,7 +50973,7 @@ function checkCells(cells2, columns, current) {
     const cell = toCellValue(value, column);
     if (cell === void 0) {
       throw new ValidationError(
-        column.type === "select" ? `${column.name}: \u201C${String(value)}\u201D is not one of ${column.options?.join(", ") || "its choices (none yet)"}` : `${column.name}: \u201C${String(value)}\u201D is not a ${column.type === "checkbox" ? "yes or no" : column.type}`
+        hasChoices(column) ? `${column.name}: \u201C${String(value)}\u201D is not one of ${column.options?.join(", ") || "its choices (none yet)"}` : `${column.name}: \u201C${String(value)}\u201D is not ${TYPE_NAMES[column.type]}`
       );
     }
     if (cell === null && requiresValue(column)) {
@@ -50867,14 +50984,16 @@ function checkCells(cells2, columns, current) {
   }
   return next;
 }
-function distinctTexts(database, column) {
+function distinctTexts(database, column, split) {
   const values = /* @__PURE__ */ new Set();
   for (const row of database.rows) {
-    const text3 = cellText(row.cells[column.id], column).trim();
-    if (text3) values.add(text3);
+    const text3 = cellText(row.cells[column.id], column);
+    for (const part of split ? text3.split(",") : [text3]) {
+      if (part.trim()) values.add(part.trim());
+    }
     if (values.size >= MAX_OPTIONS) break;
   }
-  return [...values];
+  return [...values].slice(0, MAX_OPTIONS);
 }
 
 // ../server/src/vault/files.ts
