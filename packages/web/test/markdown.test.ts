@@ -11,6 +11,7 @@ import { SCRATCHPAD_MARKDOWN, welcomeMarkdown } from '../../server/src/welcome.t
 import {
   fromEditorMarkdown,
   normalizeMarkdown,
+  removeAttachmentLinks,
   toEditorMarkdown,
 } from '../app/utils/markdown-paths'
 
@@ -240,5 +241,33 @@ describe('file icons', () => {
     expect(chips.getMarkdown().trim()).toBe(
       '[report.pdf](N.assets/report.pdf) and [**data**.csv](N.assets/data.csv)',
     )
+  })
+})
+
+describe('removeAttachmentLinks', () => {
+  it('takes out the links and images of one attachment, and the space they leave', () => {
+    const markdown = [
+      'A file: [a b.pdf](My%20note.assets/a%20b.pdf) end',
+      '',
+      '![a b.pdf](My%20note.assets/a%20b.pdf)',
+      '',
+      '<img src="My note.assets/a b.pdf" alt="x" width="320">',
+      '',
+      '- [a b.pdf](./My%20note.assets/a%20b.pdf)',
+      '- [other.pdf](My%20note.assets/other.pdf) stays',
+    ].join('\n')
+    expect(removeAttachmentLinks(markdown, 'My%20note.assets/a%20b.pdf')).toBe(
+      [
+        'A file: end',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '- ',
+        '- [other.pdf](My%20note.assets/other.pdf) stays',
+      ].join('\n'),
+    )
+    expect(removeAttachmentLinks('No links.', 'N.assets/x.png')).toBe('No links.')
   })
 })

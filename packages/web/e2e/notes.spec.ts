@@ -540,6 +540,22 @@ test('removing a file’s last link asks whether to delete the file too', async 
   await removeChip('drop.txt')
   await dialog.getByRole('button', { name: 'Delete the file' }).click()
   await expect.poll(files).toEqual(['keep.txt'])
+
+  // From the Files panel: a file kept (in no link), and one the note shows, its chip going too.
+  await dropFiles(page, [{ name: 'linked.txt', type: 'text/plain', text: 'L' }])
+  await expect(chips).toHaveText(['linked.txt'])
+  await page.getByRole('tab', { name: 'Files' }).click()
+  for (const name of ['keep.txt', 'linked.txt']) {
+    const row = page.getByRole('listitem').filter({ hasText: name })
+    await row.hover()
+    await row.getByRole('button', { name: `Delete ${name}` }).click()
+    await expect(dialog).toContainText(`Delete ${name}?`)
+    await dialog.getByRole('button', { name: 'Delete the file' }).click()
+    await expect(dialog).toBeHidden()
+  }
+  await expect.poll(files).toEqual([])
+  await expect(chips).toHaveCount(0)
+  await expect.poll(() => noteContent(request, note.id)).not.toContain('linked.txt')
 })
 
 test('asks before attaching a file over 10 MB', async ({ page, request }) => {

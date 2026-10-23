@@ -19,6 +19,7 @@ defineEmits<{
   goToDatabase: [id: string]
   restored: [content: string]
   attach: [markdown: string]
+  detach: [markdownPath: string]
   close: []
 }>()
 
@@ -169,6 +170,7 @@ const tabs = computed(() => [
         :note-id="noteId"
         :note-path="notePath"
         @insert="(md) => $emit('attach', md)"
+        @detach="(path) => $emit('detach', path)"
       />
     </template>
   </UDashboardPanel>

@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // Files attached to the note (its `.assets` folder): open them, view images, add more (from
-// the computer's file picker; dropping them on the note works too).
+// the computer's file picker; dropping them on the note works too), delete one (for good, its
+// links leaving the note: the note page takes them out, on `detach`).
 import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
 const props = defineProps<{ noteId: string; notePath: string }>()
-const emit = defineEmits<{ insert: [markdown: string] }>()
+const emit = defineEmits<{ insert: [markdown: string]; detach: [markdownPath: string] }>()
 const api = useApi()
 const showError = useApiErrorToast()
 const confirm = useConfirm()
@@ -51,6 +52,30 @@ function pick(event: Event) {
   const selected = [...(input.files ?? [])]
   input.value = ''
   void upload(selected)
+}
+
+async function remove(attachment: Attachment) {
+  const confirmed = await confirm({
+    title: `Delete ${attachment.name}?`,
+    description:
+      'The file is deleted for good, and its links and images leave the note. Deleting is definitive: undo won’t bring it back.',
+    confirmLabel: 'Delete the file',
+    confirmColor: 'error',
+    icon: 'i-lucide-trash-2',
+  })
+  if (!confirmed) return
+  // Out of the note first: the file's last link leaving then asks nothing more.
+  emit('detach', attachment.markdownPath)
+  try {
+    await unwrap(
+      api.notes[':id'].attachments[':name'].$delete({
+        param: { id: props.noteId, name: attachment.name },
+      }),
+    )
+  } catch (error) {
+    showError(error, `Couldn't delete ${attachment.name}`)
+  }
+  await load()
 }
 
 async function upload(selected: File[] | null | undefined) {
@@ -108,7 +133,7 @@ async function upload(selected: File[] | null | undefined) {
       <li
         v-for="attachment in attachments"
         :key="attachment.path"
-        class="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-[120ms] hover:bg-accented"
+        class="group relative flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-[120ms] hover:bg-accented"
       >
         <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->
         <span
@@ -124,7 +149,22 @@ async function upload(selected: File[] | null | undefined) {
           @click="(event) => view(event, attachment)"
           >{{ attachment.name }}</a
         >
-        <span class="shrink-0 text-xs text-dimmed">{{ formatSize(attachment.size) }}</span>
+        <span
+          class="shrink-0 text-xs text-dimmed group-hover:opacity-0 group-has-focus-visible:opacity-0"
+          >{{ formatSize(attachment.size) }}</span
+        >
+        <!-- On hover (or focus), in the size's place. -->
+        <UTooltip text="Delete">
+          <UButton
+            icon="i-lucide-trash-2"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            class="absolute end-1 opacity-0 group-hover:opacity-100 hover:text-error focus-visible:opacity-100"
+            :aria-label="`Delete ${attachment.name}`"
+            @click="remove(attachment)"
+          />
+        </UTooltip>
       </li>
     </ul>
     <p v-if="attachments.length" class="px-2 text-xs text-dimmed">

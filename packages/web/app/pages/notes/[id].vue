@@ -15,7 +15,12 @@ import { editorWidthPixels } from '~/composables/useSettings'
 import { DELETE_FOREVER } from '~/composables/useTree'
 import { BLOCK_WIDTHS } from '~/utils/block-widths'
 import { lostLines, markdownLosses, type Loss } from '~/utils/markdown-loss'
-import { fromEditorMarkdown, normalizeMarkdown, toEditorMarkdown } from '~/utils/markdown-paths'
+import {
+  fromEditorMarkdown,
+  normalizeMarkdown,
+  removeAttachmentLinks,
+  toEditorMarkdown,
+} from '~/utils/markdown-paths'
 
 definePageMeta({ key: (route) => String(route.params.id) })
 
@@ -218,6 +223,14 @@ function setMode(next: Mode) {
 
 function appendMarkdown(markdown: string) {
   const next = `${content.value.replace(/\n*$/, content.value ? '\n\n' : '')}${markdown}\n`
+  resetEditor(next)
+  doc.change(next)
+}
+
+/** A file deleted from the Files panel: its links and images leave the note. */
+function detachFile(markdownPath: string) {
+  const next = removeAttachmentLinks(content.value, markdownPath)
+  if (next === content.value) return
   resetEditor(next)
   doc.change(next)
 }
@@ -823,6 +836,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     @go-to-database="goToDatabase"
     @restored="(restored) => resetEditor(restored)"
     @attach="appendMarkdown"
+    @detach="detachFile"
     @close="panelOpen = false"
   />
 

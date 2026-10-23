@@ -29,6 +29,33 @@ export function fromEditorMarkdown(markdown: string, notePath: string): string {
   )
 }
 
+// Links and images: `[text](target "title")`, `![alt](target)`, `<img src="target" …>`, with
+// the space after them.
+const ATTACHMENT_REFERENCE =
+  /(?:!?\[[^\]\n]*\]\(<?([^)>\s]+)>?(?:\s+"[^"]*")?\)|<img\b[^>]*?\bsrc="([^"]+)"[^>]*>) ?/g
+
+function decodedPath(path: string): string {
+  const plain = path.replace(/^\.\//, '')
+  try {
+    return decodeURIComponent(plain)
+  } catch {
+    return plain
+  }
+}
+
+/**
+ * The Markdown (as saved: paths relative to the note) without its links to and images of one
+ * attachment (`markdownPath`, encoded or not), and without the space each leaves behind.
+ */
+export function removeAttachmentLinks(markdown: string, markdownPath: string): string {
+  const target = decodedPath(markdownPath)
+  // The space after it goes, the one before stays: between two words, one space; after a list
+  // marker, its space (a lone `-` under a line would make it a heading).
+  return markdown.replace(ATTACHMENT_REFERENCE, (all, link?: string, src?: string) =>
+    decodedPath(link ?? src ?? '') === target ? '' : all,
+  )
+}
+
 // A list item with nothing in it (the editor writes its marker alone).
 const EMPTY_LIST_ITEM = /^[ \t]*(?:[-*+]|\d+[.)])(?: \[[ xX]\])?[ \t]*$\n?/gm
 
