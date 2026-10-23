@@ -462,7 +462,12 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
       <UIcon name="i-lucide-database" class="size-4" />
       This database doesn't exist anymore.
     </div>
-    <template v-else-if="database">
+    <!-- Not loaded yet (shown for the first time): its room kept, a placeholder if it takes long. -->
+    <div v-else-if="!database" class="database-placeholder space-y-2" aria-hidden="true">
+      <USkeleton class="h-5 w-40" />
+      <USkeleton class="h-28 w-full" />
+    </div>
+    <template v-else>
       <div class="mb-1.5 flex items-center gap-2">
         <UIcon name="i-lucide-database" class="size-4 shrink-0 text-dimmed" />
         <input

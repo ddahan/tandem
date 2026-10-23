@@ -148,6 +148,45 @@ test('shows changes made by agents at once', async ({ page, request }) => {
     .toBe('Call the bank')
 })
 
+test('a database shown again draws at once as last seen, then updates', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Reopened', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Task', type: 'text' }],
+  })
+  const [task] = database.columns
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'Write' },
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const cell = page.getByTestId('database').getByRole('textbox', { name: 'Task' })
+  await expect(cell).toHaveValue('Write')
+
+  // Away (in the app), the database changes; its answer is held back when the note comes back.
+  await page.getByRole('link', { name: 'Trash', exact: true }).click()
+  await expect(page).toHaveURL(/\/trash/)
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'Ship' },
+  })
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route(`**/api/databases/${database.id}`, async (route) => {
+    await held
+    await route.continue()
+  })
+  await page.goBack()
+  // As it was last seen, without waiting for the server…
+  await expect(cell).toHaveValue('Write')
+  // …then as the server has it.
+  release()
+  await expect(cell).toHaveValue('Ship')
+})
+
 test('says when a database no longer exists', async ({ page, request }) => {
   const note = await createNote(request, 'Lost table', '```database\nid: nothing-here\n```')
   await openNote(page, note.id)

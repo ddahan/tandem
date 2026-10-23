@@ -2,6 +2,8 @@
 // agent, another window), and changed through the API (each change returns the database).
 // Each change is a step of the app's undo history (useUndo): undone by putting back what it
 // changed (`databaseChanges`, `POST /databases/:id/restore`), redone the same way.
+// The last databases shown stay in memory (`recent`): a block shown again draws its last known
+// state at once, then reloads.
 import {
   databaseChanges,
   isEmptyRestore,
@@ -12,6 +14,7 @@ import {
   type DatabaseRestore,
   type DatabaseSort,
 } from '@tandem/shared'
+import { RecentCache } from '~/utils/recent-cache'
 
 export interface ColumnChange {
   id?: string
@@ -23,12 +26,21 @@ export interface ColumnChange {
   width?: number
 }
 
+/** The last known state of the databases shown lately (a few KB each), shared by every block. */
+const recent = new RecentCache<Database>(20)
+
 export function useDatabase(id: Ref<string>) {
   const api = useApi()
   const showError = useApiErrorToast()
   const undoHistory = useUndo()
   const database = ref<Database | null>(null)
   const missing = ref(false)
+
+  /** Shows a database the server returned, and keeps it as its last known state. */
+  function show(loaded: Database) {
+    recent.set(loaded.id, loaded)
+    database.value = loaded
+  }
 
   // Changes can come in bursts (an agent adding rows): only the latest load counts, an older
   // answer arriving last would show an old state.
@@ -38,12 +50,15 @@ export function useDatabase(id: Ref<string>) {
     try {
       const loaded = await unwrap(api.databases[':id'].$get({ param: { id: id.value } }))
       if (current !== loads) return
-      database.value = loaded
+      show(loaded)
       missing.value = false
     } catch (error) {
       if (current !== loads) return
-      if (error instanceof ApiError && error.status === 404) missing.value = true
-      else showError(error, 'Could not load the database')
+      if (error instanceof ApiError && error.status === 404) {
+        recent.delete(id.value)
+        database.value = null
+        missing.value = true
+      } else showError(error, 'Could not load the database')
     }
   }
 
@@ -61,7 +76,7 @@ export function useDatabase(id: Ref<string>) {
       try {
         const changed = await request()
         loads++
-        database.value = changed
+        show(changed)
         if (label && before) remember(label, before, changed)
         return true
       } catch (error) {
@@ -146,7 +161,16 @@ export function useDatabase(id: Ref<string>) {
       'Delete a row',
     )
 
-  watch(id, load, { immediate: true })
+  watch(
+    id,
+    (databaseId) => {
+      // Its last known state at once, if any (then the server's).
+      database.value = recent.get(databaseId) ?? null
+      missing.value = false
+      void load()
+    },
+    { immediate: true },
+  )
   useServerEvents((event) => {
     if ((event.type === 'database' && event.id === id.value) || event.type === 'resync') {
       void load()

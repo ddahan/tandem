@@ -530,6 +530,15 @@ html.dark[data-tone='cool'] {
 .database-select:focus-visible {
   box-shadow: inset 0 0 0 2px var(--ui-primary);
 }
+/* A database still loading: shown only if it takes long (a quick load doesn't flicker). */
+.database-placeholder {
+  animation: database-placeholder 0.2s 0.25s both;
+}
+@keyframes database-placeholder {
+  from {
+    opacity: 0;
+  }
+}
 /* The edge of a column's heading: dragged to resize the column. */
 .database-resize {
   position: absolute;

@@ -355,7 +355,11 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   `useDatabase` runs changes one after another, in order: a cell saved on blur, then the row
   ⌘Enter adds, apply in that order. Moving a row (`POST /databases/:id/rows/:rowId/move`,
   `after` a row or null for first) renumbers the rows' positions. `useDatabase` loads one, reloads it on its
-  `database` events (only the latest load counts) and changes it through the API. The slash
+  `database` events (only the latest load counts) and changes it through the API. The last 20
+  databases shown stay in memory (`utils/recent-cache.ts`, a few KB each): a block shown again
+  (a note reopened) draws their last known state at once, then reloads; one shown for the
+  first time keeps its room with a placeholder (faded in after 0,25 s, so a quick load doesn't
+  flicker). The slash
   menu creates the database first, then inserts its block where the cursor was.
   `SideDatabases.vue` lists the note's blocks (`databaseIdsIn` on its Markdown) with titles
   and row counts.
