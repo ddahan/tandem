@@ -32656,6 +32656,13 @@ function createApi(vault, options = {}) {
         201
       );
     }
+  ).delete(
+    "/notes/:id/attachments/:name",
+    zValidator2("param", external_exports.object({ id: external_exports.string().min(1), name: external_exports.string().min(1) })),
+    async (c) => {
+      const { id, name } = c.req.valid("param");
+      return c.json(await vault.deleteAttachment(id, name, authorOf(c)));
+    }
   ).get(
     "/notes/:id/history",
     zValidator2("param", idParam),
@@ -51936,6 +51943,33 @@ var Vault = class {
       await this.indexPage(row);
       this.dirty = true;
       return toAttachment(row.path, name, data.byteLength);
+    });
+  }
+  /**
+   * Deletes one of a note's attachments for good (not to the trash): asked for when its last
+   * link left the note. Only a file of the note's own `.assets/` folder, never a hidden one.
+   */
+  async deleteAttachment(id, name, author) {
+    return this.lock.run(async () => {
+      const row = await this.requireRow(id);
+      if (name.includes("/") || name.includes("\\") || name === ".." || isIgnoredName(name)) {
+        throw new ValidationError(`Not an attachment name: ${name}`);
+      }
+      const dir = assetsDirOf(row.path);
+      const path = joinPath(dir, name);
+      const info = row.kind === "page" ? await stat4(this.abs(path)).catch(() => null) : null;
+      if (!info?.isFile()) throw new NotFoundError(`No attachment ${name} in ${row.path}`);
+      await rm2(this.abs(path));
+      if (!(await readdir3(this.abs(dir))).length) await rm2(this.abs(dir), { recursive: true });
+      await this.indexPage(row);
+      this.dirty = true;
+      this.changed({
+        type: "note",
+        id: row.id,
+        hash: row.hash ?? hashContent(row.content ?? ""),
+        author
+      });
+      return { deleted: path };
     });
   }
   async updateSettings(patch) {

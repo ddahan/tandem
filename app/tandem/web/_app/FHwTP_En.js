@@ -1,0 +1,1 @@
+import{j as e}from"./CypcBDzw.js";import{r as t}from"./B3zFCTDv.js";function n(){let n=t(`(display-mode: standalone)`);return e(()=>n.value||navigator.standalone===!0)}export{n as t};

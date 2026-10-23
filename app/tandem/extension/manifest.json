@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Tandem",
   "description": "Bookmark pages in Tandem, the notes app on your computer, and find them from the address bar.",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA19lZUa1h53uaNuKRia52GiN5ycTqrQQlM3p8Xn/qgWZgDu7Ks27Kv+rcJgcopfj65gNZW98l+l3DCNU9GxuwpwqX8bP/0JzbN9gSA0l28PGkE+vKHwZMrI5vw4DQTvG/BOhtwwGPsh7vIlmziytTAvDDtbiN14UpH4exhaurbeOYogvmsAIAzOtu9gjkTSP1S+npmgiXoGYsa3g2ZMnwNnfwHliKzP4EoC9ByF9GeniITbFEKX6uIJJvdRwDOK/I6ZzOVycLRcyMjKmlP0BKA49yDCFyYPaxDgpVjGNsE1NT0lYO+RPpKdKqWpnX2vmhBsxLxO2ToM1ovRA3Qirs5QIDAQAB",
   "icons": {
     "16": "icons/icon-16.png",
