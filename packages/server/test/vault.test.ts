@@ -436,6 +436,19 @@ describe('tags, links and attachments', () => {
     expect((await vault.attachments(page.id)).length).toBe(2)
   })
 
+  it('deletes an attachment, and the emptied assets folder', async () => {
+    const { vault, dataDir } = await createTestVault()
+    const page = await vault.createPage({ title: 'My note', author: OWNER })
+    await vault.addAttachment(page.id, 'a.txt', new Uint8Array([1]))
+    await vault.addAttachment(page.id, 'b.txt', new Uint8Array([1]))
+    await vault.deleteAttachment(page.id, 'a.txt', OWNER)
+    expect((await vault.attachments(page.id)).map((a) => a.name)).toEqual(['b.txt'])
+    await vault.deleteAttachment(page.id, 'b.txt', OWNER)
+    expect(existsSync(join(dataDir, 'My note.assets'))).toBe(false)
+    await expect(vault.deleteAttachment(page.id, 'b.txt', OWNER)).rejects.toThrow(NotFoundError)
+    await expect(vault.deleteAttachment(page.id, '../x', OWNER)).rejects.toThrow(ValidationError)
+  })
+
   it('rewrites attachment links', () => {
     expect(
       rewriteAssetLinks(

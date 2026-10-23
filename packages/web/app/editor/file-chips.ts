@@ -4,7 +4,8 @@
 // inside one chip instead of cutting it into pieces.
 import { Extension } from '@tiptap/core'
 import { Link } from '@tiptap/extension-link'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import { fileIconCssUrl } from '../utils/file-icons'
 
 export function isAttachmentHref(href: string): boolean {
@@ -15,6 +16,37 @@ export function isAttachmentHref(href: string): boolean {
  * image, video, text) and downloads the rest. */
 export function openFile(href: string): void {
   window.open(href, '_blank', 'noopener')
+}
+
+/**
+ * The note's own attachments its document links to or shows (file chips, images), by file
+ * name: their editor addresses start with `prefix` (`/files/<folder>/<title>.assets/`).
+ */
+export function attachmentNames(doc: ProseMirrorNode, prefix: string): Set<string> {
+  const names = new Set<string>()
+  const add = (href: unknown) => {
+    if (typeof href !== 'string' || !href.startsWith(prefix)) return
+    const rest = href.slice(prefix.length)
+    if (!rest || rest.includes('/')) return
+    try {
+      names.add(decodeURIComponent(rest))
+    } catch {
+      names.add(rest)
+    }
+  }
+  doc.descendants((node) => {
+    if (node.type.name === 'image') add(node.attrs.src)
+    for (const mark of node.marks) if (mark.type.name === 'link') add(mark.attrs.href)
+  })
+  return names
+}
+
+/** Whether a transaction may have removed content (a step replacing a range), cheaply. */
+export function removesContent(tr: Transaction): boolean {
+  return tr.steps.some((step) => {
+    const range = step as unknown as { from?: number; to?: number }
+    return typeof range.from === 'number' && typeof range.to === 'number' && range.to > range.from
+  })
 }
 
 /** The link, drawn as a chip (class and the file type's icon) when it points to an attachment. */

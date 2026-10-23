@@ -201,6 +201,19 @@ describe('Tab: one level in', () => {
     expect(tree(typed('- a{Enter}b{Tab}'))).toBe('• a |   • b^')
   })
 
+  it('moves the line alone: its sub-items stay, right after it in its new level', () => {
+    const e = setup('- a\n- ^b\n  - c\n    - d\n  - e')
+    press(e, 'Tab')
+    expect(tree(e)).toBe('• a |   • ^b |   • c |     • d |   • e')
+    // Into sub-items of another kind: the line's sub-items take that kind too.
+    const mixed = setup('- a\n  - [ ] x\n- ^b\n  - c')
+    press(mixed, 'Tab')
+    expect(tree(mixed)).toBe('• a |   ☐ x |   ☐ ^b |   ☐ c')
+    // Shift+Tab takes the items after it (see above): both ways are a key away.
+    press(e, 'Shift+Tab')
+    expect(tree(e)).toBe('• a | • ^b |   • c |     • d |   • e')
+  })
+
   it('joins the sub-items of the item above, taking their kind', () => {
     const e = typed('[ ] Parent{Enter}{Tab}- Child{Enter}{Shift+Tab}Next{Tab}')
     expect(tree(e)).toBe('☐ Parent |   • Child |   • Next^')

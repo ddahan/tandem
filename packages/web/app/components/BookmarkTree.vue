@@ -367,8 +367,9 @@ function rowClass(item: BookmarkItem) {
           >
             <template #item-wrapper="{ item, expanded: isExpanded }">
               <div
-                class="group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
+                class="tree-row group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
                 :class="rowClass(item)"
+                :data-current="currentId === item.id || undefined"
                 draggable="true"
                 :data-bookmark-id="item.id"
                 :data-testid="`bookmark-${item.label}`"
@@ -412,9 +413,10 @@ function rowClass(item: BookmarkItem) {
                 />
                 <span v-else class="min-w-0 flex-1 truncate">{{ item.label }}</span>
 
+                <!-- Over the end of the name, on hover (or focus), as in the pages tree. -->
                 <div
                   v-if="renamingId !== item.id"
-                  class="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                  class="tree-row-actions absolute inset-y-0 end-0 flex items-center rounded-e-md ps-6 pe-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                   @click.stop
                   @dblclick.stop
                 >

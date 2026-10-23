@@ -139,8 +139,9 @@ async function upload(selected: File[] | null | undefined) {
       :title="viewed?.name"
       :description="viewed ? formatSize(viewed.size) : undefined"
       :content="{ onOpenAutoFocus: focusModal }"
-      :ui="{ content: 'max-w-4xl', body: 'flex justify-center' }"
+      :ui="{ content: 'max-w-4xl', body: 'flex justify-center', close: 'static' }"
     >
+      <!-- Its close button in the header's row, after the new-tab one: both centered on it. -->
       <template #actions>
         <UTooltip v-if="viewed" text="Open in a new tab">
           <UButton
@@ -151,7 +152,7 @@ async function upload(selected: File[] | null | undefined) {
             color="neutral"
             variant="ghost"
             aria-label="Open in a new tab"
-            class="ms-auto me-8"
+            class="ms-auto"
           />
         </UTooltip>
       </template>

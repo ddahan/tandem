@@ -34,9 +34,12 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   const calendar = page.getByTestId('side-calendar')
   await expect(calendar).toBeVisible()
   await expect(calendar.locator('[aria-current="date"]')).toHaveAttribute('data-date', today)
-  // No browsing keys under it in a browser tab, where ⌥⌘← ⌥⌘→ switch its tabs (features.spec
-  // shows them in the app's window).
-  await expect(calendar.getByTestId('calendar-keys')).toHaveCount(0)
+  // The browsing keys under it: in a browser tab, ⌃⌥ and the arrows (⌥⌘← ⌥⌘→ switch its
+  // tabs; features.spec shows them in the app's window).
+  const calendarKeys = calendar.getByTestId('calendar-keys')
+  await expect(calendarKeys).toContainText('Previous or next day')
+  // Two keys a row, of three chips each.
+  await expect(calendarKeys.locator('kbd')).toHaveCount(12)
 
   // Written, with a to-do left: marked in the calendar.
   await page.locator('.ProseMirror').click()

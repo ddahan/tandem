@@ -17,6 +17,8 @@ const tabs = useTabs()
 const tree = useTree()
 const bookmarks = useBookmarks()
 const toast = useToast()
+// ⌘W closes a tab only in the installed app (in a browser tab, it closes the browser's).
+const appWindow = useAppWindow()
 
 /** The app's own pages, with their sidebar titles and icons. */
 const PAGES: Record<string, { title: string; icon: string }> = {
@@ -72,7 +74,7 @@ function menu(tab: Tab): ContextMenuItem[][] {
       {
         label: 'Close',
         icon: 'i-lucide-x',
-        kbds: ['meta', 'w'],
+        kbds: appWindow.value ? ['meta', 'w'] : undefined,
         onSelect: () => void tabs.closeTab(tab.key),
       },
       {
@@ -397,6 +399,8 @@ function onDragEnd() {
   background: var(--ui-border-accented);
   transition: opacity 0.15s;
 }
+/* None after the last tab, with nothing to its right ("+N" keeps it). */
+.tab-chip:last-child::after,
 .tab-chip:hover::after,
 .tab-chip[aria-selected='true']::after,
 .tab-chip:has(+ .tab-chip:hover)::after,

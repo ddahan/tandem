@@ -5,10 +5,17 @@ withDefaults(
     title: string
     description?: string
     confirmLabel?: string
+    cancelLabel?: string
     confirmColor?: 'primary' | 'error' | 'warning'
     icon?: string
   }>(),
-  { confirmLabel: 'Confirm', confirmColor: 'primary', description: undefined, icon: undefined },
+  {
+    confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
+    confirmColor: 'primary',
+    description: undefined,
+    icon: undefined,
+  },
 )
 const emit = defineEmits<{ close: [confirmed: boolean] }>()
 </script>
@@ -22,7 +29,12 @@ const emit = defineEmits<{ close: [confirmed: boolean] }>()
   >
     <template #footer>
       <div class="flex w-full justify-end gap-2">
-        <UButton label="Cancel" color="neutral" variant="ghost" @click="emit('close', false)" />
+        <UButton
+          :label="cancelLabel"
+          color="neutral"
+          variant="ghost"
+          @click="emit('close', false)"
+        />
         <UButton
           :label="confirmLabel"
           :color="confirmColor"

@@ -1,8 +1,9 @@
 // The keys of lists, as one set of rules, whatever the kinds (each level of a list has one kind,
 // any kind at any level):
 // - Tab: one level in, under the item above; into its sub-items when it has some (taking
-//   their kind), otherwise a new sub-list of the item's kind. The first item of a list stays
-//   (Tab never leaves the editor from a list).
+//   their kind), otherwise a new sub-list of the item's kind. Only the line moves: its own
+//   sub-items stay where they are, now right after it in its new level (of its kind). The first
+//   item of a list stays (Tab never leaves the editor from a list).
 // - Shift+Tab, Enter in an empty item, Backspace at the start of an item: one level out. The
 //   item becomes an item of the level above, of that level's kind (the items after it become
 //   its sub-items); from the top level, a plain paragraph.
@@ -118,6 +119,37 @@ function indent(state: EditorState, dispatch: Dispatch): boolean {
   return sinkListItem(item.type)(state, dispatch) || true
 }
 
+/** Tab: one level in, the line alone (see the top): its sub-items are taken out first, then
+ * put back right after it, in the level it moved into. */
+function indentLine(state: EditorState, dispatch: Dispatch): boolean {
+  const { $from, $to } = state.selection
+  const at = itemAt($from)
+  if (!at || $from.index(at.depth - 1) === 0) return indent(state, dispatch)
+  const { depth, item } = at
+  const sub = item.childCount > 1 ? item.lastChild : null
+  if (!sub || !LISTS.has(sub.type.name) || !$from.sameParent($to)) return indent(state, dispatch)
+  if (!dispatch) return true
+  // Without its sub-items, then one level in.
+  const tr = state.tr
+  const subStart = $from.before(depth) + item.nodeSize - 1 - sub.nodeSize
+  tr.delete(subStart, subStart + sub.nodeSize)
+  let moved: Transaction | null = null
+  indent(state.apply(tr), (next) => (moved = next))
+  if (!moved) return true
+  const indented: Transaction = moved
+  for (const step of indented.steps) tr.step(step)
+  // Right after it, in its new level, of that level's kind.
+  const $cursor = tr.doc.resolve(indented.selection.from)
+  const itemDepth = $cursor.depth - 1
+  const level = $cursor.node(itemDepth - 1)
+  const children: ProseMirrorNode[] = []
+  sub.forEach((child) => children.push(convertItem(state, child, level.type.name)))
+  tr.insert($cursor.after(itemDepth), children)
+  tr.setSelection(TextSelection.create(tr.doc, indented.selection.from))
+  dispatch(tr.scrollIntoView())
+  return true
+}
+
 /** Enter in an empty item (with no sub-items): one level out. */
 function leaveEmptyItem(state: EditorState, dispatch: Dispatch): boolean {
   const { $from, empty } = state.selection
@@ -173,7 +205,7 @@ export const ListKeys = Extension.create({
     const run = (command: (state: EditorState, dispatch: Dispatch) => boolean) => () =>
       command(this.editor.state, (tr) => this.editor.view.dispatch(tr))
     return {
-      Tab: run(indent),
+      Tab: run(indentLine),
       'Shift-Tab': run(outdent),
       Enter: run(leaveEmptyItem),
       Backspace: () => this.editor.commands.undoInputRule() || run(backspace)(),

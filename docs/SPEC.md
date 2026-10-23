@@ -126,7 +126,8 @@ inside OneDrive so that it is backed up and synced.
   cursor's level, keeping its text (the same kind again turns the item back into a paragraph);
   the level's own marker typed there is absorbed, and `[x] ` / `[ ] ` set a to-do's box. Keys
   move an item one level at a time, the same whatever the kinds: Tab goes under the item above
-  (into its sub-items, taking their kind; a first item stays); Shift+Tab, Enter in an empty
+  (into its sub-items, taking their kind; a first item stays), the line alone: its own
+  sub-items stay where they are, right after it in its new level (of that level's kind); Shift+Tab, Enter in an empty
   item and Backspace at the start of an item go one level out, taking that level's kind (the
   items after it become its sub-items; from the top level, a paragraph); Backspace at the start
   of a paragraph after a list joins the list's last line; Delete at the end of a line brings its
@@ -136,8 +137,12 @@ inside OneDrive so that it is backed up and synced.
 - **Moving blocks**: a handle (⋮⋮) left of the block under the pointer drags it anywhere in the
   note: paragraphs, headings, tables, code, callouts, and list items one by one (with their
   nested items; into another list, they take its kind). For bullet and numbered items the
-  handle sits left of the marker, never over it. Moving keeps each line's author.
-- **Images** display inline and can be resized (saved as `<img src="…" width="…">`).
+  handle sits left of the marker, never over it. Callouts and tables move whole: the blocks
+  inside them have no handle. The handle jumps from block to block (no sliding: it lagged).
+  Moving keeps each line's author.
+- **Backspace in an empty first line** (with blocks after it) removes it.
+- **Images** display inline and can be resized (saved as `<img src="…" width="…">`); a
+  selected one is framed (the image only, its resize dots on the frame).
 - **Files**: drop or paste a file anywhere in a note: it is copied into the note's `.assets/`
   folder and inserted at the drop point, as an image or as a file chip (a link, with the
   icon of its file type, or a generic one). A chip is a button: clicking it opens the file
@@ -189,8 +194,12 @@ inside OneDrive so that it is backed up and synced.
   are dropped on the note; the panel's "click here" opens the file picker, and picked files are
   attached and added at the end of the note (empty, the panel says so like the other tabs). Clicking an image shows it in a
   modal, scaled to fit, with its name and size; Esc, a click outside or its close button
-  close it, and its new-tab button opens the file. Other files, and ⌘/Ctrl-clicks, open in a
-  new tab.
+  close it, and its new-tab button (next to the close button, aligned with it) opens the
+  file. Other files, and ⌘/Ctrl-clicks, open in a new tab.
+- **Removing a file's last link** (its chip or image deleted from the note, by a key, an
+  undo…; not a cut, pasted back elsewhere) asks whether to delete the file too: "Delete the
+  file" deletes it for good (undo doesn't bring it back), "Keep it" leaves it in the Files
+  panel. A file linked again meanwhile stays. Only the note's own attachments.
 - **Links between notes**: `[[Note title]]` (or `[[Folder/Note title]]` when titles are
   ambiguous), with autocomplete when typing `[[`, a backlinks panel, and automatic link
   updates when a note is renamed or moved. A link to a note that doesn't exist yet looks
@@ -318,17 +327,18 @@ inside OneDrive so that it is backed up and synced.
   deleted when the note is left: a day with nothing has no file.
 - Its title is its day, not editable: "Today, Wed 21 October" (Yesterday, Tomorrow; the
   year when not this one), in the tab "Today" or "Wed 14 Oct" with a calendar icon. No
-  breadcrumb, no creation date. ‹ › (and ⌥⌘← ⌥⌘→) go to the day before and after, ⌥⌘↑ ⌥⌘↓
-  a week earlier and later, "Today" back to today.
+  breadcrumb, no creation date. ‹ › (and ⌃⌥← ⌃⌥→, anywhere; ⌥⌘← ⌥⌘→ in the installed app)
+  go to the day before and after, ⌃⌥↑ ⌃⌥↓ (and ⌥⌘↑ ⌥⌘↓) a week earlier and later, "Today"
+  back to today. ⌃⌥ is for where ⌥⌘← ⌥⌘→ don't reach Tandem: a browser tab (they switch its
+  tabs) and Safari's Add to Dock app (it keeps them).
 - From one day to another (‹ ›, the shortcuts, the calendar, Today), the day shows in the same
   tab: days don't pile up in tabs, unlike pages.
 - The side panel has a **Calendar** tab (daily notes on), selected by itself on a day's note
   (other notes keep their tab): the month, Monday first, ISO week numbers (CW), ‹ › months and
   "Today". Under each day: a dot when its note has something written, a ring when it has to-dos
   left (`- [ ]`), a check when all its to-dos are done. A click opens the day. Below it, on a
-  day's note in the installed app's window, the keys that browse days and weeks (key chips, as
-  in Docs › Shortcuts); not in a browser tab, where ⌥⌘← ⌥⌘→ switch its tabs. It follows
-  changes live.
+  day's note, the keys that browse days and weeks (key chips, as in Docs › Shortcuts): those
+  that work there (⌥⌘ ones in the installed app only). It follows changes live.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
 
@@ -410,7 +420,7 @@ inside OneDrive so that it is backed up and synced.
   which remembers its section), TODOs and the trash; Home has none, and shows its title when no
   tab is open. The page shown is always the active tab.
   - Tabs sit side by side, split by thin vertical lines (hidden next to the tab under the
-    pointer and the active one), as a browser's; the active one is tinted with the accent color.
+    pointer and the active one, and after the last tab), as a browser's; the active one is tinted with the accent color.
     Their × only shows on hover (or keyboard focus), over the end of the title, which fades out
     under it: it takes no room. They are 28px high, on up to two rows of
     the bar: a single row is centered, a second one is used once the first is full. Those that
@@ -444,6 +454,9 @@ inside OneDrive so that it is backed up and synced.
   previous, match case, replace and replace all. The current match is always scrolled into view
   (a third down the note), however far it is. ⌘⇧F opens the search across all notes, with the
   selected text.
+- Pages and bookmarks trees: a row's title takes its whole width (cut with an ellipsis when
+  too long); its buttons (menu, new page inside) show on hover or focus, over the title's end,
+  which fades out under them, as a tab's ×.
 - Pages tree from the keyboard: arrows to move and expand (↑ ↓ preview the page reached, as a
   click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
@@ -488,7 +501,11 @@ inside OneDrive so that it is backed up and synced.
     unpacked with the installed app's extension folder, shown with a copy button to paste it in
     Chrome's dialog with ⌘⇧G, pinning it, its address when Tandem isn't on 3864) and using it
     (importing Chrome's bookmarks too).
-  - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
+  - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. Only the keys
+    that work where it is shown: in a browser tab, not those the browser keeps (⌘N, ⌘T, ⌘W,
+    ⌘⇧T, ⌥⌘← ⌥⌘→: a line says the installed app has them); in the installed app's window
+    (Chrome's app, Safari's Add to Dock), those too. Menus and tooltips do the same (⌘N for a
+    new page and ⌘W in a tab's menu in the app; ⌥⌘N and no key in a browser tab). The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
 - **Settings**, in tabs with their own addresses, as the Docs (`/settings` opens General; the

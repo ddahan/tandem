@@ -8,9 +8,10 @@ import type { Editor as CoreEditor } from '@tiptap/core'
 import { VueNodeViewRenderer, type Editor } from '@tiptap/vue-3'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { closeHistory, undoDepth } from '@tiptap/pm/history'
+import type { ResolvedPos } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 import type { TreeNode } from '@tandem/shared'
-import { linkKey } from '@tandem/shared'
+import { encodeMarkdownPath, linkKey, titleFromPath } from '@tandem/shared'
 import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import DatabaseView from '~/components/editor/DatabaseView.vue'
@@ -19,6 +20,7 @@ import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
 import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
+import { attachmentNames, removesContent } from '~/editor/file-chips'
 import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
 import { currentHeading, scrollParent } from '~/utils/current-heading'
 import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
@@ -192,6 +194,57 @@ async function uploadFiles(editor: CoreEditor, files: File[], pos: number | null
     showError(error, 'Upload failed')
   } finally {
     toast.remove(uploading.id)
+  }
+}
+
+// --- Files left behind ------------------------------------------------------------------------
+
+const confirm = useConfirm()
+
+/** The editor address of this note's attachments folder: `/files/<folder>/<title>.assets/`. */
+const ownAssetsPrefix = () =>
+  `${filesPrefix(props.notePath)}${encodeMarkdownPath(`${titleFromPath(props.notePath)}.assets/`)}`
+
+/**
+ * The note's last link to one of its attachments was removed (a chip or an image deleted, by
+ * a key, an undo…): asked whether to delete the file too, for good. Not for a cut (pasted back
+ * elsewhere), nor for content replaced from outside (setContent). A file linked again by the
+ * time the answer comes stays.
+ */
+let stopFollowingFiles: (() => void) | undefined
+function followRemovedFiles(editor: Editor) {
+  const onTransaction = ({ transaction }: { transaction: Transaction }) => {
+    if (!transaction.docChanged || props.readOnly || !removesContent(transaction)) return
+    if (transaction.getMeta('uiEvent') === 'cut' || transaction.getMeta('preventUpdate')) return
+    const prefix = ownAssetsPrefix()
+    const after = attachmentNames(transaction.doc, prefix)
+    const gone = [...attachmentNames(transaction.before, prefix)].filter((name) => !after.has(name))
+    if (gone.length) void offerToDelete(editor, gone)
+  }
+  editor.on('transaction', onTransaction)
+  return () => editor.off('transaction', onTransaction)
+}
+
+async function offerToDelete(editor: Editor, names: string[]) {
+  const one = names.length === 1
+  const confirmed = await confirm({
+    title: one ? `Delete ${names[0]} too?` : `Delete ${names.length} files too?`,
+    description: `${one ? 'Its link was' : `Their links (${names.join(', ')}) were`} removed from the note, but ${one ? 'the file stays' : 'the files stay'} in its Files. Deleting is definitive: undo won't bring ${one ? 'it' : 'them'} back.`,
+    confirmLabel: one ? 'Delete the file' : 'Delete the files',
+    cancelLabel: one ? 'Keep it' : 'Keep them',
+    confirmColor: 'error',
+    icon: 'i-lucide-trash-2',
+  })
+  if (!confirmed || editor.isDestroyed) return
+  const linked = attachmentNames(editor.state.doc, ownAssetsPrefix())
+  for (const name of names.filter((gone) => !linked.has(gone))) {
+    try {
+      await unwrap(
+        api.notes[':id'].attachments[':name'].$delete({ param: { id: props.noteId, name } }),
+      )
+    } catch (error) {
+      showError(error, `Couldn't delete ${name}`)
+    }
   }
 }
 
@@ -700,6 +753,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopFollowing?.()
+  stopFollowingFiles?.()
   scroller?.removeEventListener('scroll', onScroll)
   resizes?.disconnect()
   cancelAnimationFrame(frame)
@@ -749,6 +803,20 @@ function markerGutter(): number {
   return Math.max(0, item.getBoundingClientRect().left - list.getBoundingClientRect().left)
 }
 
+/** Nodes (names) moved only whole: the blocks inside them get no handle of their own. In a
+ * callout, its text's handle sat over the callout's edge; in a table, a cell's showed in the
+ * middle of the table, and could not be reached anyway. */
+const WHOLE_BLOCKS = new Set(['callout', 'table'])
+
+/** A handle rule (TipTap's drag handle): a node inside a callout or a table is left out. */
+const wholeBlocksOnly = {
+  id: 'wholeBlocksOnly',
+  evaluate: ({ $pos, depth }: { $pos: ResolvedPos; depth: number }) => {
+    for (let d = 1; d < depth; d++) if (WHOLE_BLOCKS.has($pos.node(d).type.name)) return 1000
+    return 0
+  },
+}
+
 const handleOptions = {
   offset: ({
     rects,
@@ -774,6 +842,7 @@ onMounted(() => {
   reported = normalizeMarkdown(editor.getMarkdown())
   collectHeadings(editor)
   followHistory(editor)
+  stopFollowingFiles = followRemovedFiles(editor)
 })
 
 // --- Undo ------------------------------------------------------------------------------------
@@ -957,11 +1026,13 @@ defineExpose({
       <UEditorEmojiMenu :editor="editor" :items="emojis" />
       <!-- Nested: list items get their own handle (one item moves, not the whole list). No edge
            detection: it would pick the whole list as the pointer crosses the item's left edge,
-           on its way to the handle. -->
+           on its way to the handle. No sliding from block to block: it lagged behind the
+           pointer. -->
       <UEditorDragHandle
         :editor="editor"
-        :nested="{ edgeDetection: 'none' }"
+        :nested="{ edgeDetection: 'none', rules: [wholeBlocksOnly] }"
         :options="handleOptions"
+        :ui="{ root: 'transition-none' }"
         @hover="onHandleHover"
       />
     </UEditor>

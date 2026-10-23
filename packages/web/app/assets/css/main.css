@@ -114,6 +114,22 @@ html.dark[data-tone='cool'] {
   --ui-border-accented: #3d4857;
 }
 
+/* --- Sidebar trees (pages, bookmarks) -------------------------------------------------------
+   The title takes the row's whole width; on hover, the row's buttons cover its end, fading it
+   out over the row's own background (--row-bg), as a tab's × does. */
+.tree-row {
+  --row-bg: var(--ui-bg);
+}
+.tree-row:hover {
+  --row-bg: color-mix(in oklab, var(--ui-bg-elevated) 60%, var(--ui-bg));
+}
+.tree-row[data-current] {
+  --row-bg: var(--ui-bg-elevated);
+}
+.tree-row-actions {
+  background: linear-gradient(to right, transparent, var(--row-bg) 1.5rem);
+}
+
 /* --- Editor content ---------------------------------------------------------------------- */
 
 .note-editor .ProseMirror {
@@ -675,6 +691,18 @@ html.dark[data-tone='cool'] {
 .note-editor [data-resize-container]:hover [data-resize-handle],
 .note-editor .ProseMirror-selectednode [data-resize-handle] {
   opacity: 1;
+}
+/* Selected: a frame around the image only (its node spans the line: tinted, the whole line
+   was), under the resize dots. */
+.note-editor [data-resize-container].ProseMirror-selectednode {
+  background: none;
+}
+.note-editor [data-resize-container].ProseMirror-selectednode img {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 2px;
+}
+.note-editor .ProseMirror[contenteditable='false'] [data-resize-container] img {
+  outline: none;
 }
 /* Read-only (a note it can't show, Docs › Blocks): nothing to resize, and the cursor ProseMirror
    still puts in the first block doesn't show it selected. */

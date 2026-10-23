@@ -24,6 +24,12 @@ test('opens the Docs from the sidebar, a tab per address', async ({ page }) => {
 
   await tabs.getByRole('link', { name: 'Shortcuts' }).click()
   await expect(page.getByTestId('shortcut').first()).toBeVisible()
+  // In a browser tab: not the keys the browser keeps (features.spec: the app's window).
+  await expect(page.getByTestId('shortcuts-browser')).toBeVisible()
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Close the tab' })).toHaveCount(0)
+  await expect(
+    page.getByTestId('shortcut').filter({ hasText: 'The next or previous day' }),
+  ).toHaveCount(1)
 
   // The old address still leads there.
   await page.goto('/shortcuts')

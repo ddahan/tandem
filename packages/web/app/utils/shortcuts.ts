@@ -1,10 +1,14 @@
 // Every keyboard shortcut and typing rule of the app, for the Shortcuts page. Keep it in sync
 // with the code that defines them (editor extensions, defineShortcuts calls): this list is the
 // reference users read. Keys are UKbd values (`meta` is ⌘ on macOS, Ctrl elsewhere).
+// A browser keeps some keys for itself (⌘N, ⌘T, ⌘W, ⌘⇧T, ⌥⌘← ⌥⌘→): those are `appKeys`, shown
+// only in the installed app's window (useAppWindow), where they reach Tandem.
 
 export interface Shortcut {
   /** Alternatives, each a key combination: [['meta', 'z']] or [['tab'], ['shift', 'tab']]. */
   keys?: string[][]
+  /** Alternatives that work only in the installed app (shown first, there only). */
+  appKeys?: string[][]
   /** Or text to type (Markdown rules). */
   typed?: string
   label: string
@@ -33,19 +37,15 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
           'Notes, text and attachment names, and actions; starts from the selected text, if any.',
       },
       {
-        keys: [
-          ['meta', 'n'],
-          ['meta', 'alt', 'n'],
-        ],
+        appKeys: [['meta', 'n']],
+        keys: [['meta', 'alt', 'n']],
         label: 'New page',
-        description:
-          'Next to the open page (the same parent, right after it), or at the top. ⌘N in the installed app (in a browser tab, it’s the browser’s).',
+        description: 'Next to the open page (the same parent, right after it), or at the top.',
       },
       {
-        keys: [['meta', 't']],
+        appKeys: [['meta', 't']],
         label: 'Today’s note',
-        description:
-          'With daily notes on (Settings › Features); a new page otherwise. In the installed app (in a browser tab, it’s the browser’s).',
+        description: 'With daily notes on (Settings › Features); a new page otherwise.',
       },
       {
         keys: [
@@ -82,16 +82,16 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: 'tabs',
     title: 'Tabs',
     description:
-      'A click in the pages tree previews a page (in italics: replaced by the next one, closed once you leave it); a double click, or editing it, keeps it open. ⌘W and ⌘⇧T work in the installed app: in a browser tab, they’re the browser’s.',
+      'A click in the pages tree previews a page (in italics: replaced by the next one, closed once you leave it); a double click, or editing it, keeps it open.',
     icon: 'i-lucide-panels-top-left',
     shortcuts: [
       {
-        keys: [['meta', 'w']],
+        appKeys: [['meta', 'w']],
         label: 'Close the tab',
         description:
           'Or its ×, or a middle click on it. The tab used before it shows. With no tab open, closes Tandem, asking first.',
       },
-      { keys: [['meta', 'shift', 't']], label: 'Reopen the closed tab' },
+      { appKeys: [['meta', 'shift', 't']], label: 'Reopen the closed tab' },
       {
         keys: [
           ['ctrl', 'meta', 'arrowright'],
@@ -101,18 +101,31 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description: 'Anywhere, even on a day’s note. On a Mac (elsewhere, ⌃1…⌃9).',
       },
       {
-        keys: [
+        appKeys: [
           ['meta', 'alt', 'arrowright'],
           ['meta', 'alt', 'arrowleft'],
         ],
         label: 'Next or previous tab, or day',
         description:
-          'On a day’s note, the next or previous day (in the same tab); elsewhere, the next or previous tab. In the installed app: in a browser tab, they switch the browser’s tabs.',
+          'On a day’s note, the next or previous day (in the same tab); elsewhere, the next or previous tab.',
       },
       {
         keys: [
+          ['ctrl', 'alt', 'arrowright'],
+          ['ctrl', 'alt', 'arrowleft'],
+        ],
+        label: 'The next or previous day',
+        description:
+          'On a day’s note (daily notes), in the same tab. Where ⌥⌘← ⌥⌘→ don’t reach Tandem (a browser tab, Safari’s Add to Dock).',
+      },
+      {
+        appKeys: [
           ['meta', 'alt', 'arrowdown'],
           ['meta', 'alt', 'arrowup'],
+        ],
+        keys: [
+          ['ctrl', 'alt', 'arrowdown'],
+          ['ctrl', 'alt', 'arrowup'],
         ],
         label: 'A week later or earlier',
         description: 'On a day’s note (daily notes), in the same tab.',
@@ -247,7 +260,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         keys: [['tab'], ['shift', 'tab']],
         label: 'Indent or outdent a list item',
         description:
-          'One level, taking that level’s kind. Enter in an empty item and Backspace at its start outdent too.',
+          'One level, taking that level’s kind. Tab moves the line alone (its sub-items stay where they are); Shift+Tab takes the items after it as its sub-items. Enter in an empty item and Backspace at its start outdent too.',
+      },
+      {
+        keys: [['backspace']],
+        label: 'Remove an empty first line',
+        description: 'In the note’s first line, when it is empty.',
       },
       {
         keys: [['shift', 'enter']],
@@ -376,3 +394,23 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
 ]
+
+/** A key combination as this computer reads it: `meta` is Ctrl outside macOS. */
+const comboKey = (combo: string[], mac: boolean) =>
+  combo
+    .map((key) => (!mac && key === 'meta' ? 'ctrl' : key))
+    .toSorted()
+    .join('+')
+
+/** The shortcut's keys that work here (in the app's window or a browser tab), each once: outside
+ * macOS, ⌃⌥→ and ⌥⌘→ are both Ctrl+Alt+→. */
+export function keysHere(shortcut: Shortcut, appWindow: boolean, mac: boolean): string[][] {
+  const all = [...(appWindow ? (shortcut.appKeys ?? []) : []), ...(shortcut.keys ?? [])]
+  const seen = new Set<string>()
+  return all.filter((combo) => {
+    const key = comboKey(combo, mac)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}

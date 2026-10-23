@@ -11,6 +11,9 @@ const route = useRoute()
 const showError = useApiErrorToast()
 const { settings } = useSettings()
 const confirm = useConfirm()
+// ⌘N in the installed app, ⌥⌘N in a browser tab (where ⌘N is the browser's).
+const appWindow = useAppWindow()
+const newPageKeys = computed(() => (appWindow.value ? ['meta', 'n'] : ['meta', 'alt', 'n']))
 
 const expanded = useLocalStorage<string[]>('tandem-tree-expanded', [])
 const currentId = computed(() => (route.name === 'notes-id' ? String(route.params.id) : null))
@@ -198,20 +201,20 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
   ]
 }
 
-const rootMenu: DropdownMenuItem[] = [
+const rootMenu = computed<DropdownMenuItem[]>(() => [
   {
     label: 'New page',
     icon: 'i-lucide-file-plus',
-    kbds: ['meta', 'alt', 'n'],
+    kbds: newPageKeys.value,
     onSelect: () => void createInside(null),
   },
-]
+])
 
 // A right-click opens the menu of the row under the pointer (the root menu elsewhere), or the
 // browser's own in the rename field. One menu for the whole tree: UTree gives each row's root
 // element its focus and keys, which a menu wrapping the row would take.
 const contextItem = ref<TreeItem | null>(null)
-const contextItems = computed(() => (contextItem.value ? menu(contextItem.value) : rootMenu))
+const contextItems = computed(() => (contextItem.value ? menu(contextItem.value) : rootMenu.value))
 
 function onContextMenu(event: MouseEvent) {
   const target = event.target as HTMLElement
@@ -307,7 +310,7 @@ function rowClass(item: TreeItem) {
   <div class="flex min-h-0 flex-col">
     <div class="flex items-center justify-between px-2.5 pb-1">
       <span class="text-xs font-medium text-muted">Pages</span>
-      <UTooltip text="New page" :kbds="['meta', 'alt', 'n']">
+      <UTooltip text="New page" :kbds="newPageKeys">
         <UButton
           icon="i-lucide-plus"
           size="xs"
@@ -348,8 +351,9 @@ function rowClass(item: TreeItem) {
           >
             <template #item-wrapper="{ item, expanded: isExpanded }">
               <div
-                class="group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
+                class="tree-row group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
                 :class="rowClass(item)"
+                :data-current="currentId === item.id || undefined"
                 draggable="true"
                 :data-node-id="item.id"
                 @keydown.capture="onRowKeydown($event, item)"
@@ -392,9 +396,11 @@ function rowClass(item: TreeItem) {
                 />
                 <span v-else class="min-w-0 flex-1 truncate">{{ item.label }}</span>
 
+                <!-- Over the end of the title, on hover (or focus), as a tab's ×: the title takes
+                     the whole width otherwise. -->
                 <div
                   v-if="renamingId !== item.id"
-                  class="flex shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+                  class="tree-row-actions absolute inset-y-0 end-0 flex items-center rounded-e-md ps-6 pe-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
                   @click.stop
                 >
                   <UDropdownMenu

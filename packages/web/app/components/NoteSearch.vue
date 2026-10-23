@@ -13,6 +13,7 @@ const colorMode = useColorMode()
 const { settings } = useSettings()
 const daily = useDaily()
 const bookmarkActions = useBookmarkActions()
+const appWindow = useAppWindow()
 
 const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
@@ -129,7 +130,8 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
         {
           label: 'New page',
           icon: 'i-lucide-file-plus',
-          kbds: ['meta', 'alt', 'n'],
+          // ⌘N in the installed app; in a browser tab, ⌘N is the browser's.
+          kbds: appWindow.value ? ['meta', 'n'] : ['meta', 'alt', 'n'],
           onSelect: () => void tree.createPage(),
         },
         ...(settings.value.bookmarks

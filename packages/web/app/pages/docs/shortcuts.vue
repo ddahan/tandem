@@ -1,10 +1,18 @@
 <script setup lang="ts">
 // Docs › Shortcuts: every keyboard shortcut and typing rule (from utils/shortcuts.ts), in this
-// computer's keys: macOS's on a Mac, Ctrl and Alt elsewhere (keysText for the text).
+// computer's keys: macOS's on a Mac, Ctrl and Alt elsewhere (keysText for the text), and only
+// those that work here: in a browser tab, the browser keeps some (keysHere).
 import { isMac, keysText } from '~/utils/platform-keys'
-import { SHORTCUT_GROUPS } from '~/utils/shortcuts'
+import { keysHere, SHORTCUT_GROUPS, type Shortcut, type ShortcutGroup } from '~/utils/shortcuts'
 
 const mac = isMac()
+const appWindow = useAppWindow()
+
+/** The shortcut's keys that work here. */
+const keysOf = (shortcut: Shortcut) => keysHere(shortcut, appWindow.value, mac)
+/** The group's shortcuts that work here (typed ones always do). */
+const shownIn = (group: ShortcutGroup) =>
+  group.shortcuts.filter((shortcut) => shortcut.typed || keysOf(shortcut).length)
 
 useHead({ title: 'Keyboard shortcuts' })
 </script>
@@ -17,6 +25,13 @@ useHead({ title: 'Keyboard shortcuts' })
         <UKbd value="ctrl" /> Control.
       </template>
       Open this page from anywhere with <UKbd value="meta" /> <UKbd value="/" />.
+    </p>
+    <p v-if="!appWindow" class="text-sm text-muted" data-testid="shortcuts-browser">
+      In a browser tab, the browser keeps some keys for itself: the installed app (<ULink
+        to="/docs/install"
+        class="text-primary"
+        >Docs › Install</ULink
+      >) also has {{ keysText('⌘N, ⌘T (today’s note), ⌘W, ⌘⇧T and ⌥⌘← ⌥⌘→ (tabs)') }}.
     </p>
 
     <section
@@ -36,7 +51,7 @@ useHead({ title: 'Keyboard shortcuts' })
 
       <div class="divide-y divide-default rounded-lg border border-default">
         <div
-          v-for="shortcut in group.shortcuts"
+          v-for="shortcut in shownIn(group)"
           :key="shortcut.label + (shortcut.typed ?? '')"
           class="flex items-center justify-between gap-4 px-4 py-2.5"
           data-testid="shortcut"
@@ -47,7 +62,7 @@ useHead({ title: 'Keyboard shortcuts' })
               {{ keysText(shortcut.description) }}
             </p>
           </div>
-          <DocsKeys :typed="shortcut.typed" :keys="shortcut.keys" />
+          <DocsKeys :typed="shortcut.typed" :keys="keysOf(shortcut)" />
         </div>
       </div>
     </section>

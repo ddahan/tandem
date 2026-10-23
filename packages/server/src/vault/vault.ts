@@ -1034,6 +1034,37 @@ export class Vault {
     })
   }
 
+  /**
+   * Deletes one of a note's attachments for good (not to the trash): asked for when its last
+   * link left the note. Only a file of the note's own `.assets/` folder, never a hidden one.
+   */
+  async deleteAttachment(id: string, name: string, author: string): Promise<{ deleted: string }> {
+    return this.lock.run(async () => {
+      const row = await this.requireRow(id)
+      if (name.includes('/') || name.includes('\\') || name === '..' || isIgnoredName(name)) {
+        throw new ValidationError(`Not an attachment name: ${name}`)
+      }
+      const dir = assetsDirOf(row.path)
+      const path = joinPath(dir, name)
+      const info = row.kind === 'page' ? await stat(this.abs(path)).catch(() => null) : null
+      if (!info?.isFile()) throw new NotFoundError(`No attachment ${name} in ${row.path}`)
+      await rm(this.abs(path))
+      // An emptied folder goes too: a note without attachments has none.
+      if (!(await readdir(this.abs(dir))).length) await rm(this.abs(dir), { recursive: true })
+      await this.indexPage(row)
+      this.dirty = true
+      // The note is unchanged (its hash too: an editor reads nothing again); its Files panel
+      // follows.
+      this.changed({
+        type: 'note',
+        id: row.id,
+        hash: row.hash ?? hashContent(row.content ?? ''),
+        author,
+      })
+      return { deleted: path }
+    })
+  }
+
   async updateSettings(patch: Partial<Settings>): Promise<Settings> {
     return this.lock.run(async () => {
       for (const [key, value] of Object.entries(patch)) {

@@ -432,6 +432,16 @@ already there (`urlKey`) or not web addresses, and inserts the rest with their p
   the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
   app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the
   user agent (it has no install API); `display-mode: standalone` means installed.
+- Keys a browser keeps (⌘N, ⌘T, ⌘W, ⌘⇧T, ⌥⌘← ⌥⌘→): `useAppWindow` says whether this is the
+  installed app's window; `utils/shortcuts.ts` marks those keys `appKeys`, and `keysHere`
+  gives the keys that work here (deduplicated: outside macOS ⌃⌥ and ⌥⌘ are both Ctrl+Alt), for
+  Docs › Shortcuts and the calendar. Menus and tooltips pick their key the same way.
+- Files left behind (`NoteEditor`'s `followRemovedFiles`, `attachmentNames` in
+  `editor/file-chips.ts`): after a transaction that removed content (not a cut, not a
+  `setContent`), the note's own attachment names linked before and after are compared; for
+  those gone, a confirmation, then `DELETE /notes/:id/attachments/:name` (`vault.deleteAttachment`:
+  the file, and the `.assets/` folder once empty; a `note` event with the unchanged hash
+  refreshes the Files panel).
 - Updates reach open windows (`utils/app-update.ts`, plugin `app-update.client.ts`): the app
   compares its Nuxt build id with `/_app/builds/latest.json` at start, on `pageshow` from the
   browser's cache, when the window becomes visible and when the event stream reconnects (an

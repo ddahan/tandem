@@ -1,5 +1,6 @@
 // The main flows of the app, in a real browser against the real server.
 import { expect, test, type Page } from '@playwright/test'
+import type { Editor } from '@tiptap/core'
 import {
   api,
   chooseTheme,
@@ -495,6 +496,50 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   await expect
     .poll(() => noteContent(request, note.id))
     .toContain('[report.pdf](Drop%20note.assets/report.pdf)')
+})
+
+test('removing a file’s last link asks whether to delete the file too', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Chip note', 'Before.')
+  await openNote(page, note.id)
+  await dropFiles(page, [
+    { name: 'keep.txt', type: 'text/plain', text: 'K' },
+    { name: 'drop.txt', type: 'text/plain', text: 'D' },
+  ])
+  const chips = page.locator('.ProseMirror .file-chip')
+  await expect(chips).toHaveCount(2)
+  const files = async () =>
+    (await api<{ name: string }[]>(request, 'GET', `/notes/${note.id}/attachments`)).map(
+      (file) => file.name,
+    )
+  const removeChip = async (name: string) => {
+    await page.evaluate((text) => {
+      const { editor } = document.querySelector('.ProseMirror') as unknown as { editor: Editor }
+      let range = { from: 0, to: 0 }
+      editor.state.doc.descendants((node, pos) => {
+        if (node.isText && node.text === text) range = { from: pos, to: pos + node.nodeSize }
+      })
+      editor.commands.setTextSelection(range)
+      editor.commands.focus()
+    }, name)
+    await page.keyboard.press('Backspace')
+  }
+  const dialog = page.getByRole('dialog')
+
+  // Kept: the file stays.
+  await removeChip('keep.txt')
+  await expect(dialog).toContainText('Delete keep.txt too?')
+  await expect(dialog).toContainText('definitive')
+  await dialog.getByRole('button', { name: 'Keep it' }).click()
+  await expect(dialog).toBeHidden()
+  expect(await files()).toEqual(['drop.txt', 'keep.txt'])
+
+  // Deleted: for good.
+  await removeChip('drop.txt')
+  await dialog.getByRole('button', { name: 'Delete the file' }).click()
+  await expect.poll(files).toEqual(['keep.txt'])
 })
 
 test('asks before attaching a file over 10 MB', async ({ page, request }) => {

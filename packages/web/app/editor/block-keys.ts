@@ -2,6 +2,8 @@
 // insert a block below or above (⌘↵ / ⌘⇧↵). "The current block" is the paragraph, heading,
 // code block… holding the selection, or the list item when it is in a list; a selection over
 // several blocks acts on all of them. Keys are listed on the Shortcuts page (utils/shortcuts.ts).
+// Also: Backspace in an empty first line removes it (ProseMirror has nothing to join it to, and
+// did nothing).
 import { Extension } from '@tiptap/core'
 import { Fragment, type Node as ProseMirrorNode, type NodeRange } from '@tiptap/pm/model'
 import {
@@ -25,6 +27,17 @@ declare module '@tiptap/core' {
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem'])
 const LISTS = new Set(['bulletList', 'orderedList', 'taskList'])
+
+/** Backspace in an empty first line, with blocks after it: the line goes, the cursor goes to
+ * the start of the next block. */
+function removeEmptyFirstLine(state: EditorState, dispatch: (tr: Transaction) => void): boolean {
+  const { $from, empty } = state.selection
+  if (!empty || $from.depth !== 1 || $from.index(0) !== 0 || state.doc.childCount < 2) return false
+  if (!$from.parent.isTextblock || $from.parent.content.size > 0) return false
+  const tr = state.tr.delete($from.before(), $from.after())
+  dispatch(tr.setSelection(Selection.atStart(tr.doc)).scrollIntoView())
+  return true
+}
 
 /** The blocks the selection covers, at the level they can be moved: list items, or blocks. */
 export function selectedBlocks(state: EditorState): NodeRange | null {
@@ -167,6 +180,8 @@ export const BlockKeys = Extension.create({
 
   addKeyboardShortcuts() {
     return {
+      Backspace: () =>
+        removeEmptyFirstLine(this.editor.state, (tr) => this.editor.view.dispatch(tr)),
       'Alt-ArrowUp': () => this.editor.commands.moveBlock('up'),
       'Alt-ArrowDown': () => this.editor.commands.moveBlock('down'),
       'Shift-Alt-ArrowUp': () => this.editor.commands.duplicateBlock('up'),

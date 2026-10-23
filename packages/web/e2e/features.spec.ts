@@ -150,6 +150,10 @@ test('shows shortcuts’ keys, unless Appearance says not to; Docs always do', a
   await today.getByText('Today').click()
   await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next day')
   await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next week')
+  // Docs › Shortcuts shows the app's keys too.
+  await page.goto('/docs/shortcuts')
+  await expect(page.getByTestId('shortcuts-browser')).toHaveCount(0)
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Close the tab' })).toHaveCount(1)
   await page.goto('/settings/appearance')
 
   await page.getByRole('switch', { name: 'Keyboard shortcuts' }).click()

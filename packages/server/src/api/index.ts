@@ -423,6 +423,15 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       },
     )
 
+    .delete(
+      '/notes/:id/attachments/:name',
+      zValidator('param', z.object({ id: z.string().min(1), name: z.string().min(1) })),
+      async (c) => {
+        const { id, name } = c.req.valid('param')
+        return c.json(await vault.deleteAttachment(id, name, authorOf(c)))
+      },
+    )
+
     // --- History and authorship ----------------------------------------------------------
     .get('/notes/:id/history', zValidator('param', idParam), async (c) =>
       c.json(await vault.history(c.req.valid('param').id)),

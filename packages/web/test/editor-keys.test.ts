@@ -94,6 +94,21 @@ describe('duplicate, delete, insert', () => {
     expect(e.state.doc.childCount).toBe(1)
   })
 
+  it('removes an empty first line on Backspace, the cursor on the next block', () => {
+    const e = setup('Some line')
+    e.commands.setTextSelection(1)
+    e.commands.insertBlock('above')
+    expect(e.state.doc.childCount).toBe(2)
+    press(e, 'Backspace')
+    expect(markdown(e)).toBe('Some line')
+    expect(e.state.selection.from).toBe(1)
+    // The only line stays.
+    press(e, 'Backspace')
+    e.commands.deleteBlock()
+    press(e, 'Backspace')
+    expect(e.state.doc.childCount).toBe(1)
+  })
+
   it('inserts an empty paragraph, or a list item in lists, below or above', () => {
     const e = setup('One\n\n- [ ] task')
     cursorAt(e, 'One')

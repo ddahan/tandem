@@ -66,6 +66,18 @@ describe('API', () => {
     expect(file.headers.get('content-type')).toContain('text/plain')
     expect((await app.request('/files/.tandem/README.md')).status).toBe(404)
     expect((await app.request('/files/..%2F..%2Fetc%2Fpasswd')).status).toBe(404)
+
+    // Deleted for good (its chip left the note): gone from the panel and from /files.
+    const remove = (name: string) =>
+      client.notes[':id'].attachments[':name'].$delete({ param: { id: page.id, name } })
+    expect((await remove('hello world.txt')).status).toBe(200)
+    expect(
+      await (await client.notes[':id'].attachments.$get({ param: { id: page.id } })).json(),
+    ).toEqual([])
+    expect((await app.request(`/files/${encodeURI(attachment.path)}`)).status).toBe(404)
+    // Only a file of the note's own folder.
+    expect((await remove('hello world.txt')).status).toBe(404)
+    expect((await remove('.hidden')).status).toBe(400)
   })
 
   it('covers tree, move, tags, search, history, blame, trash and settings', async () => {

@@ -33,7 +33,7 @@ const navigation = computed<NavigationMenuItem[]>(() => [
 // Daily notes, when on: above the tree, highlighted on a day's note.
 const daily = useDaily()
 // The installed app's own window: there, ⌘T reaches Tandem (in a browser tab, it's the browser's).
-const appWindow = useMediaQuery('(display-mode: standalone)')
+const appWindow = useAppWindow()
 const onDailyNote = computed(() => {
   if (route.name !== 'notes-id') return false
   const node = tree.byId.value.get(String(route.params.id))
@@ -144,6 +144,24 @@ defineShortcuts({
   meta_alt_arrowleft: {
     usingInput: true,
     handler: () => void (daily.onDay.value ? daily.step(-1) : tabs.step(-1)),
+  },
+  // On a day's note, the day after or before, where ⌥⌘← ⌥⌘→ don't reach Tandem: a browser tab,
+  // Safari's Add to Dock app (it keeps them). After them: outside macOS they're the same keys.
+  ctrl_alt_arrowright: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(1)),
+  },
+  ctrl_alt_arrowleft: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(-1)),
+  },
+  ctrl_alt_arrowdown: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(7)),
+  },
+  ctrl_alt_arrowup: {
+    usingInput: true,
+    handler: () => void (daily.onDay.value && daily.step(-7)),
   },
   // The next or previous tab, always (⌥⌘← ⌥⌘→ step days on a day's note).
   meta_ctrl_arrowright: { usingInput: true, handler: () => void tabs.step(1) },
