@@ -277,3 +277,21 @@ export function agendaLine(item: AgendaItem): string {
         .join(', ')
   return `- [${item.checked ? 'x' : ' '}] ${timeLabel(item)} ${item.title}  (${about})`
 }
+
+/**
+ * While an event is typed: its time, once the title has begun after it (a letter or a sign, not
+ * a dash, an arrow or a digit: `13:30 - 14:30` is still being typed), with the title; or null.
+ */
+export function typedTime(
+  text: string,
+): { start: string; end: string | null; title: string } | null {
+  const line = parseEventLine(text)
+  if (!line.start || !line.title || /^[-–—→>\d]/.test(line.title)) return null
+  return { start: line.start, end: line.end, title: line.title }
+}
+
+/** A time typed alone (`14h`, `9:30-10:00`), or null. */
+export function timeAlone(text: string): { start: string; end: string | null } | null {
+  const line = parseEventLine(`${text.trim()} x`)
+  return line.start && line.title === 'x' ? { start: line.start, end: line.end } : null
+}

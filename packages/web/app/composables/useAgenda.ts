@@ -1,7 +1,15 @@
 // The agenda of daily notes (shared/agenda.ts): the events of some days, kept up to date with
 // the server's changes, and what can be done to them. A repeating event asks which days a change
 // is for (that one, or all from today on); a deletion can be undone for a few seconds.
-import { checkRef, type AgendaItem, type AgendaUndoInput, type Repeat } from '@tandem/shared'
+import {
+  checkRef,
+  parseEventLine,
+  timeAlone,
+  typedTime,
+  type AgendaItem,
+  type AgendaUndoInput,
+  type Repeat,
+} from '@tandem/shared'
 import AgendaScopeDialog from '~/components/AgendaScopeDialog.vue'
 
 export interface EventFields {
@@ -135,4 +143,60 @@ export function useAgendaActions() {
 /** A request for a day's agenda block to start adding an event (`/event`, editor/agenda.ts). */
 export function useAgendaFocus() {
   return useState<{ date: string } | null>('agenda:focus', () => null)
+}
+
+/**
+ * An event being typed on one line (`14h Standup`): its time, once typed, leaves the text for
+ * the label in front of it (a space then the title, or Tab), so it isn't written twice. Backspace
+ * at the start of the text puts it back to edit. `13:30 - 14:30` stays text until the title
+ * starts: a dash after the first time is the range going on.
+ */
+export function useEventDraft() {
+  const text = ref('')
+  const time = ref<{ start: string; end: string | null } | null>(null)
+
+  /** What the line says: its time (the label's, or one still typed) and title. */
+  const line = computed(() => {
+    if (time.value) return { ...time.value, title: text.value.replace(/\s+/g, ' ').trim() }
+    return parseEventLine(text.value)
+  })
+
+  function input(value: string) {
+    text.value = value
+    if (time.value) return
+    const typed = typedTime(value)
+    if (typed) {
+      time.value = { start: typed.start, end: typed.end }
+      text.value = typed.title
+    }
+  }
+
+  /** Tab after a time alone makes it the label; Backspace on an empty text edits it again. */
+  function keydown(event: KeyboardEvent) {
+    const target = event.target as HTMLInputElement
+    const alone = event.key === 'Tab' && !event.shiftKey && !time.value && timeAlone(text.value)
+    if (alone) {
+      event.preventDefault()
+      time.value = alone
+      text.value = ''
+    } else if (
+      event.key === 'Backspace' &&
+      time.value &&
+      target.selectionStart === 0 &&
+      target.selectionEnd === 0
+    ) {
+      event.preventDefault()
+      const label = time.value.end ? `${time.value.start}-${time.value.end}` : time.value.start
+      time.value = null
+      text.value = `${label}${text.value ? ` ${text.value}` : ''}`
+      void nextTick(() => target.setSelectionRange(label.length, label.length))
+    }
+  }
+
+  function clear() {
+    text.value = ''
+    time.value = null
+  }
+
+  return { text, time, line, input, keydown, clear }
 }

@@ -9,7 +9,9 @@ import {
   hasAgendaBlock,
   parseEventLine,
   parseTime,
+  timeAlone,
   timeLabel,
+  typedTime,
   withoutAgenda,
   type AgendaItem,
 } from '../src/index.ts'
@@ -60,6 +62,26 @@ describe('events typed on one line', () => {
 function item(title: string, start: string | null) {
   return { title, start, end: null } as AgendaItem
 }
+
+describe('a time typed before the title', () => {
+  it('is taken once the title has begun', () => {
+    expect(typedTime('14h')).toBeNull()
+    expect(typedTime('14h ')).toBeNull()
+    expect(typedTime('14h D')).toEqual({ start: '14:00', end: null, title: 'D' })
+    // A range on its way stays text.
+    expect(typedTime('13:30 -')).toBeNull()
+    expect(typedTime('13:30 - 1')).toBeNull()
+    expect(typedTime('13:30 - 14:30 L')).toEqual({ start: '13:30', end: '14:30', title: 'L' })
+    expect(typedTime('Lunch')).toBeNull()
+  })
+
+  it('is taken alone with Tab', () => {
+    expect(timeAlone('14h')).toEqual({ start: '14:00', end: null })
+    expect(timeAlone('9:30-10:00')).toEqual({ start: '09:30', end: '10:00' })
+    expect(timeAlone('14h Standup')).toBeNull()
+    expect(timeAlone('')).toBeNull()
+  })
+})
 
 describe('labels and order', () => {
   it('labels all day, a time, or a start and an end', () => {

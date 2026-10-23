@@ -5,7 +5,7 @@
 // (`14:00 Standup`, `13:30-14:30 Lunch`, or a title for all day), the label showing live.
 // A day without events shows nothing, unless an event is being added (`/event`).
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
-import { parseEventLine, timeLabel, type AgendaItem } from '@tandem/shared'
+import { timeLabel, type AgendaItem } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
 import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
 import AgendaEventForm from './AgendaEventForm.vue'
@@ -44,22 +44,21 @@ function labelClass(item: AgendaItem) {
 
 // --- Adding ----------------------------------------------------------------------------------
 
-const draft = ref('')
-const draftLine = computed(() => parseEventLine(draft.value))
+const draft = useEventDraft()
 
 async function add() {
-  const line = draftLine.value
+  const line = draft.line.value
   if (!line.title || !date.value) return
   const fields: EventFields = { ...line, date: date.value, repeat: null, until: null }
   if (!(await actions.create(fields))) return
-  draft.value = ''
+  draft.clear()
   // Shown before the add line is left (which, on a day still without events, removes the block).
   await reload()
 }
 
 /** Leaving the add line: on a day with no events, the block goes with it. */
 function stopAdding() {
-  if (draft.value.trim()) return
+  if (draft.text.value.trim() || draft.time.value) return
   adding.value = false
   if (items.value.length) return
   const pos = props.getPos()
@@ -73,8 +72,10 @@ function onAddKey(event: KeyboardEvent) {
     event.preventDefault()
     void add()
   } else if (event.key === 'Escape') {
-    draft.value = ''
+    draft.clear()
     addInput.value?.blur()
+  } else {
+    draft.keydown(event)
   }
 }
 
@@ -127,11 +128,13 @@ async function remove(item: AgendaItem) {
     data-testid="agenda"
     :data-date="date"
   >
-    <ul v-if="visible" class="space-y-0.5">
-      <li
+    <!-- Not a list: the editor's lists are indented, these lines start where the text does. -->
+    <div v-if="visible" class="space-y-0.5" role="list">
+      <div
         v-for="item in items"
         :key="item.key"
         class="group flex min-h-8 items-center gap-2.5"
+        role="listitem"
         data-testid="agenda-event"
       >
         <UCheckbox
@@ -182,28 +185,29 @@ async function remove(item: AgendaItem) {
         <span v-if="item.calendar" class="shrink-0 truncate text-xs text-dimmed">
           {{ item.calendar }}
         </span>
-      </li>
-      <li v-if="editable" class="flex min-h-8 items-center gap-2.5 text-muted">
+      </div>
+      <div v-if="editable" class="flex min-h-8 items-center gap-2.5 text-muted" role="listitem">
         <UIcon name="i-lucide-plus" class="size-4 shrink-0" />
         <span
-          v-if="draftLine.title"
+          v-if="draft.time.value"
           class="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-xs font-medium text-primary tabular-nums"
           data-testid="agenda-draft-time"
         >
-          {{ timeLabel(draftLine) }}
+          {{ timeLabel(draft.time.value) }}
         </span>
         <input
           ref="addInput"
-          v-model="draft"
+          :value="draft.text.value"
           class="min-w-0 flex-1 bg-transparent text-default outline-none placeholder:text-dimmed"
-          placeholder="Add event: 14:00 Standup"
+          :placeholder="draft.time.value ? 'Title' : 'Add event: 14:00 Standup'"
           aria-label="Add event"
           data-testid="agenda-add"
+          @input="draft.input(($event.target as HTMLInputElement).value)"
           @focus="adding = true"
           @keydown="onAddKey"
           @blur="stopAdding"
         />
-      </li>
-    </ul>
+      </div>
+    </div>
   </NodeViewWrapper>
 </template>

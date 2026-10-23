@@ -371,8 +371,10 @@ inside OneDrive so that it is backed up and synced.
 - **Adding**: `/event` (daily notes only) puts the agenda where the cursor is and focuses its
   last line, "Add event" (left without an event, the block goes again); on a day with events,
   that line is always there. A time or two at the start, then the title: `14:00 Standup`,
-  `13:30-14:30 Lunch` (also `14h`, `14h30`, `9`, `-` or `→`); no time is all day. The label shows
-  while typing; Enter adds it and stays on the line. Other days: "New event…" in the palette
+  `13:30-14:30 Lunch` (also `14h`, `14h30`, `9`, `-` or `→`); no time is all day. The typed time
+  becomes the label in front of the text once the title begins (or with Tab after it), so it isn't
+  written twice; Backspace at the start of the text puts it back to edit. Enter adds the event and
+  stays on the line. Other days: "New event…" in the palette
   (a day, today or the one shown, and the same line), or an agent.
 - **Editing**: the title in place (Enter or leaving it saves, Escape puts it back). A click on
   the time label opens its details: all day, at, from–to; its day (to move it); repeat; Save,
