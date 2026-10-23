@@ -71,33 +71,17 @@ const weeks = computed(() => {
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-// As in Docs › Shortcuts (utils/shortcuts.ts): ⌥⌘← ⌥⌘→ only in the installed app's window (in a
-// browser tab, they switch the browser's tabs), ⌃⌥ and the arrows anywhere.
+// As in Docs › Shortcuts (utils/shortcuts.ts), in one line: the modifiers and one key for any
+// arrow (← → a day, ↑ ↓ a week). ⌥⌘ only in the installed app's window (in a browser tab, ⌥⌘←
+// ⌥⌘→ switch the browser's tabs), ⌃⌥ anywhere.
 const appWindow = useAppWindow()
 const mac = isMac()
 const KEYS = computed(() =>
   [
     {
-      label: 'Previous or next day',
-      appKeys: [
-        ['meta', 'alt', 'arrowleft'],
-        ['meta', 'alt', 'arrowright'],
-      ],
-      keys: [
-        ['ctrl', 'alt', 'arrowleft'],
-        ['ctrl', 'alt', 'arrowright'],
-      ],
-    },
-    {
-      label: 'Previous or next week',
-      appKeys: [
-        ['meta', 'alt', 'arrowup'],
-        ['meta', 'alt', 'arrowdown'],
-      ],
-      keys: [
-        ['ctrl', 'alt', 'arrowup'],
-        ['ctrl', 'alt', 'arrowdown'],
-      ],
+      label: 'Navigate days and weeks',
+      appKeys: [['meta', 'alt', 'arrows']],
+      keys: [['ctrl', 'alt', 'arrows']],
     },
   ].map((hint) => ({ label: hint.label, keys: keysHere(hint, appWindow.value, mac) })),
 )

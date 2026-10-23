@@ -148,8 +148,9 @@ test('shows shortcuts’ keys, unless Appearance says not to; Docs always do', a
   await expect(today.locator('kbd')).toHaveCount(2)
   // In the app's window, the calendar shows the keys that browse days and weeks.
   await today.getByText('Today').click()
-  await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next day')
-  await expect(page.getByTestId('calendar-keys')).toContainText('Previous or next week')
+  // ⌥⌘ and any arrow, or ⌃⌥ and any arrow: here (not a Mac) both are Ctrl+Alt, shown once.
+  await expect(page.getByTestId('calendar-keys')).toContainText('Navigate days and weeks')
+  await expect(page.getByTestId('calendar-keys').getByLabel('Any arrow key')).toHaveCount(1)
   // Docs › Shortcuts shows the app's keys too.
   await page.goto('/docs/shortcuts')
   await expect(page.getByTestId('shortcuts-browser')).toHaveCount(0)

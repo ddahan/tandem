@@ -37,9 +37,10 @@ test('opens today’s note from the sidebar, out of the tree, with a calendar', 
   // The browsing keys under it: in a browser tab, ⌃⌥ and the arrows (⌥⌘← ⌥⌘→ switch its
   // tabs; features.spec shows them in the app's window).
   const calendarKeys = calendar.getByTestId('calendar-keys')
-  await expect(calendarKeys).toContainText('Previous or next day')
-  // Two keys a row, of three chips each.
-  await expect(calendarKeys.locator('kbd')).toHaveCount(12)
+  await expect(calendarKeys).toContainText('Navigate days and weeks')
+  // One line: ⌃ ⌥ and one chip for any arrow.
+  await expect(calendarKeys.locator('kbd')).toHaveCount(3)
+  await expect(calendarKeys.getByLabel('Any arrow key')).toHaveCount(1)
 
   // Written, with a to-do left: marked in the calendar.
   await page.locator('.ProseMirror').click()
