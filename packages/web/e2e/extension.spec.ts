@@ -1,7 +1,7 @@
 // The Chrome extension (packages/extension, built by `./td e2e`), loaded in Chromium: its options
 // (Tandem's address), its popup on a web page (Tandem not running, bookmarks off, a new
 // bookmark with the page's description and favicon, then "Already in Tandem"), and the ✓ on its
-// toolbar button.
+// toolbar button, and importing Chrome’s bookmarks from its options.
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -137,4 +137,82 @@ test('says when a page can’t be bookmarked', async ({ context }) => {
   await popup.goto(`chrome-extension://${EXTENSION_ID}/popup.html`)
   // Its own tab is the active one: not a web page.
   await expect(popup.locator('#problem')).toContainText('can’t be bookmarked')
+})
+
+test('imports Chrome’s bookmarks from its options, again without duplicates', async ({
+  context,
+  request,
+}) => {
+  await api(request, 'PATCH', '/settings', { bookmarks: true })
+  const options = await context.newPage()
+  await options.goto(`chrome-extension://${EXTENSION_ID}/options.html`)
+  await options.getByLabel('Tandem’s address').fill(TANDEM)
+  await options.getByRole('button', { name: 'Save' }).click()
+  await expect(options.locator('#status')).toContainText('Tandem answers')
+
+  // Chrome's prompt for the access can't be clicked in a test, nor bookmarks made without it:
+  // the page is given the access and Chrome's tree.
+  await options.evaluate(() => {
+    const extension = (globalThis as unknown as { chrome: Record<string, unknown> }).chrome
+    extension.permissions = { request: async () => true }
+    extension.bookmarks = {
+      getTree: async () => [
+        {
+          id: '0',
+          title: '',
+          children: [
+            {
+              id: '1',
+              title: 'Bookmarks bar',
+              children: [
+                { id: '3', title: 'Imported docs', url: 'https://docs.example.com/' },
+                {
+                  id: '4',
+                  title: 'Imported work',
+                  children: [{ id: '5', title: 'Board', url: 'https://board.example.com/' }],
+                },
+                { id: '6', title: 'Tool', url: 'javascript:void(0)' },
+              ],
+            },
+            { id: '2', title: 'Other bookmarks', children: [] },
+          ],
+        },
+      ],
+    }
+  })
+  const button = options.getByRole('button', { name: 'Import Chrome’s bookmarks' })
+  await button.click()
+  await expect(options.locator('#import-status')).toHaveText(
+    'Imported 2 bookmarks into the “Chrome” folder; 1 left out (not web pages).',
+  )
+
+  interface Saved {
+    id: string
+    kind: string
+    title: string
+    url: string
+    icon: string | null
+    parentId: string | null
+  }
+  const all = await api<Saved[]>(request, 'GET', '/bookmarks')
+  const chromeFolder = all.find((b) => b.title === 'Chrome' && b.parentId === null)!
+  const bar = all.find((b) => b.title === 'Bookmarks bar')!
+  expect(bar.parentId).toBe(chromeFolder.id)
+  const docs = all.find((b) => b.title === 'Imported docs')!
+  expect(docs).toMatchObject({ parentId: bar.id, url: 'https://docs.example.com/' })
+  // Chrome has no icon of these sites: its generic one is left out (Tandem shows its own).
+  expect(docs.icon).toBeNull()
+  expect(all.find((b) => b.title === 'Board')!.parentId).toBe(
+    all.find((b) => b.title === 'Imported work')!.id,
+  )
+
+  // Again: nothing new.
+  await button.click()
+  await expect(options.locator('#import-status')).toHaveText(
+    'Nothing new to import; 2 already in Tandem, 1 left out (not web pages).',
+  )
+  expect(await api<Saved[]>(request, 'GET', '/bookmarks')).toHaveLength(all.length)
+
+  // Cleaned up for the other tests.
+  await api(request, 'DELETE', `/bookmarks/${chromeFolder.id}`)
 })

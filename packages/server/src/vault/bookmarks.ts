@@ -14,6 +14,7 @@ import {
   urlKey,
   webUrl,
   type Bookmark,
+  type BookmarkImportResult,
   type BookmarkKind,
   type BookmarkSearchResult,
 } from '@tandem/shared'
@@ -44,6 +45,14 @@ export interface BookmarkPatch {
   index?: number
   /** Instead of `parentId`: a folder's id or path of names (`Work/Tools`), made if missing. */
   folder?: string
+}
+
+/** A folder or a bookmark to import, with whatever goes with it (its favicon) for the vault. */
+export interface ImportNode<T> {
+  title: string
+  url?: string
+  children?: ImportNode<T>[]
+  extra?: T
 }
 
 // Letters and digits only: ids are typed in commands, where one starting with "-" would read
@@ -270,6 +279,102 @@ export class BookmarkStore {
         : (await this.create({ kind: 'folder', title: name, parentId })).id
     }
     return parentId
+  }
+
+  /**
+   * Imports a browser's tree into the folder `into` at the top (made if missing). Folders merge
+   * with those of the same name (any case) where they go, so that importing again only adds
+   * what is new; pages already bookmarked, and what isn't a web address, are left out. In one
+   * go (the folder's rows read once, positions given), however many there are. Returns what was
+   * made, each bookmark with its `extra`.
+   */
+  async importTree<T>(
+    into: string,
+    nodes: ImportNode<T>[],
+  ): Promise<{ result: BookmarkImportResult; created: { id: string; extra: T }[] }> {
+    const all = await this.list()
+    const known = new Set(all.filter((b) => b.kind === 'bookmark').map((b) => urlKey(b.url)))
+    const children = new Map<string | null, Bookmark[]>()
+    for (const bookmark of all) {
+      const list = children.get(bookmark.parentId) ?? []
+      list.push(bookmark)
+      children.set(bookmark.parentId, list)
+    }
+    const next = (parentId: string | null) => {
+      const list = children.get(parentId) ?? []
+      return list.reduce((max, b) => Math.max(max, b.position), 0) + 1
+    }
+    const result = { folderId: '', folders: 0, bookmarks: 0, duplicates: 0, skipped: 0 }
+    const created: { id: string; extra: T }[] = []
+    const now = this.now()
+
+    const insert = async (row: Omit<Bookmark, 'icon' | 'createdAt' | 'updatedAt'>) => {
+      await this.db.insert(bookmarks).values({
+        ...row,
+        urlKey: row.url ? urlKey(row.url) : '',
+        createdAt: now,
+        updatedAt: now,
+      })
+      const list = children.get(row.parentId) ?? []
+      list.push({ ...row, icon: null, createdAt: now, updatedAt: now })
+      children.set(row.parentId, list)
+    }
+
+    const folder = async (parentId: string | null, name: string) => {
+      const title = clip(name, BOOKMARK_TITLE_MAX) || 'Untitled folder'
+      const existing = children
+        .get(parentId)
+        ?.find((b) => b.kind === 'folder' && b.title.toLowerCase() === title.toLowerCase())
+      if (existing) return existing.id
+      const id = newId()
+      await insert({
+        id,
+        kind: 'folder',
+        parentId,
+        title,
+        url: '',
+        description: '',
+        position: next(parentId),
+      })
+      result.folders++
+      return id
+    }
+
+    const walk = async (parentId: string, list: ImportNode<T>[]) => {
+      for (const node of list) {
+        if (node.children) {
+          await walk(await folder(parentId, node.title), node.children)
+          continue
+        }
+        const url = webUrl(node.url ?? '')
+        if (!url) {
+          result.skipped++
+          continue
+        }
+        if (known.has(urlKey(url))) {
+          result.duplicates++
+          continue
+        }
+        known.add(urlKey(url))
+        const id = newId()
+        const title = clip(node.title, BOOKMARK_TITLE_MAX) || siteOf(url)
+        await insert({
+          id,
+          kind: 'bookmark',
+          parentId,
+          title,
+          url,
+          description: '',
+          position: next(parentId),
+        })
+        result.bookmarks++
+        if (node.extra !== undefined) created.push({ id, extra: node.extra })
+      }
+    }
+
+    result.folderId = await folder(null, into)
+    await walk(result.folderId, nodes)
+    return { result, created }
   }
 
   private async record(id: string): Promise<BookmarkRecord> {

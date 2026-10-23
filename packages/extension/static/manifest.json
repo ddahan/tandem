@@ -28,5 +28,6 @@
     }
   },
   "permissions": ["activeTab", "scripting", "storage", "tabs", "favicon"],
+  "optional_permissions": ["bookmarks"],
   "host_permissions": ["http://localhost/*", "http://127.0.0.1/*"]
 }

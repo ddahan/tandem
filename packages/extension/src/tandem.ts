@@ -1,7 +1,13 @@
 // Talking to the Tandem running on this computer, from the extension (its popup, its service
 // worker). Its requests carry the extension's origin, which Tandem accepts changes from (the
 // server's api/guard.ts), and which it tells when bookmarks are off (a 409 with a code).
-import { BOOKMARKS_OFF, type Bookmark, type BookmarkSearchResult } from '@tandem/shared'
+import {
+  BOOKMARKS_OFF,
+  type Bookmark,
+  type BookmarkImportNode,
+  type BookmarkImportResult,
+  type BookmarkSearchResult,
+} from '@tandem/shared'
 
 /** Where Tandem answers by default (the installer's port). */
 export const DEFAULT_ADDRESS = 'http://localhost:3864'
@@ -118,6 +124,12 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
     create: (fields: BookmarkFields) => save('/api/bookmarks', 'POST', fields),
     update: (id: string, fields: Partial<BookmarkFields>) =>
       save(`/api/bookmarks/${encodeURIComponent(id)}`, 'PATCH', fields),
+    /** Imports a browser's tree into Tandem's "Chrome" folder (see import.ts). */
+    importBookmarks: (children: BookmarkImportNode[]) =>
+      request<BookmarkImportResult>('/api/bookmarks/import', {
+        method: 'POST',
+        body: JSON.stringify({ children }),
+      }),
   }
 }
 

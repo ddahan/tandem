@@ -382,4 +382,72 @@ describe('bookmarks', () => {
     expect((await client.bookmarks[':id'].$get({ param: { id: bookmark.id } })).status).toBe(404)
     expect((await app.request(`http://localhost${bookmark.icon}`)).status).toBe(404)
   })
+
+  it('imports a browser’s tree into one folder, merging with what is there', async () => {
+    const { vault } = await createTestVault()
+    await vault.updateSettings({ bookmarks: true })
+    const app = createApp(vault)
+    const already = await vault.createBookmark({
+      url: 'https://github.com',
+      title: 'GitHub',
+      description: '',
+    })
+    const send = async (children: unknown[]) => {
+      const response = await app.request('http://localhost/api/bookmarks/import', {
+        method: 'POST',
+        headers: { origin: EXTENSION_ORIGIN, 'content-type': 'application/json' },
+        body: JSON.stringify({ children }),
+      })
+      expect(response.status).toBe(200)
+      return response.json()
+    }
+    const events: ServerEvent[] = []
+    vault.events.on('event', (event) => events.push(event))
+    const icon = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
+    const tree = [
+      {
+        title: 'Bookmarks bar',
+        children: [
+          { title: 'Docs', url: 'https://docs.example.com', iconDataUrl: icon },
+          { title: 'GitHub', url: 'https://www.github.com/' },
+          { title: 'Tool', url: 'javascript:alert(1)' },
+          { title: 'Work', children: [{ title: 'Board', url: 'https://board.example.com' }] },
+          { title: 'Empty', children: [] },
+        ],
+      },
+    ]
+    const result = await send(tree)
+    expect(result).toMatchObject({ folders: 4, bookmarks: 2, duplicates: 1, skipped: 1 })
+    // One change, announced once.
+    expect(events.filter((event) => event.type === 'bookmarks')).toHaveLength(1)
+
+    const all = await vault.listBookmarks()
+    const byTitle = (title: string) => all.find((b) => b.title === title)!
+    const chrome = byTitle('Chrome')
+    expect(chrome).toMatchObject({ kind: 'folder', parentId: null, position: 2 })
+    expect(byTitle('Bookmarks bar').parentId).toBe(chrome.id)
+    const bar = byTitle('Bookmarks bar').id
+    expect(all.filter((b) => b.parentId === bar).map((b) => b.title)).toEqual([
+      'Docs',
+      'Work',
+      'Empty',
+    ])
+    expect(byTitle('Board').parentId).toBe(byTitle('Work').id)
+    expect(byTitle('Docs').icon).toMatch(/^\/api\/bookmarks\/\w+\/icon/)
+    const image = await app.request(`http://localhost${byTitle('Docs').icon}`)
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(PNG)
+    expect(byTitle('GitHub').id).toBe(already.id)
+
+    // Again, with one more: only that one is added, in the folders already there.
+    tree[0]!.children[3]!.children!.push({ title: 'Wiki', url: 'https://wiki.example.com' })
+    expect(await send(tree)).toMatchObject({
+      folderId: chrome.id,
+      folders: 0,
+      bookmarks: 1,
+      duplicates: 3,
+    })
+    const after = await vault.listBookmarks()
+    expect(after.find((b) => b.title === 'Wiki')!.parentId).toBe(byTitle('Work').id)
+    expect(after).toHaveLength(all.length + 1)
+  })
 })

@@ -124,6 +124,12 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
           <strong>Find a bookmark</strong>: in the address bar, type <code :class="code">tb</code>,
           then <UKbd value="tab" /> and words from its name, address or description.
         </li>
+        <li>
+          <strong>Import Chrome’s bookmarks</strong>: in the extension’s options (right-click its
+          button, then Options), Import Chrome’s bookmarks. Chrome asks to let it read them first.
+          They all go, with their folders and icons, into a “Chrome” folder; importing again only
+          adds the new ones, and Chrome’s stay as they are.
+        </li>
         <li>Tandem not running, or bookmarks off: the extension says so, and how to fix it.</li>
       </ul>
       <p class="text-muted">Chrome only for now: there is no Safari extension yet.</p>

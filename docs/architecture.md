@@ -246,6 +246,12 @@ The vault only fetches with a `fetch` given (the server's; none in tests, unless
 extension sends the browser's favicon instead (a `data:` URL). `POST /api/bookmarks/preview` is
 a POST: it makes the server fetch, which only Tandem's own pages may ask for (the guard).
 
+`POST /api/bookmarks/import` takes a browser's tree (`BookmarkImportNode`: folders with
+`children`, bookmarks with a `url` and an `iconDataUrl`). `BookmarkStore.importTree` reads the
+bookmarks once, finds or makes each folder by name (any case) under its parent, skips addresses
+already there (`urlKey`) or not web addresses, and inserts the rest with their positions given
+(no renumbering per row); the vault writes their favicons and announces one `bookmarks` change.
+
 ## HTTP
 
 - Every request goes through `api/guard.ts` first. Tandem has no authentication and any web page
@@ -541,7 +547,11 @@ its requests need no CORS.
 - `background.ts` (service worker): the ✓ badge on bookmarked pages (looked up when a tab is
   activated or loads, and set at once when the popup saves: a ! if the save fails), the saves, and the address bar's `tb` keyword
   (`chrome.omnibox`: Tandem's search, its `<mark>`s as `<match>`).
-- `options.ts`: Tandem's address (`chrome.storage.sync`), checked when saved.
-- Tests: units for the client and the page helpers; `packages/web/e2e/extension.spec.ts` loads
+- `options.ts`: Tandem's address (`chrome.storage.sync`), checked when saved; and importing
+  Chrome's bookmarks (`import.ts`): the `bookmarks` permission is optional
+  (`chrome.permissions.request` on the click, not asked at install), `chrome.bookmarks.getTree`,
+  each favicon from `_favicon` (8 at a time; Chrome's generic one, what it gives for
+  `tandem.invalid`, left out), then one request.
+- Tests: units for the client, the page helpers and the import; `packages/web/e2e/extension.spec.ts` loads
   the built extension in Chromium (a persistent context, `channel: 'chromium'`) against the test
   server.

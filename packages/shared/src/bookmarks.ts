@@ -56,6 +56,35 @@ export interface PagePreview {
   description: string
 }
 
+/**
+ * A browser's bookmark or folder, as imported (the extension sends Chrome's tree): a folder has
+ * `children`, a bookmark a `url` (and its favicon, as a `data:` URL, when the browser has one).
+ */
+export interface BookmarkImportNode {
+  title: string
+  url?: string
+  iconDataUrl?: string
+  children?: BookmarkImportNode[]
+}
+
+/** What an import did: into which folder, what it added, what it left out. */
+export interface BookmarkImportResult {
+  /** The folder everything went into (`Chrome`, at the top). */
+  folderId: string
+  folders: number
+  bookmarks: number
+  /** Pages already bookmarked in Tandem (or twice in the import): kept as they were. */
+  duplicates: number
+  /** Not web addresses (`javascript:` bookmarklets, `chrome://` pages): left out. */
+  skipped: number
+}
+
+/** The folder an import from Chrome goes into, at the top; importing again merges into it. */
+export const BOOKMARK_IMPORT_FOLDER = 'Chrome'
+
+/** At most this many bookmarks and folders in one import. */
+export const BOOKMARK_IMPORT_MAX = 20_000
+
 /** Lengths kept (longer values are cut). */
 export const BOOKMARK_TITLE_MAX = 300
 export const BOOKMARK_DESCRIPTION_MAX = 1000

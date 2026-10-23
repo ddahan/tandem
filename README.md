@@ -167,7 +167,8 @@ To save pages to Tandem from Chrome (its button, or ⌥⇧D) and find them from 
 4. Pin it (the puzzle piece, then the pin). If Tandem isn't at `http://localhost:3864`, set
    its address in the extension's options.
 
-Tandem's **Docs › Browser Extension** shows the same steps, with your folder. Updating Tandem updates
+Its options also **import Chrome's bookmarks**, folders and icons included, into a "Chrome"
+folder (again: only the new ones). Tandem's **Docs › Browser Extension** shows the same steps, with your folder. Updating Tandem updates
 the extension (Chrome reads it again when it restarts). Chrome only for now.
 
 ## Agents

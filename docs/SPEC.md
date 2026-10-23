@@ -383,7 +383,16 @@ inside OneDrive so that it is backed up and synced.
   searches the bookmarks; ↵ opens one. Tandem not running at its address (options; default
   `http://localhost:3864`), or bookmarks off: the popup says so, and how to fix it (the
   extension can't start Tandem; the login item restarts it anyway). Chrome only for now.
-- Importing the browser's bookmarks, exporting them, and Safari may come later.
+- **Importing Chrome's bookmarks** (the extension's options, "Import Chrome's bookmarks"): Chrome
+  asks to let the extension read them (asked then, not when it's installed). The whole tree
+  (bookmarks bar, other bookmarks, mobile bookmarks, their folders, with Chrome's names; a top
+  folder without bookmarks left out) goes into a "Chrome" folder at the top of Tandem's
+  bookmarks, each bookmark with its favicon from Chrome (none when Chrome only has its generic
+  one: Tandem shows its own). In one change, announced once. Importing again merges: folders of
+  the same name (any case) are reused, pages already in Tandem (anywhere) are kept as they are,
+  and what isn't a web page (bookmarklets, `chrome://`) is left out; the options say how many
+  were imported, already there, left out. Chrome's bookmarks aren't changed. At most 20 000 at once.
+- Exporting bookmarks, and Safari, may come later.
 
 ## Interface
 
@@ -477,7 +486,8 @@ inside OneDrive so that it is backed up and synced.
     what agents can do, and their guide (`docs/agents.md`).
   - **Browser Extension**: setting up the Chrome extension (bookmarks on, Developer mode, Load
     unpacked with the installed app's extension folder, shown with a copy button to paste it in
-    Chrome's dialog with ⌘⇧G, pinning it, its address when Tandem isn't on 3864) and using it.
+    Chrome's dialog with ⌘⇧G, pinning it, its address when Tandem isn't on 3864) and using it
+    (importing Chrome's bookmarks too).
   - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.

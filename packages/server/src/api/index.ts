@@ -14,6 +14,8 @@ import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
 import {
   BOOKMARKS_OFF,
+  BOOKMARK_IMPORT_FOLDER,
+  BOOKMARK_IMPORT_MAX,
   BOOKMARK_DESCRIPTION_MAX,
   BOOKMARK_TITLE_MAX,
   BOOKMARK_URL_MAX,
@@ -23,8 +25,10 @@ import {
   DEFAULT_AGENT,
   EXTENSION_ORIGIN,
   FILTER_OPERATORS,
+  formatNumber,
   normalizeAuthor,
   webUrl,
+  type BookmarkImportNode,
   type ServerEvent,
 } from '@tandem/shared'
 import {
@@ -40,8 +44,9 @@ import {
   NotFoundError,
   ValidationError,
 } from '../vault/errors.ts'
+import type { ImportNode } from '../vault/bookmarks.ts'
 import type { Vault } from '../vault/vault.ts'
-import { ICON_TYPES } from '../vault/web-pages.ts'
+import { ICON_TYPES, type Favicon } from '../vault/web-pages.ts'
 
 export const AUTHOR_HEADER = 'x-tandem-author'
 
@@ -169,6 +174,32 @@ const bookmarkFields = {
   folder: z.string().max(1000).optional(),
   iconDataUrl: iconDataUrl.optional(),
 }
+// A browser's tree (the extension sends Chrome's): folders with children, bookmarks with a URL.
+const importNode: z.ZodType<BookmarkImportNode> = z.lazy(() =>
+  z.object({
+    title: z.string().max(BOOKMARK_TITLE_MAX * 2),
+    url: z.string().max(BOOKMARK_URL_MAX).optional(),
+    iconDataUrl: iconDataUrl.optional(),
+    children: z.array(importNode).optional(),
+  }),
+)
+const bookmarkImport = z.object({
+  folder: z.string().max(BOOKMARK_TITLE_MAX).optional(),
+  children: z.array(importNode),
+})
+
+/** The nodes of an import, with their favicons read (an unreadable one: none). */
+function importNodes(nodes: BookmarkImportNode[]): ImportNode<Favicon>[] {
+  return nodes.map(({ iconDataUrl: icon, children, ...node }) => ({
+    ...node,
+    ...(children ? { children: importNodes(children) } : {}),
+    ...(iconOf(icon) ? { extra: iconOf(icon)! } : {}),
+  }))
+}
+
+const countNodes = (nodes: BookmarkImportNode[]): number =>
+  nodes.reduce((sum, node) => sum + 1 + countNodes(node.children ?? []), 0)
+
 const bookmarkInput = z.object({
   kind: z.enum(['folder', 'bookmark']).optional(),
   ...bookmarkFields,
@@ -555,6 +586,14 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     .post('/bookmarks', zValidator('json', bookmarkInput), async (c) => {
       const { iconDataUrl: icon, ...input } = c.req.valid('json')
       return c.json(await vault.createBookmark(input, iconOf(icon)), 201)
+    })
+    .post('/bookmarks/import', zValidator('json', bookmarkImport), async (c) => {
+      const { folder, children } = c.req.valid('json')
+      if (countNodes(children) > BOOKMARK_IMPORT_MAX) {
+        throw new ValidationError(`At most ${formatNumber(BOOKMARK_IMPORT_MAX)} bookmarks at once`)
+      }
+      const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER
+      return c.json(await vault.importBookmarks(into, importNodes(children)))
     })
     .get('/bookmarks/lookup', zValidator('query', z.object({ url: z.string() })), async (c) =>
       c.json({ bookmark: await vault.findBookmark(c.req.valid('query').url) }),

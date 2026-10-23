@@ -30,6 +30,7 @@ import {
   webUrl,
   type Attachment,
   type Bookmark,
+  type BookmarkImportResult,
   type BookmarkRef,
   type BookmarkSearchResult,
   type PagePreview,
@@ -64,6 +65,7 @@ import {
   BookmarkStore,
   type BookmarkInput,
   type BookmarkPatch,
+  type ImportNode,
 } from './bookmarks.ts'
 import { DatabaseStore, type ColumnInput, type DatabasePatch } from './databases.ts'
 import { ConflictError, DuplicateBookmarkError, NotFoundError, ValidationError } from './errors.ts'
@@ -915,6 +917,23 @@ export class Vault {
       await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids))
       this.changed({ type: 'bookmarks' })
       return { deleted: ids.length, pages }
+    })
+  }
+
+  /**
+   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the folder `into` at
+   * the top, with their favicons: see `BookmarkStore.importTree`. One change, announced once.
+   */
+  async importBookmarks(into: string, tree: ImportNode<Favicon>[]): Promise<BookmarkImportResult> {
+    return this.lock.run(async () => {
+      const { result, created } = await this.bookmarks.importTree(into, tree)
+      for (const { id, extra } of created) {
+        if (extra.data.byteLength <= ICON_MAX_BYTES) {
+          await this.writeBookmarkIcon(id, extra.data, extra.extension)
+        }
+      }
+      this.changed({ type: 'bookmarks' })
+      return result
     })
   }
 
