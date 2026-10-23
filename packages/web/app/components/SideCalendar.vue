@@ -72,8 +72,8 @@ const weeks = computed(() => {
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // As in Docs › Shortcuts (utils/shortcuts.ts), in one line: the modifiers and one key for any
-// arrow (← → a day, ↑ ↓ a week). ⌥⌘ only in the installed app's window (in a browser tab, ⌥⌘←
-// ⌥⌘→ switch the browser's tabs), ⌃⌥ anywhere.
+// arrow (← → a day, ↑ ↓ a week), one shortcut: ⌥⌘ in the installed app's window, ⌃⌥ in a
+// browser tab (there, ⌥⌘← ⌥⌘→ switch the browser's tabs). Both work in the app.
 const appWindow = useAppWindow()
 const mac = isMac()
 const KEYS = computed(() =>
@@ -83,7 +83,7 @@ const KEYS = computed(() =>
       appKeys: [['meta', 'alt', 'arrows']],
       keys: [['ctrl', 'alt', 'arrows']],
     },
-  ].map((hint) => ({ label: hint.label, keys: keysHere(hint, appWindow.value, mac) })),
+  ].map((hint) => ({ label: hint.label, keys: keysHere(hint, appWindow.value, mac).slice(0, 1) })),
 )
 
 function marksOf(iso: string) {

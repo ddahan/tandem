@@ -338,8 +338,9 @@ inside OneDrive so that it is backed up and synced.
   "Today". Under each day: a dot when its note has something written, a ring when it has to-dos
   left (`- [ ]`), a check when all its to-dos are done. A click opens the day. Below it, on a
   day's note, the keys that browse days and weeks, in one line: "Navigate days and weeks",
-  the modifiers then one chip for any arrow (a four-way arrow: ← → a day, ↑ ↓ a week), for
-  those that work there (⌃⌥ anywhere, ⌥⌘ in the installed app only). It follows changes live.
+  the modifiers then one chip for any arrow (a four-way arrow: ← → a day, ↑ ↓ a week), one
+  shortcut: ⌥⌘ in the installed app's window, ⌃⌥ in a browser tab (no "or": ⌃⌥ also works
+  in the app). It follows changes live.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
 
