@@ -6,6 +6,7 @@ import {
   parseEventLine,
   timeAlone,
   typedTime,
+  type AgendaEvent,
   type AgendaItem,
   type AgendaUndoInput,
   type Repeat,
@@ -21,39 +22,62 @@ export interface EventFields {
   until: string | null
 }
 
+/** The days' events, shared by everything showing the same days (an agenda, its placed events). */
+interface AgendaCache {
+  items: Ref<AgendaItem[]>
+  loaded: Ref<boolean>
+  loading: Promise<void> | null
+}
+const caches = new Map<string, AgendaCache>()
+
+function cacheOf(key: string): AgendaCache {
+  let cache = caches.get(key)
+  if (!cache) {
+    cache = { items: ref([]), loaded: ref(false), loading: null }
+    caches.set(key, cache)
+  }
+  return cache
+}
+
 /** The events of the days from `range().from` to `range().to` (none while it's null). */
 export function useAgendaDays(range: () => { from: string; to: string } | null) {
   const api = useApi()
-  const items = ref<AgendaItem[]>([])
-  const loaded = ref(false)
-  let asked = 0
-
-  async function load() {
+  const key = computed(() => {
     const current = range()
-    if (!current) {
-      items.value = []
-      return
-    }
-    const ticket = ++asked
-    const list = await unwrap(api.agenda.$get({ query: current })).catch(() => null)
-    // A newer range (another day) asked for meanwhile wins.
-    if (!list || ticket !== asked) return
-    items.value = list
-    loaded.value = true
+    return current ? `${current.from}/${current.to}` : null
+  })
+  const empty = ref<AgendaItem[]>([])
+  const items = computed(() => (key.value ? cacheOf(key.value).items.value : empty.value))
+  const loaded = computed(() => (key.value ? cacheOf(key.value).loaded.value : false))
+
+  /** Reads the days again; asked by several views at once, once. */
+  function load(): Promise<void> {
+    const current = range()
+    if (!current || !key.value) return Promise.resolve()
+    const cache = cacheOf(key.value)
+    cache.loading ??= unwrap(api.agenda.$get({ query: current }))
+      .then((list) => {
+        cache.items.value = list
+        cache.loaded.value = true
+      })
+      .catch(() => {})
+      .finally(() => (cache.loading = null))
+    return cache.loading
   }
 
-  watch(
-    () => JSON.stringify(range()),
-    () => void load(),
-    { immediate: true },
-  )
+  watch(key, () => void load(), { immediate: true })
   useServerEvents((event) => {
     if (event.type === 'agenda' || event.type === 'resync') void load()
   })
 
   /** Shows a change at once, before the server's answer (which reloads the days). */
-  function patchItem(key: string, change: Partial<AgendaItem>) {
-    items.value = items.value.map((item) => (item.key === key ? { ...item, ...change } : item))
+  function patchItem(itemKey: string, change: Partial<AgendaItem>) {
+    if (!key.value) return
+    const cache = cacheOf(key.value)
+    const index = cache.items.value.findIndex((item) => item.key === itemKey)
+    const item = cache.items.value[index]
+    if (!item) return
+    cache.items.value = cache.items.value.toSpliced(index, 1, { ...item, ...change })
   }
 
   return { items, loaded, reload: load, patchItem }
@@ -73,29 +97,35 @@ export function useAgendaActions() {
     return scope ? { on: item.date, scope } : null
   }
 
-  async function create(fields: EventFields): Promise<boolean> {
+  /** A new event; null when refused. */
+  async function create(fields: EventFields): Promise<AgendaEvent | null> {
     try {
-      await unwrap(api.agenda.events.$post({ json: fields }))
-      return true
+      return await unwrap(api.agenda.events.$post({ json: fields }))
     } catch (error) {
       showError(error, 'Could not add the event')
-      return false
+      return null
     }
   }
 
-  /** Changes an event; false when it wasn't (cancelled, or refused). */
-  async function update(item: AgendaItem, patch: Partial<EventFields>): Promise<boolean> {
-    if (item.feedId) return false
+  /**
+   * Changes an event: the event that has the change (another one when a day of a repeating event
+   * was taken out of it, or its days from today on), or null when it wasn't (cancelled, refused).
+   */
+  async function update(
+    item: AgendaItem,
+    patch: Partial<EventFields>,
+  ): Promise<AgendaEvent | null> {
+    if (item.feedId) return null
     const where = await scopeOf(item, 'change')
-    if (!where) return false
+    if (!where) return null
     try {
-      await unwrap(
+      const { event } = await unwrap(
         api.agenda.events[':id'].$patch({ param: { id: item.id }, json: { ...patch, ...where } }),
       )
-      return true
+      return event
     } catch (error) {
       showError(error, 'Could not change the event')
-      return false
+      return null
     }
   }
 
@@ -138,11 +168,6 @@ export function useAgendaActions() {
   }
 
   return { create, update, remove, setChecked }
-}
-
-/** A request for a day's agenda block to start adding an event (`/event`, editor/agenda.ts). */
-export function useAgendaFocus() {
-  return useState<{ date: string } | null>('agenda:focus', () => null)
 }
 
 /**

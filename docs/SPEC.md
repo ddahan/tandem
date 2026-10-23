@@ -358,27 +358,38 @@ inside OneDrive so that it is backed up and synced.
   Google calendars, no reminders, no invitations), and shows calendar feeds' events read-only.
   No calendar view anywhere. Events are in Tandem's database, not in the Markdown; repeating
   ones are one rule, never one row per day (nothing exists for 2099).
-- **In a day's note**, an agenda block (` ```agenda ` with nothing inside: it shows its note's
-  day's events) lists them, one line each: a checkbox (checked, the line is struck through), the
-  time label in its calendar's color (Tandem's own: the app's primary color), the title. Labels:
-  `day` (all day), `14:00`, `13:30 → 14:30`. All-day events first, then by time. The block moves
-  like any block; one per day.
-- **A day without events shows nothing.** A day with events whose note has no block shows one at
-  its top, which is written into the file only with something the owner writes: a day with
-  events and nothing written has no file. Deleted while the day has events, the block comes back
-  the next time the day opens; the day's last event deleted, the block goes. Outside a daily
-  note (or daily notes off), the block shows nothing.
-- **Adding**: `/event` (daily notes only) puts the agenda where the cursor is and focuses its
-  last line, "Add event" (left without an event, the block goes again); on a day with events,
-  that line is always there. A time or two at the start, then the title: `14:00 Standup`,
-  `13:30-14:30 Lunch` (also `14h`, `14h30`, `9`, `-` or `→`); no time is all day. The typed time
-  becomes the label in front of the text once the title begins (or with Tab after it), so it isn't
-  written twice; Backspace at the start of the text puts it back to edit. Enter adds the event and
-  stays on the line. Other days: "New event…" in the palette
-  (a day, today or the one shown, and the same line), or an agent.
+- **An event's line**: a checkbox (checked, the line is struck through), the time label in its
+  calendar's color (Tandem's own: the app's primary color), the title. Labels: `day` (all day),
+  `14:00`, `13:30 → 14:30`.
+- **Typed anywhere in a day's note**, between any text: a time at the start of an empty line
+  (not in a list or a quote), then a space (`14h `, `14h30 `, `9:30 `: with `h` or a colon, so
+  that `3 apples` stays text), makes the line an event being typed; `/event` (daily notes only)
+  starts one with no time (all day). Then its title: the typed time becomes the label in front of
+  it once the title begins (`13:30 - 14:30` stays text until then), or with Tab after the time;
+  Backspace at the start of the text puts it back to edit. Enter saves it and goes on to a new
+  line at once; leaving it with a title saves it too. Escape, or leaving it without a title,
+  turns it back into the text typed. In the Markdown, the note has a block naming the event
+  (` ```event ` with `id: …`), moved like any block.
+- **The agenda block** (` ```agenda `, holding nothing) lists the day's other events: repeats,
+  calendar feeds', those added from the palette or by agents. All-day ones first, then by time.
+  A line's grip drags it into the note, to place it there. With nothing left to show, the block
+  shows nothing; one per day.
+- **A day without events shows nothing.** A day with events to list whose note has no agenda
+  block shows one at its top, which is written into the file only with something the owner
+  writes: a day with events and nothing written has no file (event blocks alone count as
+  nothing written). Deleted while it has events, the block comes back the next time the day
+  opens; the day's last event deleted, it goes. Outside a daily note (or daily notes off),
+  agenda and event blocks show nothing.
+- **Removing an event's block** (deleting the line, cutting it) only takes it out of the note:
+  the event goes back to the agenda block. Deleting the event is done from its details. An event
+  moved to another day leaves the note; a block naming an event that isn't on its day anymore
+  says so, with Remove.
+- **Other days**: "New event…" in the palette (a day, today or the one shown, and the same
+  one-line syntax), or an agent.
 - **Editing**: the title in place (Enter or leaving it saves, Escape puts it back). A click on
   the time label opens its details: all day, at, from–to; its day (to move it); repeat; Save,
-  Cancel, Delete. "Event deleted · Undo" for a few seconds.
+  Cancel, Delete. "Event deleted · Undo" for a few seconds (the event comes back to the agenda
+  block). A day of a repeating event changed alone keeps its place in the note.
 - **Repeats**: every day, every weekday (from its own day, even on a weekend), every week, every
   2 weeks, every month, every year; until a day, or for ever. Monthly on the 29th–31st and
   yearly on 29 February fall on the month's last day when theirs doesn't exist. A change or a

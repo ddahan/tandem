@@ -30,8 +30,8 @@ MCP server or a CLI, and every line remembers who wrote it.
 - **Trash** with restore and permanent delete.
 - **Daily notes** (optional): a note per day, `Calendar/2026-10-21.md`, opened from Today in the
   sidebar or a calendar showing which days have notes, to-dos left and events; agents write in
-  them too. Each day has an agenda: events typed in the note (`/event`, `14:00 Standup`), which
-  can repeat, plus read-only events from calendar feeds (`.ics` addresses).
+  them too. Each day has an agenda: events typed anywhere in the note (`14h Standup`), which can
+  repeat, plus read-only events from calendar feeds (`.ics` addresses).
 - **Bookmarks** (optional): links to websites in folders, in the sidebar right after the pages,
   shown in notes as cards (`/bookmark`), found by `⌘⇧F`; saved from Chrome with Tandem's
   extension (see below), which also finds them from the address bar (`tb`, then Tab).

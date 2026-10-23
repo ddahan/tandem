@@ -7,19 +7,36 @@
 import type { ChoiceColor } from './databases.ts'
 import { addDays, dateOf, isIsoDate } from './calendar.ts'
 
-/** The block that shows a day's agenda in its note. */
+/** The block that shows a day's agenda in its note: the day's events not placed in it. */
 export const AGENDA_BLOCK = '```agenda\n```'
 
 const AGENDA_FENCE = /^```agenda[ \t]*\n(?:[^\n]*\n)*?```[ \t]*$/gm
+const EVENT_FENCE = /^```event[ \t]*\n[ \t]*id:[ \t]*([^\n]*?)[ \t]*\n```[ \t]*$/gm
 
 /** Whether a note's Markdown has an agenda block. */
 export function hasAgendaBlock(markdown: string): boolean {
   return new RegExp(AGENDA_FENCE.source, 'm').test(markdown)
 }
 
-/** The Markdown without its agenda blocks: a day's note holding only one is empty. */
+/**
+ * An event placed in its day's note, where it was typed: a block naming it (`checkRef`: Tandem's
+ * event id, or a feed's id and the event's UID). Its details are in Tandem.
+ */
+export function eventBlock(ref: string): string {
+  return `\`\`\`event\nid: ${ref}\n\`\`\``
+}
+
+/** The events a note's Markdown places (their refs, in order). */
+export function eventRefsIn(markdown: string): string[] {
+  return [...markdown.matchAll(EVENT_FENCE)].map((match) => match[1]!).filter(Boolean)
+}
+
+/**
+ * The Markdown without its agenda and event blocks: a day's note holding only those is empty
+ * (its events are in the agenda).
+ */
 export function withoutAgenda(markdown: string): string {
-  return markdown.replace(AGENDA_FENCE, '')
+  return markdown.replace(AGENDA_FENCE, '').replace(EVENT_FENCE, '')
 }
 
 export const REPEATS = ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly', 'yearly'] as const

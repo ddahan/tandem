@@ -11,6 +11,7 @@ import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
 import { Marked } from 'marked'
 import { Agenda } from './agenda'
+import { EventBlock } from './event'
 import { BlockKeys } from './block-keys'
 import { Bookmark } from './bookmark'
 import { Callout } from './callout'
@@ -65,6 +66,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     Database,
     Bookmark,
     Agenda.configure({ date: options.date ?? (() => null) }),
+    EventBlock.configure({ date: options.date ?? (() => null) }),
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,

@@ -54,9 +54,11 @@ are still there for agents.
 
 ## Agenda
 
-Days have events, kept in Tandem (not in the Markdown): the app shows them in the day's note,
-where an ` ```agenda ` block holding nothing marks their place (it shows its note's day's
-events; don't write events inside it, and don't add one: the app does).
+Days have events, kept in Tandem (not in the Markdown). In the day's note, an event the owner
+typed is a block naming it (` ```event ` with `id: …`) where it was typed; the others show in
+an ` ```agenda ` block holding nothing, which the app adds (don't write in it). To place an
+event in its day's note, append its block (`id:` its id); removing the block only takes it out
+of the note.
 Events have a title, a day, a start and an end (`HH:MM`, 24 h; no start: all day), and may
 repeat (`daily`, `weekdays`, `weekly`, `biweekly`, `monthly`, `yearly`, until a day). Events from
 the owner's calendar feeds are read-only.
@@ -88,7 +90,8 @@ GitHub-flavored Markdown, plus:
 | Diagram             | a ` ```mermaid ` code block                                                             |
 | Database            | a ` ```database ` block with `id: …` (from `create_database`; see Databases)            |
 | Bookmark card       | a ` ```bookmark ` block with `id: …` (from `add_bookmark`; see Bookmarks)               |
-| Agenda              | an empty ` ```agenda ` block, in a daily note (its day's events; see Agenda)            |
+| Event               | a ` ```event ` block with `id: …`, in a daily note (an event placed; see Agenda)        |
+| Agenda              | an empty ` ```agenda ` block, in a daily note (the day's other events; see Agenda)      |
 | Image with a width  | `<img src="Note.assets/a.png" alt="…" width="320">`                                     |
 | Attachment          | `[report.pdf](Note.assets/report.pdf)` (shown as a file chip)                           |
 

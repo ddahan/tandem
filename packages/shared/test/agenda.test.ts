@@ -4,7 +4,9 @@ import {
   AGENDA_BLOCK,
   compareItems,
   daysBetween,
+  eventBlock,
   eventDays,
+  eventRefsIn,
   eventProblem,
   hasAgendaBlock,
   parseEventLine,
@@ -187,5 +189,12 @@ describe('the agenda block', () => {
     expect(hasAgendaBlock('```agendas\n```')).toBe(false)
     expect(withoutAgenda(note).trim()).toBe('Notes.')
     expect(withoutAgenda(`${AGENDA_BLOCK}\n`).trim()).toBe('')
+  })
+
+  it('places events with blocks naming them, which count as nothing written', () => {
+    const note = `${eventBlock('Kx3fq9P2mZ0a')}\n\nNotes.\n\n${eventBlock('F1/uid@google.com')}\n`
+    expect(eventRefsIn(note)).toEqual(['Kx3fq9P2mZ0a', 'F1/uid@google.com'])
+    expect(withoutAgenda(note).trim()).toBe('Notes.')
+    expect(eventRefsIn('```event\nno id\n```')).toEqual([])
   })
 })

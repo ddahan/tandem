@@ -143,6 +143,21 @@ describe('Markdown round-trip', () => {
     expect(roundTrip('```agenda\n- 9:00 Standup\n```')).toBe('```agenda\n```')
   })
 
+  it('keeps events as their block, apart from code blocks', () => {
+    const markdown =
+      'Morning.\n\n```event\nid: Kx3fq9P2mZ0a\n```\n\nAfter.\n\n```event\nid: F1/uid@google.com\n```'
+    expect(roundTrip(markdown)).toBe(markdown)
+    expect(editor!.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'event',
+      'paragraph',
+      'event',
+    ])
+    expect(editor!.getJSON().content?.[3]?.attrs).toMatchObject({ ref: 'F1/uid@google.com' })
+    // An event block without an id is a code block.
+    expect(roundTrip('```event\nno id\n```')).toBe('```event\nno id\n```')
+  })
+
   it('keeps plain quotes apart from callouts', () => {
     expect(roundTrip('> just a quote')).toBe('> just a quote')
     expect(editor!.getJSON().content?.[0]?.type).toBe('blockquote')

@@ -1,12 +1,13 @@
 // A day's agenda in its daily note: a block holding no data, which shows that day's events (kept
-// in Tandem, see @tandem/shared's agenda.ts). In Markdown, an empty fenced block:
+// in Tandem, see @tandem/shared's agenda.ts) not placed in the note (editor/event.ts). In
+// Markdown, an empty fenced block:
 //
 //   ```agenda
 //   ```
 //
 // One unit in the text (an atom) that can be dragged elsewhere in the note; its view is
 // `AgendaView.vue`, added by the editor component. The day comes from the note (`date`): the
-// block shows nothing outside a daily note, or on a day without events.
+// block shows nothing outside a daily note, or with no event left to show.
 import { Node, mergeAttributes } from '@tiptap/core'
 import { AGENDA_BLOCK } from '@tandem/shared'
 

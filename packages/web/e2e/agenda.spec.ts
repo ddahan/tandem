@@ -3,7 +3,7 @@
 // with events but nothing written leaves no file; the side calendar marks days with events.
 import { expect, test, type Page } from '@playwright/test'
 import { addDays, isoDate } from '@tandem/shared'
-import { api } from './helpers'
+import { api, noteContent, waitSaved } from './helpers'
 
 interface Node {
   id: string
@@ -38,7 +38,10 @@ test.afterEach(async ({ request }) => {
   if (calendar) await api(request, 'DELETE', `/nodes/${calendar.id}`)
 })
 
-test('adds, checks, changes and deletes events in a day’s agenda', async ({ page, request }) => {
+test('types events anywhere in a day’s note, checks, changes and deletes them', async ({
+  page,
+  request,
+}) => {
   await api(request, 'PATCH', '/settings', { daily: true })
   // A day ahead: "all from today" keeps no past for it.
   const day = addDays(isoDate(), 2)
@@ -47,73 +50,91 @@ test('adds, checks, changes and deletes events in a day’s agenda', async ({ pa
   // No events: nothing shows.
   await expect(page.getByTestId('agenda-event')).toHaveCount(0)
 
-  // /event: the agenda, its add line focused; typed events show their label live.
+  // A line of text, then a time and a space at the start of a line: an event being typed, the
+  // time becoming its label once the title begins.
   await page.locator('.ProseMirror').click()
+  await page.keyboard.type('Morning notes')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('13:30 ')
+  const draft = page.getByTestId('event-draft')
+  await expect(draft).toBeFocused()
+  await draft.pressSequentially('- 14:30 Lunch with Paul')
+  await expect(page.getByTestId('event-draft-time')).toHaveText('13:30 → 14:30')
+  await expect(draft).toHaveValue('Lunch with Paul')
+  // Enter saves it and goes on to a new line, for text or the next event.
+  await draft.press('Enter')
+  await page.keyboard.type('Then the afternoon')
+  await page.keyboard.press('Enter')
+  // `/event` starts one with no time: all day. A time alone then Tab makes it the label, and
+  // Backspace at the start puts it back.
   await page.keyboard.type('/even')
   await page.getByRole('option', { name: /Event/ }).click()
-  const add = page.getByTestId('agenda-add')
-  await expect(add).toBeFocused()
-  // The time, typed, becomes the label: the text keeps only the title.
-  await add.fill('13:30-14:30 Lunch with Paul')
-  await expect(page.getByTestId('agenda-draft-time')).toHaveText('13:30 → 14:30')
-  await expect(add).toHaveValue('Lunch with Paul')
-  await add.press('Enter')
-  // A time alone, then Tab; Backspace at the start puts it back to edit.
-  await add.pressSequentially('9h')
-  await add.press('Tab')
-  await expect(page.getByTestId('agenda-draft-time')).toHaveText('09:00')
-  await expect(add).toHaveValue('')
-  await add.press('Backspace')
-  await expect(add).toHaveValue('09:00')
-  await add.fill('')
-  await add.fill('Pay rent')
-  await add.press('Enter')
-  const events = page.getByTestId('agenda-event')
-  // All day first.
-  await expect.poll(() => lines(page)).toEqual(['day Pay rent', '13:30 → 14:30 Lunch with Paul'])
+  await expect(draft).toBeFocused()
+  await draft.pressSequentially('9h')
+  await draft.press('Tab')
+  await expect(page.getByTestId('event-draft-time')).toHaveText('09:00')
+  await draft.press('Backspace')
+  await expect(draft).toHaveValue('09:00')
+  await draft.fill('')
+  await draft.pressSequentially('Pay rent')
+  await draft.press('Enter')
+  // Where they were typed, between the text.
+  await expect.poll(() => lines(page)).toEqual(['13:30 → 14:30 Lunch with Paul', 'day Pay rent'])
+  await expect(page.locator('.ProseMirror')).toContainText('Then the afternoon')
   await expect(page.locator(`[data-date="${day}"] [data-testid="calendar-events"]`)).toBeVisible()
+  const events = page.getByTestId('agenda-event')
 
-  // Checked off: struck through, and kept.
-  await events.first().getByRole('checkbox').click()
-  await expect(events.first().getByTestId('agenda-title')).toHaveClass(/line-through/)
-
-  // Renamed in place.
-  const title = events.nth(1).getByTestId('agenda-title')
+  // Checked off: struck through. Renamed in place.
+  await events.nth(1).getByRole('checkbox').click()
+  await expect(events.nth(1).getByTestId('agenda-title')).toHaveClass(/line-through/)
+  const title = events.first().getByTestId('agenda-title')
   await title.fill('Lunch with Marie')
   await title.press('Enter')
   await expect
     .poll(async () => (await api<Event[]>(request, 'GET', '/agenda/events')).map((e) => e.title))
     .toContain('Lunch with Marie')
 
-  // A repeating event, changed on this day only.
+  // An event added elsewhere (a repeating one): in the agenda block, at the top.
   await api(request, 'POST', '/agenda/events', {
     title: 'Standup',
     date: day,
     start: '09:00',
     repeat: 'daily',
   })
-  await expect(events).toHaveCount(3)
-  await events.nth(1).getByTestId('agenda-time').click()
+  const agenda = page.getByTestId('agenda')
+  await expect(agenda.getByTestId('agenda-event')).toHaveCount(1)
+  // Changed on this day only: still in the agenda.
+  await agenda.getByTestId('agenda-time').click()
   const form = page.getByTestId('agenda-event-form')
   await form.getByRole('button', { name: 'All day' }).click()
   await form.getByRole('button', { name: 'Save' }).click()
   await page.getByTestId('scope-one').click()
-  await expect
-    .poll(() => lines(page))
-    .toEqual(['day Pay rent', 'day Standup', '13:30 → 14:30 Lunch with Marie'])
+  await expect(agenda).toContainText('day')
   const next = await api<{ title: string; start: string | null }[]>(
     request,
     'GET',
     `/agenda?from=${addDays(day, 1)}`,
   )
   expect(next).toMatchObject([{ title: 'Standup', start: '09:00' }])
+  // Dragged into the note: placed there, the agenda empty.
+  await agenda.hover()
+  await agenda
+    .getByTestId('agenda-grip')
+    .dragTo(page.locator('.ProseMirror p', { hasText: 'Then the afternoon' }))
+  await expect(agenda.getByTestId('agenda-event')).toHaveCount(0)
+  await expect(page.getByTestId('event-block')).toHaveCount(3)
 
-  // Deleted, then brought back.
+  // Deleted from its details: its line goes; Undo brings the event back (in the agenda).
   await events.first().getByTestId('agenda-time').click()
   await form.getByRole('button', { name: 'Delete' }).click()
-  await expect(events).toHaveCount(2)
+  await expect(page.getByTestId('event-block')).toHaveCount(2)
   await page.getByRole('button', { name: 'Undo' }).click()
-  await expect(events).toHaveCount(3)
+  await expect(agenda.getByTestId('agenda-event')).toHaveCount(1)
+
+  // The note names its placed events.
+  await waitSaved(page)
+  const note = await api<Node>(request, 'GET', `/resolve?ref=Calendar/${day}`)
+  expect((await noteContent(request, note.id)).match(/```event\nid: /g)).toHaveLength(2)
 })
 
 test('shows a day’s events without writing its file', async ({ page, request }) => {
