@@ -134,7 +134,8 @@ test('adds an event from the palette', async ({ page, request }) => {
   await page.getByRole('option', { name: /New event/ }).click()
   await page.getByTestId('new-event').fill('8h Run')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
-  await expect(page.getByText(/Added to Today/)).toBeVisible()
+  // The toast's title (its live region repeats it for screen readers).
+  await expect(page.locator('[data-slot="title"]', { hasText: 'Added to Today' })).toBeVisible()
   expect(await api<Event[]>(request, 'GET', '/agenda/events')).toMatchObject([
     { title: 'Run', start: '08:00' },
   ])

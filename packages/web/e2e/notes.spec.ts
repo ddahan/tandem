@@ -37,6 +37,20 @@ test('creates a page, edits it with Markdown shortcuts, and saves it in the back
     .toBe('## Plan\n\nSome **bold** text\n\n- [ ] a task\n')
 })
 
+test('keeps the / menu open while an empty note is first saved', async ({ page, request }) => {
+  // Its first save makes the page non-empty in the tree, which redraws the editor: that used to
+  // register the drag handle's plugin again, which closed the menu.
+  const note = await createNote(request, 'Empty for slash', '')
+  await openNote(page, note.id)
+  await page.locator('.ProseMirror').click()
+  await page.keyboard.type('/')
+  const menu = page.getByRole('option', { name: 'Heading 1' })
+  await expect(menu).toBeVisible()
+  await waitSaved(page)
+  await page.waitForTimeout(800)
+  await expect(menu).toBeVisible()
+})
+
 test('links notes with [[ and follows the link', async ({ page, request }) => {
   const target = await createNote(request, 'Link target', 'The target.')
   const source = await createNote(request, 'Link source', 'Start.')

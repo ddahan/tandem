@@ -894,6 +894,17 @@ const wholeBlocksOnly = {
   },
 }
 
+// Objects given to the drag handle and the table toolbar are made once: they watch them deeply,
+// and a new one (an object written in the template, made again at each redraw) registers their
+// plugin again, which resets the editor's plugins and closed the `/` menu as it opened.
+const handleNested = { edgeDetection: 'none' as const, rules: [wholeBlocksOnly] }
+const handleUi = { root: 'transition-none' }
+const tableToolbarOptions = { placement: 'top-start' as const }
+// oxlint-disable-next-line typescript/no-explicit-any -- as written in the template before
+function showTableToolbar({ editor: e, view }: any) {
+  return e.isActive('table') && view.hasFocus()
+}
+
 const handleOptions = {
   offset: ({
     rects,
@@ -1138,8 +1149,8 @@ defineExpose({
         :items="tableItems"
         layout="bubble"
         plugin-key="tableToolbar"
-        :should-show="({ editor: e, view }: any) => e.isActive('table') && view.hasFocus()"
-        :options="{ placement: 'top-start' }"
+        :should-show="showTableToolbar"
+        :options="tableToolbarOptions"
       />
 
       <UEditorSuggestionMenu :editor="editor" :items="slashItems" />
@@ -1159,9 +1170,9 @@ defineExpose({
            pointer. -->
       <UEditorDragHandle
         :editor="editor"
-        :nested="{ edgeDetection: 'none', rules: [wholeBlocksOnly] }"
+        :nested="handleNested"
         :options="handleOptions"
-        :ui="{ root: 'transition-none' }"
+        :ui="handleUi"
         @hover="onHandleHover"
       />
     </UEditor>
