@@ -434,9 +434,12 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
 
   const database = z.string().describe('Database id (from list_databases)')
   const values = z
-    .record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .record(
+      z.string(),
+      z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
+    )
     .describe(
-      'Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name, null to empty a cell.',
+      'Values by column name. Dates as 2026-10-17 (or 17/10/2026), checkboxes true/false, choices by name (multiselect: a list of names), null to empty a cell.',
     )
 
   server.registerTool(
@@ -497,12 +500,15 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
             z.object({
               name: z.string(),
               type: z.enum(COLUMN_TYPES),
-              choices: z.array(z.string()).optional().describe('For select columns'),
+              choices: z
+                .array(z.string())
+                .optional()
+                .describe('For select and multiselect columns'),
               allowEmpty: z
                 .boolean()
                 .optional()
                 .describe(
-                  'Select columns: false to require a value (new rows get the first choice). Default true.',
+                  'Choice columns: false to require a value (new rows get the first choice). Default true.',
                 ),
             }),
           )

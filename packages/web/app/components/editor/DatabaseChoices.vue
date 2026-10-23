@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// The choices of a `select` column, edited in a modal: one line per choice, with its color (none
-// by default), its name, and buttons to move or remove it; whether a value is required. Nothing
-// is saved before "Save". A renamed choice keeps its color: colors go with the line, not the name.
+// The choices of a choice column (one or several per cell), edited in a modal: one line per
+// choice, with its color (none by default), its name, and buttons to move or remove it; whether
+// a value is required. Nothing is saved before "Save". A renamed choice keeps its color: colors
+// go with the line, not the name.
 import { CHOICE_COLORS, type ChoiceColor, type DatabaseColumn } from '@tandem/shared'
 import { CHOICE_COLOR_STYLES, choiceTagClass } from '~/utils/choice-colors'
 

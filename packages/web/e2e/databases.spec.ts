@@ -6,7 +6,7 @@ import { api, createNote, noteContent, openNote, waitSaved } from './helpers'
 
 interface Database {
   id: string
-  columns: { id: string; name: string; type: string; width?: number }[]
+  columns: { id: string; name: string; type: string; width?: number; options?: string[] }[]
   sort: { column: string; direction: string } | null
   filters: unknown[]
   rows: { id: string; cells: Record<string, unknown> }[]
@@ -315,6 +315,54 @@ test('text cells take several lines: Shift+Enter starts one, Enter saves', async
       return latest.rows[0]!.cells[database.columns[0]!.id]
     })
     .toBe('Call the bank\nbefore noon')
+})
+
+test('multiple choices: picked in a menu, saved when it closes; a new one is typed in it', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Tags', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      {
+        name: 'Tags',
+        type: 'multiselect',
+        options: ['Design', 'Backend'],
+        colors: { Design: 'purple' },
+      },
+    ],
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  // The menu's trigger is a button (the column's heading too, in the header).
+  const tags = block.locator('tbody').getByRole('button', { name: 'Tags' })
+  await expect(tags).toHaveText('—')
+
+  await tags.click()
+  await page.getByRole('option', { name: 'Backend' }).click()
+  await page.getByRole('option', { name: 'Design' }).click()
+  await page.getByPlaceholder('Search or add a choice…').fill('Urgent')
+  await page.getByRole('option', { name: 'Create "Urgent"' }).click()
+  // The search is cleared: every choice shows again, the new one picked.
+  await expect(page.getByRole('option')).toHaveText(['Design', 'Backend', 'Urgent'])
+  await page.keyboard.press('Escape')
+
+  // In the column's order, the new choice added to it.
+  await expect(tags).toHaveText('DesignBackendUrgent')
+  await expect(tags.locator('span.bg-purple-100')).toHaveText('Design')
+  await expect
+    .poll(async () => {
+      const saved = await api<Database>(request, 'GET', `/databases/${database.id}`)
+      return [saved.columns[1]!.options, saved.rows[0]!.cells[saved.columns[1]!.id]]
+    })
+    .toEqual([
+      ['Design', 'Backend', 'Urgent'],
+      ['Design', 'Backend', 'Urgent'],
+    ])
 })
 
 test('money columns show euros, with cents on every row once one amount has some', async ({

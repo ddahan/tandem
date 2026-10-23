@@ -11,6 +11,7 @@ import {
   cellText,
   convertCell,
   defaultCells,
+  hasChoices,
   requiresValue,
   toCellValue,
   type CellValue,
@@ -63,6 +64,7 @@ const TYPE_NAMES: Record<ColumnType, string> = {
   date: 'a date',
   checkbox: 'yes or no',
   select: 'a choice',
+  multiselect: 'choices',
 }
 
 type DatabaseRecord = typeof databases.$inferSelect
@@ -387,13 +389,20 @@ export class DatabaseStore {
     const previous = new Map(before.map((column) => [column.id, column]))
     const turning = input.filter((column) => {
       const old = column.id ? previous.get(column.id) : undefined
-      return column.type === 'select' && !column.options?.length && old && old.type !== 'select'
+      return hasChoices(column) && !column.options?.length && old && !hasChoices(old)
     })
     if (!turning.length) return input
     const database = await this.get(id)
     return input.map((column) =>
       turning.includes(column)
-        ? { ...column, options: distinctTexts(database, previous.get(column.id!)!) }
+        ? {
+            ...column,
+            options: distinctTexts(
+              database,
+              previous.get(column.id!)!,
+              column.type === 'multiselect',
+            ),
+          }
         : column,
     )
   }
@@ -468,7 +477,7 @@ function checkColumns(input: ColumnInput[], before: DatabaseColumn[]): DatabaseC
         Math.min(COLUMN_WIDTH.max, Math.max(COLUMN_WIDTH.min, column.width)),
       )
     }
-    if (column.type === 'select') {
+    if (hasChoices(column)) {
       const options = [
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean)),
       ]
@@ -521,7 +530,7 @@ function checkCells(
     const cell = toCellValue(value, column)
     if (cell === undefined) {
       throw new ValidationError(
-        column.type === 'select'
+        hasChoices(column)
           ? `${column.name}: “${String(value)}” is not one of ${column.options?.join(', ') || 'its choices (none yet)'}`
           : `${column.name}: “${String(value)}” is not ${TYPE_NAMES[column.type]}`,
       )
@@ -535,13 +544,18 @@ function checkCells(
   return next
 }
 
-/** The text of every value of a column (choices for a column becoming a `select`). */
-function distinctTexts(database: Database, column: DatabaseColumn): string[] {
+/**
+ * The text of every value of a column (choices for a column becoming a choice column); `split`:
+ * texts separated by commas are several (a column becoming a `multiselect`).
+ */
+function distinctTexts(database: Database, column: DatabaseColumn, split: boolean): string[] {
   const values = new Set<string>()
   for (const row of database.rows) {
-    const text = cellText(row.cells[column.id], column).trim()
-    if (text) values.add(text)
+    const text = cellText(row.cells[column.id], column)
+    for (const part of split ? text.split(',') : [text]) {
+      if (part.trim()) values.add(part.trim())
+    }
     if (values.size >= MAX_OPTIONS) break
   }
-  return [...values]
+  return [...values].slice(0, MAX_OPTIONS)
 }

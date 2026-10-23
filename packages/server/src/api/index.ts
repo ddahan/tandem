@@ -88,7 +88,13 @@ const settingsPatch = z
   })
   .partial()
 
-const cellValue = z.union([z.string().max(10_000), z.number(), z.boolean(), z.null()])
+const cellValue = z.union([
+  z.string().max(10_000),
+  z.number(),
+  z.boolean(),
+  z.array(z.string().max(80)).max(100),
+  z.null(),
+])
 const cells = z.record(z.string(), cellValue)
 const columnInput = z.object({
   id: z.string().optional(),

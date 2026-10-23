@@ -222,6 +222,47 @@ describe('databases', () => {
     expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
   })
 
+  it('keeps several choices per cell, and the choices when a column changes to it', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      columns: [
+        { name: 'Genre', type: 'select', options: ['Sci-fi', 'Classic'] },
+        { name: 'Notes', type: 'text' },
+      ],
+    })
+    const [genre, notes] = database.columns
+    const rowId = database.rows[0]!.id
+    database = await vault.updateDatabaseRow(database.id, rowId, {
+      [genre!.id]: 'Classic',
+      [notes!.id]: 'long, slow',
+    })
+
+    // One choice to several: the choices stay, the value becomes a list.
+    database = await vault.updateDatabase(database.id, {
+      columns: [
+        { ...genre!, type: 'multiselect' },
+        { ...notes!, type: 'multiselect' },
+      ],
+    })
+    expect(database.columns[0]!.options).toEqual(['Sci-fi', 'Classic'])
+    // Text to several: its values, separated by commas, are the choices.
+    expect(database.columns[1]!.options).toEqual(['long', 'slow'])
+    expect(database.rows[0]!.cells).toEqual({
+      [genre!.id]: ['Classic'],
+      [notes!.id]: ['long', 'slow'],
+    })
+
+    database = await vault.updateDatabaseRow(database.id, rowId, {
+      [genre!.id]: ['classic', 'sci-fi'],
+    })
+    expect(database.rows[0]!.cells[genre!.id]).toEqual(['Sci-fi', 'Classic'])
+    await expect(
+      vault.updateDatabaseRow(database.id, rowId, { [genre!.id]: ['Western'] }),
+    ).rejects.toThrow('is not one of Sci-fi, Classic')
+    database = await vault.updateDatabaseRow(database.id, rowId, { [genre!.id]: [] })
+    expect(database.rows[0]!.cells[genre!.id]).toBeUndefined()
+  })
+
   it('keeps amounts in euros to the cent', async () => {
     const { vault, page } = await setup()
     let database = await vault.createDatabase(page.id, {

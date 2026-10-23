@@ -5,6 +5,7 @@
 import {
   databaseChanges,
   isEmptyRestore,
+  type CellValue,
   type Database,
   type DatabaseColumn,
   type DatabaseFilter,
@@ -116,7 +117,7 @@ export function useDatabase(id: Ref<string>) {
         unwrap(api.databases[':id'].rows.$post({ param: param(), json: { after: after ?? null } })),
       'Add a row',
     )
-  const setCell = (rowId: string, columnId: string, value: string | number | boolean | null) =>
+  const setCell = (rowId: string, columnId: string, value: CellValue) =>
     change(
       () =>
         unwrap(

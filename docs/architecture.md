@@ -206,9 +206,10 @@ one exception: bookmarks off, the server answers the browser extension's bookmar
 `DatabaseStore` keeps databases in SQLite; the vault runs it under its lock and announces each
 change (`database` event). Every change returns the whole database (rows included). Values
 are checked with `toCellValue` (`@tandem/shared`'s `databases.ts`); a column changing type
-converts its values (`convertCell`), and one becoming a `select` takes its values as choices.
+converts its values (`convertCell`), and one becoming a choice column (`select`, `multiselect`: `hasChoices`) takes its values as
+choices. A `multiselect` cell is a list of choices, in the column's order.
 Amounts (`money`) are numbers; `withCents` says whether a column shows cents (any amount
-has some), for the table and the CLI alike. A `select` column's `colors` map choices to one of `CHOICE_COLORS`, by name (as cells hold
+has some), for the table and the CLI alike. A choice column's `colors` map choices to one of `CHOICE_COLORS`, by name (as cells hold
 them); colors of choices no longer there are dropped.
 The view (filter, then sort: `viewRows`) is applied by readers, in the same shared code: the
 table, the agents' tools and the CLI show the same rows. Column ids stay when columns are
@@ -338,7 +339,9 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   (its own Markdown tokenizer, before code blocks); `components/editor/DatabaseView.vue` draws
   it (title, sort and filter controls, the table with a menu per column), with
   `DatabaseCell.vue` (native controls for text, numbers and checkboxes, Nuxt UI's `USelect`
-  for choices, tagged with their colors: `utils/choice-colors.ts`; a draft while edited: the table reloads with every change; text cells are
+  for choices, tagged with their colors: `utils/choice-colors.ts`; `USelectMenu` with `multiple`
+  and `create-item` for multiple choices, kept locally while open and saved when it closes, a
+  new choice added to the column through `addChoice`; a draft while edited: the table reloads with every change; text cells are
   textareas sized by a hidden copy of their text in the same grid cell; dates:
   `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
   locale `en-GB` for day-first dates and English words), `DatabaseFilters.vue` and

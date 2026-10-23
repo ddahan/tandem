@@ -17,6 +17,8 @@ const props = defineProps<{
   readonly: boolean
   /** Saves a value; false when it was refused (the cell shows the saved one again). */
   save: (value: CellValue) => Promise<boolean>
+  /** Multiple choices: adds a choice to the column (typed in the menu's search); false: refused. */
+  addChoice?: (name: string) => Promise<boolean>
 }>()
 
 // Numbers and amounts are French (dates have their own field, DatabaseDate).
@@ -81,6 +83,59 @@ function tagOf(value: unknown) {
   return choiceTagClass(typeof value === 'string' ? props.column.colors?.[value] : undefined)
 }
 
+// Multiple choices: picked in a menu that stays open, saved once when it closes (one step to
+// undo); its search adds a choice that isn't one yet.
+const picked = ref<string[]>([])
+const menuOpen = ref(false)
+const search = ref('')
+const savedChoices = computed(() => (Array.isArray(props.value) ? props.value : []))
+watch(
+  savedChoices,
+  (value) => {
+    if (!menuOpen.value) picked.value = [...value]
+  },
+  { immediate: true },
+)
+const multiChoices = computed(() => {
+  const options = props.column.options ?? []
+  // Values that are no longer choices (renamed or removed): shown as they are.
+  return [...options, ...picked.value.filter((choice) => !options.includes(choice))]
+})
+
+function onMenu(open: boolean) {
+  menuOpen.value = open
+  if (open) return
+  const options = props.column.options ?? []
+  // In the column's order, as the server keeps them.
+  const value = [
+    ...options.filter((option) => picked.value.includes(option)),
+    ...picked.value.filter((choice) => !options.includes(choice)),
+  ]
+  picked.value = value
+  if (JSON.stringify(value) === JSON.stringify(savedChoices.value)) return
+  void props.save(value.length ? value : null).then((saved) => {
+    if (!saved) picked.value = [...savedChoices.value]
+  })
+}
+
+async function createChoice(name: string) {
+  const choice = name.trim()
+  if (!choice || !props.addChoice) return
+  search.value = ''
+  const existing = props.column.options?.find((o) => o.toLowerCase() === choice.toLowerCase())
+  if (existing || (await props.addChoice(choice))) {
+    const added = existing ?? choice
+    if (!picked.value.includes(added)) picked.value = [...picked.value, added]
+  }
+}
+
+/** A tag for a choice among several: its color, or a plain outline (so that they stand apart). */
+function multiTagOf(value: string) {
+  return props.column.colors?.[value]
+    ? tagOf(value)
+    : 'rounded px-1.5 ring ring-inset ring-default text-default'
+}
+
 const label = computed(() => props.column.name)
 </script>
 
@@ -114,6 +169,38 @@ const label = computed(() => props.column.name)
       <span :class="tagOf(item.value)">{{ item.label }}</span>
     </template>
   </USelect>
+  <USelectMenu
+    v-else-if="column.type === 'multiselect'"
+    v-model="picked"
+    v-model:search-term="search"
+    :items="multiChoices"
+    multiple
+    :create-item="Boolean(addChoice) && !readonly"
+    :search-input="{ placeholder: addChoice ? 'Search or add a choice…' : 'Search…' }"
+    variant="none"
+    size="sm"
+    class="database-select database-multiselect w-full"
+    :disabled="readonly"
+    :aria-label="label"
+    @update:open="onMenu"
+    @create="createChoice"
+  >
+    <template #default>
+      <span v-if="picked.length" class="flex min-w-0 flex-wrap gap-1 py-0.5">
+        <span
+          v-for="choice in picked"
+          :key="choice"
+          class="max-w-full truncate"
+          :class="multiTagOf(choice)"
+          >{{ choice }}</span
+        >
+      </span>
+      <span v-else class="truncate text-dimmed">—</span>
+    </template>
+    <template #item-label="{ item }">
+      <span :class="multiTagOf(String(item))">{{ item }}</span>
+    </template>
+  </USelectMenu>
   <DatabaseDate
     v-else-if="column.type === 'date'"
     :model-value="typeof value === 'string' ? value : null"

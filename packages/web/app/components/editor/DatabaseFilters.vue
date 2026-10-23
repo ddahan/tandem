@@ -1,7 +1,13 @@
 <script setup lang="ts">
 // The filters of a database view, in a popover: rows show when they match every condition.
 // Each change is saved at once (the view is saved with the database).
-import type { CellValue, DatabaseColumn, DatabaseFilter, FilterOperator } from '@tandem/shared'
+import {
+  hasChoices,
+  type CellValue,
+  type DatabaseColumn,
+  type DatabaseFilter,
+  type FilterOperator,
+} from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 import { choiceTagClass } from '~/utils/choice-colors'
 
@@ -99,7 +105,7 @@ function add(column?: DatabaseColumn) {
               @update:model-value="(value) => setValue(index, value === 'yes')"
             />
             <USelect
-              v-else-if="columnOf(filter)!.type === 'select'"
+              v-else-if="hasChoices(columnOf(filter)!)"
               :model-value="String(filter.value ?? '')"
               :items="columnOf(filter)!.options ?? []"
               size="xs"

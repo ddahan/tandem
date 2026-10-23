@@ -3,7 +3,15 @@
 // rows: the web app shows what the agents' tools return.
 import { formatMoney, formatNumber } from './format.ts'
 
-export const COLUMN_TYPES = ['text', 'number', 'money', 'date', 'checkbox', 'select'] as const
+export const COLUMN_TYPES = [
+  'text',
+  'number',
+  'money',
+  'date',
+  'checkbox',
+  'select',
+  'multiselect',
+] as const
 export type ColumnType = (typeof COLUMN_TYPES)[number]
 
 /** Colors a choice can have (none: no color). */
@@ -25,12 +33,12 @@ export interface DatabaseColumn {
   id: string
   name: string
   type: ColumnType
-  /** `select` columns: the choices, in order. */
+  /** `select` and `multiselect` columns (choice columns): the choices, in order. */
   options?: string[]
-  /** `select` columns: the colors of the choices that have one, by choice. */
+  /** Choice columns: the colors of the choices that have one, by choice. */
   colors?: Record<string, ChoiceColor>
   /**
-   * `select` columns: false when a value is required. New rows then start with the first
+   * Choice columns: false when a value is required. New rows then start with the first
    * choice, and a cell can't be emptied. Absent: true.
    */
   allowEmpty?: boolean
@@ -43,9 +51,14 @@ export const COLUMN_WIDTH = { min: 60, max: 1200 } as const
 
 /**
  * Text, a number, an amount in euros (a number, to the cent), a date (`2026-10-17`), a checkbox,
- * a choice; null when empty.
+ * a choice, choices (in the column's order); null when empty.
  */
-export type CellValue = string | number | boolean | null
+export type CellValue = string | number | boolean | string[] | null
+
+/** Whether a column's values are among its choices (`options`): one, or several. */
+export function hasChoices(column: Pick<DatabaseColumn, 'type'>): boolean {
+  return column.type === 'select' || column.type === 'multiselect'
+}
 
 export interface DatabaseSort {
   column: string
@@ -148,6 +161,22 @@ export function toCellValue(value: unknown, column: DatabaseColumn): CellValue |
       if (!text) return null
       return column.options?.find((option) => option.toLowerCase() === text.toLowerCase())
     }
+    case 'multiselect': {
+      // A list, or names separated by commas (a choice whose name has one, as it is).
+      const given = Array.isArray(value)
+        ? (value as unknown[])
+        : typeof value === 'string' && !toCellValue(value, { ...column, type: 'select' })
+          ? value.split(',')
+          : [value]
+      const picked = new Set<CellValue>()
+      for (const item of given) {
+        const choice = toCellValue(item, { ...column, type: 'select' })
+        if (choice === undefined) return undefined
+        if (choice !== null) picked.add(choice)
+      }
+      const choices = (column.options ?? []).filter((option) => picked.has(option))
+      return choices.length ? choices : null
+    }
   }
 }
 
@@ -174,6 +203,8 @@ export function convertCell(
   if (value === null || value === undefined) return null
   if (to.type === 'text') return cellText(value, from) || null
   if (isNumeric(from) && isNumeric(to)) return toCellValue(value, to) ?? null
+  // Several choices to one: the first.
+  if (Array.isArray(value)) return toCellValue(to.type === 'select' ? value[0] : value, to) ?? null
   return toCellValue(from.type === 'date' ? value : cellText(value, from), to) ?? null
 }
 
@@ -197,6 +228,7 @@ export function cellText(
   if (column.type === 'date' && typeof value === 'string') return formatCellDate(value)
   if (column.type === 'number' && typeof value === 'number') return formatNumber(value)
   if (column.type === 'money' && typeof value === 'number') return formatMoney(value, cents)
+  if (Array.isArray(value)) return value.join(', ')
   return String(value)
 }
 
@@ -215,7 +247,11 @@ export function withCents(column: DatabaseColumn, rows: DatabaseRow[]): boolean 
 }
 
 const isEmpty = (value: CellValue | undefined) =>
-  value === null || value === undefined || value === '' || value === false
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  value === false ||
+  (Array.isArray(value) && !value.length)
 
 /** Orders two values of a column: empty ones last, whatever the direction. */
 function compare(a: CellValue | undefined, b: CellValue | undefined, column: DatabaseColumn) {
@@ -223,6 +259,16 @@ function compare(a: CellValue | undefined, b: CellValue | undefined, column: Dat
   if (column.type === 'checkbox') return Number(Boolean(a)) - Number(Boolean(b))
   if (column.type === 'select' && column.options) {
     return column.options.indexOf(String(a)) - column.options.indexOf(String(b))
+  }
+  // Several choices: by their first one, then the next…, fewer first.
+  if (column.type === 'multiselect' && column.options) {
+    const ranks = (value: CellValue | undefined) =>
+      (Array.isArray(value) ? value : []).map((option) => column.options!.indexOf(option))
+    const [x, y] = [ranks(a), ranks(b)]
+    for (let index = 0; index < Math.min(x.length, y.length); index++) {
+      if (x[index] !== y[index]) return x[index]! - y[index]!
+    }
+    return x.length - y.length
   }
   return String(a).localeCompare(String(b), 'fr', { numeric: true, sensitivity: 'base' })
 }
@@ -239,6 +285,12 @@ function matches(value: CellValue | undefined, filter: DatabaseFilter, column: D
         .includes(String(filter.value ?? '').toLowerCase())
     case 'is':
     case 'is-not': {
+      if (column.type === 'multiselect') {
+        // Has (or hasn't) this choice.
+        const wanted = toCellValue(filter.value, { ...column, type: 'select' })
+        const has = Array.isArray(value) && value.some((choice) => choice === wanted)
+        return filter.operator === 'is' ? has : !has
+      }
       const wanted = toCellValue(filter.value, column) ?? null
       const same =
         column.type === 'checkbox'
@@ -298,14 +350,16 @@ export function viewRows(
 
 /** Whether a column must have a value (a choice list that doesn't allow empty). */
 export function requiresValue(column: DatabaseColumn): boolean {
-  return column.type === 'select' && column.allowEmpty === false && Boolean(column.options?.length)
+  return hasChoices(column) && column.allowEmpty === false && Boolean(column.options?.length)
 }
 
 /** The values a new row starts with: the first choice of columns that require a value. */
 export function defaultCells(columns: DatabaseColumn[]): Record<string, CellValue> {
   const cells: Record<string, CellValue> = {}
   for (const column of columns) {
-    if (requiresValue(column)) cells[column.id] = column.options![0]!
+    if (!requiresValue(column)) continue
+    const first = column.options![0]!
+    cells[column.id] = column.type === 'multiselect' ? [first] : first
   }
   return cells
 }
@@ -416,7 +470,7 @@ export function databaseChanges(from: Database, to: Database): DatabaseRestore {
     const cells: Record<string, CellValue> = {}
     for (const id of columnIds) {
       const value = row.cells[id] ?? null
-      if ((old.cells[id] ?? null) !== value) cells[id] = value
+      if (!same(old.cells[id] ?? null, value)) cells[id] = value
     }
     const changed = Object.keys(cells).length > 0
     if (changed || reordered) {

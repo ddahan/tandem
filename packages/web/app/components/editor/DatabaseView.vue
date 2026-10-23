@@ -7,6 +7,7 @@ import {
   COLUMN_TYPES,
   COLUMN_WIDTH,
   viewRows,
+  hasChoices,
   withCents,
   type CellValue,
   type ColumnType,
@@ -68,6 +69,7 @@ const TYPES: Record<ColumnType, { label: string; icon: string }> = {
   date: { label: 'Date', icon: 'i-lucide-calendar' },
   checkbox: { label: 'Checkbox', icon: 'i-lucide-square-check' },
   select: { label: 'Choice', icon: 'i-lucide-circle-chevron-down' },
+  multiselect: { label: 'Multiple choices', icon: 'i-lucide-list-checks' },
 }
 
 /** The columns as the API takes them, with `change` applied to column `columnId`. */
@@ -165,7 +167,15 @@ async function removeColumn(column: DatabaseColumn) {
   )
 }
 
-// Choices of a `select` column, in DatabaseChoices.
+/** A choice typed in a cell's menu, added at the end of its column's (false: refused). */
+async function addChoice(column: DatabaseColumn, name: string) {
+  return setColumns(
+    columnsWith(column.id, (c) => ({ ...c, options: [...(c.options ?? []), name] })),
+    'Add a choice',
+  )
+}
+
+// Choices of a choice column, in DatabaseChoices.
 const choicesOf = ref<DatabaseColumn | null>(null)
 function editChoices(column: DatabaseColumn) {
   choicesOf.value = column
@@ -211,19 +221,19 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
           onSelect: () => {
             if (type !== column.type) {
               void setColumns(
-                columnsWith(column.id, (c) => ({
-                  ...c,
-                  type,
-                  options: undefined,
-                  colors: undefined,
-                })),
+                // Between one choice and several, the choices stay.
+                columnsWith(column.id, (c) =>
+                  hasChoices(c) && hasChoices({ type })
+                    ? { ...c, type }
+                    : { ...c, type, options: undefined, colors: undefined },
+                ),
                 'Change a column’s type',
               )
             }
           },
         })),
       },
-      ...(column.type === 'select'
+      ...(hasChoices(column)
         ? [{ label: 'Edit choices…', icon: 'i-lucide-list', onSelect: () => editChoices(column) }]
         : []),
     ],
@@ -280,6 +290,7 @@ const DEFAULT_WIDTHS: Record<ColumnType, number> = {
   date: 160,
   checkbox: 90,
   select: 160,
+  multiselect: 220,
 }
 /** The first column usually names the row: more room. */
 const FIRST_WIDTH = 260
@@ -568,6 +579,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                       :cents="cents.has(column.id)"
                       :readonly="readonly"
                       :save="(value: CellValue) => setCell(row.id, column.id, value)"
+                      :add-choice="readonly ? undefined : (name: string) => addChoice(column, name)"
                     />
                     <!-- After the cell's field: the first thing to focus in the cell is the field. -->
                     <div v-if="index === 0 && !readonly" class="database-row-actions">

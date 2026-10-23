@@ -146,14 +146,17 @@ inside OneDrive so that it is backed up and synced.
   10 MB ask for confirmation first. No maximum size.
 - **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
   whose rows and typed columns (text, number, money in euros, date, checkbox,
-  choice) are kept in Tandem, not
+  choice, multiple choices) are kept in Tandem, not
   in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
   data is safe in the database and its backup copy. Cells are edited in place (Enter saves,
   Escape puts the saved value back; text wraps, Shift+Enter starts a new line, and the row
   grows with it; dates typed day, month, year, or picked in a calendar whose weeks start on
   Monday, shown `17/10/2026`; numbers French; amounts in euros (`1 234 €`, kept to the cent;
   as soon as one amount of a column has cents, every amount of it shows two decimals,
-  `1 234,00 €`, so that a column's amounts always look alike); choices picked in a menu; a value of the wrong
+  `1 234,00 €`, so that a column's amounts always look alike); choices picked in a menu;
+  multiple choices picked in a menu that stays open, with a search, and saved when it closes
+  (shown as tags, in the column's order; one without a color as an outlined tag); typing a
+  name that isn't a choice offers to create it (added at the end of the column's); a value of the wrong
   type is refused). Columns have a width for their type (the first one wider) until dragged
   from the edge of their heading; the width is saved with the database, and a double-click on
   the edge resets it. A database wider than the page's text makes the page full width while
@@ -164,7 +167,8 @@ inside OneDrive so that it is backed up and synced.
   × deletes it at once (⌘Z brings it back). "New row" adds one at the end. ⌥↑ / ⌥↓ in a
   cell move its row up or down among the rows shown, the cursor staying in it; a sorted table
   says it must stop being sorted first. Each column's menu renames it, changes its type (values converted when they can be; a column
-  becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
+  becoming a choice list takes its values as choices, separated by commas for multiple choices;
+  between one choice and multiple choices, the choices stay and a cell keeps its first one), edits choices, sorts, filters, moves
   and deletes it (at once: ⌘Z brings it back with its values). Its choices are edited one per
   line (Enter adds the next one; arrows move one, × removes it), each with a color picked
   from nine (none by default): a choice with a color shows as a tag of that color in cells

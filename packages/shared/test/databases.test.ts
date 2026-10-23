@@ -4,6 +4,7 @@ import {
   cellText,
   convertCell,
   databaseBlock,
+  defaultCells,
   databaseChanges,
   isEmptyRestore,
   databaseIdsIn,
@@ -151,6 +152,63 @@ describe('views', () => {
   })
 })
 
+describe('multiple choices', () => {
+  const tags: DatabaseColumn = {
+    id: 'g',
+    name: 'Tags',
+    type: 'multiselect',
+    options: ['Sci-fi', 'Classic', 'Short, sharp'],
+  }
+
+  it.each([
+    [
+      ['classic', 'Sci-fi'],
+      ['Sci-fi', 'Classic'],
+    ],
+    ['Classic, sci-fi', ['Sci-fi', 'Classic']],
+    ['Short, sharp', ['Short, sharp']],
+    [[], null],
+    ['', null],
+    [['Classic', 'Lost'], undefined],
+  ] as const)('reads %j in the column’s order', (value, expected) => {
+    expect(toCellValue(value, tags)).toEqual(expected)
+  })
+
+  it('shows, converts, sorts and filters them', () => {
+    expect(cellText(['Sci-fi', 'Classic'], tags)).toBe('Sci-fi, Classic')
+    const status = { ...tags, type: 'select' as const }
+    expect(convertCell(['Classic', 'Short, sharp'], tags, status)).toBe('Classic')
+    expect(convertCell('Classic', status, tags)).toEqual(['Classic'])
+    expect(convertCell(['Sci-fi', 'Classic'], tags, text)).toBe('Sci-fi, Classic')
+
+    const rows = [
+      rowOf('both', { g: ['Sci-fi', 'Classic'] }),
+      rowOf('classic', { g: ['Classic'] }),
+      rowOf('none', {}),
+      rowOf('scifi', { g: ['Sci-fi'] }),
+    ]
+    const view = { columns: [tags], rows, sort: null, filters: [] }
+    expect(ids({ ...view, sort: { column: 'g', direction: 'asc' } })).toEqual([
+      'scifi',
+      'both',
+      'classic',
+      'none',
+    ])
+    expect(ids({ ...view, filters: [{ column: 'g', operator: 'is', value: 'classic' }] })).toEqual([
+      'both',
+      'classic',
+    ])
+    expect(
+      ids({ ...view, filters: [{ column: 'g', operator: 'is-not', value: 'Classic' }] }),
+    ).toEqual(['none', 'scifi'])
+    expect(ids({ ...view, filters: [{ column: 'g', operator: 'empty' }] })).toEqual(['none'])
+  })
+
+  it('start with the first choice when one is required', () => {
+    expect(defaultCells([{ ...tags, allowEmpty: false }])).toEqual({ g: ['Sci-fi'] })
+  })
+})
+
 describe('blocks', () => {
   it('finds the databases a note shows, in order', () => {
     const markdown = `Intro\n\n${databaseBlock('a1')}\n\nText\n\n\`\`\`js\nid: no\n\`\`\`\n\n${databaseBlock('b2')}\n`
@@ -189,7 +247,7 @@ describe('for agents', () => {
   })
 })
 
-const row = (id: string, cells: Record<string, string | number | null>): DatabaseRow => ({
+const row = (id: string, cells: DatabaseRow['cells']): DatabaseRow => ({
   id,
   cells: Object.fromEntries(Object.entries(cells).filter(([, value]) => value !== null)),
   createdAt: 1,
@@ -223,6 +281,12 @@ describe('databaseChanges', () => {
         { id: 'b', cells: { n: 204 } },
       ],
     })
+  })
+
+  it('compares several choices by value', () => {
+    const tags: DatabaseColumn = { id: 'g', name: 'Tags', type: 'multiselect', options: ['A'] }
+    const from = { ...base, columns: [tags], rows: [row('a', { g: ['A'] })] }
+    expect(isEmptyRestore(databaseChanges(from, structuredClone(from)))).toBe(true)
   })
 
   it('puts deleted rows back where they were, and deletes added ones', () => {

@@ -35,6 +35,12 @@ export const FILTER_CONDITIONS: Record<ColumnType, { value: FilterOperator; labe
     { value: 'empty', label: 'is empty' },
     { value: 'not-empty', label: 'is not empty' },
   ],
+  multiselect: [
+    { value: 'is', label: 'has' },
+    { value: 'is-not', label: 'has not' },
+    { value: 'empty', label: 'is empty' },
+    { value: 'not-empty', label: 'is not empty' },
+  ],
 }
 
 /** A new condition on `column`: its type's first one, without a value (checkboxes: checked). */
