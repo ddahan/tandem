@@ -6,6 +6,20 @@ import { formatNumber } from './format.ts'
 export const COLUMN_TYPES = ['text', 'number', 'date', 'checkbox', 'select'] as const
 export type ColumnType = (typeof COLUMN_TYPES)[number]
 
+/** Colors a choice can have (none: no color). */
+export const CHOICE_COLORS = [
+  'gray',
+  'brown',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink',
+  'red',
+] as const
+export type ChoiceColor = (typeof CHOICE_COLORS)[number]
+
 export interface DatabaseColumn {
   /** Stable: renaming a column keeps its values. */
   id: string
@@ -13,6 +27,8 @@ export interface DatabaseColumn {
   type: ColumnType
   /** `select` columns: the choices, in order. */
   options?: string[]
+  /** `select` columns: the colors of the choices that have one, by choice. */
+  colors?: Record<string, ChoiceColor>
   /**
    * `select` columns: false when a value is required. New rows then start with the first
    * choice, and a cell can't be emptied. Absent: true.

@@ -18,6 +18,7 @@ import {
   BOOKMARK_TITLE_MAX,
   BOOKMARK_URL_MAX,
   CODE_THEMES,
+  CHOICE_COLORS,
   COLUMN_TYPES,
   DEFAULT_AGENT,
   EXTENSION_ORIGIN,
@@ -94,6 +95,7 @@ const columnInput = z.object({
   name: z.string().max(80),
   type: z.enum(COLUMN_TYPES),
   options: z.array(z.string().max(80)).max(100).optional(),
+  colors: z.record(z.string().max(80), z.enum(CHOICE_COLORS)).optional(),
   allowEmpty: z.boolean().optional(),
   width: z.number().finite().optional(),
 })

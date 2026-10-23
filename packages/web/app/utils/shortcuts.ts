@@ -282,6 +282,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: 'Move the row up or down',
         description: 'Not while the table is sorted.',
       },
+      {
+        keys: [['enter']],
+        label: 'Add the next choice',
+        description: 'In a choice of the choices editor (a column’s Edit choices…).',
+      },
     ],
   },
   {

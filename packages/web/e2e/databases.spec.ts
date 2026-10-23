@@ -249,6 +249,44 @@ test('a choice column can require a value: the first choice by default', async (
   await expect(block.getByRole('combobox', { name: 'Status' }).nth(1)).toHaveText('To do')
 })
 
+test('choices are edited one per line, each with a color (none by default)', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Colors', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Status', type: 'select', options: ['To do', 'Done'] }],
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+
+  await block.getByRole('button', { name: 'Status' }).click()
+  await page.getByRole('menuitem', { name: 'Edit choices…' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('textbox', { name: 'Choice 1' })).toHaveValue('To do')
+  await expect(dialog.getByRole('button', { name: 'Color of Done: none' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Color of Done: none' }).click()
+  await page.getByRole('option', { name: 'Green' }).click()
+  // Enter adds a choice after the one typed in; a renamed choice keeps its color.
+  await dialog.getByRole('textbox', { name: 'Choice 2' }).fill('Finished')
+  await dialog.getByRole('textbox', { name: 'Choice 2' }).press('Enter')
+  await expect(dialog.getByRole('textbox', { name: 'Choice 3' })).toBeFocused()
+  await page.keyboard.type('Dropped')
+  await dialog.getByRole('button', { name: 'Move Dropped up' }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+
+  await expect
+    .poll(async () => (await api<Database>(request, 'GET', `/databases/${database.id}`)).columns[0])
+    .toMatchObject({ options: ['To do', 'Dropped', 'Finished'], colors: { Finished: 'green' } })
+  const status = block.getByRole('combobox', { name: 'Status' }).first()
+  await status.click()
+  await page.getByRole('option', { name: 'Finished' }).click()
+  await expect(status.locator('span.bg-green-100')).toHaveText('Finished')
+})
+
 test('text cells take several lines: Shift+Enter starts one, Enter saves', async ({
   page,
   request,

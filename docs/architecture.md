@@ -207,6 +207,8 @@ one exception: bookmarks off, the server answers the browser extension's bookmar
 change (`database` event). Every change returns the whole database (rows included). Values
 are checked with `toCellValue` (`@tandem/shared`'s `databases.ts`); a column changing type
 converts its values (`convertCell`), and one becoming a `select` takes its values as choices.
+A `select` column's `colors` map choices to one of `CHOICE_COLORS`, by name (as cells hold
+them); colors of choices no longer there are dropped.
 The view (filter, then sort: `viewRows`) is applied by readers, in the same shared code: the
 table, the agents' tools and the CLI show the same rows. Column ids stay when columns are
 renamed. A note only holds ` ```database ` + `id:`; `databaseIdsIn` finds them. Undo and
@@ -335,10 +337,11 @@ a POST: it makes the server fetch, which only Tandem's own pages may ask for (th
   (its own Markdown tokenizer, before code blocks); `components/editor/DatabaseView.vue` draws
   it (title, sort and filter controls, the table with a menu per column), with
   `DatabaseCell.vue` (native controls for text, numbers and checkboxes, Nuxt UI's `USelect`
-  for choices; a draft while edited: the table reloads with every change; text cells are
+  for choices, tagged with their colors: `utils/choice-colors.ts`; a draft while edited: the table reloads with every change; text cells are
   textareas sized by a hidden copy of their text in the same grid cell; dates:
   `DatabaseDate.vue`, Nuxt UI's `UInputDate` with a `UCalendar` popover,
-  locale `en-GB` for day-first dates and English words) and `DatabaseFilters.vue`. The table
+  locale `en-GB` for day-first dates and English words), `DatabaseFilters.vue` and
+  `DatabaseChoices.vue` (the choices editor: a line per choice with its color). The table
   has a fixed layout: each column's `<col>` has its saved `width` or a default for its type,
   and the table is exactly that sum wide (no column takes the rest). Each block reports it to
   the note's page (`BLOCK_WIDTHS`, provided by `pages/notes/[id].vue`), which goes full width

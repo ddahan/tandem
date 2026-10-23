@@ -17,6 +17,7 @@ export interface ColumnChange {
   name: string
   type: DatabaseColumn['type']
   options?: string[]
+  colors?: DatabaseColumn['colors']
   allowEmpty?: boolean
   width?: number
 }

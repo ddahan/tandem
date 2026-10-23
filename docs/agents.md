@@ -86,7 +86,7 @@ owner sorts and filters. Their data is in Tandem, not in the Markdown: a note sh
 ` ```database ` block holding only its id. Read and change them with the tools, never by
 writing the block's content.
 
-- MCP: `list_databases` (a note's, with their columns), `read_database` (rows with their ids,
+- MCP: `list_databases` (a note's, with their columns, and the colors the owner gave choices), `read_database` (rows with their ids,
   values by column name, as the owner's saved view shows them; `all: true` for every row),
   `create_database` (in a note, its block added at the end; columns and first rows),
   `add_database_rows`, `update_database_row`, `delete_database_row` (only when asked).

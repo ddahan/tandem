@@ -13,6 +13,7 @@ import {
 } from '@tandem/shared'
 import type { ColumnChange } from '~/composables/useDatabase'
 import DatabaseCell from '~/components/editor/DatabaseCell.vue'
+import DatabaseChoices from '~/components/editor/DatabaseChoices.vue'
 import DatabaseFilters from '~/components/editor/DatabaseFilters.vue'
 import { BLOCK_WIDTHS } from '~/utils/block-widths'
 import { keysText } from '~/utils/platform-keys'
@@ -153,25 +154,17 @@ async function removeColumn(column: DatabaseColumn) {
   )
 }
 
-// Choices of a `select` column: one per line.
+// Choices of a `select` column, in DatabaseChoices.
 const choicesOf = ref<DatabaseColumn | null>(null)
-const choicesText = ref('')
-const allowEmpty = ref(true)
 function editChoices(column: DatabaseColumn) {
   choicesOf.value = column
-  choicesText.value = (column.options ?? []).join('\n')
-  allowEmpty.value = column.allowEmpty !== false
 }
-async function saveChoices() {
+async function saveChoices(change: Pick<DatabaseColumn, 'options' | 'colors' | 'allowEmpty'>) {
   const column = choicesOf.value
   if (!column) return
-  const options = choicesText.value
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
   choicesOf.value = null
   await setColumns(
-    columnsWith(column.id, (c) => ({ ...c, options, allowEmpty: allowEmpty.value })),
+    columnsWith(column.id, (c) => ({ ...c, ...change })),
     'Edit the choices',
   )
 }
@@ -207,7 +200,12 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
           onSelect: () => {
             if (type !== column.type) {
               void setColumns(
-                columnsWith(column.id, (c) => ({ ...c, type, options: undefined })),
+                columnsWith(column.id, (c) => ({
+                  ...c,
+                  type,
+                  options: undefined,
+                  colors: undefined,
+                })),
                 'Change a column’s type',
               )
             }
@@ -611,39 +609,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
         <span v-if="hidden" class="ms-auto">{{ hidden }} hidden by the filters</span>
       </div>
 
-      <UModal
-        :open="choicesOf !== null"
-        :title="`Choices of “${choicesOf?.name}”`"
-        description="One per line, in order."
-        @update:open="(open) => !open && (choicesOf = null)"
-      >
-        <template #body>
-          <div class="space-y-4">
-            <UTextarea
-              v-model="choicesText"
-              :rows="6"
-              autoresize
-              class="w-full"
-              aria-label="Choices"
-            />
-            <UCheckbox
-              v-model="allowEmpty"
-              label="Allow empty"
-              :description="
-                allowEmpty
-                  ? 'A cell can be left without a choice.'
-                  : 'Every row has a choice: new rows start with the first one, empty cells take it now, and a cell can\'t be emptied.'
-              "
-            />
-          </div>
-        </template>
-        <template #footer>
-          <div class="flex w-full justify-end gap-2">
-            <UButton label="Cancel" color="neutral" variant="ghost" @click="choicesOf = null" />
-            <UButton label="Save" @click="saveChoices" />
-          </div>
-        </template>
-      </UModal>
+      <DatabaseChoices :column="choicesOf" @close="choicesOf = null" @save="saveChoices" />
     </template>
   </NodeViewWrapper>
 </template>

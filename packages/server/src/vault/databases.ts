@@ -4,6 +4,7 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import {
+  CHOICE_COLORS,
   COLUMN_TYPES,
   COLUMN_WIDTH,
   FILTER_OPERATORS,
@@ -13,6 +14,7 @@ import {
   requiresValue,
   toCellValue,
   type CellValue,
+  type ChoiceColor,
   type ColumnType,
   type Database,
   type DatabaseColumn,
@@ -32,6 +34,7 @@ export interface ColumnInput {
   name: string
   type: ColumnType
   options?: string[]
+  colors?: Record<string, string>
   allowEmpty?: boolean
   width?: number
 }
@@ -460,6 +463,15 @@ function checkColumns(input: ColumnInput[], before: DatabaseColumn[]): DatabaseC
         ...new Set((column.options ?? []).map((option) => option.trim()).filter(Boolean)),
       ]
       result.options = options
+      // Colors of choices that are still there (by name, as the cells hold them).
+      const colors: Record<string, ChoiceColor> = {}
+      for (const [option, color] of Object.entries(column.colors ?? {})) {
+        if (!CHOICE_COLORS.includes(color as ChoiceColor)) {
+          throw new ValidationError(`${name}: unknown color “${color}”`)
+        }
+        if (options.includes(option.trim())) colors[option.trim()] = color as ChoiceColor
+      }
+      if (Object.keys(colors).length) result.colors = colors
       if (column.allowEmpty === false) {
         if (!options.length) {
           throw new ValidationError(`${name}: a value is required, so it needs a choice`)

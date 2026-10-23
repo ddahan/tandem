@@ -3,6 +3,7 @@
 // Each change is saved at once (the view is saved with the database).
 import type { CellValue, DatabaseColumn, DatabaseFilter, FilterOperator } from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
+import { choiceTagClass } from '~/utils/choice-colors'
 
 const props = defineProps<{
   columns: DatabaseColumn[]
@@ -106,7 +107,13 @@ function add(column?: DatabaseColumn) {
               :disabled="readonly"
               aria-label="Value"
               @update:model-value="(value) => setValue(index, String(value))"
-            />
+            >
+              <template #item-label="{ item }">
+                <span :class="choiceTagClass(columnOf(filter)!.colors?.[String(item)])">{{
+                  item
+                }}</span>
+              </template>
+            </USelect>
             <DatabaseDate
               v-else-if="columnOf(filter)!.type === 'date'"
               :model-value="typeof filter.value === 'string' ? filter.value : null"

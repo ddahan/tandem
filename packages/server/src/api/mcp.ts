@@ -98,6 +98,7 @@ function describeColumns(database: Database) {
     name: c.name,
     type: c.type,
     ...(c.options ? { choices: c.options } : {}),
+    ...(c.colors ? { colors: c.colors } : {}),
     ...(c.allowEmpty === false ? { allowEmpty: false } : {}),
   }))
 }

@@ -7,6 +7,7 @@
 // agent's), which would otherwise put the saved value back under the cursor.
 import { cellText, requiresValue, type CellValue, type DatabaseColumn } from '@tandem/shared'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
+import { choiceTagClass } from '~/utils/choice-colors'
 
 const props = defineProps<{
   column: DatabaseColumn
@@ -73,6 +74,11 @@ function pick(value: unknown) {
   void commit(draft.value)
 }
 
+/** The tag classes of a choice (its color: none for "no choice" and choices without one). */
+function tagOf(value: unknown) {
+  return choiceTagClass(typeof value === 'string' ? props.column.colors?.[value] : undefined)
+}
+
 const label = computed(() => props.column.name)
 </script>
 
@@ -97,7 +103,15 @@ const label = computed(() => props.column.name)
     :disabled="readonly"
     :aria-label="label"
     @update:model-value="pick"
-  />
+  >
+    <template #default="{ modelValue }">
+      <span v-if="modelValue" class="truncate" :class="tagOf(modelValue)">{{ modelValue }}</span>
+      <span v-else class="truncate text-dimmed">—</span>
+    </template>
+    <template #item-label="{ item }">
+      <span :class="tagOf(item.value)">{{ item.label }}</span>
+    </template>
+  </USelect>
   <DatabaseDate
     v-else-if="column.type === 'date'"
     :model-value="typeof value === 'string' ? value : null"

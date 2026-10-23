@@ -162,7 +162,10 @@ inside OneDrive so that it is backed up and synced.
   cell move its row up or down among the rows shown, the cursor staying in it; a sorted table
   says it must stop being sorted first. Each column's menu renames it, changes its type (values converted when they can be; a column
   becoming a choice list takes its values as choices), edits choices, sorts, filters, moves
-  and deletes it (at once: ⌘Z brings it back with its values). A choice list can require a value ("Allow empty" unchecked in its choices):
+  and deletes it (at once: ⌘Z brings it back with its values). Its choices are edited one per
+  line (Enter adds the next one; arrows move one, × removes it), each with a color picked
+  from nine (none by default): a choice with a color shows as a tag of that color in cells
+  and menus, one without as plain text; a renamed choice keeps its color. A choice list can require a value ("Allow empty" unchecked in its choices):
   new rows then start with its first choice, empty cells take it at once, and a cell can't
   be emptied. The sort and the filters (every condition must match) are saved with the
   database, so everyone, agents included, sees the same view; a condition applies once it has

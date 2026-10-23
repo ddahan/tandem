@@ -222,6 +222,34 @@ describe('databases', () => {
     expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
   })
 
+  it('keeps a color per choice, for choices that are there', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      columns: [
+        { name: 'Status', type: 'select', options: ['To read', 'Done'], colors: { Done: 'green' } },
+      ],
+    })
+    const [status] = database.columns
+    expect(status!.colors).toEqual({ Done: 'green' })
+
+    // Colors of choices gone are dropped; none left, no colors at all.
+    database = await vault.updateDatabase(database.id, {
+      columns: [{ ...status!, options: ['To read', 'Finished'], colors: { Done: 'green' } }],
+    })
+    expect(database.columns[0]!.colors).toBeUndefined()
+    await expect(
+      vault.updateDatabase(database.id, {
+        columns: [{ ...status!, colors: { 'To read': 'teal' } }],
+      }),
+    ).rejects.toThrow('unknown color “teal”')
+
+    // Another type: no choices, no colors.
+    database = await vault.updateDatabase(database.id, {
+      columns: [{ ...status!, type: 'text', colors: { Done: 'green' } }],
+    })
+    expect(database.columns[0]!.colors).toBeUndefined()
+  })
+
   it('restores an earlier state, and the later one again (undo, redo)', async () => {
     const { vault, page } = await setup()
     let database = await vault.createDatabase(page.id, {
