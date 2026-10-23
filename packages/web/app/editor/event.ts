@@ -5,8 +5,9 @@
 //   id: Kx3fq9P2mZ0a
 //   ```
 //
-// One unit in the text (an atom), moved like any block; its line is `EventView.vue`, added by
-// the editor component. In a daily note, a time typed at the start of an empty line, then a
+// One unit in the text (an atom), moved with the editor's block handle; its line is
+// `EventView.vue`, added by the editor component. Not draggable itself: Safari doesn't put the
+// cursor in a field inside a draggable element (its title). In a daily note, a time typed at the start of an empty line, then a
 // space (`14h `, `9:30 `), makes the line an event being typed (no ref yet: `text` holds what
 // was typed), saved once it has a title; `/event` starts one with no time. A line dragged out
 // of the agenda block is dropped as its event's block.
@@ -33,7 +34,7 @@ export const EventBlock = Node.create<EventOptions>({
   group: 'block',
   atom: true,
   selectable: true,
-  draggable: true,
+  draggable: false,
 
   addOptions() {
     return { date: () => null }
@@ -91,18 +92,14 @@ export const EventBlock = Node.create<EventOptions>({
         find: TYPED_TIME,
         handler: ({ state, range, match }) => {
           if (!date()) return null
-          const $from = state.doc.resolve(range.from)
+          // The rule's transaction: the typed space may be in the line already, or not yet.
+          const tr = state.tr
+          const $from = tr.doc.resolve(range.from)
           const paragraph = $from.parent
-          // An empty line, right in the note (not in a list, a quote, a table…). The typed
-          // space may be in the line already, or not yet.
+          // An empty line, right in the note (not in a list, a quote, a table…).
           if (paragraph.type.name !== 'paragraph' || $from.depth !== 1) return null
           if (paragraph.textContent.trim() !== match[1]) return null
-          const from = $from.before()
-          state.tr.replaceWith(
-            from,
-            from + paragraph.nodeSize,
-            type.create({ ref: '', text: match[0] }),
-          )
+          tr.replaceWith($from.before(), $from.after(), type.create({ ref: '', text: match[0] }))
         },
       }),
     ]

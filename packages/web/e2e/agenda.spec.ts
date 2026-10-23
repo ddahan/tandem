@@ -84,15 +84,22 @@ test('types events anywhere in a day’s note, checks, changes and deletes them'
   await expect(page.locator(`[data-date="${day}"] [data-testid="calendar-events"]`)).toBeVisible()
   const events = page.getByTestId('agenda-event')
 
-  // Checked off: struck through. Renamed in place.
+  // Checked off: struck through.
   await events.nth(1).getByRole('checkbox').click()
   await expect(events.nth(1).getByTestId('agenda-title')).toHaveClass(/line-through/)
+  // A click at the end of the line, past the title, puts the cursor in it; renamed in place,
+  // Enter goes on to a new line below, as a to-do's.
   const title = events.first().getByTestId('agenda-title')
+  const line = await events.first().boundingBox()
+  await page.mouse.click(line!.x + line!.width - 40, line!.y + line!.height / 2)
+  await expect(title).toBeFocused()
   await title.fill('Lunch with Marie')
   await title.press('Enter')
+  await page.keyboard.type('Notes about lunch')
   await expect
     .poll(async () => (await api<Event[]>(request, 'GET', '/agenda/events')).map((e) => e.title))
     .toContain('Lunch with Marie')
+  await expect(page.locator('.ProseMirror p', { hasText: 'Notes about lunch' })).toBeVisible()
 
   // An event added elsewhere (a repeating one): in the agenda block, at the top.
   await api(request, 'POST', '/agenda/events', {

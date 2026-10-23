@@ -212,7 +212,8 @@ memory. The server reads them at start and every 30 minutes. API: `GET /agenda?f
 `PUT /agenda/checks`, `/agenda/feeds` (CRUD, `POST …/refresh`); SSE `agenda`.
 
 In the web app, `editor/event.ts` is an event placed in the note (an atom naming its event,
-` ```event ` with `id:` its `checkRef`), made by an input rule (a time and a space at the start
+` ```event ` with `id:` its `checkRef`; not draggable itself, since Safari won't put the cursor
+in a field inside a draggable element: the block handle moves it), made by an input rule (a time and a space at the start
 of an empty top-level line, daily notes only) or `/event` as an event being typed (no ref yet;
 `EventView.vue` saves it, then names it), or by dropping an agenda line (its grip's drag data).
 `editor/agenda.ts` is the agenda block (an atom, its day from the editor's options: the note's,

@@ -9,11 +9,19 @@ import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
 import AgendaEventForm from './AgendaEventForm.vue'
 import { EVENT_DRAG_TYPE } from '~/editor/event'
 
-const props = defineProps<{ item: AgendaItem; editable: boolean; draggable?: boolean }>()
+const props = defineProps<{
+  item: AgendaItem
+  editable: boolean
+  draggable?: boolean
+  /** Enter in the title goes on to a new line below (an event placed in the note). */
+  goesOn?: boolean
+}>()
 const emit = defineEmits<{
   /** Changed: the event that has the change (another one for a day taken out of a repeat). */
   updated: [event: AgendaEvent]
   removed: []
+  /** Enter in the title (with `goesOn`): the title is saved as the focus leaves it. */
+  enter: []
 }>()
 
 const actions = useAgendaActions()
@@ -51,7 +59,9 @@ function onTitleKey(event: KeyboardEvent) {
   const input = event.target as HTMLInputElement
   if (event.key === 'Enter') {
     event.preventDefault()
-    input.blur()
+    // As a to-do's Enter: on to the next line (leaving the title saves it).
+    if (props.goesOn) emit('enter')
+    else input.blur()
   } else if (event.key === 'Escape') {
     input.value = props.item.title
     input.blur()
@@ -71,6 +81,20 @@ async function remove() {
   if (await actions.remove(props.item)) emit('removed')
 }
 
+/**
+ * A click anywhere on the line but its controls puts the cursor at the end of the title, as in a
+ * to-do's line.
+ */
+function onLineDown(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (target.closest('input, button, [role="checkbox"], [draggable="true"]')) return
+  const input = titleInput.value
+  if (!input) return
+  event.preventDefault()
+  input.focus()
+  input.setSelectionRange(input.value.length, input.value.length)
+}
+
 /** Dragged out of the agenda into the note: placed where it's dropped (editor/event.ts). */
 function onDragStart(event: DragEvent) {
   // Not the agenda block itself, which the editor would move.
@@ -81,7 +105,11 @@ function onDragStart(event: DragEvent) {
 </script>
 
 <template>
-  <div class="group flex min-h-8 items-center gap-2.5" data-testid="agenda-event">
+  <div
+    class="group flex min-h-8 cursor-text items-center gap-2.5"
+    data-testid="agenda-event"
+    @mousedown="onLineDown"
+  >
     <UCheckbox
       :model-value="item.checked"
       :disabled="!editable"

@@ -369,7 +369,7 @@ inside OneDrive so that it is backed up and synced.
   Backspace at the start of the text puts it back to edit. Enter saves it and goes on to a new
   line at once; leaving it with a title saves it too. Escape, or leaving it without a title,
   turns it back into the text typed. In the Markdown, the note has a block naming the event
-  (` ```event ` with `id: …`), moved like any block.
+  (` ```event ` with `id: …`), moved with the block handle like any block.
 - **The agenda block** (` ```agenda `, holding nothing) lists the day's other events: repeats,
   calendar feeds', those added from the palette or by agents. All-day ones first, then by time.
   A line's grip drags it into the note, to place it there. With nothing left to show, the block
@@ -386,7 +386,9 @@ inside OneDrive so that it is backed up and synced.
   says so, with Remove.
 - **Other days**: "New event…" in the palette (a day, today or the one shown, and the same
   one-line syntax), or an agent.
-- **Editing**: the title in place (Enter or leaving it saves, Escape puts it back). A click on
+- **Editing**: the title in place, a click anywhere on the line putting the cursor at its end
+  (as a to-do's); leaving it saves, Escape puts it back. Enter saves too: in the note it goes on
+  to a new line below, as a to-do's (in the agenda block it only saves). A click on
   the time label opens its details: all day, at, from–to; its day (to move it); repeat; Save,
   Cancel, Delete. "Event deleted · Undo" for a few seconds (the event comes back to the agenda
   block). A day of a repeating event changed alone keeps its place in the note.
