@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // The side panel's calendar (daily notes on): a month, weeks from Monday with their ISO number,
 // each day marked when its note has something written (a dot), to-dos left (a ring) or only
-// to-dos done (a check). A click opens the day's note (created when it has none).
+// to-dos done (a check), and when it has events (a larger disk, in its first event's color).
+// A click opens the day's note (created when it has none).
 import { isMac } from '~/utils/platform-keys'
 import { keysHere } from '~/utils/shortcuts'
 import { addDays, dateOf, isoDate, isoWeek, monthLabel, type CalendarDay } from '@tandem/shared'
+import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
 
 const props = defineProps<{
   /** The day shown in the note, if the note is one. */
@@ -69,6 +71,21 @@ const weeks = computed(() => {
   return rows
 })
 
+// The events of the days shown (the weeks around the month too).
+const agenda = useAgendaDays(() => {
+  const rows = weeks.value
+  return { from: rows[0]!.days[0]!, to: rows.at(-1)!.days[6]! }
+})
+/** Each day's first event's color class (the app's primary for Tandem's own). */
+const eventDays = computed(() => {
+  const colors = new Map<string, string>()
+  for (const item of agenda.items.value) {
+    if (!colors.has(item.date))
+      colors.set(item.date, item.color ? CHOICE_COLOR_STYLES[item.color].dot : 'bg-primary')
+  }
+  return colors
+})
+
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // As in Docs › Shortcuts (utils/shortcuts.ts), in one line: the modifiers and one key for any
@@ -100,6 +117,7 @@ function labelOf(iso: string) {
     marks.written && 'written',
     marks.open && 'to-dos left',
     marks.done && 'to-dos done',
+    eventDays.value.has(iso) && 'events',
   ].filter(Boolean)
   const date = dateOf(iso)
   return `${date.getDate()} ${monthLabel(date.getFullYear(), date.getMonth() + 1)}${notes.length ? `: ${notes.join(', ')}` : ''}`
@@ -179,6 +197,12 @@ function labelOf(iso: string) {
                   class="size-1.5 rounded-full border border-current opacity-80"
                 />
                 <UIcon v-if="marksOf(day).done" name="i-lucide-check" class="size-2 opacity-80" />
+                <span
+                  v-if="eventDays.has(day)"
+                  class="size-2 rounded-full"
+                  :class="eventDays.get(day)"
+                  data-testid="calendar-events"
+                />
               </span>
             </button>
           </td>

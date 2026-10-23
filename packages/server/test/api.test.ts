@@ -192,4 +192,51 @@ describe('API', () => {
     expect(new TextDecoder().decode(value)).toContain('"type":"tree"')
     await reader.cancel()
   })
+
+  it('keeps the agenda: events, checks, undo, and feeds', async () => {
+    const { client } = await setup()
+    const created = await client.agenda.events.$post({
+      json: { title: 'Standup', date: '2026-10-19', start: '09:00', repeat: 'daily' },
+    })
+    expect(created.status).toBe(201)
+    const event = await created.json()
+    const day = await (await client.agenda.$get({ query: { from: '2026-10-20' } })).json()
+    expect(day).toMatchObject([{ id: event.id, title: 'Standup', date: '2026-10-20' }])
+    await client.agenda.checks.$put({ json: { ref: event.id, date: '2026-10-20', checked: true } })
+    const changed = await (
+      await client.agenda.events[':id'].$patch({
+        param: { id: event.id },
+        json: { title: 'Moved', on: '2026-10-21', scope: 'one' },
+      })
+    ).json()
+    expect(changed.event).toMatchObject({ title: 'Moved', date: '2026-10-21' })
+    const range = await (
+      await client.agenda.$get({ query: { from: '2026-10-20', to: '2026-10-21' } })
+    ).json()
+    expect(range.map((item) => `${item.title} ${item.checked}`)).toEqual([
+      'Standup true',
+      'Moved false',
+    ])
+    await client.agenda.restore.$post({ json: changed.undo })
+    const undo = await (
+      await client.agenda.events[':id'].$delete({ param: { id: event.id }, query: {} })
+    ).json()
+    expect((await (await client.agenda.events.$get()).json()).length).toBe(0)
+    await client.agenda.restore.$post({ json: undo })
+    expect((await (await client.agenda.events.$get()).json()).length).toBe(1)
+    expect((await client.agenda.events[':id'].$get({ param: { id: 'nope' } })).status).toBe(404)
+    const bad = await client.agenda.events.$post({ json: { title: 'x', date: 'tomorrow' } })
+    expect(bad.status).toBe(400)
+
+    // Feeds can't be read in tests: kept, with why.
+    const feed = await (
+      await client.agenda.feeds.$post({ json: { name: 'Work', url: 'https://example.com/a.ics' } })
+    ).json()
+    expect(feed).toMatchObject({ name: 'Work', error: expect.any(String) })
+    await client.agenda.feeds[':id'].$patch({ param: { id: feed.id }, json: { color: 'red' } })
+    await client.agenda.feeds[':id'].refresh.$post({ param: { id: feed.id } })
+    expect(await (await client.agenda.feeds.$get()).json()).toMatchObject([{ color: 'red' }])
+    await client.agenda.feeds[':id'].$delete({ param: { id: feed.id } })
+    expect(await (await client.agenda.feeds.$get()).json()).toEqual([])
+  })
 })

@@ -10,6 +10,7 @@ import type { MarkdownExtensionOptions } from '@tiptap/markdown'
 import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
 import { Marked } from 'marked'
+import { Agenda } from './agenda'
 import { BlockKeys } from './block-keys'
 import { Bookmark } from './bookmark'
 import { Callout } from './callout'
@@ -49,6 +50,8 @@ export interface ExtensionOptions {
   onFiles?: (editor: Editor, files: File[], pos: number | null) => void
   /** The editor address of the note's attachments folder (files deleted: DeletedFiles). */
   assetsPrefix?: () => string
+  /** The note's day, for its agenda block (null when it isn't a daily note). */
+  date?: () => string | null
 }
 
 export function createExtensions(options: ExtensionOptions = {}): AnyExtension[] {
@@ -61,6 +64,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     Callout,
     Database,
     Bookmark,
+    Agenda.configure({ date: options.date ?? (() => null) }),
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,

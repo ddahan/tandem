@@ -4,7 +4,8 @@
 // useSearchPalette(). With bookmarks on, they're searched too: picking one opens its website.
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
-import { siteOf, type BookmarkSearchResult, type SearchResponse } from '@tandem/shared'
+import { isoDate, siteOf, type BookmarkSearchResult, type SearchResponse } from '@tandem/shared'
+import AgendaEventDialog from '~/components/AgendaEventDialog.vue'
 import { openWebsite } from '~/composables/useBookmarks'
 
 const api = useApi()
@@ -14,6 +15,8 @@ const { settings } = useSettings()
 const daily = useDaily()
 const bookmarkActions = useBookmarkActions()
 const appWindow = useAppWindow()
+// "New event…": for the day shown, or today.
+const eventDialog = useOverlay().create(AgendaEventDialog)
 
 const { open, term: searchTerm } = useSearchPalette()
 const debounced = refDebounced(searchTerm, 120)
@@ -149,6 +152,11 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
                 label: 'Today’s note',
                 icon: 'i-lucide-calendar-days',
                 onSelect: () => void daily.open(),
+              },
+              {
+                label: 'New event…',
+                icon: 'i-lucide-calendar-plus',
+                onSelect: () => void eventDialog.open({ date: daily.activeDay.value ?? isoDate() }),
               },
             ]
           : []),

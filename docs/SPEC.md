@@ -352,6 +352,48 @@ inside OneDrive so that it is backed up and synced.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
 
+### Agenda
+
+- Days have an agenda, part of daily notes: Tandem keeps its own events (no sync with Apple or
+  Google calendars, no reminders, no invitations), and shows calendar feeds' events read-only.
+  No calendar view anywhere. Events are in Tandem's database, not in the Markdown; repeating
+  ones are one rule, never one row per day (nothing exists for 2099).
+- **In a day's note**, an agenda block (` ```agenda ` with nothing inside: it shows its note's
+  day's events) lists them, one line each: a checkbox (checked, the line is struck through), the
+  time label in its calendar's color (Tandem's own: the app's primary color), the title. Labels:
+  `day` (all day), `14:00`, `13:30 → 14:30`. All-day events first, then by time. The block moves
+  like any block; one per day.
+- **A day without events shows nothing.** A day with events whose note has no block shows one at
+  its top, which is written into the file only with something the owner writes: a day with
+  events and nothing written has no file. Deleted while the day has events, the block comes back
+  the next time the day opens; the day's last event deleted, the block goes. Outside a daily
+  note (or daily notes off), the block shows nothing.
+- **Adding**: `/event` (daily notes only) puts the agenda where the cursor is and focuses its
+  last line, "Add event" (left without an event, the block goes again); on a day with events,
+  that line is always there. A time or two at the start, then the title: `14:00 Standup`,
+  `13:30-14:30 Lunch` (also `14h`, `14h30`, `9`, `-` or `→`); no time is all day. The label shows
+  while typing; Enter adds it and stays on the line. Other days: "New event…" in the palette
+  (a day, today or the one shown, and the same line), or an agent.
+- **Editing**: the title in place (Enter or leaving it saves, Escape puts it back). A click on
+  the time label opens its details: all day, at, from–to; its day (to move it); repeat; Save,
+  Cancel, Delete. "Event deleted · Undo" for a few seconds.
+- **Repeats**: every day, every weekday (from its own day, even on a weekend), every week, every
+  2 weeks, every month, every year; until a day, or for ever. Monthly on the 29th–31st and
+  yearly on 29 February fall on the month's last day when theirs doesn't exist. A change or a
+  deletion asks "This one" (that day alone, out of the repeat) or "All from today" (an event
+  begun before today ends yesterday, a new one carries on from today: past days keep their
+  time, title and checkmark; deleting ends it yesterday). A check belongs to one day.
+- **Calendar feeds** (Settings › Features, under Daily notes): an `.ics` address (`webcal://`
+  read as `https://`), a name and a color. Read when added, every half hour, and with Refresh;
+  one that can't be read keeps its last events and says why (in Settings). Their events can be
+  checked off, nothing else; their details popover names their calendar. All-day events over
+  several days show on each; timed ones on the day they start, in the computer's time zone.
+- **Side calendar**: a day with events has a colored disk, a little larger than the "written"
+  dot, in its first event's color.
+- Agents: `agenda`, `add_event`, `update_event`, `delete_event` (MCP); `tandem agenda`,
+  `event-add`, `event-set`, `event-delete`. `daily_note`, `tandem daily` and `tandem read --meta`
+  (on a day's note) list the day's events.
+
 ## Bookmarks
 
 - Links to websites, kept in Tandem instead of the browser: optional (Settings › Features, off
@@ -554,8 +596,8 @@ inside OneDrive so that it is backed up and synced.
 
 ## Out of scope (for now)
 
-Templates, export (PDF/HTML), daily notes, favorites, search inside attachments, multiple
-computers on one data folder, authentication (bound to 127.0.0.1 only). For databases:
+Templates, export (PDF/HTML), favorites, search inside attachments, multiple
+computers on one data folder, syncing with Apple or Google calendars, reminders, authentication (bound to 127.0.0.1 only). For databases:
 relations, formulas, other views (board, calendar), per-database history, converting a table
 into a database. For bookmarks: importing and exporting the
 browser's, Safari.

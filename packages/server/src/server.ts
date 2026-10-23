@@ -44,7 +44,7 @@ const README = `# Tandem internal folder
 Managed by Tandem: don't edit by hand.
 
 - \`tandem.db\`: a backup of the app's database (ids, tags, order, history index,
-  authorship, settings, databases, bookmarks), refreshed about every minute. Restored
+  authorship, settings, databases, bookmarks, agenda), refreshed about every minute. Restored
   automatically if the app's own database is lost.
 - \`history/<note id>/\`: past versions of notes.
 - \`trash/\`: deleted notes, until the trash is emptied.
@@ -66,7 +66,7 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   const database = await openDatabase(dbPath, backupPath, {
     migrationsFolder: options.migrationsFolder,
   })
-  // It reads web pages for bookmarks (their titles and favicons).
+  // It reads web pages for bookmarks (their titles and favicons) and calendar feeds.
   const vault = new Vault({ dataDir, database, sessionIdleMs, fetch: globalThis.fetch })
 
   console.log(`Data folder: ${dataDir}`)
@@ -94,7 +94,10 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
     ),
     setInterval(backup, 60_000),
     setInterval(() => void vault.thinHistory().catch(console.error), 6 * 3600_000),
+    // Calendar feeds, read again every half hour (and when asked, from Settings).
+    setInterval(() => void vault.refreshFeeds().catch(console.error), 30 * 60_000),
   ]
+  void vault.refreshFeeds().catch(console.error)
   vault.dirty = true
   backup()
 

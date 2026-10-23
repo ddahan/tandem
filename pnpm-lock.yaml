@@ -281,6 +281,9 @@ catalogs:
     hono:
       specifier: ^4.13.13
       version: 4.13.13
+    ical.js:
+      specifier: ^2.2.1
+      version: 2.2.1
     lowlight:
       specifier: ^3.3.0
       version: 3.3.0
@@ -418,6 +421,9 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.13.13
+      ical.js:
+        specifier: 'catalog:'
+        version: 2.2.1
       marked:
         specifier: 'catalog:'
         version: 18.1.1
@@ -4543,6 +4549,9 @@ packages:
   human-signals@5.0.0:
     resolution: {integrity: sha512-AXcZb6vzzrFAUE61HnN4mpLqd/cSIwNQjtNWR0euPm6y0iqx3G4gOXaIDdtdDwZmhwe82LA6+zinmW4UBWVePQ==}
     engines: {node: '>=16.17.0'}
+
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -10448,6 +10457,8 @@ snapshots:
   httpxy@0.5.5: {}
 
   human-signals@5.0.0: {}
+
+  ical.js@2.2.1: {}
 
   iconv-lite@0.6.3:
     dependencies:

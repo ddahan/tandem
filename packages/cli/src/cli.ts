@@ -7,6 +7,13 @@ import { parseArgs } from 'node:util'
 import { createClient, type Client } from '@tandem/server/client'
 import {
   COLUMN_TYPES,
+  REPEATS,
+  agendaLine,
+  calendarDateOf,
+  dayLabel,
+  parseEventLine,
+  type AgendaItem,
+  type Repeat,
   bookmarkBlock,
   bookmarkIdsIn,
   cellText,
@@ -84,6 +91,17 @@ Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookm
                                 "" for the top)
   bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
 
+Agenda (days' events, kept in Tandem; a day's note shows them; feeds' events are read-only)
+  agenda [date]                 a day's events (today by default), or the days up to --to <date>
+  event-add <text…>             add one: "14:00 Standup", "13:30-14:30 Lunch with Paul", or a
+                                title alone (all day); --date (default today), --repeat
+                                daily|weekdays|weekly|biweekly|monthly|yearly, --until <date>
+  event-set <event> [text…]     change it: a new time and title as for event-add (a time alone
+                                keeps the title), --title, --time 9:00-10:00|day, --day <new day>,
+                                --repeat …|none, --until …|none; a repeating one: all its days
+                                from today on, or only the day given with --date
+  event-delete <event>          delete it; a repeating one from today on, or only --date's day
+
 Options
   --url <url>        Tandem's address (TANDEM_URL, default http://localhost:3864)
   --author <name>    who is writing, for history and authorship (TANDEM_AUTHOR, default "agent")
@@ -115,6 +133,10 @@ type Values = {
   description?: string
   folder?: string
   note?: string
+  repeat?: string
+  until?: string
+  day?: string
+  time?: string
 }
 
 function unreachable(error: unknown): never {
@@ -200,6 +222,31 @@ function cellsOf(database: Database, values: Record<string, string | null>) {
   }
 }
 
+/** `--repeat`: a preset, or `none` (null); undefined when not given. */
+function repeatOf(value: string | undefined): Repeat | null | undefined {
+  if (value === undefined) return undefined
+  if (value === 'none') return null
+  if (!REPEATS.includes(value as Repeat))
+    throw new CliError(`Unknown repeat “${value}” (${REPEATS.join(', ')}, or none).`)
+  return value as Repeat
+}
+
+/** A day's events, or several days' with their headings. */
+function describeAgenda(items: AgendaItem[], several: boolean): string {
+  if (!items.length) return 'No events.'
+  if (!several) return items.map(agendaLine).join('\n')
+  const days = [...new Set(items.map((item) => item.date))]
+  return days
+    .map(
+      (day) =>
+        `${dayLabel(day).title} (${day})\n${items
+          .filter((item) => item.date === day)
+          .map(agendaLine)
+          .join('\n')}`,
+    )
+    .join('\n\n')
+}
+
 function describeBookmarks(all: Bookmark[]): string {
   const lines: string[] = []
   const walk = (parentId: string | null, prefix: string) => {
@@ -267,6 +314,10 @@ export async function run(
         description: { type: 'string' },
         folder: { type: 'string' },
         note: { type: 'string' },
+        repeat: { type: 'string' },
+        until: { type: 'string' },
+        day: { type: 'string' },
+        time: { type: 'string' },
       },
     })
   } catch (error) {
@@ -335,8 +386,70 @@ async function execute(
         return print(`Appended to ${node.path}`, node)
       }
       const note = await call(client.notes[':id'].$get({ param: { id: node.id } }))
-      if (values.json) return print('', note)
-      return print(`${node.path}\n---\n${note.content.replace(/\n$/, '')}`)
+      const items = await call(client.agenda.$get({ query: { from: values.date ?? isoDate() } }))
+      if (values.json) return print('', { ...note, agenda: items })
+      const agenda = items.length ? `agenda:\n${describeAgenda(items, false)}\n` : ''
+      return print(`${node.path}\n${agenda}---\n${note.content.replace(/\n$/, '')}`)
+    }
+    case 'agenda': {
+      const from = args[0] ?? values.date ?? isoDate()
+      const items = await call(client.agenda.$get({ query: { from, to: values.to ?? from } }))
+      return print(describeAgenda(items, !!values.to && values.to !== from), items)
+    }
+    case 'event-add': {
+      const line = parseEventLine(args.join(' '))
+      if (!line.title) throw new CliError('Missing the event: "14:00 Standup", or a title.')
+      const event = await call(
+        client.agenda.events.$post({
+          json: {
+            ...line,
+            date: values.date ?? isoDate(),
+            repeat: repeatOf(values.repeat) ?? null,
+            until: values.until ?? null,
+          },
+        }),
+      )
+      return print(`Added ${event.title} on ${event.date} (${event.id})`, event)
+    }
+    case 'event-set': {
+      const id = need(0, 'event id')
+      const line = args.length > 1 ? parseEventLine(args.slice(1).join(' ')) : null
+      const time =
+        values.time === 'day'
+          ? { start: null, end: null }
+          : values.time
+            ? parseEventLine(`${values.time} x`)
+            : null
+      if (values.time && values.time !== 'day' && !time?.start)
+        throw new CliError(`Not a time: “${values.time}” (9:00, 9:00-10:00, or day).`)
+      const json = {
+        ...(line?.title ? { title: line.title } : {}),
+        ...(line?.start ? { start: line.start, end: line.end } : {}),
+        ...(values.title !== undefined ? { title: values.title } : {}),
+        ...(time ? { start: time.start, end: time.end } : {}),
+        ...(values.day ? { date: values.day } : {}),
+        ...(values.repeat !== undefined ? { repeat: repeatOf(values.repeat) } : {}),
+        ...(values.until !== undefined
+          ? { until: values.until === 'none' ? null : values.until }
+          : {}),
+        ...(values.date ? { on: values.date, scope: 'one' as const } : {}),
+      }
+      if (!Object.keys(json).filter((key) => key !== 'on' && key !== 'scope').length)
+        throw new CliError(
+          'Nothing to change: a time and title, --title, --time, --day, --repeat or --until.',
+        )
+      const { event } = await call(client.agenda.events[':id'].$patch({ param: { id }, json }))
+      return print(`Saved ${event.title} (${event.id})`, event)
+    }
+    case 'event-delete': {
+      const id = need(0, 'event id')
+      const result = await call(
+        client.agenda.events[':id'].$delete({
+          param: { id },
+          query: values.date ? { on: values.date, scope: 'one' } : {},
+        }),
+      )
+      return print(values.date ? `Deleted ${id} on ${values.date}` : `Deleted ${id}`, result)
     }
     case 'databases': {
       const node = await resolve(need(0, 'note'))
@@ -521,6 +634,12 @@ async function execute(
         `attachments: ${note.attachments.map((a) => a.markdownPath).join(', ') || '—'}`,
         `linked from: ${backlinks.map((b) => b.path).join(', ') || '—'}`,
       ]
+      // A day's events are in the agenda, not in its Markdown.
+      const day = calendarDateOf(node.path)
+      if (day) {
+        const items = await call(client.agenda.$get({ query: { from: day } }))
+        for (const item of items) meta.push(`event ${agendaLine(item).slice(2)}`)
+      }
       // The Markdown only names its bookmarks (ids).
       for (const id of new Set(bookmarkIdsIn(note.content))) {
         const response = await client.bookmarks[':id'].$get({ param: { id } })

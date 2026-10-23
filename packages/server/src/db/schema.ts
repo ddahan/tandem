@@ -1,6 +1,6 @@
 // Structured data that doesn't belong in the Markdown files. The files are the source of truth
 // for content and tree shape; these tables add identity, order, tags, history and authorship,
-// and hold the databases and bookmarks (a note only has a block naming one).
+// and hold the databases, bookmarks (a note only has a block naming one) and the agenda.
 // The full-text index (`notes_fts`) is a raw FTS5 table, created in the migrations.
 import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
@@ -175,3 +175,54 @@ export const bookmarkRefs = sqliteTable(
     index('bookmark_refs_bookmark').on(table.bookmarkId),
   ],
 )
+
+/**
+ * Tandem's own agenda (shared/agenda.ts): events of daily notes, which show them with an
+ * `agenda` block. A repeating event is one row, expanded for the days asked for.
+ */
+export const agendaEvents = sqliteTable(
+  'agenda_events',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    /** `YYYY-MM-DD`: its day, or a repeating event's first one. */
+    date: text('date').notNull(),
+    /** `HH:MM`, or null for all day; `end` only with a start. */
+    start: text('start'),
+    end: text('end'),
+    /** A `Repeat` preset, or null. */
+    repeat: text('repeat'),
+    until: text('until'),
+    /** JSON `string[]`: days left out of the repeat. */
+    skipped: text('skipped').notNull().default('[]'),
+    /** A day changed alone: the repeating event it was taken out of. */
+    seriesId: text('series_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('agenda_events_date').on(table.date)],
+)
+
+/** The days of events checked off: Tandem's (`ref` is the event's id) and feeds' (`feed/uid`). */
+export const agendaChecks = sqliteTable(
+  'agenda_checks',
+  {
+    ref: text('ref').notNull(),
+    date: text('date').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.ref, table.date] })],
+)
+
+/** Calendar feeds (`.ics` addresses), with the last good copy of each: their events read-only. */
+export const agendaFeeds = sqliteTable('agenda_feeds', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  url: text('url').notNull(),
+  color: text('color').notNull(),
+  position: real('position').notNull(),
+  /** The feed's text as last read successfully, or null. */
+  content: text('content'),
+  fetchedAt: integer('fetched_at'),
+  error: text('error'),
+  createdAt: integer('created_at').notNull(),
+})

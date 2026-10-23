@@ -130,6 +130,19 @@ describe('Markdown round-trip', () => {
     expect(editor!.getJSON().content?.[0]?.type).toBe('codeBlock')
   })
 
+  it('keeps the agenda block, apart from code blocks', () => {
+    const markdown = 'Today:\n\n```agenda\n```\n\nNotes.\n\n```agendas\nnot one\n```'
+    expect(roundTrip(markdown)).toBe(markdown)
+    expect(editor!.getJSON().content?.map((node) => node.type)).toEqual([
+      'paragraph',
+      'agenda',
+      'paragraph',
+      'codeBlock',
+    ])
+    // Whatever an agent wrote inside it: the block holds nothing.
+    expect(roundTrip('```agenda\n- 9:00 Standup\n```')).toBe('```agenda\n```')
+  })
+
   it('keeps plain quotes apart from callouts', () => {
     expect(roundTrip('> just a quote')).toBe('> just a quote')
     expect(editor!.getJSON().content?.[0]?.type).toBe('blockquote')

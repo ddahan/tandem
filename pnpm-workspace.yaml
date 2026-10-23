@@ -43,6 +43,7 @@ catalog:
   esbuild: ^0.28.2
   happy-dom: ^21.0.3
   hono: ^4.13.13
+  ical.js: ^2.2.1
   lowlight: ^3.3.0
   marked: ^18.1.1
   mermaid: ^12.2.0

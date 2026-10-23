@@ -223,3 +223,5 @@ export type ServerEvent =
   | { type: 'database'; id: string }
   /** Bookmarks changed (one, or the tree of them). */
   | { type: 'bookmarks' }
+  /** The agenda changed (an event, a check, a feed or its events). */
+  | { type: 'agenda' }

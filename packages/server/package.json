@@ -28,6 +28,7 @@
     "diff": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",
+    "ical.js": "catalog:",
     "marked": "catalog:",
     "nanoid": "catalog:",
     "zod": "catalog:"

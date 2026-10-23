@@ -35,7 +35,7 @@ const features: {
     key: 'daily',
     label: 'Daily notes',
     description:
-      'A note for each day, opened from Today in the sidebar (⌘T in the installed app) or the calendar. Off, they show in the tree, in Calendar.',
+      'A note for each day, opened from Today in the sidebar (⌘T in the installed app) or the calendar, with its agenda (/event). Off, they show in the tree, in Calendar.',
   },
   {
     key: 'spellcheck',
@@ -66,6 +66,15 @@ const features: {
           />
         </template>
       </SettingsSection>
+      <template v-if="feature.key === 'daily' && settings.daily">
+        <USeparator />
+        <SettingsSection
+          title="Calendar feeds"
+          description="Calendars whose events show in the agenda, read-only: an .ics address (Google: Secret address in iCal format; iCloud: a shared calendar’s link). Read every half hour."
+        >
+          <SettingsFeeds />
+        </SettingsSection>
+      </template>
     </template>
   </div>
 </template>

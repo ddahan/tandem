@@ -14,6 +14,8 @@ import { getMimeType } from 'hono/utils/mime'
 import { z } from 'zod'
 import {
   BOOKMARKS_OFF,
+  EVENT_TITLE_MAX,
+  REPEATS,
   BOOKMARK_IMPORT_FOLDER,
   BOOKMARK_IMPORT_MAX,
   BOOKMARK_DESCRIPTION_MAX,
@@ -153,6 +155,39 @@ const databaseRestore = z.object({
     .optional(),
 })
 const rowParam = z.object({ id: z.string().min(1), rowId: z.string().min(1) })
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'a day, YYYY-MM-DD')
+const time = z.string().regex(/^\d{2}:\d{2}$/, 'a time, HH:MM')
+const eventFields = {
+  title: z.string().max(EVENT_TITLE_MAX * 2),
+  date: isoDay,
+  start: time.nullable().optional(),
+  end: time.nullable().optional(),
+  repeat: z.enum(REPEATS).nullable().optional(),
+  until: isoDay.nullable().optional(),
+}
+const eventScope = {
+  /** The day the change is made on, for `one`. */
+  on: isoDay.optional(),
+  scope: z.enum(['one', 'all']).optional(),
+}
+const agendaEvent = z.object({
+  id: z.string().regex(/^[A-Za-z0-9]{1,64}$/),
+  ...eventFields,
+  start: time.nullable(),
+  end: time.nullable(),
+  repeat: z.enum(REPEATS).nullable(),
+  until: isoDay.nullable(),
+  skipped: z.array(isoDay).max(10_000),
+  seriesId: z.string().max(64).nullable(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+})
+const feedFields = {
+  name: z.string().max(400),
+  url: z.string().max(4000),
+  color: z.enum(CHOICE_COLORS),
+}
 
 // A favicon sent along (the extension has it): a `data:` URL, small.
 const iconDataUrl = z
@@ -655,6 +690,87 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       c.header('Cache-Control', 'public, max-age=31536000, immutable')
       c.header('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'")
       return c.body(Readable.toWeb(createReadStream(path)) as ReadableStream)
+    })
+
+    // --- Agenda (daily notes' events, and calendar feeds) -------------------------------------
+    .get(
+      '/agenda',
+      zValidator('query', z.object({ from: isoDay, to: isoDay.optional() })),
+      async (c) => {
+        const { from, to } = c.req.valid('query')
+        return c.json(await vault.agendaItems(from, to ?? from))
+      },
+    )
+    .get('/agenda/events', async (c) => c.json(await vault.listEvents()))
+    .post('/agenda/events', zValidator('json', z.object(eventFields)), async (c) =>
+      c.json(await vault.createEvent(c.req.valid('json')), 201),
+    )
+    .get('/agenda/events/:id', zValidator('param', idParam), async (c) =>
+      c.json(await vault.getEvent(c.req.valid('param').id)),
+    )
+    .patch(
+      '/agenda/events/:id',
+      zValidator('param', idParam),
+      zValidator('json', z.object({ ...eventFields, ...eventScope }).partial()),
+      async (c) => {
+        const { on, scope, ...patch } = c.req.valid('json')
+        return c.json(await vault.updateEvent(c.req.valid('param').id, patch, { date: on, scope }))
+      },
+    )
+    .delete(
+      '/agenda/events/:id',
+      zValidator('param', idParam),
+      zValidator('query', z.object(eventScope)),
+      async (c) => {
+        const { on, scope } = c.req.valid('query')
+        return c.json(await vault.deleteEvent(c.req.valid('param').id, { date: on, scope }))
+      },
+    )
+    .post(
+      '/agenda/restore',
+      zValidator(
+        'json',
+        z.object({
+          events: z.array(agendaEvent).max(1000),
+          created: z.array(z.string().max(64)).max(1000),
+        }),
+      ),
+      async (c) => {
+        await vault.restoreEvents(c.req.valid('json'))
+        return c.json({ ok: true })
+      },
+    )
+    .put(
+      '/agenda/checks',
+      zValidator(
+        'json',
+        z.object({ ref: z.string().min(1).max(2000), date: isoDay, checked: z.boolean() }),
+      ),
+      async (c) => {
+        const { ref, date, checked } = c.req.valid('json')
+        await vault.checkEvent(ref, date, checked)
+        return c.json({ ok: true })
+      },
+    )
+    .get('/agenda/feeds', async (c) => c.json(await vault.listFeeds()))
+    // POSTs: they make the server read an address, which only Tandem's own pages may ask for.
+    .post(
+      '/agenda/feeds',
+      zValidator('json', z.object({ ...feedFields, color: feedFields.color.optional() })),
+      async (c) => c.json(await vault.createFeed(c.req.valid('json')), 201),
+    )
+    .patch(
+      '/agenda/feeds/:id',
+      zValidator('param', idParam),
+      zValidator('json', z.object(feedFields).partial()),
+      async (c) => c.json(await vault.updateFeed(c.req.valid('param').id, c.req.valid('json'))),
+    )
+    .post('/agenda/feeds/:id/refresh', zValidator('param', idParam), async (c) =>
+      c.json(await vault.refreshFeed(c.req.valid('param').id)),
+    )
+    .delete('/agenda/feeds/:id', zValidator('param', idParam), async (c) => {
+      await vault.deleteFeed(c.req.valid('param').id)
+      return c.json({ ok: true })
     })
 
     // --- Live updates ------------------------------------------------------------------------

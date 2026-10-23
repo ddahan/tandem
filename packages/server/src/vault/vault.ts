@@ -55,10 +55,23 @@ import {
   calendarPath,
   isIsoDate,
   taskCounts,
+  withoutAgenda,
+  type AgendaEvent,
+  type AgendaFeed,
+  type AgendaItem,
   type CalendarDay,
+  type ChoiceColor,
 } from '@tandem/shared'
 import type { Database, Db } from '../db/client.ts'
 import { bookmarkRefs, links, nodes, settings, tags, trash, versions } from '../db/schema.ts'
+import {
+  AgendaStore,
+  type AgendaUndo,
+  type EventInput,
+  type EventPatch,
+  type EventScope,
+} from './agenda.ts'
+import { readFeed } from './feeds.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
 import {
   BOOKMARK_ICON_PREFIX,
@@ -138,6 +151,7 @@ export class Vault {
   private readonly sessionIdleMs: number
   private readonly databases: DatabaseStore
   private readonly bookmarks: BookmarkStore
+  private readonly agenda: AgendaStore
   private readonly fetcher: Fetcher | null
 
   constructor(options: VaultOptions) {
@@ -149,6 +163,7 @@ export class Vault {
     this.sessionIdleMs = options.sessionIdleMs ?? 30_000
     this.databases = new DatabaseStore(this.db, this.now)
     this.bookmarks = new BookmarkStore(this.db, this.now)
+    this.agenda = new AgendaStore(this.db, this.now)
     this.fetcher = options.fetch ?? null
   }
 
@@ -490,7 +505,10 @@ export class Vault {
       const date = calendarDateOf(row.path)
       if (!date) return []
       const content = row.content ?? ''
-      return [{ date, id: row.id, written: !isBlank(content), ...taskCounts(content) }]
+      // An agenda block alone is nothing written: the agenda shows its own events.
+      return [
+        { date, id: row.id, written: !isBlank(withoutAgenda(content)), ...taskCounts(content) },
+      ]
     })
   }
 
@@ -505,8 +523,9 @@ export class Vault {
       // Its file gone already, the watcher will tell.
       const row = await this.freshPage(id).catch(() => null)
       if (!row) return false
-      if (!isBlank(row.content ?? '') || row.pendingSnapshot || (await this.hasChildren(row)))
-        return false
+      // An agenda block alone is empty: the day's events are in the agenda, not in its file.
+      const content = withoutAgenda(row.content ?? '')
+      if (!isBlank(content) || row.pendingSnapshot || (await this.hasChildren(row))) return false
       const version = await this.db
         .select({ id: versions.id })
         .from(versions)
@@ -956,6 +975,103 @@ export class Vault {
   /** The file of a bookmark's favicon. */
   async bookmarkIconFile(id: string): Promise<string> {
     return join(this.metaDir, 'icons', await this.bookmarks.iconFile(id))
+  }
+
+  // --- Agenda (agenda.ts) ------------------------------------------------------------------
+
+  /** The events of the days from `from` to `to` (Tandem's and feeds'), by day and time. */
+  async agendaItems(from: string, to: string = from): Promise<AgendaItem[]> {
+    return this.agenda.items(from, to)
+  }
+
+  async listEvents(): Promise<AgendaEvent[]> {
+    return this.agenda.events()
+  }
+
+  async getEvent(id: string): Promise<AgendaEvent> {
+    return this.agenda.get(id)
+  }
+
+  async createEvent(input: EventInput): Promise<AgendaEvent> {
+    return this.lock.run(async () => this.agendaChanged(await this.agenda.create(input)))
+  }
+
+  /** Changes an event: one day of a repeating one, or all of them from today on (agenda.ts). */
+  async updateEvent(
+    id: string,
+    patch: EventPatch,
+    where: EventScope = {},
+  ): Promise<{ event: AgendaEvent; undo: AgendaUndo }> {
+    return this.lock.run(async () => this.agendaChanged(await this.agenda.update(id, patch, where)))
+  }
+
+  /** Deletes an event, or one day of it, or its days from today on; returns how to undo it. */
+  async deleteEvent(id: string, where: EventScope = {}): Promise<AgendaUndo> {
+    return this.lock.run(async () => this.agendaChanged(await this.agenda.remove(id, where)))
+  }
+
+  /** Undoes a change or a deletion of events. */
+  async restoreEvents(undo: AgendaUndo): Promise<void> {
+    return this.lock.run(async () => this.agendaChanged(await this.agenda.restore(undo)))
+  }
+
+  /** Checks or unchecks a day of an event (`ref`: `checkRef`, a feed's too). */
+  async checkEvent(ref: string, date: string, checked: boolean): Promise<void> {
+    return this.lock.run(async () =>
+      this.agendaChanged(await this.agenda.setChecked(ref, date, checked)),
+    )
+  }
+
+  async listFeeds(): Promise<AgendaFeed[]> {
+    return this.agenda.feeds()
+  }
+
+  /** A new calendar feed, read at once (a feed that can't be read is kept, with why). */
+  async createFeed(input: { name: string; url: string; color?: ChoiceColor }): Promise<AgendaFeed> {
+    const feed = await this.lock.run(async () =>
+      this.agendaChanged(await this.agenda.createFeed(input)),
+    )
+    return this.refreshFeed(feed.id)
+  }
+
+  async updateFeed(
+    id: string,
+    patch: { name?: string; url?: string; color?: ChoiceColor },
+  ): Promise<AgendaFeed> {
+    const before = await this.agenda.feed(id)
+    const feed = await this.lock.run(async () =>
+      this.agendaChanged(await this.agenda.updateFeed(id, patch)),
+    )
+    return feed.url === before.url ? feed : this.refreshFeed(id)
+  }
+
+  async deleteFeed(id: string): Promise<void> {
+    return this.lock.run(async () => this.agendaChanged(await this.agenda.deleteFeed(id)))
+  }
+
+  /** Reads a feed again (outside the lock: it can take seconds); its events change when it did. */
+  async refreshFeed(id: string): Promise<AgendaFeed> {
+    const { url } = await this.agenda.feed(id)
+    const read = this.fetcher
+      ? await readFeed(this.fetcher, url).then(
+          (content) => ({ content }),
+          (error: unknown) => ({ error }),
+        )
+      : { error: new ValidationError('Calendar feeds can’t be read here') }
+    return this.lock.run(async () => {
+      if (await this.agenda.saveFeedRead(id, url, read)) this.changed({ type: 'agenda' })
+      return this.agenda.feed(id)
+    })
+  }
+
+  /** Reads every feed again (the server does now and then). */
+  async refreshFeeds(): Promise<void> {
+    for (const feed of await this.agenda.feeds()) await this.refreshFeed(feed.id).catch(() => {})
+  }
+
+  private agendaChanged<T>(value: T): T {
+    this.changed({ type: 'agenda' })
+    return value
   }
 
   private async writeBookmarkIcon(id: string, data: Uint8Array, extension: string) {

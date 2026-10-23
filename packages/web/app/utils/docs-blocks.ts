@@ -216,6 +216,16 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         preview: null,
       },
       {
+        id: 'agenda',
+        title: 'Agenda',
+        icon: 'i-lucide-calendar-clock',
+        description:
+          'A day’s events, in its daily note (daily notes on): a checkbox, the time (`day`, `14:00`, `13:30 → 14:30`) and the title, edited in place; a click on the time opens the event’s details (time, day, repeat, delete). Type `14:00 Standup` on its last line to add one. A day with events shows it by itself; one without shows nothing. Its events are in Tandem: the block holds nothing.',
+        slash: 'Event',
+        markdown: '```agenda\n```',
+        preview: null,
+      },
+      {
         id: 'divider',
         title: 'Divider',
         icon: 'i-lucide-separator-horizontal',

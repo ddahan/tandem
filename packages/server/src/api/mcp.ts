@@ -9,6 +9,9 @@ import { z } from 'zod'
 import {
   COLUMN_TYPES,
   DEFAULT_AGENT,
+  REPEATS,
+  agendaLine,
+  dayLabel,
   bookmarkBlock,
   bookmarkIdsIn,
   cellsByName,
@@ -34,6 +37,9 @@ so that the user's lines keep their authorship. Never delete notes unless the us
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
 Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
 Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.
+Days have an agenda, kept in Tandem, not in the Markdown (a day's note shows it with an \`\`\`agenda
+block): use agenda, add_event, update_event and delete_event for events. Events from calendar
+feeds are read-only.
 Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
 \`\`\`bookmark block naming it (id: …). Use the bookmark tools for them; add_bookmark can put
 its card in a note.`
@@ -239,9 +245,98 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
         const node = await vault.calendarNote(date ?? isoDate(), author)
         if (append) await vault.appendContent(node.id, append, author)
         const detail = await vault.getNote(node.id)
+        const items = await vault.agendaItems(date ?? isoDate())
+        const agenda = items.length ? `\nagenda:\n${items.map(agendaLine).join('\n')}\n` : ''
         return text(
-          `# ${node.title}\npath: ${node.path} · id: ${node.id}\n\n---\n\n${detail.content}`,
+          `# ${node.title}\npath: ${node.path} · id: ${node.id}\n${agenda}\n---\n\n${detail.content}`,
         )
+      }),
+  )
+
+  const day = z.string().describe('A day, YYYY-MM-DD')
+  const time = z.string().describe('A time, HH:MM (24 h)')
+  const eventFields = {
+    title: z.string().optional(),
+    start: time.nullable().optional().describe('The start time; null for all day'),
+    end: time.nullable().optional().describe('The end time (with a start)'),
+    repeat: z.enum(REPEATS).nullable().optional().describe('How it repeats; null for once'),
+    until: day.nullable().optional().describe('The last day it repeats'),
+  }
+
+  server.registerTool(
+    'agenda',
+    {
+      title: 'Agenda',
+      description:
+        "The events of a day (today on the user's computer by default), or of the days from `date` to `to`: Tandem's own (with their ids) and calendar feeds' (read-only).",
+      inputSchema: { date: day.optional(), to: day.optional() },
+    },
+    async ({ date, to }) =>
+      attempt(async () => {
+        const from = date ?? isoDate()
+        const items = await vault.agendaItems(from, to ?? from)
+        const days = [...new Set(items.map((item) => item.date))]
+        const lines = days.map(
+          (d) =>
+            `${dayLabel(d).title} (${d})\n${items
+              .filter((item) => item.date === d)
+              .map(agendaLine)
+              .join('\n')}`,
+        )
+        return text(lines.join('\n\n') || 'No events.')
+      }),
+  )
+
+  server.registerTool(
+    'add_event',
+    {
+      title: 'Add an event',
+      description:
+        "Adds an event to a day's agenda (today by default): all day without `start`; it shows in that day's note.",
+      inputSchema: { date: day.optional(), ...eventFields, title: z.string() },
+    },
+    async ({ date, ...input }) =>
+      attempt(async () => {
+        const event = await vault.createEvent({ ...input, date: date ?? isoDate() })
+        return json(event)
+      }),
+  )
+
+  server.registerTool(
+    'update_event',
+    {
+      title: 'Change an event',
+      description:
+        'Changes an event. A repeating one: with `on`, only that day (taken out as an event of its own); without, all its days from today on (past days stay as they were). `date` moves it to another day.',
+      inputSchema: {
+        id: z.string(),
+        on: day.optional().describe('Only this day of a repeating event'),
+        date: day.optional().describe('Its new day'),
+        ...eventFields,
+      },
+    },
+    async ({ id, on, ...patch }) =>
+      attempt(async () => {
+        const { event } = await vault.updateEvent(id, patch, on ? { date: on, scope: 'one' } : {})
+        return json(event)
+      }),
+  )
+
+  server.registerTool(
+    'delete_event',
+    {
+      title: 'Delete an event',
+      description:
+        'Deletes an event (only when the user asked). A repeating one: with `on`, only that day; without, its days from today on (past days stay).',
+      inputSchema: {
+        id: z.string(),
+        on: day.optional().describe('Only this day of a repeating event'),
+      },
+    },
+    async ({ id, on }) =>
+      attempt(async () => {
+        await vault.deleteEvent(id, on ? { date: on, scope: 'one' } : {})
+        return text(on ? `Deleted ${id} on ${on}` : `Deleted ${id}`)
       }),
   )
 

@@ -180,6 +180,40 @@ describe('MCP server', () => {
     expect((await tool('daily_note', { date: 'tomorrow' })).result.isError).toBe(true)
   })
 
+  it('reads, adds, changes and deletes events, and shows them with the daily note', async () => {
+    const { vault } = await createTestVault()
+    const app = createApp(vault)
+    const tool = (name: string, args: Record<string, unknown>) =>
+      call(app, 'tools/call', { name, arguments: args })
+    expect(textOf(await tool('agenda', { date: '2026-10-21' }))).toBe('No events.')
+    const event = JSON.parse(
+      textOf(
+        await tool('add_event', {
+          date: '2026-10-21',
+          title: 'Standup',
+          start: '09:00',
+          end: '09:15',
+          repeat: 'weekdays',
+        }),
+      ),
+    )
+    expect(event).toMatchObject({ title: 'Standup', repeat: 'weekdays' })
+    expect(textOf(await tool('agenda', { date: '2026-10-21', to: '2026-10-22' }))).toContain(
+      `- [ ] 09:00 → 09:15 Standup  (id ${event.id}, every weekday)`,
+    )
+    expect(textOf(await tool('daily_note', { date: '2026-10-21' }))).toContain(
+      'agenda:\n- [ ] 09:00',
+    )
+    await tool('update_event', { id: event.id, on: '2026-10-22', title: 'Retro' })
+    expect(textOf(await tool('agenda', { date: '2026-10-22' }))).toContain('Retro')
+    expect(textOf(await tool('delete_event', { id: event.id, on: '2026-10-23' }))).toBe(
+      `Deleted ${event.id} on 2026-10-23`,
+    )
+    await tool('delete_event', { id: event.id })
+    expect(textOf(await tool('agenda', { date: '2026-10-26' }))).toBe('No events.')
+    expect((await tool('add_event', { title: ' ' })).result.isError).toBe(true)
+  })
+
   it('lists, searches, adds, changes and deletes bookmarks, and names them in notes', async () => {
     const { vault } = await createTestVault()
     const app = createApp(vault)

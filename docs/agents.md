@@ -52,6 +52,28 @@ two callers never make two. It is a note like any other otherwise: read and edit
 `Calendar/2026-10-21`. The owner may hide daily notes from the app (Settings › Features); they
 are still there for agents.
 
+## Agenda
+
+Days have events, kept in Tandem (not in the Markdown): the app shows them in the day's note,
+where an ` ```agenda ` block holding nothing marks their place (it shows its note's day's
+events; don't write events inside it, and don't add one: the app does).
+Events have a title, a day, a start and an end (`HH:MM`, 24 h; no start: all day), and may
+repeat (`daily`, `weekdays`, `weekly`, `biweekly`, `monthly`, `yearly`, until a day). Events from
+the owner's calendar feeds are read-only.
+
+- MCP: `agenda` (`date`, today by default, or `date` to `to`: each event with its id),
+  `add_event` (`title`, `date`, `start`, `end`, `repeat`, `until`), `update_event` (`id`, the
+  fields to change, `date` to move it; a repeating one: with `on`, only that day, taken out as an
+  event of its own; without, all its days from today on, past days unchanged), `delete_event`
+  (`id`; `on` for one day of a repeating one; only when asked). `daily_note` lists the day's
+  events.
+- CLI: `tandem agenda [date] [--to date]`, `tandem event-add "14:00 Standup" [--date …]
+  [--repeat weekly] [--until …]` (a time or two first, `13:30-14:30`, or a title alone for all
+  day), `tandem event-set <id> ["15:00 New title"] [--title …] [--time 9:00-10:00|day]
+  [--day …] [--repeat …|none] [--until …|none] [--date <day>: that day only]`,
+  `tandem event-delete <id> [--date <day>]`. `tandem daily` and `tandem read --meta` on a day's
+  note list its events.
+
 ## Markdown that Tandem understands
 
 GitHub-flavored Markdown, plus:
@@ -66,6 +88,7 @@ GitHub-flavored Markdown, plus:
 | Diagram             | a ` ```mermaid ` code block                                                             |
 | Database            | a ` ```database ` block with `id: …` (from `create_database`; see Databases)            |
 | Bookmark card       | a ` ```bookmark ` block with `id: …` (from `add_bookmark`; see Bookmarks)               |
+| Agenda              | an empty ` ```agenda ` block, in a daily note (its day's events; see Agenda)            |
 | Image with a width  | `<img src="Note.assets/a.png" alt="…" width="320">`                                     |
 | Attachment          | `[report.pdf](Note.assets/report.pdf)` (shown as a file chip)                           |
 

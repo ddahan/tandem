@@ -154,6 +154,50 @@ describe('CLI', () => {
     expect((await vault.getNote(node.id)).lastAuthor).toBe('claude-code')
   })
 
+  it('reads, adds, changes and deletes events', async () => {
+    const { vault } = await setup()
+    expect((await cli(['agenda', '2026-10-21'])).out).toBe('No events.\n')
+    const added = await cli(['event-add', '13:30-14:30', 'Lunch', '--date', '2026-10-21'])
+    expect(added.code).toBe(0)
+    const [event] = await vault.listEvents()
+    expect(event).toMatchObject({ title: 'Lunch', start: '13:30', end: '14:30' })
+    expect(added.out).toBe(`Added Lunch on 2026-10-21 (${event!.id})\n`)
+    await cli([
+      'event-add',
+      'Gym',
+      '--date',
+      '2026-10-21',
+      '--repeat',
+      'weekly',
+      '--until',
+      '2026-12-31',
+    ])
+    expect((await cli(['agenda', '2026-10-21'])).out).toContain('- [ ] day Gym  (id ')
+    expect((await cli(['daily', '--date', '2026-10-21'])).out).toContain('agenda:\n- [ ] day Gym')
+    const node = await vault.calendarNote('2026-10-21', 'claude-code')
+    expect((await cli(['read', node.id, '--meta'])).out).toContain('event [ ] 13:30 → 14:30 Lunch')
+    expect((await cli(['event-set', event!.id, '15:00', '--day', '2026-10-22'])).code).toBe(0)
+    expect(await vault.getEvent(event!.id)).toMatchObject({
+      date: '2026-10-22',
+      start: '15:00',
+      end: null,
+      title: 'Lunch',
+    })
+    await cli(['event-set', event!.id, '--time', 'day', '--title', 'Lunch out'])
+    expect(await vault.getEvent(event!.id)).toMatchObject({ start: null, title: 'Lunch out' })
+    const several = await cli(['agenda', '2026-10-21', '--to', '2026-10-28'])
+    expect(several.out).toContain('(2026-10-28)')
+    const gym = (await vault.listEvents()).find((e) => e.title === 'Gym')!
+    expect((await cli(['event-delete', gym.id, '--date', '2026-10-28'])).out).toBe(
+      `Deleted ${gym.id} on 2026-10-28\n`,
+    )
+    expect((await cli(['event-delete', event!.id])).code).toBe(0)
+    expect((await cli(['event-set', gym.id])).code).toBe(1)
+    expect((await cli(['event-set', gym.id, '--time', 'soon'])).code).toBe(1)
+    expect((await cli(['event-add', 'Run', '--repeat', 'hourly'])).code).toBe(1)
+    expect((await cli(['event-add'])).code).toBe(1)
+  })
+
   it('lists, searches, adds, changes and deletes bookmarks', async () => {
     const { vault } = await setup()
     await cli(['new', 'Reading'])
