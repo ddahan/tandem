@@ -55,6 +55,16 @@ const newColumnId = customAlphabet(ALPHANUMERIC, 8)
 /** Choices made from a column's values when it becomes a `select` (at most). */
 const MAX_OPTIONS = 50
 
+/** What a value of each type is, for errors. */
+const TYPE_NAMES: Record<ColumnType, string> = {
+  text: 'a text',
+  number: 'a number',
+  money: 'an amount in euros',
+  date: 'a date',
+  checkbox: 'yes or no',
+  select: 'a choice',
+}
+
 type DatabaseRecord = typeof databases.$inferSelect
 type RowRecord = typeof databaseRows.$inferSelect
 
@@ -513,7 +523,7 @@ function checkCells(
       throw new ValidationError(
         column.type === 'select'
           ? `${column.name}: “${String(value)}” is not one of ${column.options?.join(', ') || 'its choices (none yet)'}`
-          : `${column.name}: “${String(value)}” is not a ${column.type === 'checkbox' ? 'yes or no' : column.type}`,
+          : `${column.name}: “${String(value)}” is not ${TYPE_NAMES[column.type]}`,
       )
     }
     if (cell === null && requiresValue(column)) {

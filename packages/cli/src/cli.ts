@@ -11,6 +11,7 @@ import {
   bookmarkIdsIn,
   cellText,
   cellsByName,
+  withCents,
   databaseBlock,
   databaseIdsIn,
   formatDateTime,
@@ -174,12 +175,16 @@ function escapeCell(text: string): string {
 function describeRows(database: Database, all: boolean): string {
   const rows = all ? database.rows : viewRows(database)
   const header = ['id', ...database.columns.map((c) => escapeCell(c.name))]
+  // A money column's amounts all with cents or all without, as in the app.
+  const cents = new Set(
+    database.columns.filter((c) => withCents(c, database.rows)).map((c) => c.id),
+  )
   const lines = [
     `| ${header.join(' | ')} |`,
     `| ${header.map(() => '---').join(' | ')} |`,
     ...rows.map(
       (row) =>
-        `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c)))].join(' | ')} |`,
+        `| ${[row.id, ...database.columns.map((c) => escapeCell(cellText(row.cells[c.id], c, cents.has(c.id))))].join(' | ')} |`,
     ),
   ]
   const hidden = database.rows.length - rows.length

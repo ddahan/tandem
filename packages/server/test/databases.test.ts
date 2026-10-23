@@ -222,6 +222,23 @@ describe('databases', () => {
     expect(database.rows[1]!.cells[status!.id]).toBeUndefined()
   })
 
+  it('keeps amounts in euros to the cent', async () => {
+    const { vault, page } = await setup()
+    let database = await vault.createDatabase(page.id, {
+      columns: [{ name: 'Price', type: 'money' }],
+    })
+    const [price] = database.columns
+    const rowId = database.rows[0]!.id
+    database = await vault.updateDatabaseRow(database.id, rowId, { [price!.id]: '12,499 €' })
+    expect(database.rows[0]!.cells[price!.id]).toBe(12.5)
+    await expect(
+      vault.updateDatabaseRow(database.id, rowId, { [price!.id]: 'free' }),
+    ).rejects.toThrow('Price: “free” is not an amount in euros')
+    // Becoming a number keeps the value.
+    database = await vault.updateDatabase(database.id, { columns: [{ ...price!, type: 'number' }] })
+    expect(database.rows[0]!.cells[price!.id]).toBe(12.5)
+  })
+
   it('keeps a color per choice, for choices that are there', async () => {
     const { vault, page } = await setup()
     let database = await vault.createDatabase(page.id, {

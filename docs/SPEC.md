@@ -145,12 +145,15 @@ inside OneDrive so that it is backed up and synced.
   downloads other files). Files over
   10 MB ask for confirmation first. No maximum size.
 - **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
-  whose rows and typed columns (text, number, date, checkbox, choice) are kept in Tandem, not
+  whose rows and typed columns (text, number, money in euros, date, checkbox,
+  choice) are kept in Tandem, not
   in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
   data is safe in the database and its backup copy. Cells are edited in place (Enter saves,
   Escape puts the saved value back; text wraps, Shift+Enter starts a new line, and the row
   grows with it; dates typed day, month, year, or picked in a calendar whose weeks start on
-  Monday, shown `17/10/2026`; numbers French; choices picked in a menu; a value of the wrong
+  Monday, shown `17/10/2026`; numbers French; amounts in euros (`1 234 €`, kept to the cent;
+  as soon as one amount of a column has cents, every amount of it shows two decimals,
+  `1 234,00 €`, so that a column's amounts always look alike); choices picked in a menu; a value of the wrong
   type is refused). Columns have a width for their type (the first one wider) until dragged
   from the edge of their heading; the width is saved with the database, and a double-click on
   the edge resets it. A database wider than the page's text makes the page full width while

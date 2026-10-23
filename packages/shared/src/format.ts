@@ -25,6 +25,23 @@ export function formatNumber(value: number): string {
   return numberFormat.format(value)
 }
 
+const euros = new Intl.NumberFormat(LOCALE, {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 0,
+})
+const eurosAndCents = new Intl.NumberFormat(LOCALE, {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/** `1 234 €`, or `1 234,50 €` with cents (by default when the amount has some). */
+export function formatMoney(value: number, cents = !Number.isInteger(value)): string {
+  return (cents ? eurosAndCents : euros).format(value)
+}
+
 /** `2,4 Mo` */
 export function formatSize(bytes: number): string {
   const units = ['o', 'Ko', 'Mo', 'Go']

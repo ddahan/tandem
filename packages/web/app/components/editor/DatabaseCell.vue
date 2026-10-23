@@ -12,13 +12,15 @@ import { choiceTagClass } from '~/utils/choice-colors'
 const props = defineProps<{
   column: DatabaseColumn
   value: CellValue | undefined
+  /** Money columns: cents shown (when any amount of the column has some: `withCents`). */
+  cents?: boolean
   readonly: boolean
   /** Saves a value; false when it was refused (the cell shows the saved one again). */
   save: (value: CellValue) => Promise<boolean>
 }>()
 
-// Numbers are French (dates have their own field, DatabaseDate).
-const shown = computed(() => cellText(props.value, props.column))
+// Numbers and amounts are French (dates have their own field, DatabaseDate).
+const shown = computed(() => cellText(props.value, props.column, props.cents))
 
 const draft = ref(shown.value)
 const editing = ref(false)

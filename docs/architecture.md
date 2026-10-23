@@ -207,7 +207,8 @@ one exception: bookmarks off, the server answers the browser extension's bookmar
 change (`database` event). Every change returns the whole database (rows included). Values
 are checked with `toCellValue` (`@tandem/shared`'s `databases.ts`); a column changing type
 converts its values (`convertCell`), and one becoming a `select` takes its values as choices.
-A `select` column's `colors` map choices to one of `CHOICE_COLORS`, by name (as cells hold
+Amounts (`money`) are numbers; `withCents` says whether a column shows cents (any amount
+has some), for the table and the CLI alike. A `select` column's `colors` map choices to one of `CHOICE_COLORS`, by name (as cells hold
 them); colors of choices no longer there are dropped.
 The view (filter, then sort: `viewRows`) is applied by readers, in the same shared code: the
 table, the agents' tools and the CLI show the same rows. Column ids stay when columns are

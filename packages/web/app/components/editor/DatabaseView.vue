@@ -7,6 +7,7 @@ import {
   COLUMN_TYPES,
   COLUMN_WIDTH,
   viewRows,
+  withCents,
   type CellValue,
   type ColumnType,
   type DatabaseColumn,
@@ -50,10 +51,20 @@ watch(
 )
 const framed = computed(() => props.selected && !touched.value)
 const rows = computed(() => (database.value ? viewRows(database.value) : []))
+// Money columns showing cents: decided on every row, not only those the filters show.
+const cents = computed(
+  () =>
+    new Set(
+      (database.value?.columns ?? [])
+        .filter((column) => withCents(column, database.value!.rows))
+        .map((column) => column.id),
+    ),
+)
 
 const TYPES: Record<ColumnType, { label: string; icon: string }> = {
   text: { label: 'Text', icon: 'i-lucide-type' },
   number: { label: 'Number', icon: 'i-lucide-hash' },
+  money: { label: 'Money (€)', icon: 'i-lucide-euro' },
   date: { label: 'Date', icon: 'i-lucide-calendar' },
   checkbox: { label: 'Checkbox', icon: 'i-lucide-square-check' },
   select: { label: 'Choice', icon: 'i-lucide-circle-chevron-down' },
@@ -265,6 +276,7 @@ function columnMenu(column: DatabaseColumn): DropdownMenuItem[][] {
 const DEFAULT_WIDTHS: Record<ColumnType, number> = {
   text: 200,
   number: 110,
+  money: 130,
   date: 160,
   checkbox: 90,
   select: 160,
@@ -553,6 +565,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                     <DatabaseCell
                       :column="column"
                       :value="row.cells[column.id]"
+                      :cents="cents.has(column.id)"
                       :readonly="readonly"
                       :save="(value: CellValue) => setCell(row.id, column.id, value)"
                     />

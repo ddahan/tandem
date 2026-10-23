@@ -317,6 +317,40 @@ test('text cells take several lines: Shift+Enter starts one, Enter saves', async
     .toBe('Call the bank\nbefore noon')
 })
 
+test('money columns show euros, with cents on every row once one amount has some', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Budget', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [{ name: 'Price', type: 'money' }],
+  })
+  await api(request, 'POST', `/databases/${database.id}/rows`, {})
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const cells = page.getByTestId('database').getByRole('textbox', { name: 'Price' })
+  const nb = '\u202f'
+  await cells.first().click()
+  await page.keyboard.type('1234')
+  await page.keyboard.press('Enter')
+  await expect(cells.first()).toHaveValue(`1${nb}234\u00a0€`)
+
+  // An amount with cents: every amount of the column shows them.
+  await cells.nth(1).click()
+  await page.keyboard.type('9,5')
+  await page.keyboard.press('Enter')
+  await expect(cells.nth(1)).toHaveValue('9,50\u00a0€')
+  await expect(cells.first()).toHaveValue(`1${nb}234,00\u00a0€`)
+
+  // None left: whole euros again.
+  await cells.nth(1).fill('10')
+  await page.keyboard.press('Enter')
+  await expect(cells.first()).toHaveValue(`1${nb}234\u00a0€`)
+  await expect(cells.nth(1)).toHaveValue('10\u00a0€')
+})
+
 test('columns are resized from their edge; a wide database makes the page full width', async ({
   page,
   request,

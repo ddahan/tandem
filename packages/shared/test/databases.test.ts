@@ -10,6 +10,7 @@ import {
   rowsByName,
   toCellValue,
   viewRows,
+  withCents,
   type Database,
   type DatabaseColumn,
   type DatabaseRow,
@@ -17,6 +18,7 @@ import {
 
 const text: DatabaseColumn = { id: 't', name: 'Name', type: 'text' }
 const number: DatabaseColumn = { id: 'n', name: 'Pages', type: 'number' }
+const money: DatabaseColumn = { id: 'm', name: 'Price', type: 'money' }
 const date: DatabaseColumn = { id: 'd', name: 'Read', type: 'date' }
 const checkbox: DatabaseColumn = { id: 'c', name: 'Owned', type: 'checkbox' }
 const select: DatabaseColumn = {
@@ -26,7 +28,15 @@ const select: DatabaseColumn = {
   options: ['To read', 'Reading', 'Done'],
 }
 const columns = [text, number, date, checkbox, select]
-const byType = { text, number, date, checkbox, select }
+const byType = { text, number, money, date, checkbox, select }
+
+const amounts = (values: number[]): DatabaseRow[] =>
+  values.map((value, index) => ({
+    id: String(index),
+    cells: { m: value },
+    createdAt: 0,
+    updatedAt: 0,
+  }))
 
 describe('values', () => {
   it.each([
@@ -34,6 +44,10 @@ describe('values', () => {
     ['number', '1 234', 1234],
     ['number', 'twelve', undefined],
     ['number', '', null],
+    ['money', '12,50 €', 12.5],
+    ['money', '€1 234.567', 1234.57],
+    ['money', '40 EUR', 40],
+    ['money', 'cheap', undefined],
     ['date', '17/10/2026', '2026-10-17'],
     ['date', '2026-10-17', '2026-10-17'],
     ['date', '31/02/2026', undefined],
@@ -54,7 +68,20 @@ describe('values', () => {
     expect(cellText(null, text)).toBe('')
   })
 
+  it('shows amounts in euros, with cents in the whole column once one has some', () => {
+    const nb = '\u202f'
+    expect(cellText(1234, money)).toBe(`1${nb}234\u00a0€`)
+    expect(cellText(12.5, money)).toBe('12,50\u00a0€')
+    expect(cellText(12, money, true)).toBe('12,00\u00a0€')
+    expect(withCents(money, amounts([12, 40]))).toBe(false)
+    expect(withCents(money, amounts([12, 40.1]))).toBe(true)
+    expect(withCents(number, amounts([12.5]))).toBe(false)
+  })
+
   it('keeps what it can when a column changes type', () => {
+    expect(convertCell(12.345, number, money)).toBe(12.35)
+    expect(convertCell(12.5, money, number)).toBe(12.5)
+    expect(convertCell(12.5, money, text)).toBe('12,50\u00a0€')
     expect(convertCell(12, number, text)).toBe('12')
     expect(convertCell('2026-10-17', date, text)).toBe('17/10/2026')
     expect(convertCell('12', text, number)).toBe(12)

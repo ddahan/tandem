@@ -2,6 +2,15 @@
 // with (DatabaseFilters, and a column's menu).
 import type { ColumnType, DatabaseColumn, DatabaseFilter, FilterOperator } from '@tandem/shared'
 
+const NUMBER_CONDITIONS: { value: FilterOperator; label: string }[] = [
+  { value: 'is', label: '=' },
+  { value: 'is-not', label: '≠' },
+  { value: 'gt', label: '>' },
+  { value: 'lt', label: '<' },
+  { value: 'empty', label: 'is empty' },
+  { value: 'not-empty', label: 'is not empty' },
+]
+
 export const FILTER_CONDITIONS: Record<ColumnType, { value: FilterOperator; label: string }[]> = {
   text: [
     { value: 'contains', label: 'contains' },
@@ -10,14 +19,8 @@ export const FILTER_CONDITIONS: Record<ColumnType, { value: FilterOperator; labe
     { value: 'empty', label: 'is empty' },
     { value: 'not-empty', label: 'is not empty' },
   ],
-  number: [
-    { value: 'is', label: '=' },
-    { value: 'is-not', label: '≠' },
-    { value: 'gt', label: '>' },
-    { value: 'lt', label: '<' },
-    { value: 'empty', label: 'is empty' },
-    { value: 'not-empty', label: 'is not empty' },
-  ],
+  number: NUMBER_CONDITIONS,
+  money: NUMBER_CONDITIONS,
   date: [
     { value: 'is', label: 'is' },
     { value: 'lt', label: 'is before' },

@@ -1,9 +1,9 @@
 // Databases: tables whose rows live in SQLite, shown in a note by a `database` block. The types,
 // how a value is read for a column type, and how a view (filter, then sort) picks and orders the
 // rows: the web app shows what the agents' tools return.
-import { formatNumber } from './format.ts'
+import { formatMoney, formatNumber } from './format.ts'
 
-export const COLUMN_TYPES = ['text', 'number', 'date', 'checkbox', 'select'] as const
+export const COLUMN_TYPES = ['text', 'number', 'money', 'date', 'checkbox', 'select'] as const
 export type ColumnType = (typeof COLUMN_TYPES)[number]
 
 /** Colors a choice can have (none: no color). */
@@ -41,7 +41,10 @@ export interface DatabaseColumn {
 /** Widths a column can be resized to, in pixels. */
 export const COLUMN_WIDTH = { min: 60, max: 1200 } as const
 
-/** Text, a number, a date (`2026-10-17`), a checkbox, a choice; null when empty. */
+/**
+ * Text, a number, an amount in euros (a number, to the cent), a date (`2026-10-17`), a checkbox,
+ * a choice; null when empty.
+ */
 export type CellValue = string | number | boolean | null
 
 export interface DatabaseSort {
@@ -109,16 +112,12 @@ export function toCellValue(value: unknown, column: DatabaseColumn): CellValue |
   switch (column.type) {
     case 'text':
       return typeof value === 'string' ? value : String(value)
-    case 'number': {
-      if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
-      if (typeof value !== 'string') return undefined
-      const number = Number(
-        value
-          .trim()
-          .replace(/[\s ]/g, '')
-          .replace(',', '.'),
-      )
-      return Number.isFinite(number) ? number : undefined
+    case 'number':
+      return toNumber(value)
+    case 'money': {
+      // `12,50 €`, `€12.5`, `12.5 EUR`: rounded to the cent.
+      const number = toNumber(typeof value === 'string' ? value.replace(/€|eur/gi, '') : value)
+      return number === undefined ? undefined : Math.round(number * 100) / 100
     }
     case 'date': {
       if (typeof value !== 'string') return undefined
@@ -152,6 +151,20 @@ export function toCellValue(value: unknown, column: DatabaseColumn): CellValue |
   }
 }
 
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'string') return undefined
+  const number = Number(
+    value
+      .trim()
+      .replace(/[\s ]/g, '')
+      .replace(',', '.'),
+  )
+  return Number.isFinite(number) ? number : undefined
+}
+
+const isNumeric = (column: DatabaseColumn) => column.type === 'number' || column.type === 'money'
+
 /** A `from` value for the `to` column (its type changed): what can be kept is, the rest empty. */
 export function convertCell(
   value: CellValue | undefined,
@@ -160,6 +173,7 @@ export function convertCell(
 ): CellValue {
   if (value === null || value === undefined) return null
   if (to.type === 'text') return cellText(value, from) || null
+  if (isNumeric(from) && isNumeric(to)) return toCellValue(value, to) ?? null
   return toCellValue(from.type === 'date' ? value : cellText(value, from), to) ?? null
 }
 
@@ -169,13 +183,35 @@ export function formatCellDate(value: string): string {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : value
 }
 
-/** The value as text: what a cell shows, what filters and agents read. */
-export function cellText(value: CellValue | undefined, column: DatabaseColumn): string {
+/**
+ * The value as text: what a cell shows, what filters and agents read. Amounts have cents when
+ * `cents` says so (`withCents`: the same for a whole column), else when they have some.
+ */
+export function cellText(
+  value: CellValue | undefined,
+  column: DatabaseColumn,
+  cents?: boolean,
+): string {
   if (value === null || value === undefined) return ''
   if (column.type === 'checkbox') return value ? '✓' : ''
   if (column.type === 'date' && typeof value === 'string') return formatCellDate(value)
   if (column.type === 'number' && typeof value === 'number') return formatNumber(value)
+  if (column.type === 'money' && typeof value === 'number') return formatMoney(value, cents)
   return String(value)
+}
+
+/**
+ * Whether a money column shows cents: on every row as soon as one amount has some, so that a
+ * column's amounts always look alike.
+ */
+export function withCents(column: DatabaseColumn, rows: DatabaseRow[]): boolean {
+  return (
+    column.type === 'money' &&
+    rows.some((row) => {
+      const value = row.cells[column.id]
+      return typeof value === 'number' && !Number.isInteger(value)
+    })
+  )
 }
 
 const isEmpty = (value: CellValue | undefined) =>
@@ -183,7 +219,7 @@ const isEmpty = (value: CellValue | undefined) =>
 
 /** Orders two values of a column: empty ones last, whatever the direction. */
 function compare(a: CellValue | undefined, b: CellValue | undefined, column: DatabaseColumn) {
-  if (column.type === 'number') return Number(a) - Number(b)
+  if (isNumeric(column)) return Number(a) - Number(b)
   if (column.type === 'checkbox') return Number(Boolean(a)) - Number(Boolean(b))
   if (column.type === 'select' && column.options) {
     return column.options.indexOf(String(a)) - column.options.indexOf(String(b))

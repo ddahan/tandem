@@ -81,7 +81,7 @@ GitHub-flavored Markdown, plus:
 
 ## Databases
 
-Tables of rows with typed columns (`text`, `number`, `date`, `checkbox`, `select`), which the
+Tables of rows with typed columns (`text`, `number`, `money`, `date`, `checkbox`, `select`), which the
 owner sorts and filters. Their data is in Tandem, not in the Markdown: a note shows one with a
 ` ```database ` block holding only its id. Read and change them with the tools, never by
 writing the block's content.
@@ -96,7 +96,7 @@ writing the block's content.
   `tandem row-add <id> Name=Dune Pages=412`, `tandem row-set <id> <row> Status=Done`
   (`Column=` empties a value), `tandem row-delete <id> <row>`.
 - Values by column name (any case). Text can hold line breaks (`\n`). Dates `2026-10-17` (or `17/10/2026`), numbers `12.5` or
-  `12,5`, checkboxes `true`/`false` (or yes/no), choices by name. A value that doesn't fit its
+  `12,5`, amounts in euros like numbers (`12,50 €` too; kept to the cent, read as numbers), checkboxes `true`/`false` (or yes/no), choices by name. A value that doesn't fit its
   column is refused with the reason. A choice column with `allowEmpty: false` always has a
   value: rows added without one get its first choice, and it can't be set to null.
 
