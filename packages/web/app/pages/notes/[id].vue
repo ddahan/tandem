@@ -83,6 +83,7 @@ const editor = useTemplateRef<{
   scrollTo(pos: number): void
   focus(position?: 'start' | 'end'): void
   revealTodo(index: number, text?: string): void
+  fileDeleted(name: string): void
 }>('editor')
 
 // --- Find in the note (⌘F, ⌘⌥F with replace) ---------------------------------------------------
@@ -837,6 +838,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     @restored="(restored) => resetEditor(restored)"
     @attach="appendMarkdown"
     @detach="detachFile"
+    @deleted="(name) => editor?.fileDeleted(name)"
     @close="panelOpen = false"
   />
 

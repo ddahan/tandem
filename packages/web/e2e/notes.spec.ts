@@ -558,6 +558,112 @@ test('removing a file’s last link asks whether to delete the file too', async 
   await expect.poll(() => noteContent(request, note.id)).not.toContain('linked.txt')
 })
 
+test('a file deleted for good never comes back: undo, redo, the Files panel, a reload', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Undo files', 'Before.')
+  await openNote(page, note.id)
+  await dropFiles(page, [
+    { name: 'pic.png', type: 'image/png', text: 'P' },
+    { name: 'kept.txt', type: 'text/plain', text: 'K' },
+    { name: 'shown.png', type: 'image/png', text: 'S' },
+  ])
+  const images = page.locator('.ProseMirror img')
+  const chips = page.locator('.ProseMirror .file-chip')
+  await expect(images).toHaveCount(2)
+  await expect(chips).toHaveCount(1)
+  await waitSaved(page)
+  const files = async () =>
+    (await api<{ name: string }[]>(request, 'GET', `/notes/${note.id}/attachments`)).map(
+      (file) => file.name,
+    )
+  const dialog = page.getByRole('dialog')
+  /** Selects what shows or links to `name` (an image, or a chip's text), in the editor. */
+  const select = (name: string) =>
+    page.evaluate((target) => {
+      const { editor } = document.querySelector('.ProseMirror') as unknown as { editor: Editor }
+      let found: { from: number; to: number; image: boolean } | null = null
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'image' && String(node.attrs.src).endsWith(`/${target}`)) {
+          found = { from: pos, to: pos + node.nodeSize, image: true }
+        } else if (node.isText && node.text === target) {
+          found = { from: pos, to: pos + node.nodeSize, image: false }
+        }
+      })
+      const range = found as { from: number; to: number; image: boolean } | null
+      if (!range) throw new Error(`${target} not in the note`)
+      if (range.image) editor.commands.setNodeSelection(range.from)
+      else editor.commands.setTextSelection(range)
+      editor.commands.focus()
+    }, name)
+  const undo = () => page.keyboard.press('ControlOrMeta+z')
+  const redo = () => page.keyboard.press('ControlOrMeta+Shift+z')
+  const editorText = () => page.locator('.ProseMirror').innerText()
+
+  // Typed, then the image removed in the note and deleted for good.
+  await page.locator('.ProseMirror p').first().click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' Typed.')
+  await waitSaved(page)
+  await select('pic.png')
+  await page.keyboard.press('Backspace')
+  await dialog.getByRole('button', { name: 'Delete the file' }).click()
+  await expect.poll(files).toEqual(['kept.txt', 'shown.png'])
+  await expect(images).toHaveCount(1)
+  // ⌘Z: the image's removal is undone without the image; then the typing is undone.
+  await undo()
+  await expect(images).toHaveCount(1)
+  await undo()
+  await expect.poll(editorText).not.toContain('Typed.')
+  await expect(images).toHaveCount(1)
+  // ⌘⇧Z: the typing again, still no image.
+  await redo()
+  await redo()
+  await expect.poll(editorText).toContain('Typed.')
+  await expect(images).toHaveCount(1)
+
+  // A chip removed, the file kept, then deleted from the Files panel: ⌘Z doesn't bring it back.
+  await select('kept.txt')
+  await page.keyboard.press('Backspace')
+  await dialog.getByRole('button', { name: 'Keep it' }).click()
+  await expect(chips).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Files', exact: true }).click()
+  const deleteFromPanel = async (name: string) => {
+    const row = page.getByRole('listitem').filter({ hasText: name })
+    await row.hover()
+    await row.getByRole('button', { name: `Delete ${name}` }).click()
+    await dialog.getByRole('button', { name: 'Delete the file' }).click()
+    await expect(dialog).toBeHidden()
+  }
+  await deleteFromPanel('kept.txt')
+  await expect.poll(files).toEqual(['shown.png'])
+  await page.locator('.ProseMirror p').first().click()
+  await undo()
+  await undo()
+  await expect(chips).toHaveCount(0)
+
+  // An image the note shows, deleted from the Files panel: gone, and ⌘Z doesn't bring it back.
+  await deleteFromPanel('shown.png')
+  await expect.poll(files).toEqual([])
+  await expect(images).toHaveCount(0)
+  await page.locator('.ProseMirror p').first().click()
+  await undo()
+  await undo()
+  await expect(images).toHaveCount(0)
+  await expect(chips).toHaveCount(0)
+
+  // Saved without them: a reload shows no broken image or chip.
+  await waitSaved(page)
+  for (const name of ['pic.png', 'kept.txt', 'shown.png']) {
+    await expect.poll(() => noteContent(request, note.id)).not.toContain(name)
+  }
+  await page.reload()
+  await expect(page.locator('.ProseMirror')).toContainText('Before.')
+  await expect(images).toHaveCount(0)
+  await expect(chips).toHaveCount(0)
+})
+
 test('asks before attaching a file over 10 MB', async ({ page, request }) => {
   const note = await createNote(request, 'Large drop', 'Before.')
   await openNote(page, note.id)

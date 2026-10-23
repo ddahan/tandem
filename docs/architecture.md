@@ -441,7 +441,15 @@ already there (`urlKey`) or not web addresses, and inserts the rest with their p
   `setContent`), the note's own attachment names linked before and after are compared; for
   those gone, a confirmation, then `DELETE /notes/:id/attachments/:name` (`vault.deleteAttachment`:
   the file, and the `.assets/` folder once empty; a `note` event with the unchanged hash
-  refreshes the Files panel).
+  refreshes the Files panel). The Files panel's own delete takes the links out of the note's
+  Markdown (`removeAttachmentLinks`) before deleting the file.
+- Deleted files stay deleted (`DeletedFiles` in `editor/file-chips.ts`): the editor's state
+  keeps the names deleted while it is open (the editor marks them after each delete, the Files
+  panel through `fileDeleted`; an upload under the same name, or content set from outside that
+  links to one, unmarks it). After any new document, a plugin view removes their images and
+  chips in a change of its own, out of the undo history. Not in `appendTransaction`:
+  prosemirror-history adds a change appended to an undo to the redo branch without mapping the
+  undo branch through it, and the next undo's steps would no longer apply.
 - Updates reach open windows (`utils/app-update.ts`, plugin `app-update.client.ts`): the app
   compares its Nuxt build id with `/_app/builds/latest.json` at start, on `pageshow` from the
   browser's cache, when the window becomes visible and when the event stream reconnects (an

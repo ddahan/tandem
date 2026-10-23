@@ -20,6 +20,7 @@ defineEmits<{
   restored: [content: string]
   attach: [markdown: string]
   detach: [markdownPath: string]
+  deleted: [name: string]
   close: []
 }>()
 
@@ -171,6 +172,7 @@ const tabs = computed(() => [
         :note-path="notePath"
         @insert="(md) => $emit('attach', md)"
         @detach="(path) => $emit('detach', path)"
+        @deleted="(name) => $emit('deleted', name)"
       />
     </template>
   </UDashboardPanel>

@@ -6,7 +6,12 @@ import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
 const props = defineProps<{ noteId: string; notePath: string }>()
-const emit = defineEmits<{ insert: [markdown: string]; detach: [markdownPath: string] }>()
+const emit = defineEmits<{
+  insert: [markdown: string]
+  detach: [markdownPath: string]
+  /** Deleted for good: the editor's undo can't bring its links back. */
+  deleted: [name: string]
+}>()
 const api = useApi()
 const showError = useApiErrorToast()
 const confirm = useConfirm()
@@ -72,6 +77,7 @@ async function remove(attachment: Attachment) {
         param: { id: props.noteId, name: attachment.name },
       }),
     )
+    emit('deleted', attachment.name)
   } catch (error) {
     showError(error, `Couldn't delete ${attachment.name}`)
   }

@@ -15,7 +15,7 @@ import { Bookmark } from './bookmark'
 import { Callout } from './callout'
 import { Database } from './database'
 import { Details, DetailsContent, DetailsSummary } from './details'
-import { FileChips, FileLink } from './file-chips'
+import { DeletedFiles, FileChips, FileLink } from './file-chips'
 import { Find } from './find'
 import { JoinLists } from './join-lists'
 import { ListKeys } from './list-keys'
@@ -47,6 +47,8 @@ export interface ExtensionOptions {
   /** Whether a wiki link's note exists (links to missing notes look different). */
   wikiLinkExists?: (target: string) => boolean
   onFiles?: (editor: Editor, files: File[], pos: number | null) => void
+  /** The editor address of the note's attachments folder (files deleted: DeletedFiles). */
+  assetsPrefix?: () => string
 }
 
 export function createExtensions(options: ExtensionOptions = {}): AnyExtension[] {
@@ -69,6 +71,8 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
       exists: options.wikiLinkExists ?? (() => true),
     }),
     FileChips,
+    // Without a note (tests, Docs examples), no file is ever marked deleted.
+    DeletedFiles.configure({ prefix: options.assetsPrefix ?? (() => '') }),
     JoinLists,
     ListMarkers,
     Todos,

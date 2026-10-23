@@ -20,7 +20,14 @@ import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
 import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
-import { attachmentNames, removesContent } from '~/editor/file-chips'
+import {
+  attachmentNames,
+  deletedFiles,
+  deletedFilesKey,
+  isFromOutside,
+  removesContent,
+  type DeletedFilesMeta,
+} from '~/editor/file-chips'
 import { wikiLinkStatusKey, type WikiLinkAttributes } from '~/editor/wiki-link'
 import { currentHeading, scrollParent } from '~/utils/current-heading'
 import { filesPrefix, normalizeMarkdown } from '~/utils/markdown-paths'
@@ -129,6 +136,7 @@ const extensions = createExtensions({
   onOpenWikiLink: openWikiLink,
   wikiLinkExists: (target) => !!linkedPage(target),
   onFiles: (editor, files, pos) => void uploadFiles(editor, files, pos),
+  assetsPrefix: () => ownAssetsPrefix(),
 }).map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {
     return (extension as typeof CodeBlockLowlight).extend({
@@ -180,6 +188,8 @@ async function uploadFiles(editor: CoreEditor, files: File[], pos: number | null
         api.notes[':id'].attachments.$post({ param: { id: props.noteId }, form: { file } }),
       )
       const src = `${filesPrefix(props.notePath)}${attachment.markdownPath}`
+      // A file deleted earlier may come back under its name: this one is new, it stays.
+      markFiles(editor, { restored: [attachment.name] })
       if (attachment.isImage) content.push({ type: 'image', attrs: { src, alt: attachment.name } })
       else {
         content.push(
@@ -215,10 +225,14 @@ let stopFollowingFiles: (() => void) | undefined
 function followRemovedFiles(editor: Editor) {
   const onTransaction = ({ transaction }: { transaction: Transaction }) => {
     if (!transaction.docChanged || props.readOnly || !removesContent(transaction)) return
-    if (transaction.getMeta('uiEvent') === 'cut' || transaction.getMeta('preventUpdate')) return
+    if (transaction.getMeta('uiEvent') === 'cut' || isFromOutside(transaction)) return
     const prefix = ownAssetsPrefix()
     const after = attachmentNames(transaction.doc, prefix)
-    const gone = [...attachmentNames(transaction.before, prefix)].filter((name) => !after.has(name))
+    // Files already deleted (DeletedFiles taking their links out again) ask nothing.
+    const deleted = deletedFiles(editor.state)
+    const gone = [...attachmentNames(transaction.before, prefix)].filter(
+      (name) => !after.has(name) && !deleted.has(name),
+    )
     if (gone.length) void offerToDelete(editor, gone)
   }
   editor.on('transaction', onTransaction)
@@ -242,10 +256,18 @@ async function offerToDelete(editor: Editor, names: string[]) {
       await unwrap(
         api.notes[':id'].attachments[':name'].$delete({ param: { id: props.noteId, name } }),
       )
+      // Deleted for good: undo, redo or a paste can't bring its links back (DeletedFiles).
+      if (!editor.isDestroyed) markFiles(editor, { deleted: [name] })
     } catch (error) {
       showError(error, `Couldn't delete ${name}`)
     }
   }
+}
+
+function markFiles(editor: CoreEditor | Editor, meta: DeletedFilesMeta) {
+  editor.view.dispatch(
+    editor.state.tr.setMeta(deletedFilesKey, meta).setMeta('addToHistory', false),
+  )
 }
 
 /** A new database for this note, its block where the cursor was (taken before the request). */
@@ -887,6 +909,11 @@ function followHistory(editor: Editor) {
 }
 
 defineExpose({
+  /** A file deleted for good (from the Files panel): its links can't come back (undo…). */
+  fileDeleted(name: string) {
+    const editor = editorRef.value?.editor
+    if (editor && !editor.isDestroyed) markFiles(editor, { deleted: [name] })
+  },
   /** The TipTap editor (for the find bar). */
   editor: computed(() => editorRef.value?.editor),
   /** Replaces the content (an external change), keeping the cursor where it can. */

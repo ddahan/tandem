@@ -200,8 +200,14 @@ inside OneDrive so that it is backed up and synced.
   undo…; not a cut, pasted back elsewhere) asks whether to delete the file too: "Delete the
   file" deletes it for good (undo doesn't bring it back), "Keep it" leaves it in the Files
   panel. A file linked again meanwhile stays. Only the note's own attachments.
-- **Deleting a file from the Files panel**: a trash button on hover (or focus), over its size,
-  asks first, then deletes it for good, and its links and images leave the note.
+- **Deleting a file from the Files panel**: a trash button on hover (or focus), in place of its
+  size, asks first, then deletes it for good, and its links and images leave the note.
+- **A file deleted for good doesn't come back** while the note is open: undo (⌘Z), redo or a
+  paste that would bring back one of its images or chips brings back the rest of the change,
+  not them (an undo that only took the file out then changes nothing visible, and the next one
+  goes on). Nothing is left to show a broken image after a reload. A file uploaded again
+  under the same name is a new file: it stays. Content changed from outside (the file on
+  disk, an agent) that links to a deleted name is kept as it is.
 - **Links between notes**: `[[Note title]]` (or `[[Folder/Note title]]` when titles are
   ambiguous), with autocomplete when typing `[[`, a backlinks panel, and automatic link
   updates when a note is renamed or moved. A link to a note that doesn't exist yet looks
