@@ -126,7 +126,12 @@ function createTandem(address, fetcher = fetch) {
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
     create: (fields) => save2("/api/bookmarks", "POST", fields),
-    update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields)
+    update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
+    /** Imports a browser's tree into Tandem's "Chrome" folder (see import.ts). */
+    importBookmarks: (children) => request("/api/bookmarks/import", {
+      method: "POST",
+      body: JSON.stringify({ children })
+    })
   };
 }
 

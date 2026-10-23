@@ -8122,6 +8122,8 @@ function taskCounts(markdown) {
 var EXTENSION_ID = "kmecpgdldjmbehndpobipnndopjdgkci";
 var EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}`;
 var BOOKMARKS_OFF = "bookmarks_off";
+var BOOKMARK_IMPORT_FOLDER = "Chrome";
+var BOOKMARK_IMPORT_MAX = 2e4;
 var BOOKMARK_TITLE_MAX = 300;
 var BOOKMARK_DESCRIPTION_MAX = 1e3;
 var BOOKMARK_URL_MAX = 4e3;
@@ -32453,6 +32455,26 @@ var bookmarkFields = {
   folder: external_exports.string().max(1e3).optional(),
   iconDataUrl: iconDataUrl.optional()
 };
+var importNode = external_exports.lazy(
+  () => external_exports.object({
+    title: external_exports.string().max(BOOKMARK_TITLE_MAX * 2),
+    url: external_exports.string().max(BOOKMARK_URL_MAX).optional(),
+    iconDataUrl: iconDataUrl.optional(),
+    children: external_exports.array(importNode).optional()
+  })
+);
+var bookmarkImport = external_exports.object({
+  folder: external_exports.string().max(BOOKMARK_TITLE_MAX).optional(),
+  children: external_exports.array(importNode)
+});
+function importNodes(nodes2) {
+  return nodes2.map(({ iconDataUrl: icon, children, ...node2 }) => ({
+    ...node2,
+    ...children ? { children: importNodes(children) } : {},
+    ...iconOf(icon) ? { extra: iconOf(icon) } : {}
+  }));
+}
+var countNodes = (nodes2) => nodes2.reduce((sum, node2) => sum + 1 + countNodes(node2.children ?? []), 0);
 var bookmarkInput = external_exports.object({
   kind: external_exports.enum(["folder", "bookmark"]).optional(),
   ...bookmarkFields
@@ -32764,6 +32786,13 @@ function createApi(vault, options = {}) {
   ).use("/bookmarks", bookmarksOn(vault)).use("/bookmarks/*", bookmarksOn(vault)).get("/bookmarks", async (c) => c.json(await vault.listBookmarks())).post("/bookmarks", zValidator2("json", bookmarkInput), async (c) => {
     const { iconDataUrl: icon, ...input2 } = c.req.valid("json");
     return c.json(await vault.createBookmark(input2, iconOf(icon)), 201);
+  }).post("/bookmarks/import", zValidator2("json", bookmarkImport), async (c) => {
+    const { folder, children } = c.req.valid("json");
+    if (countNodes(children) > BOOKMARK_IMPORT_MAX) {
+      throw new ValidationError(`At most ${formatNumber(BOOKMARK_IMPORT_MAX)} bookmarks at once`);
+    }
+    const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER;
+    return c.json(await vault.importBookmarks(into, importNodes(children)));
   }).get(
     "/bookmarks/lookup",
     zValidator2("query", external_exports.object({ url: external_exports.string() })),
@@ -50491,6 +50520,92 @@ var BookmarkStore = class {
     }
     return parentId;
   }
+  /**
+   * Imports a browser's tree into the folder `into` at the top (made if missing). Folders merge
+   * with those of the same name (any case) where they go, so that importing again only adds
+   * what is new; pages already bookmarked, and what isn't a web address, are left out. In one
+   * go (the folder's rows read once, positions given), however many there are. Returns what was
+   * made, each bookmark with its `extra`.
+   */
+  async importTree(into, nodes2) {
+    const all = await this.list();
+    const known = new Set(all.filter((b) => b.kind === "bookmark").map((b) => urlKey(b.url)));
+    const children = /* @__PURE__ */ new Map();
+    for (const bookmark of all) {
+      const list = children.get(bookmark.parentId) ?? [];
+      list.push(bookmark);
+      children.set(bookmark.parentId, list);
+    }
+    const next = (parentId) => {
+      const list = children.get(parentId) ?? [];
+      return list.reduce((max, b) => Math.max(max, b.position), 0) + 1;
+    };
+    const result = { folderId: "", folders: 0, bookmarks: 0, duplicates: 0, skipped: 0 };
+    const created = [];
+    const now = this.now();
+    const insert = async (row) => {
+      await this.db.insert(bookmarks).values({
+        ...row,
+        urlKey: row.url ? urlKey(row.url) : "",
+        createdAt: now,
+        updatedAt: now
+      });
+      const list = children.get(row.parentId) ?? [];
+      list.push({ ...row, icon: null, createdAt: now, updatedAt: now });
+      children.set(row.parentId, list);
+    };
+    const folder = async (parentId, name) => {
+      const title = clip(name, BOOKMARK_TITLE_MAX) || "Untitled folder";
+      const existing = children.get(parentId)?.find((b) => b.kind === "folder" && b.title.toLowerCase() === title.toLowerCase());
+      if (existing) return existing.id;
+      const id = newId();
+      await insert({
+        id,
+        kind: "folder",
+        parentId,
+        title,
+        url: "",
+        description: "",
+        position: next(parentId)
+      });
+      result.folders++;
+      return id;
+    };
+    const walk = async (parentId, list) => {
+      for (const node2 of list) {
+        if (node2.children) {
+          await walk(await folder(parentId, node2.title), node2.children);
+          continue;
+        }
+        const url2 = webUrl(node2.url ?? "");
+        if (!url2) {
+          result.skipped++;
+          continue;
+        }
+        if (known.has(urlKey(url2))) {
+          result.duplicates++;
+          continue;
+        }
+        known.add(urlKey(url2));
+        const id = newId();
+        const title = clip(node2.title, BOOKMARK_TITLE_MAX) || siteOf(url2);
+        await insert({
+          id,
+          kind: "bookmark",
+          parentId,
+          title,
+          url: url2,
+          description: "",
+          position: next(parentId)
+        });
+        result.bookmarks++;
+        if (node2.extra !== void 0) created.push({ id, extra: node2.extra });
+      }
+    };
+    result.folderId = await folder(null, into);
+    await walk(result.folderId, nodes2);
+    return { result, created };
+  }
   async record(id) {
     const record2 = await this.db.select().from(bookmarks).where(eq(bookmarks.id, id)).get();
     if (!record2) throw new NotFoundError("No such bookmark");
@@ -51731,6 +51846,22 @@ var Vault = class {
       await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids));
       this.changed({ type: "bookmarks" });
       return { deleted: ids.length, pages };
+    });
+  }
+  /**
+   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the folder `into` at
+   * the top, with their favicons: see `BookmarkStore.importTree`. One change, announced once.
+   */
+  async importBookmarks(into, tree) {
+    return this.lock.run(async () => {
+      const { result, created } = await this.bookmarks.importTree(into, tree);
+      for (const { id, extra } of created) {
+        if (extra.data.byteLength <= ICON_MAX_BYTES) {
+          await this.writeBookmarkIcon(id, extra.data, extra.extension);
+        }
+      }
+      this.changed({ type: "bookmarks" });
+      return result;
     });
   }
   /** Sets a bookmark's favicon (an image file: PNG, ICO, SVG…). */
