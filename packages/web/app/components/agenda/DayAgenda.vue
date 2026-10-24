@@ -7,8 +7,8 @@
 // Its + button adds an event: a new line, with its checkbox, where it is typed: a time then the
 // title (`14h Standup`, `13:30-14:30 Lunch`), or a title alone for all day; the time becomes
 // the label as soon as a space follows it (useEventDraft). A divider
-// sets the events apart from the note. Enter adds it and stays on the line; Escape, or leaving it
-// empty, stops adding.
+// sets the events apart from the note. Enter adds it and opens the next line; Escape, leaving it
+// empty, or Backspace in it empty (the cursor then at the end of the last event) closes it.
 import type { EventFields } from '~/composables/useAgenda'
 import { timeLabel } from '@tandem/shared'
 import AgendaLine from './AgendaLine.vue'
@@ -20,6 +20,7 @@ const actions = useAgendaActions()
 
 const adding = ref(false)
 const addInput = useTemplateRef<HTMLInputElement>('addInput')
+const section = useTemplateRef<HTMLElement>('section')
 const visible = computed(() => items.value.length > 0 || adding.value)
 
 // `/event` (the note's editor) asks for this day's add line.
@@ -60,6 +61,14 @@ function onAddKey(event: KeyboardEvent) {
   } else if (event.key === 'Escape') {
     draft.clear()
     addInput.value?.blur()
+  } else if (event.key === 'Backspace' && !draft.time.value && !draft.text.value) {
+    // An empty new line: it goes, as an empty line would, the cursor at the end of the last one.
+    event.preventDefault()
+    adding.value = false
+    const titles = section.value?.querySelectorAll<HTMLInputElement>('[data-testid="agenda-title"]')
+    const last = titles?.[titles.length - 1]
+    last?.focus()
+    last?.setSelectionRange(last.value.length, last.value.length)
   } else {
     draft.keydown(event)
   }
@@ -73,6 +82,7 @@ function onAddBlur() {
 <template>
   <section
     v-if="visible"
+    ref="section"
     class="day-agenda space-y-[0.2em]"
     aria-label="Events"
     data-testid="agenda"

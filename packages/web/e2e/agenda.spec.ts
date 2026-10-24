@@ -82,6 +82,11 @@ test('adds, checks, changes and deletes events in the agenda above a day’s not
   await page.getByTestId('agenda-new').click()
   await expect(add).toBeFocused()
   await expect(add).toHaveAttribute('placeholder', '14h Standup')
+  // Backspace in it empty closes it too, the cursor at the end of the last event.
+  await add.press('Backspace')
+  await expect(add).toHaveCount(0)
+  await expect(page.getByTestId('agenda-title').last()).toBeFocused()
+  await page.getByTestId('agenda-new').click()
   await add.press('Escape')
   await expect(page.locator(`[data-date="${day}"] [data-testid="calendar-events"]`)).toBeVisible()
   const events = page.getByTestId('agenda-event')

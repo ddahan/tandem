@@ -372,8 +372,9 @@ inside OneDrive so that it is backed up and synced.
   `13:30-14:30 Lunch` (also `14:00`, `14h30`, `9`, `-` or `→`); no time is all day. The typed
   time becomes the label in front of the text as soon as a space follows it (or with Tab); a dash
   typed next puts it back, to type a range; Backspace at the start of the text puts it back to
-  edit. Enter adds the event, in its place by time, and opens the next line; Escape, or leaving
-  it empty, closes it (the + is back). A divider sets the events apart from the note's text. Other days: "New event…"
+  edit. Enter adds the event, in its place by time, and opens the next line; Escape, leaving
+  it empty, or Backspace in it empty (the cursor then at the end of the last event's title)
+  closes it (the + is back). A divider sets the events apart from the note's text. Other days: "New event…"
   in the palette (a day, today or the one shown, and the same one-line syntax), or an agent.
 - **Editing**: the title in place, a click anywhere on the line putting the cursor at its end;
   Enter or leaving it saves, Escape puts it back. A click on the time label opens its details:
