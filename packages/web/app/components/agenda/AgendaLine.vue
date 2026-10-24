@@ -1,9 +1,9 @@
 <script setup lang="ts">
 // One event's line in a day's agenda (DayAgenda): a checkbox (checked, struck through), the time
-// label in its calendar's color (a click opens its details), the title edited in place (leaving
-// it saves, Escape puts it back; Enter goes on to a new event; Backspace in it empty deletes the
-// event; ↑ ↓ go to the line above or below), and, on hover, a button right after it that deletes it. A feed's event is read-only
-// but for its checkbox. Plain fields, outside the note's editor.
+// label in its calendar's color (a click opens its details), the title edited in place, and, on
+// hover, a × right after it that deletes the event. Leaving the title saves it, Escape puts it
+// back; Enter, Backspace in it empty and ↑ ↓ are the agenda's to handle (a new event, deleting
+// this one, the line above or below). A feed's event is read-only but for its checkbox.
 import { timeLabel, type AgendaItem } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
 import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
@@ -45,15 +45,17 @@ async function saveTitle() {
   if (!input) return
   const title = input.value.replace(/\s+/g, ' ').trim()
   if (!title || title === props.item.title) {
-    input.value = props.item.title
-    titleText.value = props.item.title
+    revert()
     return
   }
   patchItem(props.item.key, { title })
-  if (!(await actions.update(props.item, { title }))) {
-    input.value = props.item.title
-    titleText.value = props.item.title
-  }
+  if (!(await actions.update(props.item, { title }))) revert()
+}
+
+/** The title as saved. */
+function revert() {
+  titleText.value = props.item.title
+  if (titleInput.value) titleInput.value.value = props.item.title
 }
 
 function onTitleKey(event: KeyboardEvent) {
@@ -68,8 +70,7 @@ function onTitleKey(event: KeyboardEvent) {
     event.preventDefault()
     emit('erase')
   } else if (event.key === 'Escape') {
-    input.value = props.item.title
-    titleText.value = props.item.title
+    revert()
     input.blur()
   }
 }

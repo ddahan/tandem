@@ -4,11 +4,12 @@
 // day has events, or while one is being added (`/event`, useAgendaFocus). Not part of the note:
 // nothing of it is in the Markdown, and it never writes the note's file.
 //
-// Its + button adds an event: a new line, with its checkbox, where it is typed: a time then the
-// title (`14h Standup`, `13:30-14:30 Lunch`), or a title alone for all day; the time becomes
-// the label as soon as a space follows it (useEventDraft). A divider
-// sets the events apart from the note. Enter adds it and opens the next line; Escape, leaving it
-// empty, or Backspace in it empty (the cursor then at the end of the last event) closes it.
+// Its + opens a new line, with its checkbox, where an event is typed: a time then the title
+// (`14h Standup`, `13:30-14:30 Lunch`), or a title alone for all day (useEventDraft makes the
+// time the label). Enter adds it and opens the next line; Escape, leaving it empty, or Backspace
+// in it empty closes it. The keys move as in lines of text: Enter in a title opens a new event,
+// Backspace in an emptied one deletes it, ↑ ↓ go from line to line, ↓ from the last into the
+// note. A divider sets the events apart from the note.
 import type { EventFields } from '~/composables/useAgenda'
 import { timeLabel } from '@tandem/shared'
 import AgendaLine from './AgendaLine.vue'
@@ -29,12 +30,10 @@ const visible = computed(() => items.value.length > 0 || adding.value)
 const focus = useAgendaFocus()
 watch(
   () => focus.value,
-  async (request) => {
+  (request) => {
     if (!request || request.date !== props.date) return
     focus.value = null
-    adding.value = true
-    await nextTick()
-    addInput.value?.focus()
+    void startAdding()
   },
   { immediate: true },
 )
@@ -65,7 +64,7 @@ function onAddKey(event: KeyboardEvent) {
     addInput.value?.blur()
   } else if (event.key === 'ArrowUp') {
     event.preventDefault()
-    titleEnd(items.value.length - 1, addInput.value?.selectionStart ?? Infinity)
+    focusTitle(items.value.length - 1, addInput.value?.selectionStart ?? Infinity)
   } else if (event.key === 'ArrowDown') {
     event.preventDefault()
     emit('leave')
@@ -73,28 +72,27 @@ function onAddKey(event: KeyboardEvent) {
     // An empty new line: it goes, as an empty line would, the cursor at the end of the last one.
     event.preventDefault()
     adding.value = false
-    titleEnd(items.value.length - 1)
+    focusTitle(items.value.length - 1)
   } else {
     draft.keydown(event)
   }
 }
 
 /** The cursor in the `index`-th event's title, at `caret` (its end by default). */
-function titleEnd(index: number, caret = Infinity) {
+function focusTitle(index: number, caret = Infinity) {
   const titles = section.value?.querySelectorAll<HTMLInputElement>('[data-testid="agenda-title"]')
   const title = index >= 0 ? titles?.[index] : undefined
-  if (!title) return false
+  if (!title) return
   const at = Math.min(caret, title.value.length)
   title.focus()
   title.setSelectionRange(at, at)
-  return true
 }
 
 /** ↑ ↓ between lines: an event's title, past the last the new event's line, then the note. */
 function move(index: number, caret: number) {
   if (index < 0) return
   if (index < items.value.length) {
-    titleEnd(index, caret)
+    focusTitle(index, caret)
   } else if (adding.value) {
     addInput.value?.focus()
   } else {
@@ -106,7 +104,7 @@ function move(index: number, caret: number) {
 async function erase(index: number) {
   const item = items.value[index]
   if (!item) return
-  titleEnd(index - 1)
+  focusTitle(index - 1)
   await actions.remove(item)
 }
 

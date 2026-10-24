@@ -366,23 +366,24 @@ inside OneDrive so that it is backed up and synced.
 - **An event's line**: a checkbox (checked, the line is struck through), the time label in its
   calendar's color (Tandem's own: the app's primary color), the title. Labels: `day` (all day),
   `14:00`, `13:30 → 14:30`.
-- **Adding**: the agenda's + button opens a new line, with its checkbox, where the event is
-  typed; on a day without events, `/event` ("Events" in the `/` menu, daily notes only) shows the
-  agenda with that line. A time or two at the start, then the title: `14h Standup`,
-  `13:30-14:30 Lunch` (also `14:00`, `14h30`, `9`, `-` or `→`); no time is all day. The typed
-  time becomes the label in front of the text as soon as a space follows it (or with Tab); a dash
-  typed next puts it back, to type a range; Backspace at the start of the text puts it back to
-  edit. Enter adds the event, in its place by time, and opens the next line; Escape, leaving
-  it empty, or Backspace in it empty (the cursor then at the end of the last event's title)
-  closes it (the + is back). A divider sets the events apart from the note's text. Other days: "New event…"
-  in the palette (a day, today or the one shown, and the same one-line syntax), or an agent.
+- **Adding**: the agenda's + (in the checkboxes' column) opens a new line, with its checkbox,
+  where an event is typed; on a day without events, `/event` ("Events" in the `/` menu, daily
+  notes only) shows the agenda with that line. A time or two at the start, then the title:
+  `14h Standup`, `13:30-14:30 Lunch` (also `14:00`, `14h30`, `9`, `-` or `→`); no time is all
+  day. The typed time becomes the label in front of the text as soon as a space follows it (or
+  with Tab); a dash typed next puts it back, to type a range; Backspace at the start of the text
+  puts it back to edit. Enter adds the event, in its place by time, and opens the next line;
+  Escape, leaving it empty, or Backspace in it empty closes it (the + is back). A divider sets the
+  events apart from the note's text. Other days: "New event…" in the palette (a day, today or
+  the one shown, and the same one-line syntax), or an agent.
 - **Editing**: the title in place, a click anywhere on the line putting the cursor at its end;
-  leaving it saves, Escape puts it back; Enter saves it and opens a new event's line below;
-  Backspace in an emptied title deletes the event (with Undo), the cursor at the end of the
-  title above; ↑ ↓ go to the line above or below (past the last one, the note's text). A click on the time label opens its details:
-  all day, at, from–to (times typed, 24 h, or picked in a list every quarter of an hour); its day (to move it); repeat; Save, Cancel, Delete. On hover, a line's ×
-  deletes it. "Event deleted · Undo" for a few seconds. The day's last event deleted, the agenda
-  goes.
+  leaving it saves, Escape puts it back. The keys move as in lines of text: Enter saves it and
+  opens a new event's line below; Backspace in an emptied title deletes the event, the cursor at
+  the end of the title above; ↑ ↓ go to the line above or below (below the last one, the note's
+  text). A click on the time label opens its details: all day, at, from–to (times typed, 24 h,
+  or picked in a list every quarter of an hour); its day (to move it); repeat; Save, Cancel,
+  Delete. On hover, a × right after the title deletes the event. "Event deleted · Undo" for a
+  few seconds. The day's last event deleted, the agenda goes. These keys are in Docs › Shortcuts.
 - Notes written with an earlier agenda may hold ` ```agenda ` and ` ```event ` blocks: they show
   nothing, and a daily note drops them as it opens.
 - **Repeats**: every day, every weekday (from its own day, even on a weekend), every week, every

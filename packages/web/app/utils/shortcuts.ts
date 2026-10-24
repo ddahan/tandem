@@ -308,6 +308,41 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    id: 'events',
+    title: 'Day’s events',
+    description: 'In the events above a daily note (Settings › Features › Daily notes).',
+    icon: 'i-lucide-calendar-check',
+    shortcuts: [
+      {
+        typed: '14h ',
+        label: 'Event at a time',
+        description:
+          'At the start of a new event: the time becomes its label (14h30, 9:30, 13:30 - 14:30 for a range). Its title alone: all day.',
+      },
+      {
+        keys: [['tab']],
+        label: 'Time typed: make it the label',
+        description: 'Backspace at the start of the title puts it back to edit.',
+      },
+      {
+        keys: [['enter']],
+        label: 'Save, and on to a new event',
+        description: 'In a new event’s line or an event’s title; leaving a title saves it too.',
+      },
+      {
+        keys: [['backspace']],
+        label: 'Delete the event',
+        description: 'In an emptied title (Undo brings it back); in an empty new line, it goes.',
+      },
+      {
+        keys: [['arrowup'], ['arrowdown']],
+        label: 'Line above or below',
+        description: 'Below the last one: the note’s text.',
+      },
+      { keys: [['escape']], label: 'Put the title back, or close the new line' },
+    ],
+  },
+  {
     id: 'selections',
     title: 'Multiple selections',
     description: 'Edit every occurrence of a word at once, as with ⌘D in VS Code.',

@@ -25,7 +25,6 @@ export interface EventFields {
 /** The days' events, shared by everything showing the same days (an agenda, the calendar). */
 interface AgendaCache {
   items: Ref<AgendaItem[]>
-  loaded: Ref<boolean>
   loading: Promise<void> | null
   /** Asked for again while loading: the answer coming may be older than the change. */
   again: boolean
@@ -35,7 +34,7 @@ const caches = new Map<string, AgendaCache>()
 function cacheOf(key: string): AgendaCache {
   let cache = caches.get(key)
   if (!cache) {
-    cache = { items: ref([]), loaded: ref(false), loading: null, again: false }
+    cache = { items: ref([]), loading: null, again: false }
     caches.set(key, cache)
   }
   return cache
@@ -50,7 +49,6 @@ export function useAgendaDays(range: () => { from: string; to: string } | null) 
   })
   const empty = ref<AgendaItem[]>([])
   const items = computed(() => (key.value ? cacheOf(key.value).items.value : empty.value))
-  const loaded = computed(() => (key.value ? cacheOf(key.value).loaded.value : false))
 
   /**
    * Reads the days again; asked by several views at once, once. Asked while a reading is on its
@@ -67,10 +65,7 @@ export function useAgendaDays(range: () => { from: string; to: string } | null) 
     const read = async (): Promise<void> => {
       cache.again = false
       const list = await unwrap(api.agenda.$get({ query: current })).catch(() => null)
-      if (list) {
-        cache.items.value = list
-        cache.loaded.value = true
-      }
+      if (list) cache.items.value = list
       if (cache.again) return read()
     }
     cache.loading = read().finally(() => (cache.loading = null))
@@ -92,7 +87,7 @@ export function useAgendaDays(range: () => { from: string; to: string } | null) 
     cache.items.value = cache.items.value.toSpliced(index, 1, { ...item, ...change })
   }
 
-  return { items, loaded, reload: load, patchItem }
+  return { items, reload: load, patchItem }
 }
 
 export function useAgendaActions() {
@@ -184,10 +179,9 @@ export function useAgendaActions() {
 
 /**
  * An event being typed on one line (`14h Standup`): its time, once typed, leaves the text for
- * the label in front of it (as soon as a space follows it, or Tab), so it isn't written twice;
- * a dash typed next puts it back, to type a range (`13:30 - 14:30`). Backspace
- * at the start of the text puts it back to edit. `13:30 - 14:30` stays text until the title
- * starts: a dash after the first time is the range going on.
+ * the label in front of it (as soon as a space follows it, or with Tab), so it isn't written
+ * twice. A dash typed next puts it back, to type a range (`13:30 - 14:30`); Backspace at the
+ * start of the text puts it back to edit.
  */
 export function useEventDraft() {
   const text = ref('')
