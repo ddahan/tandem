@@ -106,7 +106,10 @@ test('adds, checks, changes and deletes events in the agenda above a day’s not
   await page.mouse.click(line!.x + line!.width - 60, line!.y + line!.height / 2)
   await expect(title).toBeFocused()
   await title.fill('Lunch with Marie')
+  // Enter saves it and goes on to a new event.
   await title.press('Enter')
+  await expect(page.getByTestId('agenda-add')).toBeFocused()
+  await page.getByTestId('agenda-add').press('Escape')
   await expect
     .poll(async () => (await api<Event[]>(request, 'GET', '/agenda/events')).map((e) => e.title))
     .toContain('Lunch with Marie')
@@ -150,6 +153,16 @@ test('adds, checks, changes and deletes events in the agenda above a day’s not
   const content = await noteContent(request, note.id)
   expect(content).toContain('- [ ] Call the bank')
   expect(content).not.toContain('```')
+
+  // Backspace in an emptied title deletes the event, the cursor on the line above.
+  const before = await events.count()
+  const lastTitle = events.last().getByTestId('agenda-title')
+  await lastTitle.fill('')
+  await lastTitle.press('Backspace')
+  await expect(events).toHaveCount(before - 1)
+  await expect(events.last().getByTestId('agenda-title')).toBeFocused()
+  await page.getByRole('button', { name: 'Undo' }).last().click()
+  await expect(events).toHaveCount(before)
 
   // The last event deleted: no agenda.
   for (let count = 3; count > 0; count--) {

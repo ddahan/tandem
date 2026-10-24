@@ -1,14 +1,21 @@
 <script setup lang="ts">
 // One event's line in a day's agenda (DayAgenda): a checkbox (checked, struck through), the time
-// label in its calendar's color (a click opens its details), the title edited in place (Enter or
-// leaving it saves, Escape puts it back), and, on hover, a button right after it that deletes it. A feed's event
-// is read-only but for its checkbox. Plain fields, outside the note's editor.
+// label in its calendar's color (a click opens its details), the title edited in place (leaving
+// it saves, Escape puts it back; Enter goes on to a new event; Backspace in it empty deletes the
+// event), and, on hover, a button right after it that deletes it. A feed's event is read-only
+// but for its checkbox. Plain fields, outside the note's editor.
 import { timeLabel, type AgendaItem } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
 import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
 import AgendaEventForm from './AgendaEventForm.vue'
 
 const props = defineProps<{ item: AgendaItem }>()
+const emit = defineEmits<{
+  /** Enter in the title: the day's agenda goes on to a new event (the title saved as it's left). */
+  enter: []
+  /** Backspace in the title emptied: the agenda deletes the event, the cursor on the line above. */
+  erase: []
+}>()
 
 const actions = useAgendaActions()
 const { patchItem } = useAgendaDays(() => ({ from: props.item.date, to: props.item.date }))
@@ -51,7 +58,10 @@ function onTitleKey(event: KeyboardEvent) {
   const input = event.target as HTMLInputElement
   if (event.key === 'Enter') {
     event.preventDefault()
-    input.blur()
+    emit('enter')
+  } else if (event.key === 'Backspace' && !input.value && !readOnly.value) {
+    event.preventDefault()
+    emit('erase')
   } else if (event.key === 'Escape') {
     input.value = props.item.title
     titleText.value = props.item.title

@@ -377,7 +377,9 @@ inside OneDrive so that it is backed up and synced.
   closes it (the + is back). A divider sets the events apart from the note's text. Other days: "New event…"
   in the palette (a day, today or the one shown, and the same one-line syntax), or an agent.
 - **Editing**: the title in place, a click anywhere on the line putting the cursor at its end;
-  Enter or leaving it saves, Escape puts it back. A click on the time label opens its details:
+  leaving it saves, Escape puts it back; Enter saves it and opens a new event's line below;
+  Backspace in an emptied title deletes the event (with Undo), the cursor at the end of the
+  title above. A click on the time label opens its details:
   all day, at, from–to (times typed, 24 h, or picked in a list every quarter of an hour); its day (to move it); repeat; Save, Cancel, Delete. On hover, a line's ×
   deletes it. "Event deleted · Undo" for a few seconds. The day's last event deleted, the agenda
   goes.

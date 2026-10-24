@@ -65,13 +65,27 @@ function onAddKey(event: KeyboardEvent) {
     // An empty new line: it goes, as an empty line would, the cursor at the end of the last one.
     event.preventDefault()
     adding.value = false
-    const titles = section.value?.querySelectorAll<HTMLInputElement>('[data-testid="agenda-title"]')
-    const last = titles?.[titles.length - 1]
-    last?.focus()
-    last?.setSelectionRange(last.value.length, last.value.length)
+    titleEnd(items.value.length - 1)
   } else {
     draft.keydown(event)
   }
+}
+
+/** The cursor at the end of the `index`-th event's title (none before the first). */
+function titleEnd(index: number) {
+  const titles = section.value?.querySelectorAll<HTMLInputElement>('[data-testid="agenda-title"]')
+  const title = index >= 0 ? titles?.[index] : undefined
+  if (!title) return
+  title.focus()
+  title.setSelectionRange(title.value.length, title.value.length)
+}
+
+/** Backspace in an emptied title: the event goes, the cursor at the end of the line above. */
+async function erase(index: number) {
+  const item = items.value[index]
+  if (!item) return
+  titleEnd(index - 1)
+  await actions.remove(item)
 }
 
 function onAddBlur() {
@@ -87,7 +101,13 @@ function onAddBlur() {
     aria-label="Events"
     data-testid="agenda"
   >
-    <AgendaLine v-for="item in items" :key="item.key" :item="item" />
+    <AgendaLine
+      v-for="(item, index) in items"
+      :key="item.key"
+      :item="item"
+      @enter="startAdding"
+      @erase="erase(index)"
+    />
     <!-- Adding: a new line, with its checkbox, where the event is typed. -->
     <div v-if="adding" class="agenda-line">
       <input
