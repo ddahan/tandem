@@ -114,7 +114,8 @@ async function remove() {
         />
       </template>
     </UPopover>
-    <!-- The title as wide as its text (a hidden copy sizes it), its marks and × right after. -->
+    <!-- The title as wide as its text (a hidden copy sizes it: `size="1"` lets the field be
+         narrower than a field's usual width), its marks and × right after. -->
     <span class="inline-grid min-w-0">
       <span
         class="invisible col-start-1 row-start-1 overflow-hidden pe-1 whitespace-pre"
@@ -124,6 +125,7 @@ async function remove() {
       <input
         ref="titleInput"
         :value="titleText"
+        size="1"
         class="col-start-1 row-start-1 w-full min-w-0 bg-transparent outline-none"
         :class="item.checked && 'text-muted line-through'"
         :readonly="readOnly"

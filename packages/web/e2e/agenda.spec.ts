@@ -76,6 +76,12 @@ test('adds, checks, changes and deletes events in the agenda above a day’s not
   await expect
     .poll(() => lines(page))
     .toEqual(['day Pay rent', '08:00 Gym', '13:30 → 14:30 Lunch with Paul'])
+  // Escape closes the new line; the + opens it again, with its checkbox.
+  await add.press('Escape')
+  await expect(add).toHaveCount(0)
+  await page.getByTestId('agenda-new').click()
+  await expect(add).toBeFocused()
+  await expect(add).toHaveAttribute('placeholder', '14h Standup')
   await add.press('Escape')
   await expect(page.locator(`[data-date="${day}"] [data-testid="calendar-events"]`)).toBeVisible()
   const events = page.getByTestId('agenda-event')

@@ -11,8 +11,8 @@ import {
   type Repeat,
 } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
-import { Time } from '@internationalized/date'
 import DatabaseDate from '~/components/editor/DatabaseDate.vue'
+import AgendaTime from './AgendaTime.vue'
 
 const props = defineProps<{ item: AgendaItem }>()
 const emit = defineEmits<{ save: [fields: Partial<EventFields>]; remove: []; close: [] }>()
@@ -29,22 +29,6 @@ function addHour(time: string) {
   const [hours = 0, minutes = 0] = time.split(':').map(Number)
   return `${String(Math.min(23, hours + 1)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
-
-/** A `HH:MM` time as Nuxt UI's time field has it (a `Time`), and back. */
-function timeField(value: Ref<string>) {
-  return computed<Time | undefined>({
-    get: () => {
-      const [hours = 0, minutes = 0] = value.value.split(':').map(Number)
-      return new Time(hours, minutes)
-    },
-    set: (time) => {
-      if (time)
-        value.value = `${String(time.hour).padStart(2, '0')}:${String(time.minute).padStart(2, '0')}`
-    },
-  })
-}
-const startTime = timeField(start)
-const endTime = timeField(end)
 
 const KINDS: { value: Kind; label: string }[] = [
   { value: 'day', label: 'All day' },
@@ -98,26 +82,10 @@ function save() {
       />
     </UFieldGroup>
     <div v-if="kind !== 'day'" class="flex items-center gap-2">
-      <UInputTime
-        v-model="startTime"
-        :hour-cycle="24"
-        granularity="minute"
-        locale="en-GB"
-        size="sm"
-        aria-label="Start"
-        class="flex-1"
-      />
+      <AgendaTime v-model="start" label="Start" class="flex-1" />
       <template v-if="kind === 'range'">
         <span class="text-muted">→</span>
-        <UInputTime
-          v-model="endTime"
-          :hour-cycle="24"
-          granularity="minute"
-          locale="en-GB"
-          size="sm"
-          aria-label="End"
-          class="flex-1"
-        />
+        <AgendaTime v-model="end" label="End" class="flex-1" />
       </template>
     </div>
     <UFormField label="Day" size="sm">
