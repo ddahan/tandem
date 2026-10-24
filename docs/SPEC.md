@@ -366,17 +366,18 @@ inside OneDrive so that it is backed up and synced.
 - **An event's line**: a checkbox (checked, the line is struck through), the time label in its
   calendar's color (Tandem's own: the app's primary color), the title. Labels: `day` (all day),
   `14:00`, `13:30 → 14:30`.
-- **Adding**: the agenda's last line, "Add event"; on a day without events, `/event` in its note
-  (daily notes only) shows the agenda with that line focused. A time or two at the start, then
-  the title: `14h Standup`, `13:30-14:30 Lunch` (also `14:00`, `14h30`, `9`, `-` or `→`); no
-  time is all day. The typed time becomes the label in front of the text once the title begins
-  (`13:30 - 14:30` stays text until then), or with Tab after it; Backspace at the start of the
-  text puts it back to edit. Enter adds the event, in its place by time, and stays on the line;
-  Escape, or leaving it empty, stops. Other days: "New event…" in the palette (a day, today or
-  the one shown, and the same one-line syntax), or an agent.
+- **Adding**: the agenda's last line, "Add event" (only its + shows until the events are
+  hovered); on a day without events, `/event` ("Events" in the `/` menu, daily notes only) shows
+  the agenda with that line focused. A time or two at the start, then the title: `14h Standup`,
+  `13:30-14:30 Lunch` (also `14:00`, `14h30`, `9`, `-` or `→`); no time is all day. The typed
+  time becomes the label in front of the text as soon as a space follows it (or with Tab); a dash
+  typed next puts it back, to type a range; Backspace at the start of the text puts it back to
+  edit. Enter adds the event, in its place by time, and stays on the line; Escape, or leaving it
+  empty, stops. A divider sets the events apart from the note's text. Other days: "New event…"
+  in the palette (a day, today or the one shown, and the same one-line syntax), or an agent.
 - **Editing**: the title in place, a click anywhere on the line putting the cursor at its end;
   Enter or leaving it saves, Escape puts it back. A click on the time label opens its details:
-  all day, at, from–to; its day (to move it); repeat; Save, Cancel, Delete. On hover, a line's ×
+  all day, at, from–to (Nuxt UI's time fields, 24 h); its day (to move it); repeat; Save, Cancel, Delete. On hover, a line's ×
   deletes it. "Event deleted · Undo" for a few seconds. The day's last event deleted, the agenda
   goes.
 - Notes written with an earlier agenda may hold ` ```agenda ` and ` ```event ` blocks: they show

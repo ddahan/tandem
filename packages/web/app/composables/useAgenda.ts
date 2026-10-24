@@ -184,7 +184,8 @@ export function useAgendaActions() {
 
 /**
  * An event being typed on one line (`14h Standup`): its time, once typed, leaves the text for
- * the label in front of it (a space then the title, or Tab), so it isn't written twice. Backspace
+ * the label in front of it (as soon as a space follows it, or Tab), so it isn't written twice;
+ * a dash typed next puts it back, to type a range (`13:30 - 14:30`). Backspace
  * at the start of the text puts it back to edit. `13:30 - 14:30` stays text until the title
  * starts: a dash after the first time is the range going on.
  */
@@ -200,11 +201,24 @@ export function useEventDraft() {
 
   function input(value: string) {
     text.value = value
-    if (time.value) return
+    if (time.value) {
+      // A dash or an arrow after a single time: a range on its way, back to text to go on.
+      if (!time.value.end && /^\s*(?:-|–|—|→|->)/.test(value)) {
+        const start = time.value.start
+        time.value = null
+        input(`${start} ${value.trimStart()}`)
+      }
+      return
+    }
+    // The time once the title begins, or as soon as a space follows it.
     const typed = typedTime(value)
+    const alone = !typed && /\s$/.test(value) ? timeAlone(value) : null
     if (typed) {
       time.value = { start: typed.start, end: typed.end }
       text.value = typed.title
+    } else if (alone) {
+      time.value = alone
+      text.value = ''
     }
   }
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // One event's line in a day's agenda (DayAgenda): a checkbox (checked, struck through), the time
 // label in its calendar's color (a click opens its details), the title edited in place (Enter or
-// leaving it saves, Escape puts it back), and, on hover, a button that deletes it. A feed's event
+// leaving it saves, Escape puts it back), and, on hover, a button right after it that deletes it. A feed's event
 // is read-only but for its checkbox. Plain fields, outside the note's editor.
 import { timeLabel, type AgendaItem } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
@@ -24,6 +24,12 @@ async function toggle(checked: boolean) {
 }
 
 const titleInput = useTemplateRef<HTMLInputElement>('titleInput')
+// What the title field holds while typed in: it sizes the field.
+const titleText = ref(props.item.title)
+watch(
+  () => props.item.title,
+  (title) => (titleText.value = title),
+)
 
 async function saveTitle() {
   const input = titleInput.value
@@ -31,10 +37,14 @@ async function saveTitle() {
   const title = input.value.replace(/\s+/g, ' ').trim()
   if (!title || title === props.item.title) {
     input.value = props.item.title
+    titleText.value = props.item.title
     return
   }
   patchItem(props.item.key, { title })
-  if (!(await actions.update(props.item, { title }))) input.value = props.item.title
+  if (!(await actions.update(props.item, { title }))) {
+    input.value = props.item.title
+    titleText.value = props.item.title
+  }
 }
 
 function onTitleKey(event: KeyboardEvent) {
@@ -44,6 +54,7 @@ function onTitleKey(event: KeyboardEvent) {
     input.blur()
   } else if (event.key === 'Escape') {
     input.value = props.item.title
+    titleText.value = props.item.title
     input.blur()
   }
 }
@@ -103,17 +114,26 @@ async function remove() {
         />
       </template>
     </UPopover>
-    <input
-      ref="titleInput"
-      :value="item.title"
-      class="min-w-0 flex-1 bg-transparent outline-none"
-      :class="item.checked && 'text-muted line-through'"
-      :readonly="readOnly"
-      :aria-label="`Title: ${item.title}`"
-      data-testid="agenda-title"
-      @keydown="onTitleKey"
-      @blur="() => void saveTitle()"
-    />
+    <!-- The title as wide as its text (a hidden copy sizes it), its marks and × right after. -->
+    <span class="inline-grid min-w-0">
+      <span
+        class="invisible col-start-1 row-start-1 overflow-hidden pe-1 whitespace-pre"
+        aria-hidden="true"
+        >{{ titleText || ' ' }}</span
+      >
+      <input
+        ref="titleInput"
+        :value="titleText"
+        class="col-start-1 row-start-1 w-full min-w-0 bg-transparent outline-none"
+        :class="item.checked && 'text-muted line-through'"
+        :readonly="readOnly"
+        :aria-label="`Title: ${item.title}`"
+        data-testid="agenda-title"
+        @input="titleText = ($event.target as HTMLInputElement).value"
+        @keydown="onTitleKey"
+        @blur="() => void saveTitle()"
+      />
+    </span>
     <UIcon
       v-if="item.repeat"
       name="i-lucide-repeat"
@@ -134,5 +154,6 @@ async function remove() {
       data-testid="agenda-delete"
       @click="remove"
     />
+    <span class="flex-1" />
   </div>
 </template>

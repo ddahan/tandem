@@ -521,8 +521,8 @@ const slashItems = computed<EditorSuggestionMenuItem<Handlers>[][]>(() => [
       ? [
           {
             kind: 'event' as const,
-            label: 'Event',
-            description: 'In this day’s agenda, at the top',
+            label: 'Events',
+            description: 'Add one to this day’s events, at the top',
             icon: 'i-lucide-calendar-plus',
           },
         ]
