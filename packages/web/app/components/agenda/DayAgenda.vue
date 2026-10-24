@@ -14,6 +14,8 @@ import { timeLabel } from '@tandem/shared'
 import AgendaLine from './AgendaLine.vue'
 
 const props = defineProps<{ date: string }>()
+/** ↓ from the last line: on to the note's text. */
+const emit = defineEmits<{ leave: [] }>()
 
 const { items, reload } = useAgendaDays(() => ({ from: props.date, to: props.date }))
 const actions = useAgendaActions()
@@ -61,6 +63,12 @@ function onAddKey(event: KeyboardEvent) {
   } else if (event.key === 'Escape') {
     draft.clear()
     addInput.value?.blur()
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    titleEnd(items.value.length - 1, addInput.value?.selectionStart ?? Infinity)
+  } else if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    emit('leave')
   } else if (event.key === 'Backspace' && !draft.time.value && !draft.text.value) {
     // An empty new line: it goes, as an empty line would, the cursor at the end of the last one.
     event.preventDefault()
@@ -71,13 +79,27 @@ function onAddKey(event: KeyboardEvent) {
   }
 }
 
-/** The cursor at the end of the `index`-th event's title (none before the first). */
-function titleEnd(index: number) {
+/** The cursor in the `index`-th event's title, at `caret` (its end by default). */
+function titleEnd(index: number, caret = Infinity) {
   const titles = section.value?.querySelectorAll<HTMLInputElement>('[data-testid="agenda-title"]')
   const title = index >= 0 ? titles?.[index] : undefined
-  if (!title) return
+  if (!title) return false
+  const at = Math.min(caret, title.value.length)
   title.focus()
-  title.setSelectionRange(title.value.length, title.value.length)
+  title.setSelectionRange(at, at)
+  return true
+}
+
+/** ↑ ↓ between lines: an event's title, past the last the new event's line, then the note. */
+function move(index: number, caret: number) {
+  if (index < 0) return
+  if (index < items.value.length) {
+    titleEnd(index, caret)
+  } else if (adding.value) {
+    addInput.value?.focus()
+  } else {
+    emit('leave')
+  }
 }
 
 /** Backspace in an emptied title: the event goes, the cursor at the end of the line above. */
@@ -107,6 +129,7 @@ function onAddBlur() {
       :item="item"
       @enter="startAdding"
       @erase="erase(index)"
+      @move="(step, caret) => move(index + step, caret)"
     />
     <!-- Adding: a new line, with its checkbox, where the event is typed. -->
     <div v-if="adding" class="agenda-line">

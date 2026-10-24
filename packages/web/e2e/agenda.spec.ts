@@ -154,6 +154,17 @@ test('adds, checks, changes and deletes events in the agenda above a day’s not
   expect(content).toContain('- [ ] Call the bank')
   expect(content).not.toContain('```')
 
+  // ↑ ↓ go from line to line, past the last one to the note's text.
+  await events.nth(1).getByTestId('agenda-title').click()
+  await page.keyboard.press('ArrowDown')
+  await expect(events.nth(2).getByTestId('agenda-title')).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowUp')
+  await expect(events.first().getByTestId('agenda-title')).toBeFocused()
+  await events.last().getByTestId('agenda-title').click()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.locator('.ProseMirror')).toBeFocused()
+
   // Backspace in an emptied title deletes the event, the cursor on the line above.
   const before = await events.count()
   const lastTitle = events.last().getByTestId('agenda-title')

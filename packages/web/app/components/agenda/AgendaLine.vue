@@ -2,7 +2,7 @@
 // One event's line in a day's agenda (DayAgenda): a checkbox (checked, struck through), the time
 // label in its calendar's color (a click opens its details), the title edited in place (leaving
 // it saves, Escape puts it back; Enter goes on to a new event; Backspace in it empty deletes the
-// event), and, on hover, a button right after it that deletes it. A feed's event is read-only
+// event; ↑ ↓ go to the line above or below), and, on hover, a button right after it that deletes it. A feed's event is read-only
 // but for its checkbox. Plain fields, outside the note's editor.
 import { timeLabel, type AgendaItem } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
@@ -15,6 +15,8 @@ const emit = defineEmits<{
   enter: []
   /** Backspace in the title emptied: the agenda deletes the event, the cursor on the line above. */
   erase: []
+  /** ↑ or ↓ in the title: on to the line above or below, the cursor as far along. */
+  move: [step: -1 | 1, caret: number]
 }>()
 
 const actions = useAgendaActions()
@@ -59,6 +61,9 @@ function onTitleKey(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     event.preventDefault()
     emit('enter')
+  } else if ((event.key === 'ArrowUp' || event.key === 'ArrowDown') && !event.shiftKey) {
+    event.preventDefault()
+    emit('move', event.key === 'ArrowUp' ? -1 : 1, input.selectionStart ?? input.value.length)
   } else if (event.key === 'Backspace' && !input.value && !readOnly.value) {
     event.preventDefault()
     emit('erase')

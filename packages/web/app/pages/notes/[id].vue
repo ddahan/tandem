@@ -711,7 +711,11 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
         </div>
 
         <!-- A day's events, above its text (not part of the note). -->
-        <DayAgenda v-if="calendarDate" :date="calendarDate" />
+        <DayAgenda
+          v-if="calendarDate"
+          :date="calendarDate"
+          @leave="mode === 'edit' && editor?.focus('start')"
+        />
 
         <UAlert
           v-if="mode === 'edit' && lossBlocks"
