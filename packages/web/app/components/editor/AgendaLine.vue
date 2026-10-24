@@ -87,7 +87,7 @@ async function remove() {
  */
 function onLineDown(event: MouseEvent) {
   const target = event.target as HTMLElement
-  if (target.closest('input, button, [role="checkbox"], [draggable="true"]')) return
+  if (target.closest('input, button, [draggable="true"]')) return
   const input = titleInput.value
   if (!input) return
   event.preventDefault()
@@ -105,16 +105,15 @@ function onDragStart(event: DragEvent) {
 </script>
 
 <template>
-  <div
-    class="group flex min-h-8 cursor-text items-center gap-2.5"
-    data-testid="agenda-event"
-    @mousedown="onLineDown"
-  >
-    <UCheckbox
-      :model-value="item.checked"
+  <!-- As a to-do's line (main.css): the same checkbox, in the same place. -->
+  <div class="event-line group cursor-text" data-testid="agenda-event" @mousedown="onLineDown">
+    <input
+      type="checkbox"
+      class="event-check"
+      :checked="item.checked"
       :disabled="!editable"
       :aria-label="`Done: ${item.title}`"
-      @update:model-value="(value) => void toggle(value === true)"
+      @change="(event) => void toggle((event.target as HTMLInputElement).checked)"
     />
     <UPopover v-model:open="open" :content="{ align: 'start' }">
       <button

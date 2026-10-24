@@ -25,7 +25,7 @@ import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import DatabaseView from '~/components/editor/DatabaseView.vue'
 import BookmarkView from '~/components/editor/BookmarkView.vue'
 import { Agenda } from '~/editor/agenda'
-import { EventBlock, placedEvents, typingEvent } from '~/editor/event'
+import { EventBlock, placedEvents, replaceTodo, typingEvent } from '~/editor/event'
 import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
@@ -328,9 +328,22 @@ async function insertBookmark(editor: CoreEditor) {
     .run()
 }
 
-/** `/event` (daily notes): an event being typed where the cursor is (editor/event.ts). */
+/**
+ * `/event` (daily notes): an event being typed where the cursor is (editor/event.ts), in place
+ * of the empty line or to-do it's on.
+ */
 function insertEvent(editor: CoreEditor) {
   if (!day.value) return
+  const { state, view } = editor
+  const { $from, empty } = state.selection
+  if (empty && $from.parent.content.size === 0) {
+    const tr = state.tr
+    const todo = state.schema.nodes.event!.create({ ref: '', text: '', todo: true })
+    if (replaceTodo(tr, $from, todo)) {
+      view.dispatch(tr)
+      return
+    }
+  }
   editor
     .chain()
     .focus()

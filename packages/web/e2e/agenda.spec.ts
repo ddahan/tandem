@@ -144,6 +144,40 @@ test('types events anywhere in a day’s note, checks, changes and deletes them'
   expect((await noteContent(request, note.id)).match(/```event\nid: /g)).toHaveLength(2)
 })
 
+test('makes an empty to-do an event, in its list', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { daily: true })
+  const day = addDays(isoDate(), 4)
+  await page.goto(`/daily/${day}`)
+  await expect(page.getByTestId('day-title')).toBeVisible()
+  await page.locator('.ProseMirror').click()
+  await page.keyboard.type('[ ] Hello')
+  await page.keyboard.press('Enter')
+  // The empty to-do takes the event, its checkbox there at once.
+  await page.keyboard.type('14h ')
+  const draft = page.getByTestId('event-draft')
+  await expect(draft).toBeFocused()
+  await expect(page.getByTestId('event-block').locator('input[type="checkbox"]')).toBeVisible()
+  await draft.pressSequentially('Call')
+  // Enter: on to a new to-do below, as in the list.
+  await draft.press('Enter')
+  await page.keyboard.type('Buy milk')
+  await expect.poll(() => lines(page)).toEqual(['14:00 Call'])
+  await expect(page.locator('.ProseMirror li', { hasText: 'Buy milk' })).toBeVisible()
+  // `/event` in an empty to-do takes it too; Escape makes it a to-do again, in its list.
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/even')
+  await page.getByRole('option', { name: /Event/ }).click()
+  await expect(draft).toBeFocused()
+  await draft.pressSequentially('Later')
+  await draft.press('Escape')
+  await expect(page.locator('.ProseMirror li', { hasText: 'Later' })).toBeVisible()
+  await waitSaved(page)
+  const note = await api<Node>(request, 'GET', `/resolve?ref=Calendar/${day}`)
+  expect(await noteContent(request, note.id)).toMatch(
+    /^- \[ \] Hello\n\n```event\nid: \w+\n```\n\n- \[ \] Buy milk\n- \[ \] Later\n/m,
+  )
+})
+
 test('shows a day’s events without writing its file', async ({ page, request }) => {
   await api(request, 'PATCH', '/settings', { daily: true })
   const day = addDays(isoDate(), 3)

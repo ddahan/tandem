@@ -7,13 +7,15 @@
 //
 // One unit in the text (an atom), moved with the editor's block handle; its line is
 // `EventView.vue`, added by the editor component. Not draggable itself: Safari doesn't put the
-// cursor in a field inside a draggable element (its title). In a daily note, a time typed at the start of an empty line, then a
-// space (`14h `, `9:30 `), makes the line an event being typed (no ref yet: `text` holds what
-// was typed), saved once it has a title; `/event` starts one with no time. A line dragged out
-// of the agenda block is dropped as its event's block.
+// cursor in a field inside a draggable element (its title). In a daily note, a time typed at
+// the start of an empty line, then a space (`14h `, `9:30 `), makes the line an event being
+// typed (no ref yet: `text` holds what was typed), saved once it has a title; `/event` starts
+// one with no time. An empty to-do becomes the event too: its list is split around it, and
+// events beside to-dos are drawn as items of their list (main.css). A line dragged out of the
+// agenda block is dropped as its event's block.
 import { InputRule, Node, mergeAttributes } from '@tiptap/core'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import type { Node as ProseMirrorNode, ResolvedPos } from '@tiptap/pm/model'
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state'
 import { eventBlock } from '@tandem/shared'
 
 /** The drag data of an agenda line: its event's ref (`checkRef`). */
@@ -47,8 +49,10 @@ export const EventBlock = Node.create<EventOptions>({
         parseHTML: (element) => element.getAttribute('data-event') ?? '',
         renderHTML: (attributes) => ({ 'data-event': attributes.ref as string }),
       },
-      // An event being typed: what was typed so far (not kept in the Markdown as an event).
+      // An event being typed: what was typed so far (not kept in the Markdown as an event), and
+      // whether it was a to-do (it goes back to one when left without a title).
       text: { default: '', rendered: false },
+      todo: { default: false, rendered: false },
     }
   },
 
@@ -96,9 +100,12 @@ export const EventBlock = Node.create<EventOptions>({
           const tr = state.tr
           const $from = tr.doc.resolve(range.from)
           const paragraph = $from.parent
-          // An empty line, right in the note (not in a list, a quote, a table…).
-          if (paragraph.type.name !== 'paragraph' || $from.depth !== 1) return null
-          if (paragraph.textContent.trim() !== match[1]) return null
+          if (paragraph.type.name !== 'paragraph' || paragraph.textContent.trim() !== match[1])
+            return null
+          // An empty to-do of a list right in the note: the event takes its place.
+          if (replaceTodo(tr, $from, type.create({ ref: '', text: match[0], todo: true }))) return
+          // An empty line right in the note (not in a list, a quote, a table…).
+          if ($from.depth !== 1) return null
           tr.replaceWith($from.before(), $from.after(), type.create({ ref: '', text: match[0] }))
         },
       }),
@@ -153,4 +160,35 @@ export function typingEvent(doc: ProseMirrorNode): boolean {
     return !found && node.type.name !== 'event'
   })
   return found
+}
+
+/**
+ * Puts `node` in place of the to-do at `$pos`, when it is a to-do of a list right in the note
+ * (not nested) holding only its line: the list is split around it (or goes, when it was its only
+ * to-do). False when `$pos` is anywhere else.
+ */
+export function replaceTodo(tr: Transaction, $pos: ResolvedPos, node: ProseMirrorNode): boolean {
+  if ($pos.depth !== 3) return false
+  const list = $pos.node(1)
+  const item = $pos.node(2)
+  if (list.type.name !== 'taskList' || item.type.name !== 'taskItem' || item.childCount !== 1)
+    return false
+  const listStart = $pos.before(1)
+  const listEnd = $pos.after(1)
+  const itemStart = $pos.before(2)
+  const itemEnd = $pos.after(2)
+  if (list.childCount === 1) {
+    tr.replaceWith(listStart, listEnd, node)
+  } else if (itemStart === listStart + 1) {
+    tr.delete(itemStart, itemEnd).insert(listStart, node)
+  } else if (itemEnd === listEnd - 1) {
+    tr.delete(itemStart, itemEnd)
+    tr.insert(tr.mapping.map(listEnd), node)
+  } else {
+    // Between two to-dos: the list is split where it was, the node between the two halves.
+    tr.delete(itemStart, itemEnd)
+      .split(itemStart)
+      .insert(itemStart + 1, node)
+  }
+  return true
 }

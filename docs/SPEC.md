@@ -362,13 +362,17 @@ inside OneDrive so that it is backed up and synced.
   calendar's color (Tandem's own: the app's primary color), the title. Labels: `day` (all day),
   `14:00`, `13:30 → 14:30`.
 - **Typed anywhere in a day's note**, between any text: a time at the start of an empty line
-  (not in a list or a quote), then a space (`14h `, `14h30 `, `9:30 `: with `h` or a colon, so
+  or an empty to-do (not in a quote, nor a nested to-do), then a space (`14h `, `14h30 `, `9:30 `: with `h` or a colon, so
   that `3 apples` stays text), makes the line an event being typed; `/event` (daily notes only)
-  starts one with no time (all day). Then its title: the typed time becomes the label in front of
+  starts one with no time (all day), on the empty line or to-do it's typed on. An empty to-do's
+  list is split around the event, which reads as one of its to-dos: its checkbox (there as soon
+  as the line is an event) and text where theirs are, their spacing between them. Then its
+  title: the typed time becomes the label in front of
   it once the title begins (`13:30 - 14:30` stays text until then), or with Tab after the time;
   Backspace at the start of the text puts it back to edit. Enter saves it and goes on to a new
-  line at once; leaving it with a title saves it too. Escape, or leaving it without a title,
-  turns it back into the text typed. In the Markdown, the note has a block naming the event
+  line at once (beside to-dos, a new to-do); leaving it with a title saves it too. Escape, or
+  leaving it without a title, turns it back into the text typed (a to-do again, in its list,
+  when it was one). In the Markdown, the note has a block naming the event
   (` ```event ` with `id: …`), moved with the block handle like any block.
 - **The agenda block** (` ```agenda `, holding nothing) lists the day's other events: repeats,
   calendar feeds', those added from the palette or by agents. All-day ones first, then by time.
@@ -388,7 +392,8 @@ inside OneDrive so that it is backed up and synced.
   one-line syntax), or an agent.
 - **Editing**: the title in place, a click anywhere on the line putting the cursor at its end
   (as a to-do's); leaving it saves, Escape puts it back. Enter saves too: in the note it goes on
-  to a new line below, as a to-do's (in the agenda block it only saves). A click on
+  to a new line below, as a to-do's (beside to-dos, a new to-do; in the agenda block it only
+  saves). A click on
   the time label opens its details: all day, at, from–to; its day (to move it); repeat; Save,
   Cancel, Delete. "Event deleted · Undo" for a few seconds (the event comes back to the agenda
   block). A day of a repeating event changed alone keeps its place in the note.

@@ -389,7 +389,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         typed: '14h ',
         label: 'Event',
         description:
-          'In a daily note, at the start of an empty line: 14h, 14h30 or 9:30, then a space. Then its title (13:30 - 14:30 for a range); Enter saves it.',
+          'In a daily note, at the start of an empty line or to-do: 14h, 14h30 or 9:30, then a space. Then its title (13:30 - 14:30 for a range); Enter saves it.',
       },
       { typed: '``` ', label: 'Code block', description: 'Or ```ts and a space, for a language.' },
       { typed: '---', label: 'Divider' },

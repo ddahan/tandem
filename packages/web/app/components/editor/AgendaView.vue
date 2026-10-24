@@ -36,7 +36,7 @@ const visible = computed(() => !!date.value && rest.value.length > 0)
     :data-date="date"
   >
     <!-- Not a list: the editor's lists are indented, these lines start where the text does. -->
-    <div v-if="visible" class="space-y-0.5" role="list">
+    <div v-if="visible" class="space-y-[0.2em]" role="list">
       <AgendaLine
         v-for="item in rest"
         :key="item.key"
