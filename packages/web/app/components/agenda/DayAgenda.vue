@@ -105,17 +105,18 @@ function onAddBlur() {
         @blur="onAddBlur"
       />
     </div>
-    <UButton
-      v-else
-      icon="i-lucide-plus"
-      color="neutral"
-      variant="ghost"
-      size="xs"
-      class="ms-0.5"
-      aria-label="Add an event"
-      data-testid="agenda-new"
-      @click="startAdding"
-    />
+    <!-- In the checkboxes' column, their size. -->
+    <div v-else class="agenda-line">
+      <button
+        type="button"
+        class="agenda-check flex items-center justify-center rounded-sm text-muted transition-colors hover:bg-elevated hover:text-highlighted"
+        aria-label="Add an event"
+        data-testid="agenda-new"
+        @click="startAdding"
+      >
+        <UIcon name="i-lucide-plus" class="size-full" />
+      </button>
+    </div>
   </section>
   <!-- Between the day's events and its note. -->
   <USeparator v-if="visible" class="my-5" />
