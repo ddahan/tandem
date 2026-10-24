@@ -216,26 +216,6 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         preview: null,
       },
       {
-        id: 'event',
-        title: 'Event',
-        icon: 'i-lucide-calendar-plus',
-        description:
-          'An event of the day, where it’s typed in a daily note: a time at the start of an empty line, then a space (`14h `, `9:30 `), then its title; or /event for one with no time (all day). Enter saves it and goes on to the next line. It shows as in the agenda (checkbox, time, title; a click on the time opens its details). Its data is in Tandem: the note only has a block naming it.',
-        slash: 'Event',
-        typed: '14h ',
-        markdown: '```event\nid: Kx3fq9P2mZ0a\n```',
-        preview: null,
-      },
-      {
-        id: 'agenda',
-        title: 'Agenda',
-        icon: 'i-lucide-calendar-clock',
-        description:
-          'The day’s events not placed in its daily note (repeats, calendar feeds’, those added elsewhere), at its top: a checkbox, the time (`day`, `14:00`, `13:30 → 14:30`) and the title, edited in place; a click on the time opens the event’s details (time, day, repeat, delete). A line’s grip drags it into the note, to place it there. With nothing to show, it shows nothing. It holds nothing: Tandem adds it.',
-        markdown: '```agenda\n```',
-        preview: null,
-      },
-      {
         id: 'divider',
         title: 'Divider',
         icon: 'i-lucide-separator-horizontal',

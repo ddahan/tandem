@@ -1,40 +1,28 @@
-// The agenda of daily notes: events kept in Tandem (SQLite), shown in a day's note by an
-// `agenda` block, and read-only events from calendar feeds (`.ics` addresses). The block holds
-// no data: it shows the events of its note's day. Times are the computer's, as days are.
+// The agenda of daily notes: events kept in Tandem (SQLite), shown above a day's note (never in
+// its Markdown), and read-only events from calendar feeds (`.ics` addresses). Times are the
+// computer's, as days are.
 //
 // Repeats are a few presets, expanded here for the days asked for (never stored one by one): an
 // event that repeats forever has no row, file or note for 2099.
 import type { ChoiceColor } from './databases.ts'
 import { addDays, dateOf, isIsoDate } from './calendar.ts'
 
-/** The block that shows a day's agenda in its note: the day's events not placed in it. */
+/**
+ * Blocks of an earlier agenda, which lived in the notes' text: an agenda block, and a block
+ * naming an event placed in the note. The agenda is now above a daily note, never in its
+ * Markdown; notes may still have these.
+ */
 export const AGENDA_BLOCK = '```agenda\n```'
 
 const AGENDA_FENCE = /^```agenda[ \t]*\n(?:[^\n]*\n)*?```[ \t]*$/gm
 const EVENT_FENCE = /^```event[ \t]*\n[ \t]*id:[ \t]*([^\n]*?)[ \t]*\n```[ \t]*$/gm
 
-/** Whether a note's Markdown has an agenda block. */
-export function hasAgendaBlock(markdown: string): boolean {
-  return new RegExp(AGENDA_FENCE.source, 'm').test(markdown)
-}
-
-/**
- * An event placed in its day's note, where it was typed: a block naming it (`checkRef`: Tandem's
- * event id, or a feed's id and the event's UID). Its details are in Tandem.
- */
+/** An earlier block naming an event placed in its day's note (its `checkRef`). */
 export function eventBlock(ref: string): string {
   return `\`\`\`event\nid: ${ref}\n\`\`\``
 }
 
-/** The events a note's Markdown places (their refs, in order). */
-export function eventRefsIn(markdown: string): string[] {
-  return [...markdown.matchAll(EVENT_FENCE)].map((match) => match[1]!).filter(Boolean)
-}
-
-/**
- * The Markdown without its agenda and event blocks: a day's note holding only those is empty
- * (its events are in the agenda).
- */
+/** The Markdown without those blocks: a day's note holding only them is empty. */
 export function withoutAgenda(markdown: string): string {
   return markdown.replace(AGENDA_FENCE, '').replace(EVENT_FENCE, '')
 }

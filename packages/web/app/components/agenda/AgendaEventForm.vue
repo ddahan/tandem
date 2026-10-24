@@ -11,7 +11,7 @@ import {
   type Repeat,
 } from '@tandem/shared'
 import type { EventFields } from '~/composables/useAgenda'
-import DatabaseDate from './DatabaseDate.vue'
+import DatabaseDate from '~/components/editor/DatabaseDate.vue'
 
 const props = defineProps<{ item: AgendaItem }>()
 const emit = defineEmits<{ save: [fields: Partial<EventFields>]; remove: []; close: [] }>()

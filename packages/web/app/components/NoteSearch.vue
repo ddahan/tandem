@@ -5,7 +5,7 @@
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
 import { isoDate, siteOf, type BookmarkSearchResult, type SearchResponse } from '@tandem/shared'
-import AgendaEventDialog from '~/components/AgendaEventDialog.vue'
+import AgendaEventDialog from '~/components/agenda/AgendaEventDialog.vue'
 import { openWebsite } from '~/composables/useBookmarks'
 
 const api = useApi()

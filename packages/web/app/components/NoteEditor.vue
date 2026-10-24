@@ -11,21 +11,12 @@ import { closeHistory, undoDepth } from '@tiptap/pm/history'
 import type { ResolvedPos } from '@tiptap/pm/model'
 import type { Transaction } from '@tiptap/pm/state'
 import type { TreeNode } from '@tandem/shared'
-import {
-  calendarDateOf,
-  checkRef,
-  encodeMarkdownPath,
-  linkKey,
-  titleFromPath,
-} from '@tandem/shared'
-import AgendaView from '~/components/editor/AgendaView.vue'
-import EventView from '~/components/editor/EventView.vue'
+import { calendarDateOf, encodeMarkdownPath, linkKey, titleFromPath } from '@tandem/shared'
 import CalloutView from '~/components/editor/CalloutView.vue'
 import CodeBlockView from '~/components/editor/CodeBlockView.vue'
 import DatabaseView from '~/components/editor/DatabaseView.vue'
 import BookmarkView from '~/components/editor/BookmarkView.vue'
-import { Agenda } from '~/editor/agenda'
-import { EventBlock, placedEvents, replaceTodo, typingEvent } from '~/editor/event'
+import { dropOldAgenda } from '~/editor/agenda'
 import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
@@ -147,7 +138,6 @@ const extensions = createExtensions({
   wikiLinkExists: (target) => !!linkedPage(target),
   onFiles: (editor, files, pos) => void uploadFiles(editor, files, pos),
   assetsPrefix: () => ownAssetsPrefix(),
-  date: () => day.value,
 }).map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {
     return (extension as typeof CodeBlockLowlight).extend({
@@ -162,16 +152,6 @@ const extensions = createExtensions({
   }
   if (extension.name === Bookmark.name) {
     return Bookmark.extend({ addNodeView: () => VueNodeViewRenderer(BookmarkView) })
-  }
-  if (extension.name === EventBlock.name) {
-    return (extension as typeof EventBlock).extend({
-      addNodeView: () => VueNodeViewRenderer(EventView),
-    })
-  }
-  if (extension.name === Agenda.name) {
-    return (extension as typeof Agenda).extend({
-      addNodeView: () => VueNodeViewRenderer(AgendaView),
-    })
   }
   return extension
 })
@@ -328,36 +308,10 @@ async function insertBookmark(editor: CoreEditor) {
     .run()
 }
 
-/**
- * `/event` (daily notes): an event being typed where the cursor is (editor/event.ts), in place
- * of the empty line or to-do it's on.
- */
-function insertEvent(editor: CoreEditor) {
-  if (!day.value) return
-  const { state, view } = editor
-  const { $from, empty } = state.selection
-  if (empty && $from.parent.content.size === 0) {
-    const tr = state.tr
-    const todo = state.schema.nodes.event!.create({ ref: '', text: '', todo: true })
-    if (replaceTodo(tr, $from, todo)) {
-      view.dispatch(tr)
-      return
-    }
-  }
-  editor
-    .chain()
-    .focus()
-    .insertContent({ type: 'event', attrs: { ref: '', text: '' } })
-    .run()
-}
-
-function hasAgenda(editor: CoreEditor) {
-  let found = false
-  editor.state.doc.descendants((node) => {
-    if (node.type.name === 'agenda') found = true
-    return !found
-  })
-  return found
+/** `/event` (daily notes): the add line of the day's agenda, above the note (DayAgenda). */
+const agendaFocus = useAgendaFocus()
+function insertEvent() {
+  if (day.value) agendaFocus.value = { date: day.value }
 }
 
 function pickFiles() {
@@ -489,7 +443,7 @@ const handlers = {
   event: {
     canExecute: () => true,
     execute: (editor: Editor) => {
-      insertEvent(editor)
+      insertEvent()
       return editor.chain()
     },
     isActive: () => false,
@@ -568,7 +522,7 @@ const slashItems = computed<EditorSuggestionMenuItem<Handlers>[][]>(() => [
           {
             kind: 'event' as const,
             label: 'Event',
-            description: 'Here, in this day (or type 14h then a space)',
+            description: 'In this day’s agenda, at the top',
             icon: 'i-lucide-calendar-plus',
           },
         ]
@@ -865,23 +819,12 @@ onBeforeUnmount(() => {
  * change; blank lines don't count (they are tidied on save anyway).
  */
 let reported: string | null = null
-let agendaShown = false
 
 function onUpdate(value: unknown) {
   const markdown = String(value)
   const editor = editorRef.value?.editor
-  if (editor) {
-    collectHeadings(editor)
-    placed.value = placedEvents(editor.state.doc)
-    typing.value = typingEvent(editor.state.doc)
-  }
+  if (editor) collectHeadings(editor)
   const tidy = normalizeMarkdown(markdown)
-  // The day's agenda block shown by itself (showAgenda): not the owner's change.
-  if (agendaShown) {
-    agendaShown = false
-    reported = tidy
-    return
-  }
   if (tidy === reported) return
   reported = tidy
   emit('change', markdown)
@@ -960,65 +903,10 @@ onMounted(() => {
   collectHeadings(editor)
   followHistory(editor)
   stopFollowingFiles = followRemovedFiles(editor)
-  placed.value = placedEvents(editor.state.doc)
-  // The day's events may have come first.
-  if (unplaced.value) showAgenda()
-  else if (dayAgenda.loaded.value && !dayAgenda.items.value.length) dropAgenda()
-})
-
-// --- The day's agenda -------------------------------------------------------------------------
-
-/**
- * A day with events not placed in the note (repeats, feeds', those added elsewhere) shows them
- * in its agenda block: a note without one gets one at its top, as the note opens or as such an
- * event comes. Not a change of the note (no save, no undo step): the block is written into the
- * file only with something the owner writes. A block deleted while it has events comes back the
- * next time the note opens; the day's last event deleted, the block goes.
- */
-const dayAgenda = useAgendaDays(() => (day.value ? { from: day.value, to: day.value } : null))
-// The events placed in the note, and whether one is being typed (followed in onUpdate): its
-// event, made before the block names it, is no reason to show the agenda.
-const placed = ref(new Set<string>())
-const typing = ref(false)
-const unplaced = computed(() =>
-  typing.value
-    ? 0
-    : dayAgenda.items.value.filter((item) => !placed.value.has(checkRef(item))).length,
-)
-function showAgenda() {
-  const editor = editorRef.value?.editor
-  if (!editor || editor.isDestroyed || !editor.isEditable || hasAgenda(editor)) return
-  // Saved only with the owner's next change (unless one is waiting to be saved).
-  agendaShown = reported === normalizeMarkdown(editor.getMarkdown())
-  const node = editor.schema.nodes.agenda!.create()
-  editor.view.dispatch(editor.state.tr.insert(0, node).setMeta('addToHistory', false))
-  // The update comes at once (UEditor's): never let it swallow a later change.
-  agendaShown = false
-}
-/** The day's last event gone: its block goes too (a change of the note, saved). */
-function dropAgenda() {
-  const editor = editorRef.value?.editor
-  if (!editor || editor.isDestroyed || !editor.isEditable) return
+  // A daily note drops the blocks of the earlier agenda, which lived in its text (editor/agenda).
   const tr = editor.state.tr
-  editor.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'agenda')
-      tr.delete(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize))
-    return node.type.name !== 'agenda'
-  })
-  if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false))
-}
-watch(unplaced, (count, previous) => {
-  if (count > 0 && !previous) showAgenda()
-})
-watch(
-  () => dayAgenda.items.value.length,
-  (count, previous) => {
-    if (count === 0 && previous) dropAgenda()
-  },
-)
-// A block left from events deleted while the note was closed.
-watch(dayAgenda.loaded, (loaded) => {
-  if (loaded && !dayAgenda.items.value.length) dropAgenda()
+  if (day.value && editor.isEditable && dropOldAgenda(editor.state.doc, tr))
+    editor.view.dispatch(tr.setMeta('addToHistory', false))
 })
 
 // --- Undo ------------------------------------------------------------------------------------

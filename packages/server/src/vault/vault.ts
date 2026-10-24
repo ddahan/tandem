@@ -505,7 +505,7 @@ export class Vault {
       const date = calendarDateOf(row.path)
       if (!date) return []
       const content = row.content ?? ''
-      // An agenda block alone is nothing written: the agenda shows its own events.
+      // Blocks of the earlier agenda alone are nothing written (shared/agenda.ts).
       return [
         { date, id: row.id, written: !isBlank(withoutAgenda(content)), ...taskCounts(content) },
       ]
@@ -523,7 +523,7 @@ export class Vault {
       // Its file gone already, the watcher will tell.
       const row = await this.freshPage(id).catch(() => null)
       if (!row) return false
-      // An agenda block alone is empty: the day's events are in the agenda, not in its file.
+      // Blocks of the earlier agenda alone are empty (shared/agenda.ts).
       const content = withoutAgenda(row.content ?? '')
       if (!isBlank(content) || row.pendingSnapshot || (await this.hasChildren(row))) return false
       const version = await this.db

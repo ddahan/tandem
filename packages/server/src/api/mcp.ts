@@ -37,9 +37,9 @@ so that the user's lines keep their authorship. Never delete notes unless the us
 Databases (tables of rows with typed columns, sortable and filterable) live in Tandem, not in the
 Markdown: a note only has a \`\`\`database block naming one. Use the database tools for them.
 Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates or appends to it.
-Days have an agenda, kept in Tandem, not in the Markdown (a day's note places an event with an
-\`\`\`event block naming it, id: …, and lists the others in an \`\`\`agenda block): use agenda,
-add_event, update_event and delete_event for events. Events from calendar feeds are read-only.
+Days have an agenda, kept in Tandem (shown above the day's note, never in its Markdown): use
+agenda, add_event, update_event and delete_event for events. Events from calendar feeds are
+read-only.
 Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
 \`\`\`bookmark block naming it (id: …). Use the bookmark tools for them; add_bookmark can put
 its card in a note.`

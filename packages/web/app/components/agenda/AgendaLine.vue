@@ -1,0 +1,138 @@
+<script setup lang="ts">
+// One event's line in a day's agenda (DayAgenda): a checkbox (checked, struck through), the time
+// label in its calendar's color (a click opens its details), the title edited in place (Enter or
+// leaving it saves, Escape puts it back), and, on hover, a button that deletes it. A feed's event
+// is read-only but for its checkbox. Plain fields, outside the note's editor.
+import { timeLabel, type AgendaItem } from '@tandem/shared'
+import type { EventFields } from '~/composables/useAgenda'
+import { CHOICE_COLOR_STYLES } from '~/utils/choice-colors'
+import AgendaEventForm from './AgendaEventForm.vue'
+
+const props = defineProps<{ item: AgendaItem }>()
+
+const actions = useAgendaActions()
+const { patchItem } = useAgendaDays(() => ({ from: props.item.date, to: props.item.date }))
+const readOnly = computed(() => !!props.item.feedId)
+
+const labelClass = computed(() =>
+  props.item.color ? CHOICE_COLOR_STYLES[props.item.color].tag : 'bg-primary/10 text-primary',
+)
+
+async function toggle(checked: boolean) {
+  patchItem(props.item.key, { checked })
+  await actions.setChecked(props.item, checked)
+}
+
+const titleInput = useTemplateRef<HTMLInputElement>('titleInput')
+
+async function saveTitle() {
+  const input = titleInput.value
+  if (!input) return
+  const title = input.value.replace(/\s+/g, ' ').trim()
+  if (!title || title === props.item.title) {
+    input.value = props.item.title
+    return
+  }
+  patchItem(props.item.key, { title })
+  if (!(await actions.update(props.item, { title }))) input.value = props.item.title
+}
+
+function onTitleKey(event: KeyboardEvent) {
+  const input = event.target as HTMLInputElement
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    input.blur()
+  } else if (event.key === 'Escape') {
+    input.value = props.item.title
+    input.blur()
+  }
+}
+
+/** A click anywhere on the line but its controls puts the cursor at the end of the title. */
+function onLineDown(event: MouseEvent) {
+  if ((event.target as HTMLElement).closest('input, button')) return
+  const input = titleInput.value
+  if (!input || readOnly.value) return
+  event.preventDefault()
+  input.focus()
+  input.setSelectionRange(input.value.length, input.value.length)
+}
+
+const open = ref(false)
+
+async function saveDetails(fields: Partial<EventFields>) {
+  open.value = false
+  await actions.update(props.item, fields)
+}
+
+async function remove() {
+  open.value = false
+  await actions.remove(props.item)
+}
+</script>
+
+<template>
+  <div
+    class="agenda-line group"
+    :class="!readOnly && 'cursor-text'"
+    data-testid="agenda-event"
+    @mousedown="onLineDown"
+  >
+    <input
+      type="checkbox"
+      class="agenda-check"
+      :checked="item.checked"
+      :aria-label="`Done: ${item.title}`"
+      @change="(event) => void toggle((event.target as HTMLInputElement).checked)"
+    />
+    <UPopover v-model:open="open" :content="{ align: 'start' }">
+      <button
+        type="button"
+        class="shrink-0 rounded px-1.5 py-0.5 font-mono text-xs font-medium tabular-nums transition-opacity"
+        :class="[labelClass, item.checked && 'opacity-50']"
+        data-testid="agenda-time"
+      >
+        {{ timeLabel(item) }}
+      </button>
+      <template #content>
+        <AgendaEventForm
+          :item="item"
+          @save="(fields) => void saveDetails(fields)"
+          @remove="() => void remove()"
+          @close="open = false"
+        />
+      </template>
+    </UPopover>
+    <input
+      ref="titleInput"
+      :value="item.title"
+      class="min-w-0 flex-1 bg-transparent outline-none"
+      :class="item.checked && 'text-muted line-through'"
+      :readonly="readOnly"
+      :aria-label="`Title: ${item.title}`"
+      data-testid="agenda-title"
+      @keydown="onTitleKey"
+      @blur="() => void saveTitle()"
+    />
+    <UIcon
+      v-if="item.repeat"
+      name="i-lucide-repeat"
+      class="size-3.5 shrink-0 text-dimmed"
+      aria-label="Repeats"
+    />
+    <span v-if="item.calendar" class="shrink-0 truncate text-xs text-dimmed">
+      {{ item.calendar }}
+    </span>
+    <UButton
+      v-if="!readOnly"
+      icon="i-lucide-x"
+      color="neutral"
+      variant="ghost"
+      size="xs"
+      class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+      :aria-label="`Delete ${item.title}`"
+      data-testid="agenda-delete"
+      @click="remove"
+    />
+  </div>
+</template>

@@ -10,6 +10,7 @@ import {
   formatDateTime,
   isoDate,
 } from '@tandem/shared'
+import DayAgenda from '~/components/agenda/DayAgenda.vue'
 import type { Heading } from '~/components/NoteEditor.vue'
 import { editorWidthPixels } from '~/composables/useSettings'
 import { DELETE_FOREVER } from '~/composables/useTree'
@@ -708,6 +709,9 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             @update:model-value="saveTags"
           />
         </div>
+
+        <!-- A day's events, above its text (not part of the note). -->
+        <DayAgenda v-if="calendarDate" :date="calendarDate" />
 
         <UAlert
           v-if="mode === 'edit' && lossBlocks"

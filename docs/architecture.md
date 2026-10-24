@@ -194,12 +194,12 @@ earlier one), and one superseded by a newer press is skipped.
 
 ### Agenda (`agenda.ts`, `feeds.ts`)
 
-`shared/agenda.ts` holds the rules: the block (` ```agenda ` with nothing inside), events typed
-on one line (`parseEventLine`), labels and order, repeat presets expanded for the days asked for
-(`eventDays`: never stored one by one), event blocks (`eventBlock`, `eventRefsIn`), and
-`withoutAgenda`, so that a day holding only agenda and event blocks counts as empty (`calendarMonth`'s marks, `dropEmptyCalendarNote`). `AgendaStore` keeps
+`shared/agenda.ts` holds the rules: events typed on one line (`parseEventLine`, `typedTime`),
+labels and order, repeat presets expanded for the days asked for (`eventDays`: never stored one
+by one), and `withoutAgenda`, for notes with blocks of the earlier agenda (a day holding only
+those counts as empty: `calendarMonth`'s marks, `dropEmptyCalendarNote`). `AgendaStore` keeps
 events, checks and feeds in SQLite; `items(from, to)` (at most 120 days) merges Tandem's and
-feeds' events with their checks. A change for one day of a repeating event adds it to
+feeds' events with their checks, in order. A change for one day of a repeating event adds it to
 `skipped` and makes an event of its own (`seriesId`); for all days from today on, an event begun
 before today gets `until` = yesterday and a new one carries on (its checks from today on, and
 the days changed alone, move to it). Changes return what undoes them (`AgendaUndo`: the rows
@@ -211,23 +211,16 @@ memory. The server reads them at start and every 30 minutes. API: `GET /agenda?f
 `/agenda/events` (CRUD; `on` and `scope` for repeating ones), `/agenda/restore`,
 `PUT /agenda/checks`, `/agenda/feeds` (CRUD, `POST …/refresh`); SSE `agenda`.
 
-In the web app, `editor/event.ts` is an event placed in the note (an atom naming its event,
-` ```event ` with `id:` its `checkRef`; not draggable itself, since Safari won't put the cursor
-in a field inside a draggable element: the block handle moves it), made by an input rule (a time and a space at the start
-of an empty top-level line or to-do, daily notes only: `replaceTodo` splits the to-do's list
-around the event, which `main.css` draws as one of its to-dos) or `/event` as an event being
-typed (no ref yet;
-`EventView.vue` saves it, then names it), or by dropping an agenda line (its grip's drag data).
-`editor/agenda.ts` is the agenda block (an atom, its day from the editor's options: the note's,
-daily notes on) and `AgendaView.vue` lists the day's events the note doesn't place
-(`placedEvents`). Both draw `AgendaLine.vue`, from `useAgendaDays` (one cache per range, shared
-by every view of the same days, reloaded once per change) and `useAgendaActions` (the scope
-dialog for repeating events, the undo toast; changes return the event that has them, so a day
-taken out of a repeat keeps its place). `useEventDraft` turns a typed time into the label.
-`NoteEditor` shows the agenda block at a day's top when it has events to list (`showAgenda`:
-not a change, so not saved: `reported` takes it; not for an event being typed, whose event comes
-before its block names it), and removes it when the day's last event goes (`dropAgenda`, saved).
-The side calendar asks for the events of the weeks it shows; Settings › Features lists feeds
+In the web app, the agenda is not in the editor: `DayAgenda.vue` sits above a daily note's
+editor (pages/notes/[id].vue), plain Vue (no ProseMirror node: an earlier version, with events
+as blocks in the text, fought the editor over focus, positions and undo). Its lines are
+`AgendaLine.vue`, from `useAgendaDays` (one cache per range, shared by every view of the same
+days; a change arriving while a reading is on its way reads again after it) and
+`useAgendaActions` (the scope dialog for repeating events, the undo toast). `useEventDraft`
+turns a typed time into the label. `/event` asks the day's agenda to focus its add line
+(`useAgendaFocus`). `editor/agenda.ts` reads the earlier blocks (` ```agenda `, ` ```event `) as
+hidden nodes, and `NoteEditor` drops them from a daily note as it opens (`dropOldAgenda`). The
+side calendar asks for the events of the weeks it shows; Settings › Features lists feeds
 (`SettingsFeeds.vue`); the palette's "New event…" is `AgendaEventDialog.vue`.
 
 ### Optional features

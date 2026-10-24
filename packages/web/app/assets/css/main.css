@@ -317,9 +317,13 @@ html.dark[data-tone='cool'] {
   text-decoration: line-through;
 }
 
-/* An event's line (AgendaLine, an event being typed): as a to-do's, its checkbox in the same
-   place, one line tall. */
-.note-editor .event-line {
+/* A day's agenda (DayAgenda), above the note: in the note's font, its lines as to-dos' (above),
+   the checkbox in the same place, one line tall. */
+.day-agenda {
+  font-family: var(--editor-font);
+  font-size: var(--editor-font-size);
+}
+.agenda-line {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -327,23 +331,13 @@ html.dark[data-tone='cool'] {
   padding-inline-start: 0.25rem;
   line-height: 1.75;
 }
-.note-editor .event-check {
+.agenda-check {
   flex: none;
   width: 1em;
   height: 1em;
   margin: 0;
   accent-color: var(--ui-primary);
   cursor: pointer;
-}
-/* Events beside to-dos, or beside each other, read as one list: the to-dos' spacing. */
-.note-editor .tiptap > ul[data-type='taskList']:has(+ .event-block),
-.note-editor .tiptap > .event-block:has(+ .event-block, + ul[data-type='taskList']) {
-  margin-bottom: 0.2em;
-}
-.note-editor .tiptap > ul[data-type='taskList'] + .event-block,
-.note-editor .tiptap > .event-block + .event-block,
-.note-editor .tiptap > .event-block + ul[data-type='taskList'] {
-  margin-top: 0.2em;
 }
 
 /* TODOs (editor/todos.ts): `TODO:` and the rest of its line, in yellow. One picked on the

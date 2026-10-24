@@ -11,7 +11,7 @@ import {
   type AgendaUndoInput,
   type Repeat,
 } from '@tandem/shared'
-import AgendaScopeDialog from '~/components/AgendaScopeDialog.vue'
+import AgendaScopeDialog from '~/components/agenda/AgendaScopeDialog.vue'
 
 export interface EventFields {
   title: string
@@ -22,18 +22,20 @@ export interface EventFields {
   until: string | null
 }
 
-/** The days' events, shared by everything showing the same days (an agenda, its placed events). */
+/** The days' events, shared by everything showing the same days (an agenda, the calendar). */
 interface AgendaCache {
   items: Ref<AgendaItem[]>
   loaded: Ref<boolean>
   loading: Promise<void> | null
+  /** Asked for again while loading: the answer coming may be older than the change. */
+  again: boolean
 }
 const caches = new Map<string, AgendaCache>()
 
 function cacheOf(key: string): AgendaCache {
   let cache = caches.get(key)
   if (!cache) {
-    cache = { items: ref([]), loaded: ref(false), loading: null }
+    cache = { items: ref([]), loaded: ref(false), loading: null, again: false }
     caches.set(key, cache)
   }
   return cache
@@ -50,18 +52,28 @@ export function useAgendaDays(range: () => { from: string; to: string } | null) 
   const items = computed(() => (key.value ? cacheOf(key.value).items.value : empty.value))
   const loaded = computed(() => (key.value ? cacheOf(key.value).loaded.value : false))
 
-  /** Reads the days again; asked by several views at once, once. */
+  /**
+   * Reads the days again; asked by several views at once, once. Asked while a reading is on its
+   * way, it reads again after it: that one may have left before the change.
+   */
   function load(): Promise<void> {
     const current = range()
     if (!current || !key.value) return Promise.resolve()
     const cache = cacheOf(key.value)
-    cache.loading ??= unwrap(api.agenda.$get({ query: current }))
-      .then((list) => {
+    if (cache.loading) {
+      cache.again = true
+      return cache.loading
+    }
+    const read = async (): Promise<void> => {
+      cache.again = false
+      const list = await unwrap(api.agenda.$get({ query: current })).catch(() => null)
+      if (list) {
         cache.items.value = list
         cache.loaded.value = true
-      })
-      .catch(() => {})
-      .finally(() => (cache.loading = null))
+      }
+      if (cache.again) return read()
+    }
+    cache.loading = read().finally(() => (cache.loading = null))
     return cache.loading
   }
 
@@ -224,4 +236,9 @@ export function useEventDraft() {
   }
 
   return { text, time, line, input, keydown, clear }
+}
+
+/** A request for a day's agenda to start adding an event (`/event` in its note: DayAgenda). */
+export function useAgendaFocus() {
+  return useState<{ date: string } | null>('agenda:focus', () => null)
 }

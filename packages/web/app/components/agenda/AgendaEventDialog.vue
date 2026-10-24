@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// "New event…" (the palette): an event for any day, typed on one line as in an agenda block
+// "New event…" (the palette): an event for any day, typed on one line as in a day's agenda
 // (`14:00 Standup`, `13:30-14:30 Lunch`, or a title for all day): the time, once typed, becomes
 // the label in front of the title (useEventDraft).
 import { dayLabel, timeLabel } from '@tandem/shared'
