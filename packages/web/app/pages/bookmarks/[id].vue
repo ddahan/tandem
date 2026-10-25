@@ -143,27 +143,7 @@ const fieldUi = {
 <template>
   <UDashboardPanel id="bookmark">
     <template #header>
-      <PageNavbar :title="bookmark?.title ?? 'Bookmark'">
-        <template v-if="bookmark" #right>
-          <UButton
-            v-if="!folder"
-            label="Open website"
-            icon="i-lucide-external-link"
-            size="sm"
-            @click="openWebsite(bookmark.url)"
-          />
-          <UTooltip :text="folder ? 'Delete the folder' : 'Delete the bookmark'">
-            <UButton
-              icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              aria-label="Delete"
-              @click="remove"
-            />
-          </UTooltip>
-        </template>
-      </PageNavbar>
+      <PageNavbar :title="bookmark?.title ?? 'Bookmark'" />
     </template>
 
     <template #body>
@@ -228,16 +208,6 @@ const fieldUi = {
                   @blur="save('url')"
                   @keydown="onKey($event, 'url')"
                 />
-                <UTooltip text="Open website">
-                  <UButton
-                    icon="i-lucide-external-link"
-                    size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    aria-label="Open website"
-                    @click="openWebsite(bookmark.url)"
-                  />
-                </UTooltip>
               </dd>
 
               <dt class="self-start pt-1.5 text-muted">Description</dt>
@@ -290,6 +260,25 @@ const fieldUi = {
               <dd>{{ formatDateTime(bookmark.updatedAt) }}</dd>
             </template>
           </dl>
+
+          <!-- Its actions, under what they act on. -->
+          <div class="mt-6 flex flex-wrap gap-2">
+            <UButton
+              v-if="!folder"
+              label="Open website"
+              icon="i-lucide-external-link"
+              size="sm"
+              @click="openWebsite(bookmark.url)"
+            />
+            <UButton
+              :label="folder ? 'Delete folder' : 'Delete bookmark'"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="soft"
+              size="sm"
+              @click="remove"
+            />
+          </div>
 
           <!-- A folder: what it holds. -->
           <section v-if="folder" class="mt-10" aria-labelledby="bookmark-contents">

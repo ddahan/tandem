@@ -86,7 +86,7 @@ test('lists bookmarks right after the pages, folded until opened, and opens one 
     .toBeNull()
 
   // Deleted from its page: its tab goes.
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete bookmark' }).click()
   await page.getByTestId('bookmark-delete-confirm').click()
   await expect(page.getByTestId('tab-An article, renamed')).toHaveCount(0)
 

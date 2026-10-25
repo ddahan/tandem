@@ -428,8 +428,8 @@ inside OneDrive so that it is backed up and synced.
 - **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): its folders as a
   breadcrumb, then everything **edited in place**, saved when a field is left (↵ in one-line
   fields, Esc puts a field back): name, address (an address already saved is refused, with a
-  link to its bookmark), description and folder; its site and dates; the pages showing its
-  card, as links; Open website and Delete above. Editing keeps a preview tab open. A
+  link to its bookmark), description and folder; its site and dates; Open website and Delete
+  under them (not in the header); the pages showing its card, as links. Editing keeps a preview tab open. A
   **folder's page**: its name and the folder it's in, edited the same way, and what it holds
   (a click opens one's page, a double click a bookmark's website), with New bookmark and New
   folder. A deleted bookmark's tab closes.
