@@ -232,6 +232,24 @@ export function useTree() {
    * Deletes a node and its pages forever (the trash turned off, Settings › Features), once the
    * caller has asked: through the trash, then out of it, as the server deletes only from there.
    */
+  /**
+   * Nothing would be lost by deleting it: no text, no pages inside, no attachments and no
+   * history (a page just made, an empty folder). Deleting one then asks nothing. Read from the
+   * server, as the tree's `empty` may be older than what was just typed.
+   */
+  async function isBlank(id: string): Promise<boolean> {
+    if (childrenOf.value.get(id)?.length) return false
+    try {
+      const [detail, history] = await Promise.all([
+        unwrap(api.notes[':id'].$get({ param: { id } })),
+        unwrap(api.notes[':id'].history.$get({ param: { id } })),
+      ])
+      return !detail.content.trim() && !detail.attachments.length && !history.length
+    } catch {
+      return false
+    }
+  }
+
   async function deleteForever(id: string) {
     try {
       const { trashId } = await unwrap(api.nodes[':id'].$delete({ param: { id } }))
@@ -286,6 +304,7 @@ export function useTree() {
     move,
     remove,
     deleteForever,
+    isBlank,
     moveToTrash,
   }
 }

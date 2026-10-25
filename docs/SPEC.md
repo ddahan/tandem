@@ -291,7 +291,9 @@ inside OneDrive so that it is backed up and synced.
 - "Delete forever" per item and "Empty trash", both with a confirmation.
 - The trash can be turned off (Settings › Features; on by default). Then deleting a page (tree,
   ⌘⌫, the note's ⋯ menu) asks first, "Delete “…” forever?", and deletes it with its child pages,
-  attachments and history; the sidebar and the palette no longer list the trash. Pages already
+  attachments and history (a page with nothing to lose, no text, child pages, attachments or
+  history, as one just made, goes without asking, as does the note menu's Delete with the trash
+  on); the sidebar and the palette no longer list the trash. Pages already
   in it stay there: its page (still at `/trash`) says the trash is off. Agents' deletions still
   go to the trash.
 
@@ -436,7 +438,7 @@ inside OneDrive so that it is backed up and synced.
   a page already saved offers to show its bookmark instead.
 - **Deleting** asks first (bookmarks have no trash), naming the pages that show its card, as
   links: they lose it (each page's history keeps the version with it, and an open note shows
-  the change at once). A folder goes with everything in it.
+  the change at once). A folder goes with everything in it; an empty one goes without asking.
 - **Cards in notes**: `/bookmark` picks one (a search over names, addresses and descriptions,
   the latest first; a pasted address that isn't saved yet can be added from there), and a
   bookmark dragged from the sidebar into a note becomes one. A card shows the bookmark as it is
@@ -528,7 +530,7 @@ inside OneDrive so that it is backed up and synced.
 - Pages tree from the keyboard: arrows to move and expand (↑ ↓ preview the page reached, as a
   click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
-  message that follows offers Undo (as ⌘Z does). With the trash off, it asks, then deletes forever.
+  message that follows offers Undo (as ⌘Z does). With the trash off, it asks, then deletes forever (unless there's nothing to lose).
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
   has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
   Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install

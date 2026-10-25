@@ -71,18 +71,20 @@ async function commitRename() {
 /** The node whose icon is being changed (picker dialog). */
 const iconFor = ref<TreeItem | null>(null)
 
-// To the trash at once (Undo in the toast); with the trash off, deleted for good once confirmed.
+// To the trash at once (Undo in the toast); with the trash off, deleted for good once confirmed,
+// unless there's nothing to lose (a page just made, an empty folder: `isBlank`).
 async function trash(item: TreeItem) {
   // Its tab, and those of its pages, close by themselves (default.vue): the one used before shows.
   if (settings.value.trash) await tree.moveToTrash(item.id)
   else if (
-    await confirm({
+    (await tree.isBlank(item.id)) ||
+    (await confirm({
       title: `Delete “${item.node.title}” forever?`,
       description: DELETE_FOREVER,
       confirmLabel: 'Delete forever',
       confirmColor: 'error',
       icon: 'i-lucide-trash-2',
-    })
+    }))
   )
     await tree.deleteForever(item.id)
 }

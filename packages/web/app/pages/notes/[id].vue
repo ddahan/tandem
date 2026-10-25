@@ -449,6 +449,12 @@ async function copyMarkdown() {
 }
 
 const deleting = ref(false)
+/** Asks first, unless there's nothing to lose (a page just made: `isBlank`). */
+async function askToRemove() {
+  await doc.flush()
+  if (await tree.isBlank(id.value)) await remove()
+  else deleting.value = true
+}
 async function remove() {
   deleting.value = false
   await doc.flush()
@@ -490,7 +496,7 @@ const moreItems = computed<DropdownMenuItem[][]>(() => [
       label: settings.value.trash ? 'Move to trash' : 'Delete',
       icon: 'i-lucide-trash-2',
       color: 'error' as const,
-      onSelect: () => (deleting.value = true),
+      onSelect: () => void askToRemove(),
     },
   ],
 ])

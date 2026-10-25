@@ -38,9 +38,12 @@ export function useBookmarkActions() {
       return false
     }
     const count = bookmark.kind === 'folder' ? countIn(bookmark.id) : 1
-    deleter ??= overlay.create(BookmarkDeleteDialog)
-    const confirmed = Boolean(await deleter.open({ bookmark, pages, count }).result)
-    if (!confirmed) return false
+    // An empty folder (nothing in it, on no page) goes without asking.
+    const empty = bookmark.kind === 'folder' && count === 1 && !pages.length
+    if (!empty) {
+      deleter ??= overlay.create(BookmarkDeleteDialog)
+      if (!(await deleter.open({ bookmark, pages, count }).result)) return false
+    }
     try {
       const result = await bookmarks.remove(bookmark.id)
       toast.add({

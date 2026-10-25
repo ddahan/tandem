@@ -267,4 +267,11 @@ test('deletes a bookmark once confirmed, naming the pages that show it, and its 
   // The open note shows it at once, and its file no longer has it.
   await expect(page.getByTestId('bookmark-card')).toHaveCount(0)
   expect(await noteContent(request, note.id)).toBe('Before\n\nAfter\n')
+
+  // An empty folder: nothing to lose, gone without asking.
+  await addBookmark(request, { kind: 'folder', title: 'Empty' })
+  await section.getByTestId('bookmark-Empty').click()
+  await page.keyboard.press('ControlOrMeta+Backspace')
+  await expect(section.getByTestId('bookmark-Empty')).toBeHidden()
+  await expect(page.getByTestId('bookmark-delete-confirm')).toHaveCount(0)
 })

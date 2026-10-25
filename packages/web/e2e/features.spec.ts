@@ -92,6 +92,22 @@ test('with the trash off, deleting asks, then deletes forever', async ({ page, r
   await dialog.getByRole('button', { name: 'Delete forever' }).click()
   await expect(page.getByTestId('tree-Gone for good')).toHaveCount(0)
 
+  // Nothing to lose (no text, pages, files or history): gone without asking, from the tree…
+  const blank = await createNote(request, 'Blank', '')
+  const blankRow = page.getByTestId('tree-Blank')
+  await blankRow.focus()
+  await page.keyboard.press('ControlOrMeta+Backspace')
+  await expect(blankRow).toHaveCount(0)
+  await expect(dialog).toHaveCount(0)
+  expect((await request.get(`/api/notes/${blank.id}`)).status()).toBe(404)
+  // …and from its own menu.
+  const another = await createNote(request, 'Blank too', '')
+  await openNote(page, another.id)
+  await page.getByRole('button', { name: 'More actions' }).click()
+  await page.getByRole('menuitem', { name: 'Delete' }).click()
+  await expect(page.getByTestId('tree-Blank too')).toHaveCount(0)
+  await expect(dialog).toHaveCount(0)
+
   const trash = await api<{ title: string }[]>(request, 'GET', '/trash')
   expect(trash.map((item) => item.title)).not.toContain('Gone for good')
   expect(trash.map((item) => item.title)).not.toContain('Also gone')
