@@ -208,6 +208,32 @@ test('a folder takes an icon, from its menu or its page, and back to the default
   ).toMatchObject({ emoji: null })
 })
 
+test('makes a new bookmark from /bookmark’s picker, and shows its card', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'New links', 'Useful:')
+  await openNote(page, note.id)
+  await focusEnd(page)
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/bookmark')
+  await page.keyboard.press('Enter')
+  const picker = page.getByTestId('bookmark-picker')
+  await picker.getByRole('option', { name: 'New bookmark…' }).click()
+  // No web in the tests: the page can't be read, the name is typed.
+  await page.getByTestId('bookmark-url').fill('fresh.example.com')
+  await page.getByTestId('bookmark-title').fill('Fresh one')
+  await page.getByTestId('bookmark-save').click()
+  const card = page.getByTestId('bookmark-card')
+  await expect(card).toContainText('Fresh one')
+  await expect(picker).toHaveCount(0)
+  await waitSaved(page)
+  const made = (await api<Bookmark[]>(request, 'GET', '/bookmarks')).find(
+    (b) => b.title === 'Fresh one',
+  )!
+  expect(await noteContent(request, note.id)).toContain(`\`\`\`bookmark\nid: ${made.id}\n\`\`\``)
+})
+
 test('shows a bookmark’s card in a note, from / and from the sidebar, found by ⌘⇧F', async ({
   page,
   request,
@@ -231,7 +257,7 @@ test('shows a bookmark’s card in a note, from / and from the sidebar, found by
   const picker = page.getByTestId('bookmark-picker')
   await picker.getByPlaceholder('Find a bookmark, or paste an address…').fill('refer')
   // The search's results (the latest bookmarks show until then).
-  await expect(picker.getByRole('option')).toHaveCount(1)
+  await expect(picker.getByRole('option', { name: /Example/ })).toHaveCount(1)
   await expect(picker.getByRole('option', { name: /Example docs/ })).toBeVisible()
   await page.keyboard.press('Enter')
   const card = page.getByTestId('bookmark-card')

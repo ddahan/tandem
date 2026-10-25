@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Picks a bookmark to show in a note (`/bookmark`, a card's "Change bookmark"): a search over
 // their names, addresses and descriptions (the server's, as the palette's), the latest first
-// before typing. An address that isn't bookmarked yet can be added from here.
+// before typing. A new one can be made from here (New bookmark…, or an address pasted), its card
+// shown once saved.
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
 import { siteOf, webUrl, type Bookmark, type BookmarkSearchResult } from '@tandem/shared'
@@ -39,8 +40,8 @@ const typedUrl = computed(() => {
   return /^[a-z][a-z0-9+.-]*:\/\/|^[^\s/]+\.[^\s/]{2,}/i.test(text) ? webUrl(text) : null
 })
 
-async function addNew(url: string) {
-  const created: Bookmark | null = await actions.create({ url })
+async function addNew(url?: string) {
+  const created: Bookmark | null = await actions.create(url ? { url } : {})
   if (created) emit('close', created.id)
 }
 
@@ -59,22 +60,24 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
       onSelect: () => emit('close', bookmark.id),
     })),
   },
-  ...(typedUrl.value
-    ? [
-        {
-          id: 'new',
-          label: 'New',
-          ignoreFilter: true,
-          items: [
-            {
-              label: `Add ${typedUrl.value} as a new bookmark`,
-              icon: 'i-lucide-bookmark-plus',
-              onSelect: () => void addNew(typedUrl.value!),
-            },
-          ],
-        },
-      ]
-    : []),
+  {
+    id: 'new',
+    label: 'New',
+    ignoreFilter: true,
+    items: [
+      typedUrl.value
+        ? {
+            label: `Add ${typedUrl.value} as a new bookmark`,
+            icon: 'i-lucide-bookmark-plus',
+            onSelect: () => void addNew(typedUrl.value!),
+          }
+        : {
+            label: 'New bookmark…',
+            icon: 'i-lucide-bookmark-plus',
+            onSelect: () => void addNew(),
+          },
+    ],
+  },
 ])
 </script>
 
@@ -101,11 +104,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
         </template>
         <template #empty>
           <p class="py-6 text-center text-sm text-muted">
-            {{
-              term.trim()
-                ? 'No bookmark matches. Paste an address to add one.'
-                : 'No bookmarks yet. Paste an address to add one.'
-            }}
+            {{ term.trim() ? 'No bookmark matches.' : 'No bookmarks yet.' }}
           </p>
         </template>
       </UCommandPalette>
