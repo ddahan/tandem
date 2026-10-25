@@ -229,10 +229,14 @@ defineShortcuts({
           </template>
         </UNavigationMenu>
 
-        <!-- With bookmarks, right after the pages: both scroll together. Without, the pages
-             take the room (their empty space takes drops and right-clicks). -->
-        <div v-if="!collapsed && settings.bookmarks" class="-mx-1 min-h-0 flex-1 overflow-y-auto">
-          <NoteTree />
+        <!-- With bookmarks, right after the pages: both scroll together, and the bookmarks take
+             the room left (their empty space takes drops and right-clicks). Without, the pages
+             take it. -->
+        <div
+          v-if="!collapsed && settings.bookmarks"
+          class="-mx-1 flex min-h-0 flex-1 flex-col overflow-y-auto"
+        >
+          <NoteTree class="shrink-0" />
           <BookmarkTree />
         </div>
         <NoteTree v-else-if="!collapsed" class="-mx-1 min-h-0 flex-1" />

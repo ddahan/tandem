@@ -346,7 +346,11 @@ function rowClass(item: BookmarkItem) {
 
 <template>
   <UContextMenu :items="contextItems" :content="keepMovedFocus">
-    <div class="flex min-h-0 flex-col" data-testid="bookmarks" @contextmenu.capture="onContextMenu">
+    <div
+      class="flex shrink-0 grow flex-col"
+      data-testid="bookmarks"
+      @contextmenu.capture="onContextMenu"
+    >
       <div class="flex items-center justify-between ps-1 pe-2.5 pb-1">
         <button
           type="button"
@@ -373,7 +377,7 @@ function rowClass(item: BookmarkItem) {
         </UDropdownMenu>
       </div>
 
-      <div v-if="open" class="px-1" @dragover.prevent @drop="onDropOnRoot" @dragend="reset">
+      <div v-if="open" class="grow px-1" @dragover.prevent @drop="onDropOnRoot" @dragend="reset">
         <div class="pb-2" @keydown.capture="onTreeKeydown" @focusin="onTreeFocusin">
           <UTree
             v-model:expanded="expanded"

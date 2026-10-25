@@ -169,6 +169,14 @@ test('right-clicking the section offers what + does, and exports for Chrome', as
   const only = await readFile((await (await one).path())!, 'utf8')
   expect(only).toContain('>Reading</H3>')
   expect(only).not.toContain('Tools')
+
+  // The section takes the sidebar's room left: a right click at its very bottom works too.
+  await expect(page.getByRole('menu')).toBeHidden()
+  const scroller = (await section.locator('..').boundingBox())!
+  const box = (await section.boundingBox())!
+  expect(box.y + box.height).toBeCloseTo(scroller.y + scroller.height, 0)
+  await section.click({ button: 'right', position: { x: 40, y: box.height - 5 } })
+  await expect(page.getByRole('menuitem', { name: 'New folder' })).toBeVisible()
 })
 
 test('shows a bookmark’s card in a note, from / and from the sidebar, found by ⌘⇧F', async ({

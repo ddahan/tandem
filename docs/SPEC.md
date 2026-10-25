@@ -418,7 +418,8 @@ inside OneDrive so that it is backed up and synced.
   default (open or folded is then remembered). A tree like the pages' (drag and drop, ⌥↑ ⌥↓,
   F2, a menu on each row: open the website, open in a tab, rename, move, copy the address,
   delete); "+" makes a bookmark or a folder (renamed in place), and so does a right click on
-  the section (its title, around the tree), which also exports. A click on a bookmark or a
+  the section (its title, or anywhere below: it takes the sidebar's room left), which also
+  exports. A click on a bookmark or a
   folder opens its **page** in the preview tab, as a page's (a folder also unfolds), and so
   does browsing them with ↑ ↓; a double click or ↵ opens a bookmark's website in a new browser
   tab (from the installed app, in the default browser), a folder's page in a tab of its own.
