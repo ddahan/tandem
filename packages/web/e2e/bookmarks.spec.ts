@@ -212,6 +212,7 @@ test('makes a new bookmark from /bookmark’s picker, and shows its card', async
   page,
   request,
 }) => {
+  await addBookmark(request, { url: 'https://old.example.com', title: 'Old one' })
   const note = await createNote(request, 'New links', 'Useful:')
   await openNote(page, note.id)
   await focusEnd(page)
@@ -219,6 +220,8 @@ test('makes a new bookmark from /bookmark’s picker, and shows its card', async
   await page.keyboard.type('/bookmark')
   await page.keyboard.press('Enter')
   const picker = page.getByTestId('bookmark-picker')
+  // First, above the latest bookmarks.
+  await expect(picker.getByRole('option').first()).toHaveText(/New bookmark…/)
   await picker.getByRole('option', { name: 'New bookmark…' }).click()
   // No web in the tests: the page can't be read, the name is typed.
   await page.getByTestId('bookmark-url').fill('fresh.example.com')

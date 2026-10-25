@@ -442,8 +442,8 @@ inside OneDrive so that it is backed up and synced.
   links: they lose it (each page's history keeps the version with it, and an open note shows
   the change at once). A folder goes with everything in it; an empty one goes without asking.
 - **Cards in notes**: `/bookmark` picks one (a search over names, addresses and descriptions,
-  the latest first; New bookmark… makes one there, in the usual dialog, as does a pasted address
-  that isn't saved yet: its card shows once saved), and a
+  the latest first; New bookmark…, at the top until words are typed, makes one there in the usual
+  dialog, as does a pasted address that isn't saved yet: its card shows once saved), and a
   bookmark dragged from the sidebar into a note becomes one. A card shows the bookmark as it is
   now (favicon, name, site, two lines of description). A click selects it (framed, as any
   block) and opens its menu, also on its ⋯ button: open the website, the bookmark's page, put

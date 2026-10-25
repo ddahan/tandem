@@ -45,40 +45,47 @@ async function addNew(url?: string) {
   if (created) emit('close', created.id)
 }
 
-const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => [
-  {
-    id: 'bookmarks',
-    label: term.value.trim() ? 'Bookmarks' : 'Latest bookmarks',
-    ignoreFilter: true,
-    items: results.value.map(({ bookmark, titleHtml, folders }) => ({
-      id: bookmark.id,
-      label: bookmark.title,
-      labelHtml: titleHtml,
-      suffix: [siteOf(bookmark.url), folders].filter(Boolean).join(' · '),
-      slot: 'bookmark' as const,
-      bookmark,
-      onSelect: () => emit('close', bookmark.id),
-    })),
-  },
-  {
-    id: 'new',
-    label: 'New',
-    ignoreFilter: true,
-    items: [
-      typedUrl.value
-        ? {
-            label: `Add ${typedUrl.value} as a new bookmark`,
-            icon: 'i-lucide-bookmark-plus',
-            onSelect: () => void addNew(typedUrl.value!),
-          }
-        : {
-            label: 'New bookmark…',
-            icon: 'i-lucide-bookmark-plus',
-            onSelect: () => void addNew(),
-          },
-    ],
-  },
-])
+// New first while nothing is typed (the latest bookmarks may fill the list below it) or an address
+// is pasted; while searching words, the matches first, so that ↵ takes the best one.
+const newGroup = computed<CommandPaletteGroup<CommandPaletteItem>>(() => ({
+  id: 'new',
+  label: 'New',
+  ignoreFilter: true,
+  items: [
+    typedUrl.value
+      ? {
+          label: `Add ${typedUrl.value} as a new bookmark`,
+          icon: 'i-lucide-bookmark-plus',
+          onSelect: () => void addNew(typedUrl.value!),
+        }
+      : {
+          label: 'New bookmark…',
+          icon: 'i-lucide-bookmark-plus',
+          onSelect: () => void addNew(),
+        },
+  ],
+}))
+
+const bookmarkGroup = computed<CommandPaletteGroup<CommandPaletteItem>>(() => ({
+  id: 'bookmarks',
+  label: term.value.trim() ? 'Bookmarks' : 'Latest bookmarks',
+  ignoreFilter: true,
+  items: results.value.map(({ bookmark, titleHtml, folders }) => ({
+    id: bookmark.id,
+    label: bookmark.title,
+    labelHtml: titleHtml,
+    suffix: [siteOf(bookmark.url), folders].filter(Boolean).join(' · '),
+    slot: 'bookmark' as const,
+    bookmark,
+    onSelect: () => emit('close', bookmark.id),
+  })),
+}))
+
+const groups = computed(() =>
+  term.value.trim() && !typedUrl.value
+    ? [bookmarkGroup.value, newGroup.value]
+    : [newGroup.value, bookmarkGroup.value],
+)
 </script>
 
 <template>
