@@ -159,6 +159,11 @@ function menu(item: BookmarkItem): DropdownMenuItem[][] {
             icon: 'i-lucide-folder-plus',
             onSelect: () => void newFolder(item.id),
           },
+          {
+            label: 'Export for Chrome',
+            icon: 'i-lucide-download',
+            onSelect: () => exportBookmarks(item.id),
+          },
         ]
       : [
           {
@@ -214,9 +219,29 @@ const addMenu: DropdownMenuItem[] = [
   { label: 'New folder', icon: 'i-lucide-folder-plus', onSelect: () => void newFolder() },
 ]
 
+/** Right-clicking the section (its title, around the tree): what "+" offers, and the export. */
+const sectionMenu: DropdownMenuItem[][] = [
+  addMenu,
+  [
+    {
+      label: 'Export all for Chrome',
+      icon: 'i-lucide-download',
+      onSelect: () => exportBookmarks(),
+    },
+  ],
+]
+
+/** Downloads a bookmarks file Chrome imports (all, or a folder): the server writes it. */
+function exportBookmarks(folder?: string) {
+  const link = document.createElement('a')
+  link.href = `/api/bookmarks/export${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`
+  link.download = ''
+  link.click()
+}
+
 // One menu for the whole tree, on a right-click (see NoteTree).
 const contextItem = ref<BookmarkItem | null>(null)
-const contextItems = computed(() => (contextItem.value ? menu(contextItem.value) : [addMenu]))
+const contextItems = computed(() => (contextItem.value ? menu(contextItem.value) : sectionMenu))
 
 function onContextMenu(event: MouseEvent) {
   const target = event.target as HTMLElement
@@ -320,42 +345,35 @@ function rowClass(item: BookmarkItem) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-col" data-testid="bookmarks">
-    <div class="flex items-center justify-between ps-1 pe-2.5 pb-1">
-      <button
-        type="button"
-        class="flex items-center gap-1 rounded px-1 text-xs font-medium text-muted hover:text-default"
-        :aria-expanded="open"
-        data-testid="bookmarks-toggle"
-        @click="open = !open"
-      >
-        <UIcon
-          name="i-lucide-chevron-right"
-          class="size-3.5 transition-transform"
-          :class="open && 'rotate-90'"
-        />
-        Bookmarks
-      </button>
-      <UDropdownMenu :items="addMenu" :content="{ align: 'end', ...keepMovedFocus }">
-        <UButton
-          icon="i-lucide-plus"
-          size="xs"
-          color="neutral"
-          variant="ghost"
-          aria-label="New bookmark or folder"
-        />
-      </UDropdownMenu>
-    </div>
+  <UContextMenu :items="contextItems" :content="keepMovedFocus">
+    <div class="flex min-h-0 flex-col" data-testid="bookmarks" @contextmenu.capture="onContextMenu">
+      <div class="flex items-center justify-between ps-1 pe-2.5 pb-1">
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded px-1 text-xs font-medium text-muted hover:text-default"
+          :aria-expanded="open"
+          data-testid="bookmarks-toggle"
+          @click="open = !open"
+        >
+          <UIcon
+            name="i-lucide-chevron-right"
+            class="size-3.5 transition-transform"
+            :class="open && 'rotate-90'"
+          />
+          Bookmarks
+        </button>
+        <UDropdownMenu :items="addMenu" :content="{ align: 'end', ...keepMovedFocus }">
+          <UButton
+            icon="i-lucide-plus"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            aria-label="New bookmark or folder"
+          />
+        </UDropdownMenu>
+      </div>
 
-    <div
-      v-if="open"
-      class="px-1"
-      @dragover.prevent
-      @drop="onDropOnRoot"
-      @dragend="reset"
-      @contextmenu.capture="onContextMenu"
-    >
-      <UContextMenu :items="contextItems" :content="keepMovedFocus">
+      <div v-if="open" class="px-1" @dragover.prevent @drop="onDropOnRoot" @dragend="reset">
         <div class="pb-2" @keydown.capture="onTreeKeydown" @focusin="onTreeFocusin">
           <UTree
             v-model:expanded="expanded"
@@ -462,7 +480,7 @@ function rowClass(item: BookmarkItem) {
             </div>
           </div>
         </div>
-      </UContextMenu>
+      </div>
     </div>
-  </div>
+  </UContextMenu>
 </template>

@@ -130,6 +130,11 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
           They all go, with their folders and icons, into a “Chrome” folder; importing again only
           adds the new ones, and Chrome’s stay as they are.
         </li>
+        <li>
+          <strong>Back to Chrome</strong>: right-click Bookmarks in Tandem’s sidebar, then Export
+          all for Chrome (or a folder’s Export for Chrome). In Chrome: Settings › Import bookmarks
+          and settings › Bookmarks HTML file, and choose the downloaded file.
+        </li>
         <li>Tandem not running, or bookmarks off: the extension says so, and how to fix it.</li>
       </ul>
       <p class="text-muted">Chrome only for now: there is no Safari extension yet.</p>

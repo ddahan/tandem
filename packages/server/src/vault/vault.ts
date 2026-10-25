@@ -73,6 +73,7 @@ import {
 } from './agenda.ts'
 import { readFeed } from './feeds.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
+import { bookmarksHtml } from './bookmark-export.ts'
 import {
   BOOKMARK_ICON_PREFIX,
   BookmarkStore,
@@ -975,6 +976,32 @@ export class Vault {
   /** The file of a bookmark's favicon. */
   async bookmarkIconFile(id: string): Promise<string> {
     return join(this.metaDir, 'icons', await this.bookmarks.iconFile(id))
+  }
+
+  /**
+   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): all of them, or a folder
+   * with its content. Favicons go in it, those over 256 KB (none a browser keeps) left out.
+   */
+  async exportBookmarks(id?: string): Promise<string> {
+    const all = id ? await this.bookmarks.subtree(id) : await this.bookmarks.list()
+    const files = await this.bookmarks.iconFiles()
+    // By extension (an ICO as `image/x-icon`, what browsers write); a PNG by its bytes, as sites
+    // often serve one as favicon.ico, and Chrome only shows PNG favicons it imports.
+    const types: Record<string, string> = {
+      ...Object.fromEntries(Object.entries(ICON_TYPES).map(([type, ext]) => [ext, type])),
+      ico: 'image/x-icon',
+    }
+    const icons = new Map<string, string>()
+    for (const bookmark of all) {
+      const file = files.get(bookmark.id)
+      if (!file) continue
+      const data = await readFile(join(this.metaDir, 'icons', file)).catch(() => null)
+      if (!data || data.byteLength > EXPORT_ICON_MAX_BYTES) continue
+      const png = data.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
+      const type = png ? 'image/png' : types[file.split('.').pop() ?? '']
+      if (type) icons.set(bookmark.id, `data:${type};base64,${data.toString('base64')}`)
+    }
+    return bookmarksHtml(all, id ?? null, icons)
   }
 
   // --- Agenda (agenda.ts) ------------------------------------------------------------------
@@ -1959,6 +1986,7 @@ function parseIcon(row: NodeMeta): NodeIcon | null {
 
 const ICON_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'])
 const ICON_MAX_BYTES = 5 * 1024 * 1024
+const EXPORT_ICON_MAX_BYTES = 256 * 1024
 
 function searchResult(
   node: TreeNode,

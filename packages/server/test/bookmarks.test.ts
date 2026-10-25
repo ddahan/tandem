@@ -450,4 +450,75 @@ describe('bookmarks', () => {
     expect(after.find((b) => b.title === 'Wiki')!.parentId).toBe(byTitle('Work').id)
     expect(after).toHaveLength(all.length + 1)
   })
+
+  it('exports them as a browser’s bookmarks file: all, or a folder', async () => {
+    const { vault, clock } = await createTestVault()
+    await vault.updateSettings({ bookmarks: true })
+    const app = createApp(vault)
+    const work = await vault.createBookmark({ kind: 'folder', title: 'Work & play' })
+    const docs = await vault.createBookmark(
+      {
+        url: 'https://docs.example.com/?a=1&b="2"',
+        title: 'Docs <new>\nline',
+        description: 'The  docs',
+        parentId: work.id,
+      },
+      { data: PNG, extension: 'png' },
+    )
+    clock.advance(1000)
+    await vault.createBookmark({
+      url: 'https://board.example.com',
+      title: 'Board',
+      parentId: work.id,
+    })
+    await vault.createBookmark({ url: 'https://top.example.com', title: 'Top', description: '' })
+
+    const response = await app.request('http://localhost/api/bookmarks/export')
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8')
+    expect(response.headers.get('content-disposition')).toMatch(
+      /^attachment; filename="tandem-bookmarks-\d{4}-\d{2}-\d{2}\.html"$/,
+    )
+    const html = await response.text()
+    const added = Math.floor(docs.createdAt / 1000)
+    const icon = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
+    // Chrome reads it line by line: one element per line, texts escaped, in the tree's order.
+    expect(html).toBe(`<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="${added}" LAST_MODIFIED="${added}">Work &amp; play</H3>
+    <DL><p>
+        <DT><A HREF="https://docs.example.com/?a=1&amp;b=%222%22" ADD_DATE="${added}" LAST_MODIFIED="${added}" ICON="${icon}">Docs &lt;new&gt; line</A>
+        <DD>The docs
+        <DT><A HREF="https://board.example.com/" ADD_DATE="${added + 1}" LAST_MODIFIED="${added + 1}">Board</A>
+    </DL><p>
+    <DT><A HREF="https://top.example.com/" ADD_DATE="${added + 1}" LAST_MODIFIED="${added + 1}">Top</A>
+</DL><p>
+`)
+
+    // A folder alone: that folder, with its content.
+    const folder = await (
+      await app.request(`http://localhost/api/bookmarks/export?folder=${work.id}`)
+    ).text()
+    expect(folder).toContain('<H3 ')
+    expect(folder).toContain('Board')
+    expect(folder).not.toContain('Top')
+    // A PNG saved as .ico is told as a PNG (Chrome only shows those); an ICO as one.
+    const ico = new Uint8Array([0, 0, 1, 0, 1])
+    await vault.setBookmarkIcon(docs.id, 'icon.ico', PNG)
+    expect(
+      await (await app.request(`http://localhost/api/bookmarks/export?folder=${docs.id}`)).text(),
+    ).toContain(`ICON="${icon}"`)
+    await vault.setBookmarkIcon(docs.id, 'icon.ico', ico)
+    expect(
+      await (await app.request(`http://localhost/api/bookmarks/export?folder=${docs.id}`)).text(),
+    ).toContain(`ICON="data:image/x-icon;base64,${Buffer.from(ico).toString('base64')}"`)
+    expect((await app.request('http://localhost/api/bookmarks/export?folder=nope')).status).toBe(
+      404,
+    )
+  })
 })

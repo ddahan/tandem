@@ -171,7 +171,9 @@ To save pages to Tandem from Chrome (its button, or ⌥⇧D) and find them from 
 
 Its options also **import Chrome's bookmarks**, folders and icons included, into a "Chrome"
 folder (again: only the new ones). Tandem's **Docs › Browser Extension** shows the same steps, with your folder. Updating Tandem updates
-the extension (Chrome reads it again when it restarts). Chrome only for now.
+the extension (Chrome reads it again when it restarts). Chrome only for now. The other way, a
+right click on the sidebar's Bookmarks › **Export all for Chrome** downloads a file Chrome
+imports (Settings › Import bookmarks and settings › Bookmarks HTML file).
 
 ## Agents
 

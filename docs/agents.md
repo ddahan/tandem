@@ -139,7 +139,8 @@ note shows one as a card with a ` ```bookmark ` block holding only its id. `read
   their cards from the notes showing them, and there is no trash for bookmarks).
 - CLI: `tandem bookmarks [query]`, `tandem bookmark-add <url> [--title …] [--description …]
   [--folder Work/Tools] [--note <note>]`, `tandem bookmark-set <id> [new address] [--title …]
-  [--description …] [--folder …]`, `tandem bookmark-delete <id>`.
+  [--description …] [--folder …]`, `tandem bookmark-delete <id>`, `tandem bookmarks-export
+  [folder id] > bookmarks.html` (a file Chrome imports).
 - One bookmark per page: an address already bookmarked (give or take `www.`, `http`/`https`, a
   `#fragment` or a final `/`) is refused, naming its bookmark. Only web addresses (http,
   https).

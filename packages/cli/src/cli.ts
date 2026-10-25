@@ -90,6 +90,8 @@ Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookm
                                 change it (--title, --description), or move it (--folder;
                                 "" for the top)
   bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
+  bookmarks-export [folder]     a browser's bookmarks file (Chrome imports it), on standard
+                                output: all of them, or a folder (its id) with its content
 
 Agenda (days' events, kept in Tandem; a day's note shows them; feeds' events are read-only)
   agenda [date]                 a day's events (today by default), or the days up to --to <date>
@@ -579,6 +581,13 @@ async function execute(
         throw new CliError('Nothing to change: a new address, --title, --description or --folder.')
       const bookmark = await call(client.bookmarks[':id'].$patch({ param: { id }, json }))
       return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark)
+    }
+    case 'bookmarks-export': {
+      const query = args[0] ? { folder: args[0] } : {}
+      const response = await client.bookmarks.export.$get({ query }).catch(unreachable)
+      if (!response.ok) await call(Promise.resolve(response))
+      // The file itself, as it is (for `> bookmarks.html`).
+      return io.stdout(await response.text())
     }
     case 'bookmark-delete': {
       const id = need(0, 'bookmark id')

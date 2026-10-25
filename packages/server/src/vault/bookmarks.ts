@@ -5,7 +5,7 @@
 // Search runs in memory: bookmarks are a few thousand at most, and their text is short (a
 // title, an address, a description). It reads queries as the notes' search does (prefixes,
 // accents ignored, "phrases", -word, in:Folder), with typos corrected.
-import { asc, eq, inArray } from 'drizzle-orm'
+import { asc, eq, inArray, like } from 'drizzle-orm'
 import { customAlphabet } from 'nanoid'
 import {
   BOOKMARK_DESCRIPTION_MAX,
@@ -190,6 +190,15 @@ export class BookmarkStore {
     const record = await this.record(id)
     if (!record.icon?.startsWith('image:')) throw new NotFoundError('No icon')
     return record.icon.slice(6)
+  }
+
+  /** The favicons' file names in `.tandem/icons/`, by bookmark id. */
+  async iconFiles(): Promise<Map<string, string>> {
+    const records = await this.db
+      .select({ id: bookmarks.id, icon: bookmarks.icon })
+      .from(bookmarks)
+      .where(like(bookmarks.icon, 'image:%'))
+    return new Map(records.map((record) => [record.id, record.icon!.slice(6)]))
   }
 
   /** Bookmarks matching a query, best first; with no words, the most recently changed. */

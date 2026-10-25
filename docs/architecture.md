@@ -286,6 +286,11 @@ bookmarks once, finds or makes each folder by name (any case) under its parent, 
 already there (`urlKey`) or not web addresses, and inserts the rest with their positions given
 (no renumbering per row); the vault writes their favicons and announces one `bookmarks` change.
 
+`GET /api/bookmarks/export` (`?folder=<id>`: that subtree) is the other way: `bookmark-export.ts`
+writes the Netscape bookmarks file browsers import, one element per line (Chrome's reader is
+line-based), each favicon a `data:` URL (a PNG told by its bytes, whatever its file's extension),
+sent as an attachment.
+
 ## HTTP
 
 - Every request goes through `api/guard.ts` first. Tandem has no authentication and any web page

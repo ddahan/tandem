@@ -1,6 +1,7 @@
 // Bookmarks: in the sidebar below the pages (folded until opened), a click shows one's
 // information, cards in notes (/bookmark, or dragged from the sidebar), found by ⌘⇧F, and
 // deleted once confirmed, their cards with them.
+import { readFile } from 'node:fs/promises'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { api, createNote, noteContent, openNote, waitSaved, focusEnd } from './helpers'
 
@@ -127,6 +128,47 @@ test('makes a bookmark from the sidebar, and a folder, renamed in place', async 
   await page.getByRole('button', { name: 'Show it' }).click()
   await expect(page).toHaveURL(/\/bookmarks\//)
   await expect(page.getByTestId('bookmark-page-title')).toHaveValue('Example tools')
+})
+
+test('right-clicking the section offers what + does, and exports for Chrome', async ({
+  page,
+  request,
+}) => {
+  const folder = await addBookmark(request, { kind: 'folder', title: 'Reading' })
+  await addBookmark(request, {
+    url: 'https://example.com/article',
+    title: 'An article',
+    parentId: folder.id,
+  })
+  await page.goto('/')
+  const section = page.getByTestId('bookmarks')
+  // Folded, on its title: a new folder, renamed in place (the section opens).
+  await section.getByTestId('bookmarks-toggle').click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: 'New bookmark' })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'New folder' }).click()
+  await page.getByLabel('New name').fill('Tools')
+  await page.getByLabel('New name').press('Enter')
+  await expect(section.getByTestId('bookmark-Tools')).toBeVisible()
+
+  // Everything, as a file Chrome imports.
+  await section.getByTestId('bookmarks-toggle').click({ button: 'right' })
+  const all = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export all for Chrome' }).click()
+  const file = await all
+  expect(file.suggestedFilename()).toMatch(/^tandem-bookmarks-\d{4}-\d{2}-\d{2}\.html$/)
+  const html = await readFile((await file.path())!, 'utf8')
+  expect(html).toMatch(/^<!DOCTYPE NETSCAPE-Bookmark-file-1>/)
+  expect(html).toContain('>Tools</H3>')
+  expect(html).toContain('<A HREF="https://example.com/article"')
+
+  // A folder: from its menu, that folder alone.
+  await expect(page.getByRole('menu')).toBeHidden()
+  await section.getByTestId('bookmark-Reading').click({ button: 'right' })
+  const one = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export for Chrome' }).click()
+  const only = await readFile((await (await one).path())!, 'utf8')
+  expect(only).toContain('>Reading</H3>')
+  expect(only).not.toContain('Tools')
 })
 
 test('shows a bookmark’s card in a note, from / and from the sidebar, found by ⌘⇧F', async ({

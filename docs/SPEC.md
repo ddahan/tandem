@@ -417,7 +417,8 @@ inside OneDrive so that it is backed up and synced.
 - **Sidebar**: a Bookmarks section right after the pages (they scroll together), folded by
   default (open or folded is then remembered). A tree like the pages' (drag and drop, ⌥↑ ⌥↓,
   F2, a menu on each row: open the website, open in a tab, rename, move, copy the address,
-  delete); "+" makes a bookmark or a folder (renamed in place). A click on a bookmark or a
+  delete); "+" makes a bookmark or a folder (renamed in place), and so does a right click on
+  the section (its title, around the tree), which also exports. A click on a bookmark or a
   folder opens its **page** in the preview tab, as a page's (a folder also unfolds), and so
   does browsing them with ↑ ↓; a double click or ↵ opens a bookmark's website in a new browser
   tab (from the installed app, in the default browser), a folder's page in a tab of its own.
@@ -463,7 +464,12 @@ inside OneDrive so that it is backed up and synced.
   the same name (any case) are reused, pages already in Tandem (anywhere) are kept as they are,
   and what isn't a web page (bookmarklets, `chrome://`) is left out; the options say how many
   were imported, already there, left out. Chrome's bookmarks aren't changed. At most 20 000 at once.
-- Exporting bookmarks, and Safari, may come later.
+- **Exporting for Chrome** (a right click on the section, "Export all for Chrome"; on a folder,
+  "Export for Chrome": that folder with its content): a browser's bookmarks file
+  (`tandem-bookmarks-<date>.html`, the HTML format every browser imports; in Chrome: Settings ›
+  Import bookmarks and settings › Bookmarks HTML file), with folders, order, dates, descriptions
+  and favicons (Chrome only shows the PNG ones). Also `tandem bookmarks-export`.
+- Safari may come later.
 
 ## Interface
 
@@ -608,5 +614,4 @@ inside OneDrive so that it is backed up and synced.
 Templates, export (PDF/HTML), favorites, search inside attachments, multiple
 computers on one data folder, syncing with Apple or Google calendars, reminders, authentication (bound to 127.0.0.1 only). For databases:
 relations, formulas, other views (board, calendar), per-database history, converting a table
-into a database. For bookmarks: importing and exporting the
-browser's, Safari.
+into a database. For bookmarks: Safari.

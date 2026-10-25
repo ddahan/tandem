@@ -254,6 +254,14 @@ describe('CLI', () => {
       parentId: null,
     })
 
+    // A bookmarks file, as it is (for `> bookmarks.html`): all, or a folder.
+    const file = (await cli(['bookmarks-export'])).out
+    expect(file).toMatch(/^<!DOCTYPE NETSCAPE-Bookmark-file-1>/)
+    expect(file).toContain('<H3 ')
+    expect(file).toContain('HREF="https://example.com/v2"')
+    expect((await cli(['bookmarks-export', bookmark!.id])).out).not.toContain('<H3 ')
+    expect((await cli(['bookmarks-export', 'nope'])).err).toContain('No such bookmark')
+
     const deleted = await cli(['bookmark-delete', bookmark!.id])
     expect(deleted.out).toContain('cards removed from Reading.md')
     expect((await cli(['read', 'Reading'])).out).toBe('\n')

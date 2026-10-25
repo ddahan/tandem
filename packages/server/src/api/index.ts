@@ -28,6 +28,7 @@ import {
   EXTENSION_ORIGIN,
   FILTER_OPERATORS,
   formatNumber,
+  isoDate,
   normalizeAuthor,
   webUrl,
   type BookmarkImportNode,
@@ -639,6 +640,17 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER
       return c.json(await vault.importBookmarks(into, importNodes(children)))
     })
+    // A browser's bookmarks file (Chrome imports it): all of them, or a folder (`?folder=<id>`).
+    .get(
+      '/bookmarks/export',
+      zValidator('query', z.object({ folder: z.string().optional() })),
+      async (c) => {
+        const html = await vault.exportBookmarks(c.req.valid('query').folder)
+        c.header('Content-Type', 'text/html; charset=utf-8')
+        c.header('Content-Disposition', `attachment; filename="tandem-bookmarks-${isoDate()}.html"`)
+        return c.body(html)
+      },
+    )
     .get('/bookmarks/lookup', zValidator('query', z.object({ url: z.string() })), async (c) =>
       c.json({ bookmark: await vault.findBookmark(c.req.valid('query').url) }),
     )
