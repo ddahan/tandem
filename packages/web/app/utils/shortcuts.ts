@@ -192,6 +192,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description:
           'Undo from the message that appears. With the trash off (Settings), asks, then deletes forever.',
       },
+      {
+        keys: [['meta'], ['shift']],
+        label: 'Select several (with a click)',
+        description:
+          '⌘-click adds or removes a row, ⇧-click selects a range. ⌘⌫, dragging and the menu then act on all of them; Esc lets go.',
+      },
     ],
   },
   {
@@ -224,6 +230,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         keys: [['meta', 'backspace'], ['delete']],
         label: 'Delete',
         description: 'Asks first, naming the pages that show it: their cards go with it.',
+      },
+      {
+        keys: [['meta'], ['shift']],
+        label: 'Select several bookmarks (with a click)',
+        description:
+          '⌘-click adds or removes one, ⇧-click selects a range. ⌘⌫, dragging and the menu then act on all of them; Esc lets go.',
       },
     ],
   },

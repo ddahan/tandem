@@ -19,6 +19,10 @@ function sortNodes(a: TreeNode, b: TreeNode): number {
 export const DELETE_FOREVER =
   'It, its child pages, their attachments and history are deleted. This cannot be undone.'
 
+/** The same, for several pages selected. */
+export const DELETE_MANY_FOREVER =
+  'They, their child pages, attachments and history are deleted. This cannot be undone.'
+
 export function useTree() {
   const nodes = useState<TreeNode[]>('tree:nodes', () => [])
   const loaded = useState('tree:loaded', () => false)
@@ -164,6 +168,34 @@ export function useTree() {
     })
   }
 
+  /**
+   * Moves several nodes (a selection) into `parentId`, one after the other from `index` (default:
+   * at the end), as one step of the undo history.
+   */
+  async function moveMany(ids: string[], parentId: string | null, index?: number) {
+    const before = ids.map((id) => {
+      const from = byId.value.get(id)?.parentId ?? null
+      return { id, from, at: (childrenOf.value.get(from) ?? []).findIndex((n) => n.id === id) }
+    })
+    for (const [i, id] of ids.entries()) {
+      if (!(await place(id, parentId, index === undefined ? undefined : index + i))) return
+    }
+    const after = ids.map((id) => {
+      const to = byId.value.get(id)?.parentId ?? null
+      return { id, to, now: (childrenOf.value.get(to) ?? []).findIndex((n) => n.id === id) }
+    })
+    undoHistory.record({
+      label: `Move ${ids.length} pages`,
+      // Back in the reverse order: each one's place is as it was when it left.
+      undo: async () => {
+        for (const { id, from, at } of before.toReversed()) await place(id, from, at)
+      },
+      redo: async () => {
+        for (const { id, to, now } of after) await place(id, to, now)
+      },
+    })
+  }
+
   /** Moves a node (optimistic: shown at once), without an undo step. */
   async function place(id: string, parentId: string | null, index?: number) {
     // Optimistic: reorder locally, then let the server decide paths.
@@ -283,6 +315,41 @@ export function useTree() {
     return true
   }
 
+  /** Moves several nodes (a selection) to the trash, as one step: one message, one Undo. */
+  async function moveManyToTrash(ids: string[]): Promise<boolean> {
+    const trashed: { id: string; trashId: string }[] = []
+    try {
+      for (const id of ids) trashed.push({ id, trashId: await trash(id) })
+    } catch (error) {
+      showError(error, 'Could not delete')
+    }
+    if (!trashed.length) return false
+    const step: UndoStep = {
+      label: `Move ${trashed.length} pages to the trash`,
+      undo: async () => {
+        for (const one of trashed.toReversed()) await restore(one.trashId)
+      },
+      redo: async () => {
+        for (const one of trashed) one.trashId = await trash(one.id)
+      },
+    }
+    undoHistory.record(step)
+    toast.add({
+      title: `${trashed.length} pages moved to the trash`,
+      icon: 'i-lucide-trash-2',
+      actions: [
+        {
+          label: 'Undo',
+          icon: 'i-lucide-undo-2',
+          color: 'neutral',
+          variant: 'outline',
+          onClick: () => void undoHistory.revert(step),
+        },
+      ],
+    })
+    return true
+  }
+
   /** Is `id` the node `ancestorId` or below it? */
   function isWithin(id: string, ancestorId: string): boolean {
     return ancestors(id).some((node) => node.id === ancestorId)
@@ -302,9 +369,11 @@ export function useTree() {
     kindOf,
     rename,
     move,
+    moveMany,
     remove,
     deleteForever,
     isBlank,
     moveToTrash,
+    moveManyToTrash,
   }
 }

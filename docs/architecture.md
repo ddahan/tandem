@@ -326,6 +326,10 @@ sent as an attachment.
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
   history, files). The editor reports the heading being read (`currentHeading`: measured on
   scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
+- Several rows selected in either tree: `utils/tree-selection.ts` (pure: ⌘/⇧-clicks, what an
+  action acts on, the rows shown); the trees act on them with `useTree.moveMany` /
+  `moveManyToTrash` and `useBookmarks.moveMany` / `useBookmarkActions.removeMany`, each one undo
+  step.
 - Bookmarks: `useBookmarks` (all of them, shared by the sidebar's `BookmarkTree`, the cards,
   the palette and the tab bar; loaded even when off, for cards already in notes),
   `useBookmarkActions` (dialogs, made when first opened: `BookmarkDialog` for a new one,

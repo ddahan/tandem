@@ -531,6 +531,15 @@ inside OneDrive so that it is backed up and synced.
   click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo (as ⌘Z does). With the trash off, it asks, then deletes forever (unless there's nothing to lose).
+- **Several at once**, in the pages' tree and the bookmarks' (as in Finder): ⌘-click adds a row
+  or takes it out (starting from the open one), ⇧-click selects the rows shown from the last one
+  clicked; the rows selected are highlighted, and a plain click or Esc lets go. An action on a
+  selected row acts on all of them (on another row, on that row alone; what a selected folder
+  holds goes with it): ⌘⌫ deletes them (pages to the trash in one step, one message and one
+  Undo; asked once with the trash off, or for bookmarks, saying how many and the pages losing
+  cards), dragging moves them together, and their menu offers Open N in tabs (pages) or Open N
+  websites (bookmarks), Move to (the top, or a folder: for pages, any page holding pages), and
+  Delete.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
   has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
   Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install

@@ -189,6 +189,40 @@ export function useBookmarks() {
     return moved
   }
 
+  /** Where a bookmark is: its folder and index there. */
+  function placeOf(id: string) {
+    const from = byId.value.get(id)?.parentId ?? null
+    return {
+      parentId: from,
+      index: (childrenOf.value.get(from) ?? []).findIndex((b) => b.id === id),
+    }
+  }
+
+  /**
+   * Moves several (a selection) into a folder (null: the top), one after the other from `index`
+   * (default: at the end), as one step of the undo history.
+   */
+  async function moveMany(ids: string[], parentId: string | null, index?: number) {
+    const before = ids.map((id) => ({ id, ...placeOf(id) }))
+    for (const [i, id] of ids.entries()) {
+      await patch(id, { parentId, ...(index === undefined ? {} : { index: index + i }) })
+    }
+    await load()
+    const after = ids.map((id) => ({ id, ...placeOf(id) }))
+    undoHistory.record({
+      label: `Move ${ids.length} bookmarks`,
+      // Back in the reverse order: each one's place is as it was when it left.
+      undo: async () => {
+        for (const { id, ...at } of before.toReversed()) await patch(id, at)
+        return true
+      },
+      redo: async () => {
+        for (const { id, ...at } of after) await patch(id, at)
+        return true
+      },
+    })
+  }
+
   /** Deletes it (a folder with its contents) for good; its cards leave the pages showing them. */
   async function remove(id: string) {
     const result = await unwrap(api.bookmarks[':id'].$delete({ param: { id } }))
@@ -217,6 +251,7 @@ export function useBookmarks() {
     create,
     update,
     move,
+    moveMany,
     remove,
     refs,
   }

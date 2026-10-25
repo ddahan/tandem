@@ -4,11 +4,12 @@
 // F2). A click opens a bookmark or folder as a page (pages/bookmarks/[id].vue) in the preview
 // tab, as browsing them with the arrows does; a double click or ↵ opens a bookmark's website
 // (a folder's page in a tab of its own). Dragged into a note, a bookmark becomes its card
-// (editor/bookmark.ts).
+// (editor/bookmark.ts). Several are selected with ⌘- and ⇧-click (utils/tree-selection.ts).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import { openWebsite, type BookmarkItem } from '~/composables/useBookmarks'
 import { BOOKMARK_DRAG_TYPE } from '~/editor/bookmark'
+import { actedOn, clickRow, emptySelection, isSelected, shownIds } from '~/utils/tree-selection'
 
 const bookmarks = useBookmarks()
 const actions = useBookmarkActions()
@@ -37,6 +38,31 @@ function rowOf(id: string) {
   return document.querySelector<HTMLElement>(`[data-bookmark-id="${id}"]`)
 }
 
+// --- Selecting several ------------------------------------------------------------------------
+
+const selection = ref(emptySelection())
+
+function clearSelection() {
+  selection.value = emptySelection()
+}
+
+/** A click on a row: ⌘ or ⇧ selects (and opens nothing), a plain click shows it. */
+function onRowClick(event: MouseEvent, item: BookmarkItem) {
+  const shown = shownIds(bookmarks.items.value, expanded.value)
+  const result = clickRow(selection.value, event, item.id, shown, currentId.value)
+  selection.value = result.selection
+  if (!result.selecting) show(item)
+}
+
+/** What an action on `item` acts on: the selection when it's in it, otherwise itself. */
+function actedOnFrom(item: BookmarkItem) {
+  return actedOn(selection.value, item.id, bookmarks.isWithin)
+}
+
+function bookmarksOf(ids: string[]) {
+  return ids.flatMap((id) => bookmarks.byId.value.get(id) ?? [])
+}
+
 /** Its page, in the preview tab (a folder also unfolds: the tree does it, UTree). */
 function show(item: BookmarkItem) {
   void tabs.preview(`/bookmarks/${item.id}`)
@@ -53,6 +79,7 @@ let browsing = false
 let browseTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(browseTimer))
 function onTreeKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && selection.value.ids.length) clearSelection()
   browsing = BROWSE_KEYS.has(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey
 }
 function onTreeFocusin(event: FocusEvent) {
@@ -107,7 +134,13 @@ async function newFolder(parentId: string | null = null) {
 }
 
 async function remove(item: BookmarkItem) {
+  const ids = actedOnFrom(item)
+  if (ids.length > 1) return removeMany(ids)
   await actions.remove(item.bookmark)
+}
+
+async function removeMany(ids: string[]) {
+  if (await actions.removeMany(bookmarksOf(ids))) clearSelection()
 }
 
 async function moveSibling(item: BookmarkItem, step: -1 | 1) {
@@ -145,6 +178,8 @@ function onRowKeydown(event: KeyboardEvent, item: BookmarkItem) {
 // --- Menus -----------------------------------------------------------------------------------
 
 function menu(item: BookmarkItem): DropdownMenuItem[][] {
+  const ids = actedOnFrom(item)
+  if (ids.length > 1) return selectionMenu(ids)
   const folder = item.bookmark.kind === 'folder'
   return [
     folder
@@ -214,6 +249,60 @@ function menu(item: BookmarkItem): DropdownMenuItem[][] {
   ]
 }
 
+/** The menu of a selected row: for all of them. */
+function selectionMenu(ids: string[]): DropdownMenuItem[][] {
+  const sites = bookmarksOf(ids).filter((bookmark) => bookmark.kind === 'bookmark')
+  return [
+    [
+      ...(sites.length
+        ? [
+            {
+              label: sites.length === 1 ? 'Open its website' : `Open ${sites.length} websites`,
+              icon: 'i-lucide-external-link',
+              onSelect: () => {
+                clearSelection()
+                for (const site of sites) openWebsite(site.url)
+              },
+            },
+          ]
+        : []),
+      { label: 'Move to', icon: 'i-lucide-folder-input', children: moveTargets(ids) },
+    ],
+    [
+      {
+        label: `Delete ${ids.length}…`,
+        icon: 'i-lucide-trash-2',
+        color: 'error' as const,
+        kbds: ['meta', 'backspace'],
+        onSelect: () => void removeMany(ids),
+      },
+    ],
+  ]
+}
+
+/** Where a selection can go: the top, or a folder (not one of them, nor inside one). */
+function moveTargets(ids: string[]): DropdownMenuItem[] {
+  return bookmarks
+    .folderOptions()
+    .filter((option) => !option.id || !ids.some((id) => bookmarks.isWithin(option.id!, id)))
+    .map((option) => ({
+      label: option.id
+        ? bookmarks
+            .foldersOf(option.id)
+            .map((folder) => folder.title)
+            .concat(option.label)
+            .join(' / ')
+        : 'Top level',
+      icon: option.id ? 'i-lucide-folder' : 'i-lucide-list-tree',
+      onSelect: () => {
+        clearSelection()
+        void bookmarks
+          .moveMany(ids, option.id)
+          .catch((error: unknown) => showError(error, 'Could not move the bookmarks'))
+      },
+    }))
+}
+
 const addMenu: DropdownMenuItem[] = [
   { label: 'New bookmark', icon: 'i-lucide-bookmark-plus', onSelect: () => void newBookmark() },
   { label: 'New folder', icon: 'i-lucide-folder-plus', onSelect: () => void newFolder() },
@@ -263,11 +352,12 @@ function findItem(items: BookmarkItem[], id: string): BookmarkItem | undefined {
 // --- Drag and drop -----------------------------------------------------------------------------
 
 type DropZone = 'before' | 'inside' | 'after'
-const dragged = ref<string | null>(null)
+/** What is dragged: a row, or the selection it's in. */
+const dragged = ref<string[]>([])
 const dropTarget = ref<{ id: string; zone: DropZone } | null>(null)
 
 function onDragStart(event: DragEvent, item: BookmarkItem) {
-  dragged.value = item.id
+  dragged.value = actedOnFrom(item)
   if (!event.dataTransfer) return
   event.dataTransfer.setData(BOOKMARK_DRAG_TYPE, item.id)
   // Dropped elsewhere (another app, the address bar), it's its address.
@@ -286,7 +376,7 @@ function zoneOf(event: DragEvent, item: BookmarkItem): DropZone {
 }
 
 function canDrop(targetId: string): boolean {
-  return !!dragged.value && !bookmarks.isWithin(targetId, dragged.value)
+  return dragged.value.length > 0 && !dragged.value.some((id) => bookmarks.isWithin(targetId, id))
 }
 
 function onDragOver(event: DragEvent, item: BookmarkItem) {
@@ -297,46 +387,58 @@ function onDragOver(event: DragEvent, item: BookmarkItem) {
 
 async function onDrop(event: DragEvent, item: BookmarkItem) {
   event.preventDefault()
-  const id = dragged.value
+  const ids = dragged.value
   const zone = zoneOf(event, item)
   const allowed = canDrop(item.id)
   reset()
-  if (!id || !allowed) return
+  if (!ids.length || !allowed) return
+  if (ids.length > 1) clearSelection()
+  const moveTo = (parentId: string | null, index?: number) =>
+    ids.length > 1
+      ? bookmarks.moveMany(ids, parentId, index)
+      : bookmarks.move(ids[0]!, parentId, index)
   try {
     if (zone === 'inside') {
       expand(item.id)
-      await bookmarks.move(id, item.id)
+      await moveTo(item.id)
       return
     }
     const parentId = item.bookmark.parentId
-    const siblings = (bookmarks.childrenOf.value.get(parentId) ?? []).filter((b) => b.id !== id)
+    const siblings = (bookmarks.childrenOf.value.get(parentId) ?? []).filter(
+      (b) => !ids.includes(b.id),
+    )
     const index = siblings.findIndex((b) => b.id === item.id) + (zone === 'after' ? 1 : 0)
-    await bookmarks.move(id, parentId, index)
+    await moveTo(parentId, index)
   } catch (error) {
     showError(error, 'Could not move the bookmark')
   }
 }
 
 function onDropOnRoot(event: DragEvent) {
-  const id = dragged.value
-  if (!id) return
+  const ids = dragged.value
+  if (!ids.length) return
   event.preventDefault()
   reset()
-  void bookmarks.move(id, null).catch(showError)
+  if (ids.length > 1) clearSelection()
+  void (ids.length > 1 ? bookmarks.moveMany(ids, null) : bookmarks.move(ids[0]!, null)).catch(
+    showError,
+  )
 }
 
 function reset() {
-  dragged.value = null
+  dragged.value = []
   dropTarget.value = null
 }
 
 function rowClass(item: BookmarkItem) {
   const target = dropTarget.value?.id === item.id ? dropTarget.value.zone : null
   return [
-    currentId.value === item.id
-      ? 'bg-elevated text-highlighted font-medium'
-      : 'text-default hover:bg-elevated/60',
-    dragged.value === item.id && 'opacity-50',
+    isSelected(selection.value, item.id)
+      ? 'bg-primary/20 text-highlighted'
+      : currentId.value === item.id
+        ? 'bg-elevated text-highlighted font-medium'
+        : 'text-default hover:bg-elevated/60',
+    dragged.value.includes(item.id) && 'opacity-50',
     target === 'inside' && 'ring-2 ring-primary ring-inset',
     target === 'before' && 'shadow-[inset_0_2px_0_0_var(--ui-primary)]',
     target === 'after' && 'shadow-[inset_0_-2px_0_0_var(--ui-primary)]',
@@ -397,7 +499,8 @@ function rowClass(item: BookmarkItem) {
                 :data-testid="`bookmark-${item.label}`"
                 :title="item.bookmark.kind === 'bookmark' ? item.bookmark.url : undefined"
                 @keydown.capture="onRowKeydown($event, item)"
-                @click="show(item)"
+                :data-selected="isSelected(selection, item.id) || undefined"
+                @click="onRowClick($event, item)"
                 @dblclick="activate(item)"
                 @dragstart="onDragStart($event, item)"
                 @dragover.stop="onDragOver($event, item)"

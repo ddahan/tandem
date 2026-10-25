@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // The sidebar tree of pages (a page without content but with child pages shows as a folder),
-// with drag and drop (before, after or inside a node),
-// inline renaming and a menu on each row (its ⋯ button, or a right-click).
+// with drag and drop (before, after or inside a node), several selected with ⌘- and ⇧-click
+// (utils/tree-selection.ts), inline renaming and a menu on each row (its ⋯ button, or a
+// right-click).
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
-import { DELETE_FOREVER, type TreeItem } from '~/composables/useTree'
+import { DELETE_FOREVER, DELETE_MANY_FOREVER, type TreeItem } from '~/composables/useTree'
+import { actedOn, clickRow, emptySelection, isSelected, shownIds } from '~/utils/tree-selection'
 
 const tree = useTree()
 const route = useRoute()
@@ -43,6 +45,34 @@ function openForGood(item: TreeItem) {
   void tabs.open(`/notes/${item.id}`)
 }
 
+// --- Selecting several ------------------------------------------------------------------------
+
+const selection = ref(emptySelection())
+
+/** A click on a row: ⌘ or ⇧ selects (and opens nothing), a plain click opens it. */
+function onRowClick(event: MouseEvent, item: TreeItem) {
+  const shown = shownIds(tree.items.value, expanded.value)
+  const result = clickRow(selection.value, event, item.id, shown, currentId.value)
+  selection.value = result.selection
+  if (!result.selecting) open(item)
+}
+
+/** The tree's own choosing (a click, ↵ or space): opens the row, unless ⌘ or ⇧ selects it. */
+function onSelect(event: Event, item: TreeItem) {
+  event.preventDefault()
+  const original = (event as CustomEvent<{ originalEvent?: MouseEvent }>).detail?.originalEvent
+  if (!original?.metaKey && !original?.ctrlKey && !original?.shiftKey) open(item)
+}
+
+function clearSelection() {
+  selection.value = emptySelection()
+}
+
+/** What an action on `item` acts on: the selection when it's in it, otherwise itself. */
+function actedOnFrom(item: TreeItem) {
+  return actedOn(selection.value, item.id, tree.isWithin)
+}
+
 function toggle(id: string) {
   expanded.value = expanded.value.includes(id)
     ? expanded.value.filter((x) => x !== id)
@@ -74,6 +104,8 @@ const iconFor = ref<TreeItem | null>(null)
 // To the trash at once (Undo in the toast); with the trash off, deleted for good once confirmed,
 // unless there's nothing to lose (a page just made, an empty folder: `isBlank`).
 async function trash(item: TreeItem) {
+  const ids = actedOnFrom(item)
+  if (ids.length > 1) return trashMany(ids)
   // Its tab, and those of its pages, close by themselves (default.vue): the one used before shows.
   if (settings.value.trash) await tree.moveToTrash(item.id)
   else if (
@@ -87,6 +119,26 @@ async function trash(item: TreeItem) {
     }))
   )
     await tree.deleteForever(item.id)
+}
+
+/** A selection to the trash, or deleted for good with the trash off (asked once, if anything). */
+async function trashMany(ids: string[]) {
+  selection.value = emptySelection()
+  if (settings.value.trash) {
+    await tree.moveManyToTrash(ids)
+    return
+  }
+  const blank = (await Promise.all(ids.map((id) => tree.isBlank(id)))).every(Boolean)
+  const asked =
+    blank ||
+    (await confirm({
+      title: `Delete ${ids.length} pages forever?`,
+      description: DELETE_MANY_FOREVER,
+      confirmLabel: 'Delete forever',
+      confirmColor: 'error',
+      icon: 'i-lucide-trash-2',
+    }))
+  if (asked) for (const id of ids) await tree.deleteForever(id)
 }
 
 /** Moves a node up or down among its siblings, and keeps the focus on it. */
@@ -134,6 +186,7 @@ let browsing = false
 let browseTimer: ReturnType<typeof setTimeout> | undefined
 onBeforeUnmount(() => clearTimeout(browseTimer))
 function onTreeKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && selection.value.ids.length) selection.value = emptySelection()
   browsing = BROWSE_KEYS.has(event.key) && !event.altKey && !event.metaKey && !event.ctrlKey
 }
 function onTreeFocusin(event: FocusEvent) {
@@ -157,6 +210,8 @@ async function createInside(item: TreeItem | null) {
 }
 
 function menu(item: TreeItem): DropdownMenuItem[][] {
+  const ids = actedOnFrom(item)
+  if (ids.length > 1) return selectionMenu(ids)
   return [
     [
       {
@@ -203,6 +258,60 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
   ]
 }
 
+/** The menu of a selected row: for all of them. */
+function selectionMenu(ids: string[]): DropdownMenuItem[][] {
+  return [
+    [
+      {
+        label: `Open ${ids.length} in tabs`,
+        icon: 'i-lucide-panel-top',
+        onSelect: async () => {
+          clearSelection()
+          for (const id of ids) await tabs.open(`/notes/${id}`)
+        },
+      },
+      { label: 'Move to', icon: 'i-lucide-folder-input', children: moveTargets(ids) },
+    ],
+    [
+      {
+        label: settings.value.trash ? `Move ${ids.length} to the trash` : `Delete ${ids.length}…`,
+        icon: 'i-lucide-trash-2',
+        color: 'error' as const,
+        kbds: ['meta', 'backspace'],
+        onSelect: () => void trashMany(ids),
+      },
+    ],
+  ]
+}
+
+/**
+ * Where a selection can go: the top, or a folder or page holding pages, as the tree shows them
+ * (not one of the selection, nor inside one).
+ */
+function moveTargets(ids: string[]): DropdownMenuItem[] {
+  const go = (parentId: string | null) => {
+    clearSelection()
+    void tree.moveMany(ids, parentId)
+  }
+  const targets: DropdownMenuItem[] = []
+  const walk = (items: TreeItem[], path: string[]) => {
+    for (const item of items) {
+      if (ids.some((id) => tree.isWithin(item.id, id))) continue
+      const label = [...path, item.label]
+      if (item.children || tree.kindOf(item.node) === 'folder') {
+        targets.push({
+          label: label.join(' / '),
+          icon: tree.kindOf(item.node) === 'folder' ? 'i-lucide-folder' : 'i-lucide-file-text',
+          onSelect: () => go(item.id),
+        })
+      }
+      if (item.children) walk(item.children, label)
+    }
+  }
+  walk(tree.items.value, [])
+  return [{ label: 'Top level', icon: 'i-lucide-list-tree', onSelect: () => go(null) }, ...targets]
+}
+
 const rootMenu = computed<DropdownMenuItem[]>(() => [
   {
     label: 'New page',
@@ -239,11 +348,12 @@ function findItem(items: TreeItem[], id: string): TreeItem | undefined {
 // --- Drag and drop ---------------------------------------------------------------------------
 
 type DropZone = 'before' | 'inside' | 'after'
-const dragged = ref<string | null>(null)
+/** What is dragged: a row, or the selection it's in. */
+const dragged = ref<string[]>([])
 const dropTarget = ref<{ id: string | null; zone: DropZone } | null>(null)
 
 function onDragStart(event: DragEvent, item: TreeItem) {
-  dragged.value = item.id
+  dragged.value = actedOnFrom(item)
   event.dataTransfer?.setData('application/x-tandem-node', item.id)
   if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
 }
@@ -255,7 +365,7 @@ function zoneOf(event: DragEvent): DropZone {
 }
 
 function canDrop(targetId: string): boolean {
-  return !!dragged.value && dragged.value !== targetId && !tree.isWithin(targetId, dragged.value)
+  return dragged.value.length > 0 && !dragged.value.some((id) => tree.isWithin(targetId, id))
 }
 
 function onDragOver(event: DragEvent, item: TreeItem) {
@@ -266,41 +376,49 @@ function onDragOver(event: DragEvent, item: TreeItem) {
 
 async function onDrop(event: DragEvent, item: TreeItem) {
   event.preventDefault()
-  const id = dragged.value
+  const ids = dragged.value
   const zone = zoneOf(event)
   const allowed = canDrop(item.id)
   reset()
-  if (!id || !allowed) return
+  if (!ids.length || !allowed) return
+  if (ids.length > 1) selection.value = emptySelection()
+  const moveTo = (parentId: string | null, index?: number) =>
+    ids.length > 1 ? tree.moveMany(ids, parentId, index) : tree.move(ids[0]!, parentId, index)
   if (zone === 'inside') {
     if (!expanded.value.includes(item.id)) expanded.value = [...expanded.value, item.id]
-    await tree.move(id, item.id)
+    await moveTo(item.id)
     return
   }
   const parentId = item.node.parentId
-  const siblings = (tree.childrenOf.value.get(parentId) ?? []).filter((n) => n.id !== id)
+  const siblings = (tree.childrenOf.value.get(parentId) ?? []).filter((n) => !ids.includes(n.id))
   const index = siblings.findIndex((n) => n.id === item.id) + (zone === 'after' ? 1 : 0)
-  await tree.move(id, parentId, index)
+  await moveTo(parentId, index)
 }
 
 function onDropOnRoot(event: DragEvent) {
   event.preventDefault()
-  const id = dragged.value
+  const ids = dragged.value
   reset()
-  if (id) void tree.move(id, null).catch(showError)
+  if (ids.length > 1) {
+    selection.value = emptySelection()
+    void tree.moveMany(ids, null)
+  } else if (ids[0]) void tree.move(ids[0], null).catch(showError)
 }
 
 function reset() {
-  dragged.value = null
+  dragged.value = []
   dropTarget.value = null
 }
 
 function rowClass(item: TreeItem) {
   const target = dropTarget.value?.id === item.id ? dropTarget.value.zone : null
   return [
-    currentId.value === item.id
-      ? 'bg-elevated text-highlighted font-medium'
-      : 'text-default hover:bg-elevated/60',
-    dragged.value === item.id && 'opacity-50',
+    isSelected(selection.value, item.id)
+      ? 'bg-primary/20 text-highlighted'
+      : currentId.value === item.id
+        ? 'bg-elevated text-highlighted font-medium'
+        : 'text-default hover:bg-elevated/60',
+    dragged.value.includes(item.id) && 'opacity-50',
     target === 'inside' && 'ring-2 ring-primary ring-inset',
     target === 'before' && 'shadow-[inset_0_2px_0_0_var(--ui-primary)]',
     target === 'after' && 'shadow-[inset_0_-2px_0_0_var(--ui-primary)]',
@@ -342,12 +460,7 @@ function rowClass(item: TreeItem) {
             v-model:expanded="expanded"
             :items="tree.items.value"
             :get-key="(item: TreeItem) => item.id"
-            :on-select="
-              (event: Event, item: TreeItem) => {
-                event.preventDefault()
-                open(item)
-              }
-            "
+            :on-select="onSelect"
             :ui="{ listWithChildren: 'ms-3 border-s border-default ps-1' }"
             size="sm"
           >
@@ -360,7 +473,8 @@ function rowClass(item: TreeItem) {
                 :data-node-id="item.id"
                 @keydown.capture="onRowKeydown($event, item)"
                 :data-testid="`tree-${item.label}`"
-                @click="open(item)"
+                :data-selected="isSelected(selection, item.id) || undefined"
+                @click="onRowClick($event, item)"
                 @dblclick="openForGood(item)"
                 @dragstart="onDragStart($event, item)"
                 @dragover.stop="onDragOver($event, item)"
