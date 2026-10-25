@@ -138,6 +138,9 @@ const fieldUi = {
   base: 'px-2 -mx-2 hover:bg-elevated/50 focus:bg-elevated/50 rounded-md',
   root: 'w-full',
 }
+
+/** The icon picker, open (a folder's icon). */
+const choosingIcon = ref(false)
 </script>
 
 <template>
@@ -172,7 +175,18 @@ const fieldUi = {
           </nav>
 
           <div class="flex items-center gap-3">
-            <BookmarkIcon :bookmark="bookmark" size="lg" />
+            <!-- A folder's icon is chosen here (and from its menu in the sidebar). -->
+            <UTooltip v-if="folder" text="Change icon">
+              <button
+                type="button"
+                class="rounded-md p-0.5 hover:bg-elevated"
+                aria-label="Change icon"
+                @click="choosingIcon = true"
+              >
+                <BookmarkIcon :bookmark="bookmark" size="lg" />
+              </button>
+            </UTooltip>
+            <BookmarkIcon v-else :bookmark="bookmark" size="lg" />
             <UInput
               v-model="draft.title"
               variant="none"
@@ -358,6 +372,20 @@ const fieldUi = {
           </section>
         </template>
       </div>
+      <UModal
+        v-model:open="choosingIcon"
+        :title="bookmark ? `Icon of “${bookmark.title}”` : ''"
+        :ui="{ content: 'max-w-fit', body: 'p-0 sm:p-0' }"
+      >
+        <template #body>
+          <LazyIconPicker
+            v-if="bookmark"
+            :bookmark-id="bookmark.id"
+            :has-icon="!!(bookmark.emoji || bookmark.icon)"
+            @done="choosingIcon = false"
+          />
+        </template>
+      </UModal>
     </template>
   </UDashboardPanel>
 </template>

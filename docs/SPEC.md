@@ -413,7 +413,9 @@ inside OneDrive so that it is backed up and synced.
 - **Folders and bookmarks**, as in a browser: a bookmark is not a page and holds nothing;
   folders hold bookmarks and folders. Stored in SQLite (and its backup), never in the notes'
   Markdown. A bookmark has a name, a web address (http or https only), an optional
-  description, and its site's favicon (`.tandem/icons/`; a globe without one). One bookmark per
+  description, and its site's favicon (`.tandem/icons/`; a globe without one). A folder can
+  have an icon of its own, as a page: an emoji or an image ("Change icon…" in its menu, or a
+  click on its icon on its page), or back to the default. One bookmark per
   page: an address already saved (give or take `www.`, `http`/`https`, a `#fragment` or a final
   `/`) is refused, naming the bookmark that has it.
 - **Sidebar**: a Bookmarks section right after the pages (they scroll together), folded by

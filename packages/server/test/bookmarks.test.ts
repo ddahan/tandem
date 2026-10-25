@@ -451,6 +451,38 @@ describe('bookmarks', () => {
     expect(after).toHaveLength(all.length + 1)
   })
 
+  it('takes an icon chosen for a folder: an emoji, an image, or back to none', async () => {
+    const { vault } = await createTestVault()
+    await vault.updateSettings({ bookmarks: true })
+    const app = createApp(vault)
+    const folder = await vault.createBookmark({ kind: 'folder', title: 'Work' })
+    const call = (method: string, init: RequestInit = {}) =>
+      app.request(`http://localhost/api/bookmarks/${folder.id}/icon`, { method, ...init })
+    const json = { 'content-type': 'application/json' }
+
+    const withEmoji = await call('PUT', { headers: json, body: JSON.stringify({ emoji: '📚' }) })
+    expect(await withEmoji.json()).toMatchObject({ emoji: '📚', icon: null })
+    expect(
+      (await call('PUT', { headers: json, body: JSON.stringify({ emoji: 'not one at all' }) }))
+        .status,
+    ).toBe(400)
+
+    // An image replaces the emoji, and is served.
+    const form = new FormData()
+    form.append('file', new File([PNG], 'work.png', { type: 'image/png' }))
+    const withImage = (await (await call('POST', { body: form })).json()) as {
+      icon: string
+      emoji: string | null
+    }
+    expect(withImage.emoji).toBeNull()
+    const image = await app.request(`http://localhost${withImage.icon}`)
+    expect(new Uint8Array(await image.arrayBuffer())).toEqual(PNG)
+
+    // The default again: no file left behind.
+    expect(await (await call('DELETE')).json()).toMatchObject({ icon: null, emoji: null })
+    expect((await app.request(`http://localhost${withImage.icon}`)).status).toBe(404)
+  })
+
   it('exports them as a browser’s bookmarks file: all, or a folder', async () => {
     const { vault, clock } = await createTestVault()
     await vault.updateSettings({ bookmarks: true })

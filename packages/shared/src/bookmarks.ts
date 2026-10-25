@@ -26,8 +26,10 @@ export interface Bookmark {
   url: string
   /** Optional; the page's meta description when it was saved. */
   description: string
-  /** The favicon's address in the API, or null (none: a globe, or a folder). */
+  /** The favicon's (or chosen image's) address in the API, or null (none: a globe, or a folder). */
   icon: string | null
+  /** An emoji chosen as its icon (a folder's, usually), shown instead of the image or default. */
+  emoji: string | null
   position: number
   createdAt: number
   updatedAt: number

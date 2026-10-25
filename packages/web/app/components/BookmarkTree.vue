@@ -38,6 +38,9 @@ function rowOf(id: string) {
   return document.querySelector<HTMLElement>(`[data-bookmark-id="${id}"]`)
 }
 
+/** The folder whose icon is being changed (picker dialog). */
+const iconFor = ref<BookmarkItem | null>(null)
+
 // --- Selecting several ------------------------------------------------------------------------
 
 const selection = ref(emptySelection())
@@ -193,6 +196,11 @@ function menu(item: BookmarkItem): DropdownMenuItem[][] {
             label: 'New folder inside',
             icon: 'i-lucide-folder-plus',
             onSelect: () => void newFolder(item.id),
+          },
+          {
+            label: 'Change icon…',
+            icon: 'i-lucide-smile-plus',
+            onSelect: () => (iconFor.value = item),
           },
           {
             label: 'Export for Chrome',
@@ -588,6 +596,21 @@ function rowClass(item: BookmarkItem) {
           </div>
         </div>
       </div>
+      <UModal
+        :open="!!iconFor"
+        :title="iconFor ? `Icon of “${iconFor.label}”` : ''"
+        :ui="{ content: 'max-w-fit', body: 'p-0 sm:p-0' }"
+        @update:open="(open) => !open && (iconFor = null)"
+      >
+        <template #body>
+          <LazyIconPicker
+            v-if="iconFor"
+            :bookmark-id="iconFor.id"
+            :has-icon="!!(iconFor.bookmark.emoji || iconFor.bookmark.icon)"
+            @done="iconFor = null"
+          />
+        </template>
+      </UModal>
     </div>
   </UContextMenu>
 </template>

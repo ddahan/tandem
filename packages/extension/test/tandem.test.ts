@@ -17,6 +17,7 @@ function bookmark(fields: Partial<Bookmark>): Bookmark {
     url: 'https://example.com/',
     description: '',
     icon: null,
+    emoji: null,
     position: 1,
     createdAt: 0,
     updatedAt: 0,

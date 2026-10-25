@@ -973,6 +973,20 @@ export class Vault {
     })
   }
 
+  /** Sets an emoji as a bookmark's (or folder's) icon, or none (null: its default). */
+  async setBookmarkEmoji(id: string, emoji: string | null): Promise<Bookmark> {
+    const value = emoji?.trim() ?? ''
+    if (emoji !== null && (!value || [...value].length > 8))
+      throw new ValidationError('The icon must be an emoji')
+    return this.lock.run(async () => {
+      await this.bookmarks.get(id)
+      await this.removeBookmarkIconFiles(id)
+      await this.bookmarks.setEmoji(id, emoji === null ? null : value)
+      this.changed({ type: 'bookmarks' })
+      return this.bookmarks.get(id)
+    })
+  }
+
   /** The file of a bookmark's favicon. */
   async bookmarkIconFile(id: string): Promise<string> {
     return join(this.metaDir, 'icons', await this.bookmarks.iconFile(id))

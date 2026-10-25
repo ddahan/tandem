@@ -185,6 +185,16 @@ export class BookmarkStore {
     return record.icon?.startsWith('image:') ? record.icon.slice(6) : null
   }
 
+  /** Sets an emoji as its icon (or none); returns the image file it had, to delete. */
+  async setEmoji(id: string, emoji: string | null): Promise<string | null> {
+    const record = await this.record(id)
+    await this.db
+      .update(bookmarks)
+      .set({ icon: emoji ? `emoji:${emoji}` : null })
+      .where(eq(bookmarks.id, id))
+    return record.icon?.startsWith('image:') ? record.icon.slice(6) : null
+  }
+
   /** The favicon's file name in `.tandem/icons/`. */
   async iconFile(id: string): Promise<string> {
     const record = await this.record(id)
@@ -317,7 +327,7 @@ export class BookmarkStore {
     const created: { id: string; extra: T }[] = []
     const now = this.now()
 
-    const insert = async (row: Omit<Bookmark, 'icon' | 'createdAt' | 'updatedAt'>) => {
+    const insert = async (row: Omit<Bookmark, 'icon' | 'emoji' | 'createdAt' | 'updatedAt'>) => {
       await this.db.insert(bookmarks).values({
         ...row,
         urlKey: row.url ? urlKey(row.url) : '',
@@ -325,7 +335,7 @@ export class BookmarkStore {
         updatedAt: now,
       })
       const list = children.get(row.parentId) ?? []
-      list.push({ ...row, icon: null, createdAt: now, updatedAt: now })
+      list.push({ ...row, icon: null, emoji: null, createdAt: now, updatedAt: now })
       children.set(row.parentId, list)
     }
 
@@ -438,6 +448,7 @@ function toBookmark(record: BookmarkRecord): Bookmark {
     icon: record.icon?.startsWith('image:')
       ? `/api/bookmarks/${record.id}/icon?v=${encodeURIComponent(record.icon.slice(6))}`
       : null,
+    emoji: record.icon?.startsWith('emoji:') ? record.icon.slice(6) : null,
     position: record.position,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,

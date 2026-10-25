@@ -179,6 +179,35 @@ test('right-clicking the section offers what + does, and exports for Chrome', as
   await expect(page.getByRole('menuitem', { name: 'New folder' })).toBeVisible()
 })
 
+test('a folder takes an icon, from its menu or its page, and back to the default', async ({
+  page,
+  request,
+}) => {
+  const folder = await addBookmark(request, { kind: 'folder', title: 'Reading' })
+  await page.goto('/')
+  const section = page.getByTestId('bookmarks')
+  await section.getByTestId('bookmarks-toggle').click()
+  const row = section.getByTestId('bookmark-Reading')
+  await row.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Change icon…' }).click()
+  const picker = page.getByTestId('icon-picker')
+  await picker.getByLabel('Search emojis').fill('books')
+  await picker.getByRole('button', { name: 'books', exact: true }).click()
+  await expect(row.getByTestId('bookmark-icon')).toHaveText('📚')
+  expect(await api<{ emoji: string }>(request, 'GET', `/bookmarks/${folder.id}`)).toMatchObject({
+    emoji: '📚',
+  })
+
+  // From its page: the default again.
+  await row.click()
+  await page.getByRole('button', { name: 'Change icon' }).click()
+  await picker.getByRole('button', { name: 'Use the default icon' }).click()
+  await expect(row.getByTestId('bookmark-icon')).not.toHaveText('📚')
+  expect(
+    await api<{ emoji: string | null }>(request, 'GET', `/bookmarks/${folder.id}`),
+  ).toMatchObject({ emoji: null })
+})
+
 test('shows a bookmark’s card in a note, from / and from the sidebar, found by ⌘⇧F', async ({
   page,
   request,

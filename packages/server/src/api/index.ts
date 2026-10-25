@@ -693,6 +693,27 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     .delete('/bookmarks/:id', zValidator('param', idParam), async (c) =>
       c.json(await vault.deleteBookmark(c.req.valid('param').id, authorOf(c))),
     )
+    // Its icon chosen (a folder's, mostly), as a page's: an emoji, an image, or the default.
+    .put(
+      '/bookmarks/:id/icon',
+      zValidator('param', idParam),
+      zValidator('json', z.object({ emoji: z.string().min(1).max(32) })),
+      async (c) =>
+        c.json(await vault.setBookmarkEmoji(c.req.valid('param').id, c.req.valid('json').emoji)),
+    )
+    .post(
+      '/bookmarks/:id/icon',
+      zValidator('param', idParam),
+      zValidator('form', z.object({ file: z.instanceof(File) })),
+      async (c) => {
+        const { file } = c.req.valid('form')
+        const data = new Uint8Array(await file.arrayBuffer())
+        return c.json(await vault.setBookmarkIcon(c.req.valid('param').id, file.name, data))
+      },
+    )
+    .delete('/bookmarks/:id/icon', zValidator('param', idParam), async (c) =>
+      c.json(await vault.setBookmarkEmoji(c.req.valid('param').id, null)),
+    )
     .get('/bookmarks/:id/icon', zValidator('param', idParam), async (c) => {
       const path = await vault.bookmarkIconFile(c.req.valid('param').id)
       const info = await stat(path).catch(() => null)

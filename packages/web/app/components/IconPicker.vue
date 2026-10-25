@@ -1,38 +1,59 @@
 <script setup lang="ts">
-// Picks the icon of a page or folder: an emoji (search, categories, recently used), an image
-// from the computer, or none. Changes between emojis and none are steps of the undo history
-// (an image can't be put back once replaced).
+// Picks the icon of a page or folder, or of a bookmarks folder (`bookmarkId`): an emoji (search,
+// categories, recently used), an image from the computer, or none. Changes between emojis and
+// none are steps of the undo history (an image can't be put back once replaced).
 import { useLocalStorage } from '@vueuse/core'
 import { emojiGroups, searchEmojis, type PickerEmoji } from '~/utils/emoji-groups'
 
-const props = defineProps<{ nodeId: string; hasIcon: boolean }>()
+const props = defineProps<{ nodeId?: string; bookmarkId?: string; hasIcon: boolean }>()
 const emit = defineEmits<{ done: [] }>()
 
 const api = useApi()
 const showError = useApiErrorToast()
 const tree = useTree()
+const bookmarks = useBookmarks()
 const undoHistory = useUndo()
 
 /** Sets an emoji, or none (null). */
-function setEmoji(nodeId: string, emoji: string | null) {
+async function setEmoji(target: { nodeId?: string; bookmarkId?: string }, emoji: string | null) {
+  if (target.bookmarkId) {
+    const param = { id: target.bookmarkId }
+    await unwrap(
+      emoji
+        ? api.bookmarks[':id'].icon.$put({ param, json: { emoji } })
+        : api.bookmarks[':id'].icon.$delete({ param }),
+    )
+    return bookmarks.load()
+  }
+  const param = { id: target.nodeId! }
   return emoji
-    ? unwrap(api.nodes[':id'].icon.$put({ param: { id: nodeId }, json: { emoji } }))
-    : unwrap(api.nodes[':id'].icon.$delete({ param: { id: nodeId } }))
+    ? unwrap(api.nodes[':id'].icon.$put({ param, json: { emoji } }))
+    : unwrap(api.nodes[':id'].icon.$delete({ param }))
+}
+
+/** Its icon now: an emoji (or none), or an image. */
+function current(): { emoji: string | null; image: boolean } {
+  if (props.bookmarkId) {
+    const bookmark = bookmarks.byId.value.get(props.bookmarkId)
+    return { emoji: bookmark?.emoji ?? null, image: !!bookmark?.icon }
+  }
+  const icon = tree.byId.value.get(props.nodeId!)?.icon ?? null
+  return { emoji: icon?.type === 'emoji' ? icon.emoji : null, image: icon?.type === 'image' }
 }
 
 /** Changes the icon to `emoji` (null: none); a step of the undo history unless an image goes. */
 function change(emoji: string | null) {
-  const nodeId = props.nodeId
-  const icon = tree.byId.value.get(nodeId)?.icon ?? null
+  const target = { nodeId: props.nodeId, bookmarkId: props.bookmarkId }
+  const icon = current()
   return run(async () => {
-    await setEmoji(nodeId, emoji)
-    if (icon?.type === 'image') return
-    const before = icon?.emoji ?? null
+    await setEmoji(target, emoji)
+    if (icon.image) return
+    const before = icon.emoji
     if (before === emoji) return
     undoHistory.record({
       label: 'Change the icon',
-      undo: () => setEmoji(nodeId, before).then(() => true),
-      redo: () => setEmoji(nodeId, emoji).then(() => true),
+      undo: () => setEmoji(target, before).then(() => true),
+      redo: () => setEmoji(target, emoji).then(() => true),
     })
   })
 }
@@ -72,9 +93,13 @@ function upload(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
-  return run(() =>
-    unwrap(api.nodes[':id'].icon.$post({ param: { id: props.nodeId }, form: { file } })),
-  )
+  const { nodeId, bookmarkId } = props
+  return run(async () => {
+    if (!bookmarkId)
+      return unwrap(api.nodes[':id'].icon.$post({ param: { id: nodeId! }, form: { file } }))
+    await unwrap(api.bookmarks[':id'].icon.$post({ param: { id: bookmarkId }, form: { file } }))
+    await bookmarks.load()
+  })
 }
 
 function remove() {
