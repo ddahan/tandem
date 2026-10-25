@@ -18,6 +18,7 @@ import DatabaseCell from '~/components/editor/DatabaseCell.vue'
 import DatabaseChoices from '~/components/editor/DatabaseChoices.vue'
 import DatabaseFilters from '~/components/editor/DatabaseFilters.vue'
 import { BLOCK_WIDTHS } from '~/utils/block-widths'
+import { cellMove, type CellDirection, type CellField } from '~/utils/database-keys'
 import { keysText } from '~/utils/platform-keys'
 
 const props = defineProps(nodeViewProps)
@@ -379,14 +380,95 @@ async function removeRow(rowId: string) {
   await deleteRow(rowId)
 }
 
-/** Puts the cursor in a row's cell (its column's position), once the table shows it. */
-async function focusCell(rowId: string, column: number) {
+/**
+ * Puts the cursor in a row's cell (its column's position), once the table shows it: at the
+ * start of its field, or at its end (a text's caret, a date's last part).
+ */
+async function focusCell(rowId: string, column: number, at: 'start' | 'end' = 'start') {
   await nextTick()
   const row = table.value?.querySelector(`tr[data-row-id="${CSS.escape(rowId)}"]`)
-  // A date's first part (day), not its calendar button.
-  row?.children[column]
-    ?.querySelector<HTMLElement>('textarea, input, [role="spinbutton"], button')
-    ?.focus()
+  const cell = row?.children[column]
+  if (!cell) return
+  // A date's part (day or year), not its calendar button.
+  const parts = cell.querySelectorAll<HTMLElement>('[role="spinbutton"]')
+  const field =
+    (at === 'end' ? parts[parts.length - 1] : parts[0]) ??
+    cell.querySelector<HTMLElement>('textarea, input, button')
+  field?.focus()
+  if (isText(field)) {
+    const caret = at === 'end' ? field.value.length : 0
+    field.setSelectionRange(caret, caret)
+  }
+}
+
+function isText(element: unknown): element is HTMLInputElement | HTMLTextAreaElement {
+  return (
+    element instanceof HTMLTextAreaElement ||
+    (element instanceof HTMLInputElement && element.type === 'text')
+  )
+}
+
+/** The field of a cell an arrow is pressed in (see cellMove). */
+function fieldOf(target: HTMLElement, cell: HTMLElement): CellField {
+  if (isText(target)) {
+    let multiline = false
+    if (target instanceof HTMLTextAreaElement) {
+      // Taller than one line: a line break, or a text wrapped at the column's width.
+      const style = getComputedStyle(target)
+      const line = parseFloat(style.lineHeight)
+      const padding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+      multiline = target.value.includes('\n') || !(target.scrollHeight <= line + padding + 1)
+    }
+    return {
+      kind: 'text',
+      start: target.selectionStart ?? 0,
+      end: target.selectionEnd ?? 0,
+      length: target.value.length,
+      multiline,
+    }
+  }
+  if (target.getAttribute('role') === 'spinbutton') {
+    const parts = [...cell.querySelectorAll('[role="spinbutton"]')]
+    return { kind: 'segment', first: parts[0] === target, last: parts.at(-1) === target }
+  }
+  return { kind: 'control' }
+}
+
+/** The cell an arrow goes to from row `rowId`'s column `column`, among the rows shown. */
+function cellTowards(rowId: string, column: number, direction: CellDirection) {
+  const index = rows.value.findIndex((row) => row.id === rowId)
+  const columns = database.value?.columns.length ?? 0
+  if (direction === 'left' || direction === 'right') {
+    const target = column + (direction === 'left' ? -1 : 1)
+    return target >= 0 && target < columns ? { rowId, column: target } : null
+  }
+  const row = rows.value[index + (direction === 'up' ? -1 : 1)]
+  return row ? { rowId: row.id, column } : null
+}
+
+/**
+ * Arrows go from cell to cell once their field has nothing left to do (see cellMove). Caught
+ * before the field sees them: a choice opens its menu on ↑ / ↓. The cell left saves its value
+ * as it loses the focus.
+ */
+function onCellArrow(event: KeyboardEvent, rowId: string) {
+  if (event.isComposing || event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) return
+  const target = event.target as HTMLElement
+  const cell = target.closest('td')
+  if (!cell) return
+  const direction = cellMove(event.key, fieldOf(target, cell))
+  if (!direction) return
+  const column = [...cell.parentElement!.children].indexOf(cell)
+  const next = cellTowards(rowId, column, direction)
+  event.preventDefault()
+  event.stopPropagation()
+  if (!next) return
+  // Coming from below or the right, the caret lands at the end: further arrows keep going.
+  void focusCell(
+    next.rowId,
+    next.column,
+    direction === 'up' || direction === 'left' ? 'end' : 'start',
+  )
 }
 
 /** Adds a row right below another, the cursor in its first cell. */
@@ -577,6 +659,7 @@ const hidden = computed(() => (database.value?.rows.length ?? 0) - rows.value.le
                   :key="row.id"
                   :data-row-id="row.id"
                   data-testid="database-row"
+                  @keydown.capture="onCellArrow($event, row.id)"
                   @keydown="onRowKey($event, row.id)"
                 >
                   <td v-for="(column, index) in database.columns" :key="column.id">

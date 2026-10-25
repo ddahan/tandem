@@ -300,6 +300,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
       { keys: [['escape']], label: 'Put the saved value back' },
       {
+        keys: [['arrowup'], ['arrowdown'], ['arrowleft'], ['arrowright']],
+        label: 'Go to the next cell',
+        description:
+          'Once the caret is at the start or end of the text (a text of several lines: its very start or end). In a date, ↑ / ↓ change the part.',
+      },
+      {
         keys: [['meta', 'enter']],
         label: 'Insert a row below',
         description: 'The value is saved first; the cursor goes to the new row.',

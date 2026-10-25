@@ -154,7 +154,9 @@ inside OneDrive so that it is backed up and synced.
   choice, multiple choices) are kept in Tandem, not
   in the Markdown. The note only has a block naming it (` ```database ` with `id: …`); the
   data is safe in the database and its backup copy. Cells are edited in place (Enter saves,
-  Escape puts the saved value back; text wraps, Shift+Enter starts a new line, and the row
+  Escape puts the saved value back; arrows go to the next cell, as in a spreadsheet, once the
+  caret is at the start or end of the text (of several lines: its very start or end; in a date,
+  ↑ / ↓ change the part, ← / → leave it from its first or last); text wraps, Shift+Enter starts a new line, and the row
   grows with it; dates typed day, month, year, or picked in a calendar whose weeks start on
   Monday, shown `17/10/2026`; numbers French; amounts in euros (`1 234 €`, kept to the cent;
   as soon as one amount of a column has cents, every amount of it shows two decimals,

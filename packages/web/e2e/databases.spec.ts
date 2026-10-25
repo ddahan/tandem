@@ -601,3 +601,74 @@ test('inserts rows below another (its + or ⌘Enter) and moves them with ⌥↑ 
   await expect(page.getByText('The table is sorted')).toBeVisible()
   await expect.poll(order).toEqual(['A', 'A2', 'A3', 'C', 'B'])
 })
+
+test('arrows go from cell to cell once the caret is at the edge of the text', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Arrow table', 'Intro')
+  const database = await api<Database>(request, 'POST', `/notes/${note.id}/databases`, {
+    columns: [
+      { name: 'Task', type: 'text' },
+      { name: 'Done', type: 'checkbox' },
+      { name: 'Due', type: 'date' },
+      { name: 'Count', type: 'number' },
+    ],
+  })
+  const [task, , , count] = database.columns
+  await api(request, 'PATCH', `/databases/${database.id}/rows/${database.rows[0]!.id}`, {
+    cells: { [task!.id]: 'First', [count!.id]: 1 },
+  })
+  await api(request, 'POST', `/databases/${database.id}/rows`, {
+    cells: { [task!.id]: 'Two\nlines', [count!.id]: 2 },
+  })
+  await api(request, 'POST', `/notes/${note.id}/append`, {
+    content: `\`\`\`database\nid: ${database.id}\n\`\`\``,
+  })
+  await openNote(page, note.id)
+  const block = page.getByTestId('database')
+  const tasks = block.getByRole('textbox', { name: 'Task' })
+  const counts = block.getByRole('textbox', { name: 'Count' })
+  const done = block.getByRole('checkbox', { name: 'Done' })
+  await expect(tasks).toHaveCount(2)
+
+  // ↓ from a one-line text, wherever its caret is; a text of several lines keeps the arrows
+  // until its very start or end.
+  await tasks.first().click()
+  await page.keyboard.press('ArrowDown')
+  await expect(tasks.nth(1)).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(tasks.nth(1)).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(tasks.nth(1)).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(tasks.first()).toBeFocused()
+
+  // → only from the end of the text; then through a checkbox and a date's parts.
+  await page.keyboard.press('Home')
+  await page.keyboard.press('ArrowRight')
+  await expect(tasks.first()).toBeFocused()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowRight')
+  await expect(done.first()).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  const day = block.getByRole('spinbutton').first()
+  await expect(day).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(done.first()).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(done.nth(1)).toBeFocused()
+
+  // A value typed is saved when the cursor leaves its cell.
+  await counts.first().click()
+  await page.keyboard.press('End')
+  await page.keyboard.type('0')
+  await page.keyboard.press('ArrowDown')
+  await expect(counts.nth(1)).toBeFocused()
+  await expect
+    .poll(async () => {
+      const latest = await api<Database>(request, 'GET', `/databases/${database.id}`)
+      return latest.rows[0]!.cells[count!.id]
+    })
+    .toBe(10)
+})
