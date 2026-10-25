@@ -593,7 +593,8 @@ its requests need no CORS.
   errors as `offline` (nothing answers), `off` (`bookmarks_off`) or `error`.
 - `popup.ts`: the active tab (`?tab=<id>` when opened as a page: tests), its description read in
   the page (`chrome.scripting`, `page.ts`'s `readDescription`, self-contained), its favicon from
-  the tab (a `data:` URL) or Chrome's `_favicon` service; an existing bookmark is edited. Saving
+  the tab (a `data:` URL) or Chrome's `_favicon` service (a PNG without a `Content-Type`:
+  recognized by its bytes); an existing bookmark is edited. Saving
   is a message to the service worker (`SaveMessage`): the popup closes once it's received, as
   its own requests would stop with it.
 - `background.ts` (service worker): the ✓ badge on bookmarked pages (looked up when a tab is

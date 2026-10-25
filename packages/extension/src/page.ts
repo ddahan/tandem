@@ -40,10 +40,12 @@ export async function pageDescription(tabId: number): Promise<string> {
 }
 
 const MAX_ICON_BYTES = 256 * 1024
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
 
 /**
  * The page's favicon as a `data:` URL: the tab's own when it is one, otherwise Chrome's copy
- * (its `_favicon` service, which needs no access to the site).
+ * (its `_favicon` service, which needs no access to the site). That service answers a PNG
+ * without saying so (no `Content-Type`): the type is read from the bytes then.
  */
 export async function faviconDataUrl(
   pageUrl: string,
@@ -55,11 +57,14 @@ export async function faviconDataUrl(
   try {
     const response = await fetcher(source)
     const blob = await response.blob()
-    if (!response.ok || !blob.type.startsWith('image/') || blob.size > MAX_ICON_BYTES) return
+    if (!response.ok || blob.size > MAX_ICON_BYTES) return
     const bytes = new Uint8Array(await blob.arrayBuffer())
+    const png = PNG_SIGNATURE.every((byte, i) => bytes[i] === byte)
+    const type = blob.type.startsWith('image/') ? blob.type : png ? 'image/png' : undefined
+    if (!type) return
     let binary = ''
     for (const byte of bytes) binary += String.fromCharCode(byte)
-    return `data:${blob.type};base64,${btoa(binary)}`
+    return `data:${type};base64,${btoa(binary)}`
   } catch {
     return undefined
   }

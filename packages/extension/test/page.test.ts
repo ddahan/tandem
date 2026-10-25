@@ -10,6 +10,10 @@ function stubChrome(executeScript: () => Promise<unknown>) {
   })
 }
 
+/** A fetch answering these bytes with no type, as Chrome's `_favicon` service does. */
+const untyped = (bytes: number[]) =>
+  (async () => new Response(new Blob([new Uint8Array(bytes)]))) as unknown as typeof fetch
+
 afterEach(() => {
   vi.unstubAllGlobals()
   document.head.innerHTML = ''
@@ -56,6 +60,12 @@ describe('reading the page', () => {
     expect(requested).toEqual([
       'chrome-extension://id/_favicon/?pageUrl=https%3A%2F%2Fe.com%2Fa&size=64',
     ])
+    // Chrome's own service gives no type: a PNG is recognized by its bytes, anything else isn't.
+    const png = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+    expect(await faviconDataUrl('https://e.com', undefined, untyped(png))).toBe(
+      'data:image/png;base64,iVBORw0KGgo=',
+    )
+    expect(await faviconDataUrl('https://e.com', undefined, untyped([1, 2, 3]))).toBeUndefined()
     const notImage = (async () =>
       new Response(new Blob(['x'], { type: 'text/html' }))) as unknown as typeof fetch
     expect(await faviconDataUrl('https://e.com', undefined, notImage)).toBeUndefined()
