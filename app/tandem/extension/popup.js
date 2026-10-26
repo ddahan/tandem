@@ -67,17 +67,21 @@ async function pageDescription(tabId) {
   }
 }
 var MAX_ICON_BYTES = 256 * 1024;
+var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
 async function faviconDataUrl(pageUrl, tabIcon, fetcher = fetch) {
   if (tabIcon?.startsWith("data:image/")) return tabIcon;
   const source = chrome.runtime.getURL(`/_favicon/?pageUrl=${encodeURIComponent(pageUrl)}&size=64`);
   try {
     const response = await fetcher(source);
     const blob = await response.blob();
-    if (!response.ok || !blob.type.startsWith("image/") || blob.size > MAX_ICON_BYTES) return;
+    if (!response.ok || blob.size > MAX_ICON_BYTES) return;
     const bytes = new Uint8Array(await blob.arrayBuffer());
+    const png = PNG_SIGNATURE.every((byte, i) => bytes[i] === byte);
+    const type = blob.type.startsWith("image/") ? blob.type : png ? "image/png" : void 0;
+    if (!type) return;
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    return `data:${blob.type};base64,${btoa(binary)}`;
+    return `data:${type};base64,${btoa(binary)}`;
   } catch {
     return void 0;
   }

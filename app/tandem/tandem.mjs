@@ -4625,7 +4625,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text3, msg) => text3 + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text4, msg) => text4 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -7762,11 +7762,11 @@ function rewriteWikiLinks(markdown, from, to) {
   }
   return result;
 }
-function splitOnce(text3, separator) {
-  const index2 = text3.indexOf(separator);
-  return index2 === -1 ? [text3, void 0] : [text3.slice(0, index2), text3.slice(index2 + 1)];
+function splitOnce(text4, separator) {
+  const index2 = text4.indexOf(separator);
+  return index2 === -1 ? [text4, void 0] : [text4.slice(0, index2), text4.slice(index2 + 1)];
 }
-var blank = (text3) => text3.replace(/[^\n]/g, " ");
+var blank = (text4) => text4.replace(/[^\n]/g, " ");
 function maskCode(markdown) {
   return markdown.replace(/^(```|~~~)[^\n]*\n[\s\S]*?(?:^\1[^\n]*$|(?![\s\S]))/gm, blank).replace(/(`+)[^`\n][\s\S]*?\1/g, blank);
 }
@@ -7872,9 +7872,9 @@ function toCellValue(value, column) {
     }
     case "date": {
       if (typeof value !== "string") return void 0;
-      const text3 = value.trim();
-      const iso = DATE.exec(text3);
-      const french = FRENCH_DATE.exec(text3);
+      const text4 = value.trim();
+      const iso = DATE.exec(text4);
+      const french = FRENCH_DATE.exec(text4);
       const [year, month, day] = iso ? [iso[1], iso[2], iso[3]] : french ? [french[3], french[2], french[1]] : [];
       if (!year) return void 0;
       const date5 = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
@@ -7883,15 +7883,15 @@ function toCellValue(value, column) {
     }
     case "checkbox": {
       if (typeof value === "boolean") return value;
-      const text3 = String(value).trim().toLowerCase();
-      if (TRUE.has(text3)) return true;
-      if (FALSE.has(text3)) return false;
+      const text4 = String(value).trim().toLowerCase();
+      if (TRUE.has(text4)) return true;
+      if (FALSE.has(text4)) return false;
       return void 0;
     }
     case "select": {
-      const text3 = (typeof value === "string" ? value : String(value)).trim();
-      if (!text3) return null;
-      return column.options?.find((option) => option.toLowerCase() === text3.toLowerCase());
+      const text4 = (typeof value === "string" ? value : String(value)).trim();
+      if (!text4) return null;
+      return column.options?.find((option) => option.toLowerCase() === text4.toLowerCase());
     }
     case "multiselect": {
       const given = Array.isArray(value) ? value : typeof value === "string" && !toCellValue(value, { ...column, type: "select" }) ? value.split(",") : [value];
@@ -8059,12 +8059,12 @@ function cellsByName(database, values) {
 
 // ../shared/src/todos.ts
 var MARKER = /(?<![\p{L}\p{N}_])TODO:/gu;
-function todoRanges(text3) {
-  const starts = [...text3.matchAll(MARKER)].map((match2) => match2.index);
+function todoRanges(text4) {
+  const starts = [...text4.matchAll(MARKER)].map((match2) => match2.index);
   return starts.map((start, i) => {
-    const lineEnd = text3.indexOf("\n", start);
-    let end = Math.min(lineEnd < 0 ? text3.length : lineEnd, starts[i + 1] ?? text3.length);
-    while (end > start && /\s/.test(text3[end - 1])) end--;
+    const lineEnd = text4.indexOf("\n", start);
+    let end = Math.min(lineEnd < 0 ? text4.length : lineEnd, starts[i + 1] ?? text4.length);
+    while (end > start && /\s/.test(text4[end - 1])) end--;
     return { start, end };
   });
 }
@@ -8164,12 +8164,12 @@ var BOOKMARK_TITLE_MAX = 300;
 var BOOKMARK_DESCRIPTION_MAX = 1e3;
 var BOOKMARK_URL_MAX = 4e3;
 function webUrl(input2) {
-  let text3 = input2.trim();
-  if (!text3) return null;
-  if (!/^[a-z][a-z0-9+.-]*:/i.test(text3)) text3 = `https://${text3}`;
+  let text4 = input2.trim();
+  if (!text4) return null;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(text4)) text4 = `https://${text4}`;
   let url2;
   try {
-    url2 = new URL(text3);
+    url2 = new URL(text4);
   } catch {
     return null;
   }
@@ -8244,8 +8244,8 @@ function checkRef(item) {
   return item.feedId ? `${item.feedId}/${item.id}` : item.id;
 }
 var TIME = /^([01]?\d|2[0-3])(?::([0-5]\d)|h([0-5]\d)?|H([0-5]\d)?)?$/;
-function parseTime(text3) {
-  const match2 = TIME.exec(text3.trim());
+function parseTime(text4) {
+  const match2 = TIME.exec(text4.trim());
   if (!match2) return null;
   const minutes = match2[2] ?? match2[3] ?? match2[4] ?? "00";
   return `${match2[1].padStart(2, "0")}:${minutes}`;
@@ -8254,8 +8254,8 @@ function isTime(value) {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 var LEADING_TIME = /^(\d{1,2}(?:[:hH]\d{2}|[hH])?)(?:\s*(?:-|–|—|→|->)\s*(\d{1,2}(?:[:hH]\d{2}|[hH])?))?(?:\s+|$)/;
-function parseEventLine(text3) {
-  const line = text3.replace(/\s+/g, " ").trim();
+function parseEventLine(text4) {
+  const line = text4.replace(/\s+/g, " ").trim();
   const match2 = LEADING_TIME.exec(line);
   const start = match2 ? parseTime(match2[1]) : null;
   const end = match2?.[2] ? parseTime(match2[2]) : null;
@@ -8404,6 +8404,8 @@ Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookm
                                 change it (--title, --description), or move it (--folder;
                                 "" for the top)
   bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
+  bookmarks-export [folder]     a browser's bookmarks file (Chrome imports it), on standard
+                                output: all of them, or a folder (its id) with its content
 
 Agenda (days' events, kept in Tandem; a day's note shows them; feeds' events are read-only)
   agenda [date]                 a day's events (today by default), or the days up to --to <date>
@@ -8465,8 +8467,8 @@ function columnArgs(args) {
     };
   });
 }
-function escapeCell(text3) {
-  return text3.replace(/\|/g, "\\|").replace(/\n/g, " ");
+function escapeCell(text4) {
+  return text4.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 function describeRows(database, all) {
   const rows = all ? database.rows : viewRows(database);
@@ -8593,9 +8595,9 @@ ${USAGE}`);
   const client = createClient(values.url ?? env.TANDEM_URL ?? "http://localhost:3864", {
     author: normalizeAuthor(values.author ?? env.TANDEM_AUTHOR)
   });
-  const print = (text3, data) => io.stdout(
+  const print = (text4, data) => io.stdout(
     values.json && data !== void 0 ? `${JSON.stringify(data, null, 2)}
-` : `${text3}
+` : `${text4}
 `
   );
   try {
@@ -8818,6 +8820,12 @@ ${note.content.replace(/\n$/, "")}`);
       const bookmark = await call(client.bookmarks[":id"].$patch({ param: { id }, json: json4 }));
       return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark);
     }
+    case "bookmarks-export": {
+      const query = args[0] ? { folder: args[0] } : {};
+      const response = await client.bookmarks.export.$get({ query }).catch(unreachable);
+      if (!response.ok) await call(Promise.resolve(response));
+      return io.stdout(await response.text());
+    }
     case "bookmark-delete": {
       const id = need(0, "bookmark id");
       const result = await call(client.bookmarks[":id"].$delete({ param: { id } }));
@@ -9031,8 +9039,8 @@ async function readStdin() {
   return new Uint8Array(Buffer.concat(chunks));
 }
 var processIo = {
-  stdout: (text3) => void process.stdout.write(text3),
-  stderr: (text3) => void process.stderr.write(text3),
+  stdout: (text4) => void process.stdout.write(text4),
+  stderr: (text4) => void process.stderr.write(text4),
   stdin: async () => new TextDecoder().decode(await readStdin()),
   stdinBytes: readStdin,
   readFile: async (path) => new Uint8Array(await readFile(path))
@@ -10855,7 +10863,7 @@ var HonoRequest = class {
   * ```
   */
   json() {
-    return this.#cachedBody("text").then((text3) => JSON.parse(text3));
+    return this.#cachedBody("text").then((text4) => JSON.parse(text4));
   }
   /**
   * `.text()` can parse Request body of type `text/plain`
@@ -11373,8 +11381,8 @@ var Context = class {
   * })
   * ```
   */
-  text = (text3, arg, headers) => {
-    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text3) : this.#newResponse(text3, arg, setDefaultContentType(TEXT_PLAIN, headers));
+  text = (text4, arg, headers) => {
+    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text4) : this.#newResponse(text4, arg, setDefaultContentType(TEXT_PLAIN, headers));
   };
   /**
   * `.json()` can render JSON as `Content-Type:application/json`.
@@ -21994,8 +22002,8 @@ function ko_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/lt.js
-var capitalizeFirstCharacter = (text3) => {
-  return text3.charAt(0).toUpperCase() + text3.slice(1);
+var capitalizeFirstCharacter = (text4) => {
+  return text4.charAt(0).toUpperCase() + text4.slice(1);
 };
 function getUnitTypeFromNumber(number4) {
   const abs = Math.abs(number4);
@@ -32613,8 +32621,8 @@ var ENTITIES = {
   apos: "'",
   nbsp: " "
 };
-function decodeEntities(text3) {
-  return text3.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code) => {
+function decodeEntities(text4) {
+  return text4.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code) => {
     if (code[0] === "#") {
       const value = code[1]?.toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
       return Number.isFinite(value) && value > 0 && value < 1114112 ? String.fromCodePoint(value) : entity;
@@ -33095,6 +33103,15 @@ function createApi(vault, options = {}) {
     const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER;
     return c.json(await vault.importBookmarks(into, importNodes(children)));
   }).get(
+    "/bookmarks/export",
+    zValidator2("query", external_exports.object({ folder: external_exports.string().optional() })),
+    async (c) => {
+      const html = await vault.exportBookmarks(c.req.valid("query").folder);
+      c.header("Content-Type", "text/html; charset=utf-8");
+      c.header("Content-Disposition", `attachment; filename="tandem-bookmarks-${isoDate()}.html"`);
+      return c.body(html);
+    }
+  ).get(
     "/bookmarks/lookup",
     zValidator2("query", external_exports.object({ url: external_exports.string() })),
     async (c) => c.json({ bookmark: await vault.findBookmark(c.req.valid("query").url) })
@@ -33136,6 +33153,24 @@ function createApi(vault, options = {}) {
     "/bookmarks/:id",
     zValidator2("param", idParam),
     async (c) => c.json(await vault.deleteBookmark(c.req.valid("param").id, authorOf(c)))
+  ).put(
+    "/bookmarks/:id/icon",
+    zValidator2("param", idParam),
+    zValidator2("json", external_exports.object({ emoji: external_exports.string().min(1).max(32) })),
+    async (c) => c.json(await vault.setBookmarkEmoji(c.req.valid("param").id, c.req.valid("json").emoji))
+  ).post(
+    "/bookmarks/:id/icon",
+    zValidator2("param", idParam),
+    zValidator2("form", external_exports.object({ file: external_exports.instanceof(File) })),
+    async (c) => {
+      const { file: file2 } = c.req.valid("form");
+      const data = new Uint8Array(await file2.arrayBuffer());
+      return c.json(await vault.setBookmarkIcon(c.req.valid("param").id, file2.name, data));
+    }
+  ).delete(
+    "/bookmarks/:id/icon",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.setBookmarkEmoji(c.req.valid("param").id, null))
   ).get("/bookmarks/:id/icon", zValidator2("param", idParam), async (c) => {
     const path = await vault.bookmarkIconFile(c.req.valid("param").id);
     const info = await stat2(path).catch(() => null);
@@ -50496,8 +50531,8 @@ var Duration = class _Duration {
    * @return {Number}             The duration value in seconds
    */
   toSeconds() {
-    let seconds = this.seconds + 60 * this.minutes + 3600 * this.hours + 86400 * this.days + 7 * 86400 * this.weeks;
-    return this.isNegative ? -seconds : seconds;
+    let seconds2 = this.seconds + 60 * this.minutes + 3600 * this.hours + 86400 * this.days + 7 * 86400 * this.weeks;
+    return this.isNegative ? -seconds2 : seconds2;
   }
   /**
    * Reads the passed seconds value into this duration object. Afterwards,
@@ -51923,9 +51958,9 @@ var Time = class _Time {
    *
    * @param {Number} seconds      The seconds to set up with
    */
-  fromUnixTime(seconds) {
+  fromUnixTime(seconds2) {
     this.zone = Timezone.utcTimezone;
-    let date5 = new Date(seconds * 1e3);
+    let date5 = new Date(seconds2 * 1e3);
     this.year = date5.getUTCFullYear();
     this.month = date5.getUTCMonth() + 1;
     this.day = date5.getUTCDate();
@@ -52411,13 +52446,13 @@ var Timezone = class _Timezone {
    * @param {Number} minutes    The extra amount of minutes
    * @param {Number} seconds    The extra amount of seconds
    */
-  static adjust_change(change, days, hours, minutes, seconds) {
+  static adjust_change(change, days, hours, minutes, seconds2) {
     return Time.prototype.adjust.call(
       change,
       days,
       hours,
       minutes,
-      seconds,
+      seconds2,
       change
     );
   }
@@ -57633,8 +57668,8 @@ var ICALmodule = {
 var TIMEOUT_MS2 = 15e3;
 var MAX_BYTES = 5 * 1024 * 1024;
 var MAX_REPEATS = 2e4;
-function feedUrl(text3) {
-  const trimmed = text3.trim().replace(/^webcals?:\/\//i, "https://");
+function feedUrl(text4) {
+  const trimmed = text4.trim().replace(/^webcals?:\/\//i, "https://");
   try {
     const url2 = new URL(trimmed);
     return url2.protocol === "http:" || url2.protocol === "https:" ? url2.href : null;
@@ -57660,15 +57695,15 @@ async function readFeed(fetcher, url2) {
   const data = await response.arrayBuffer();
   if (data.byteLength > MAX_BYTES)
     throw new ValidationError("This calendar is too large (5 MB at most)");
-  const text3 = new TextDecoder().decode(data);
-  if (!/^\s*BEGIN:VCALENDAR/i.test(text3))
+  const text4 = new TextDecoder().decode(data);
+  if (!/^\s*BEGIN:VCALENDAR/i.test(text4))
     throw new ValidationError("This address isn\u2019t a calendar (.ics)");
-  return text3;
+  return text4;
 }
-function parseFeed(text3) {
+function parseFeed(text4) {
   let root;
   try {
-    root = new ICALmodule.Component(ICALmodule.parse(text3));
+    root = new ICALmodule.Component(ICALmodule.parse(text4));
   } catch {
     throw new ValidationError("This calendar can\u2019t be read");
   }
@@ -58081,8 +58116,8 @@ function clean(input2) {
     throw new ValidationError("It can\u2019t stop repeating before it starts");
   return { title, date: input2.date, start, end: end === start ? null : end, repeat, until };
 }
-function clip(text3) {
-  return text3.replace(/\s+/g, " ").trim().slice(0, EVENT_TITLE_MAX).trim();
+function clip(text4) {
+  return text4.replace(/\s+/g, " ").trim().slice(0, EVENT_TITLE_MAX).trim();
 }
 function toEvent(record2) {
   return {
@@ -58414,11 +58449,55 @@ function markdownToText(markdown) {
     (_, target, label) => (label ?? target).trim()
   ).replace(/^\s*>\s*\[!\w+\]/gm, "").replace(/<\/?[a-z][^>]*>/gi, " ").replace(/^\s{0,3}#{1,6}\s+/gm, "").replace(/^\s*>+\s?/gm, "").replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/gm, "").replace(/^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-*:?\s*$/gm, "").replace(/\|/g, " ").replace(/(\*\*|__|~~|\*|_|`)/g, "").replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 }
-function escapeHtml(text3) {
-  return text3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function escapeHtml(text4) {
+  return text4.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function foldText(text3) {
-  return text3.normalize("NFD").replace(new RegExp("\\p{Diacritic}", "gu"), "").toLowerCase();
+function foldText(text4) {
+  return text4.normalize("NFD").replace(new RegExp("\\p{Diacritic}", "gu"), "").toLowerCase();
+}
+
+// ../server/src/vault/bookmark-export.ts
+var HEAD = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<!-- This is an automatically generated file.
+     It will be read and overwritten.
+     DO NOT EDIT! -->
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>`;
+var text3 = (value) => escapeHtml(value.replace(/\s+/g, " ").trim());
+var seconds = (ms) => String(Math.floor(ms / 1e3));
+function bookmarksHtml(all, rootId, icons) {
+  const children = /* @__PURE__ */ new Map();
+  for (const bookmark of all.toSorted((a, b) => a.position - b.position)) {
+    const siblings = children.get(bookmark.parentId) ?? [];
+    siblings.push(bookmark);
+    children.set(bookmark.parentId, siblings);
+  }
+  const lines = [HEAD];
+  const list = (items, depth) => {
+    const indent = "    ".repeat(depth);
+    lines.push(`${indent}<DL><p>`);
+    for (const item of items) entry(item, depth + 1);
+    lines.push(`${indent}</DL><p>`);
+  };
+  const entry = (item, depth) => {
+    const indent = "    ".repeat(depth);
+    const dates = `ADD_DATE="${seconds(item.createdAt)}" LAST_MODIFIED="${seconds(item.updatedAt)}"`;
+    if (item.kind === "folder") {
+      lines.push(`${indent}<DT><H3 ${dates}>${text3(item.title)}</H3>`);
+      list(children.get(item.id) ?? [], depth);
+      return;
+    }
+    const icon = icons.get(item.id);
+    lines.push(
+      `${indent}<DT><A HREF="${escapeHtml(item.url)}" ${dates}${icon ? ` ICON="${icon}"` : ""}>${text3(item.title)}</A>`
+    );
+    if (item.description.trim()) lines.push(`${indent}<DD>${text3(item.description)}`);
+  };
+  const root = rootId === null ? void 0 : all.find((bookmark) => bookmark.id === rootId);
+  list(root ? [root] : children.get(null) ?? [], 0);
+  return `${lines.join("\n")}
+`;
 }
 
 // ../server/src/vault/search.ts
@@ -58440,8 +58519,8 @@ function parseQuery(query) {
   }
   return parsed;
 }
-function wordsOf(text3) {
-  return foldText(text3).match(/[\p{L}\p{N}]+/gu) ?? [];
+function wordsOf(text4) {
+  return foldText(text4).match(/[\p{L}\p{N}]+/gu) ?? [];
 }
 function ftsMatch(parsed, words) {
   const positive = [...words.map((w) => `"${w}"*`), ...parsed.phrases.map((p) => `"${p}"`)];
@@ -58789,11 +58868,22 @@ var BookmarkStore = class {
     await this.db.update(bookmarks).set({ icon: file2 ? `image:${file2}` : null }).where(eq(bookmarks.id, id));
     return record2.icon?.startsWith("image:") ? record2.icon.slice(6) : null;
   }
+  /** Sets an emoji as its icon (or none); returns the image file it had, to delete. */
+  async setEmoji(id, emoji3) {
+    const record2 = await this.record(id);
+    await this.db.update(bookmarks).set({ icon: emoji3 ? `emoji:${emoji3}` : null }).where(eq(bookmarks.id, id));
+    return record2.icon?.startsWith("image:") ? record2.icon.slice(6) : null;
+  }
   /** The favicon's file name in `.tandem/icons/`. */
   async iconFile(id) {
     const record2 = await this.record(id);
     if (!record2.icon?.startsWith("image:")) throw new NotFoundError("No icon");
     return record2.icon.slice(6);
+  }
+  /** The favicons' file names in `.tandem/icons/`, by bookmark id. */
+  async iconFiles() {
+    const records = await this.db.select({ id: bookmarks.id, icon: bookmarks.icon }).from(bookmarks).where(like(bookmarks.icon, "image:%"));
+    return new Map(records.map((record2) => [record2.id, record2.icon.slice(6)]));
   }
   /** Bookmarks matching a query, best first; with no words, the most recently changed. */
   async search(query, limit = 20) {
@@ -58888,7 +58978,7 @@ var BookmarkStore = class {
         updatedAt: now
       });
       const list = children.get(row.parentId) ?? [];
-      list.push({ ...row, icon: null, createdAt: now, updatedAt: now });
+      list.push({ ...row, icon: null, emoji: null, createdAt: now, updatedAt: now });
       children.set(row.parentId, list);
     };
     const folder = async (parentId, name) => {
@@ -58986,19 +59076,20 @@ function toBookmark(record2) {
     url: record2.url,
     description: record2.description,
     icon: record2.icon?.startsWith("image:") ? `/api/bookmarks/${record2.id}/icon?v=${encodeURIComponent(record2.icon.slice(6))}` : null,
+    emoji: record2.icon?.startsWith("emoji:") ? record2.icon.slice(6) : null,
     position: record2.position,
     createdAt: record2.createdAt,
     updatedAt: record2.updatedAt
   };
 }
-function clip2(text3, max) {
-  return text3.replace(/\s+/g, " ").trim().slice(0, max).trim();
+function clip2(text4, max) {
+  return text4.replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
-function wordsOf2(text3) {
-  return text3.match(/[\p{L}\p{N}]+/gu) ?? [];
+function wordsOf2(text4) {
+  return text4.match(/[\p{L}\p{N}]+/gu) ?? [];
 }
-function toField(text3, weight) {
-  const folded = foldText(text3);
+function toField(text4, weight) {
+  const folded = foldText(text4);
   return { text: folded, words: wordsOf2(folded), weight };
 }
 function fieldsOf(bookmark) {
@@ -59439,8 +59530,8 @@ function checkCells(cells2, columns, current) {
 function distinctTexts(database, column, split) {
   const values = /* @__PURE__ */ new Set();
   for (const row of database.rows) {
-    const text3 = cellText(row.cells[column.id], column);
-    for (const part of split ? text3.split(",") : [text3]) {
+    const text4 = cellText(row.cells[column.id], column);
+    for (const part of split ? text4.split(",") : [text4]) {
       if (part.trim()) values.add(part.trim());
     }
     if (values.size >= MAX_OPTIONS) break;
@@ -59894,14 +59985,14 @@ var Vault = class {
     });
   }
   /** Appends Markdown at the end of a page, as a new block. */
-  async appendContent(id, text3, author) {
+  async appendContent(id, text4, author) {
     return this.lock.run(async () => {
       const row = await this.writablePage(id, author);
       const current = row.content ?? "";
       const separator = current === "" ? "" : current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
       const next = await this.saveInternal(
         row,
-        `${current}${separator}${text3.replace(/\n*$/, "\n")}`,
+        `${current}${separator}${text4.replace(/\n*$/, "\n")}`,
         author,
         {
           write: true
@@ -60220,9 +60311,45 @@ var Vault = class {
       return this.bookmarks.get(id);
     });
   }
+  /** Sets an emoji as a bookmark's (or folder's) icon, or none (null: its default). */
+  async setBookmarkEmoji(id, emoji3) {
+    const value = emoji3?.trim() ?? "";
+    if (emoji3 !== null && (!value || [...value].length > 8))
+      throw new ValidationError("The icon must be an emoji");
+    return this.lock.run(async () => {
+      await this.bookmarks.get(id);
+      await this.removeBookmarkIconFiles(id);
+      await this.bookmarks.setEmoji(id, emoji3 === null ? null : value);
+      this.changed({ type: "bookmarks" });
+      return this.bookmarks.get(id);
+    });
+  }
   /** The file of a bookmark's favicon. */
   async bookmarkIconFile(id) {
     return join7(this.metaDir, "icons", await this.bookmarks.iconFile(id));
+  }
+  /**
+   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): all of them, or a folder
+   * with its content. Favicons go in it, those over 256 KB (none a browser keeps) left out.
+   */
+  async exportBookmarks(id) {
+    const all = id ? await this.bookmarks.subtree(id) : await this.bookmarks.list();
+    const files = await this.bookmarks.iconFiles();
+    const types = {
+      ...Object.fromEntries(Object.entries(ICON_TYPES).map(([type, ext]) => [ext, type])),
+      ico: "image/x-icon"
+    };
+    const icons = /* @__PURE__ */ new Map();
+    for (const bookmark of all) {
+      const file2 = files.get(bookmark.id);
+      if (!file2) continue;
+      const data = await readFile3(join7(this.metaDir, "icons", file2)).catch(() => null);
+      if (!data || data.byteLength > EXPORT_ICON_MAX_BYTES) continue;
+      const png = data.subarray(0, 4).equals(Buffer.from([137, 80, 78, 71]));
+      const type = png ? "image/png" : types[file2.split(".").pop() ?? ""];
+      if (type) icons.set(bookmark.id, `data:${type};base64,${data.toString("base64")}`);
+    }
+    return bookmarksHtml(all, id ?? null, icons);
   }
   // --- Agenda (agenda.ts) ------------------------------------------------------------------
   /** The events of the days from `from` to `to` (Tandem's and feeds'), by day and time. */
@@ -60993,6 +61120,7 @@ function parseIcon(row) {
 }
 var ICON_EXTENSIONS = /* @__PURE__ */ new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"]);
 var ICON_MAX_BYTES = 5 * 1024 * 1024;
+var EXPORT_ICON_MAX_BYTES = 256 * 1024;
 function searchResult(node2, snippet, attachments, tagList) {
   return {
     id: node2.id,
@@ -61014,8 +61142,8 @@ function toAttachment(pagePath, name, size) {
     isImage: isImageFile(name)
   };
 }
-function escapeRegExp(text3) {
-  return text3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRegExp(text4) {
+  return text4.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function rewriteAssetLinks(content, oldTitle, newTitle) {
   const forms = [.../* @__PURE__ */ new Set([oldTitle, encodeMarkdownPath(oldTitle)])];
