@@ -76,7 +76,7 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   const converted = await vault.convertLegacyBookmarks()
   if (converted) {
     console.log(
-      `Bookmarks: ${converted.folders} folders now page folders, ${converted.bookmarks} bookmarks in the inbox note`,
+      `Bookmarks: ${converted.folders} folders now page folders, ${converted.pages} Bookmarks pages in them, ${converted.unsorted} unsorted`,
     )
   }
   if (options.welcome) await welcome(vault, dataDir, port)

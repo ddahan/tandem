@@ -510,9 +510,10 @@ inside OneDrive so that it is backed up and synced.
   bookmarks-export`.
 - **From the folders of before** (bookmarks had folders of their own up to version 0.7.2):
   once, when the app starts after the update, each folder becomes a page folder where it was
-  (a page or folder of that name there is used instead), with its icon, and the bookmarks no
-  note showed go into the inbox note, under a heading naming their folders. The rest (moving
-  them into notes, removing the folders) is the owner's.
+  (a page or folder of that name there is used instead), with its icon, and the bookmarks it
+  held that no note showed go into a new `Bookmarks` page inside it, in their order. Those at
+  the top (in no folder) go into the inbox note: Unsorted. The rest (moving them into notes,
+  removing the folders) is the owner's.
 - Safari may come later.
 
 ## Interface

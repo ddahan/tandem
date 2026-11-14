@@ -310,8 +310,9 @@ Bookmarks had folders up to 0.7.2. Migration 0007 copies their tree into
 `bookmark_tree_legacy` and deletes the folder rows, 0008 drops the columns (`kind`,
 `parent_id`, `position`). At start-up, after `reindexAll` (so that `bookmark_refs` is right),
 `convertLegacyBookmarks` makes each folder a page folder (`legacyFolderNode`: one of that name
-used instead, its emoji or image icon carried over), puts the bookmarks no page shows into the
-inbox note under a heading per folder path, and drops the table: it runs once.
+used instead, its emoji or image icon carried over), puts the bookmarks no page shows into a
+new `Bookmarks` page inside each folder (those in no folder into the inbox note), and drops the
+table: it runs once.
 
 ## HTTP
 

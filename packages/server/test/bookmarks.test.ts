@@ -614,7 +614,7 @@ describe('bookmarks', () => {
     expect((await app.request('http://localhost/api/bookmarks/export?note=nope')).status).toBe(404)
   })
 
-  it('turns the folders of before 0007 into page folders, and the bookmarks into the inbox note', async () => {
+  it('turns the folders of before 0007 into page folders, each with a page of its bookmarks', async () => {
     // A database as it was before migration 0007, with folders.
     const temp = await mkdtemp(join(tmpdir(), 'tandem-legacy-'))
     const dataDir = join(temp, 'notes')
@@ -652,7 +652,7 @@ describe('bookmarks', () => {
       await vault.reindexAll()
       expect(await vault.listBookmarks()).toHaveLength(4)
 
-      expect(await vault.convertLegacyBookmarks()).toEqual({ folders: 3, bookmarks: 3 })
+      expect(await vault.convertLegacyBookmarks()).toEqual({ folders: 3, pages: 2, unsorted: 1 })
       const tree = await vault.tree()
       const node = (p: string) => tree.find((n) => n.path === p)
       expect(node('Work.md')?.icon).toEqual({ type: 'emoji', emoji: '💼' })
@@ -660,17 +660,19 @@ describe('bookmarks', () => {
       expect(node('Work/Tools')?.icon).toMatchObject({ type: 'image' })
       expect(existsSync(join(dataDir, '.tandem', 'icons', 'bookmark-F2-1.png'))).toBe(false)
       expect(node('Empty')).toMatchObject({ kind: 'folder' })
-      expect(await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')).toBe(
-        [
-          bookmarkBlock('B1'),
-          '## Work',
-          bookmarkBlock('B2'),
-          '## Work / Tools',
-          `${bookmarkBlock('B3')}\n`,
-        ].join('\n\n'),
+      // Each folder's bookmarks in a Bookmarks page inside it (none for an empty one).
+      expect(await readFile(join(dataDir, 'Work', 'Bookmarks.md'), 'utf8')).toBe(
+        `${bookmarkBlock('B2')}\n`,
       )
+      // B4 is shown by a note already: left there.
+      expect(await readFile(join(dataDir, 'Work', 'Tools', 'Bookmarks.md'), 'utf8')).toBe(
+        `${bookmarkBlock('B3')}\n`,
+      )
+      expect(node('Empty/Bookmarks.md')).toBeUndefined()
+      // Those at the top: still to sort.
+      expect(await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')).toBe(`${bookmarkBlock('B1')}\n`)
       const unsorted = await vault.unsortedBookmarks()
-      expect(unsorted.bookmarks.map((b) => b.id)).toEqual(['B1', 'B2', 'B3'])
+      expect(unsorted.bookmarks.map((b) => b.id)).toEqual(['B1'])
       // Once.
       expect(await vault.convertLegacyBookmarks()).toBeNull()
     } finally {
