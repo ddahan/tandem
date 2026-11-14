@@ -533,8 +533,10 @@ inside OneDrive so that it is backed up and synced.
   Keyboard shortcuts throughout.
 - **Sub-pages in the side panel**: on a page (or folder) with pages under it, the Links, Bookmarks,
   Files and Databases tabs list theirs too, shown two ways from a switch at the top of the tab
-  (remembered). **Tree**: the page's own, as usual, then each sub-page holding any under its
-  title (indented as in the pages' tree; a click opens it); with none of its own, Bookmarks and
+  (remembered). **Tree**: the page's own, as usual, then its sub-pages nested as in the sidebar's
+  tree (icon, title, guide lines; a click on a title opens it), each with its items and how many it
+  and its pages hold, foldable with its chevron (remembered); a page holding none, nor any of its
+  pages, is left out; with none of its own, Bookmarks and
   Databases say so in one line instead of their empty state. **Flat**: all of them in one list,
   each naming its page, sorted by page (the tree's order), name, or what the kind has: size
   (largest first) and type for files, site for bookmarks, rows for databases (remembered per

@@ -373,7 +373,7 @@ table: it runs once.
   resolved, bookmark ids, web links, attachments and database summaries, read from the stored
   contents) is asked by `NoteSidePanel` only on a page with children whose panel shows Links,
   Bookmarks, Files or Databases, and again (debounced) on changes. `SideSubtree` wraps those
-  tabs: the tab alone without children; otherwise Tree (the tab, then a group per sub-page) or
+  tabs: the tab alone without children; otherwise Tree (the tab, then the sub-pages nested from each one's depth, recursive `SideSubtreeBranch`es, folds in `tandem-side-folded`) or
   Flat (`SideSubtreeRow`s sorted by `utils/subtree-items.ts`).
 - Undo: one history for the app (`useUndo`, logic in `utils/undo-history.ts`): steps with
   `undo`/`redo` functions, run one at a time, recorded by the code that changes things

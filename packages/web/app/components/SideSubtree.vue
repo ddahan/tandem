@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // A side panel tab (Links, Bookmarks, Files, Databases) on a page with sub-pages: what they hold
-// too, shown two ways (remembered). Tree: this page's tab as usual (the slot), then each
-// sub-page holding any, under its title, indented as in the pages' tree. Flat: everything in
+// too, shown two ways (remembered). Tree: this page's tab as usual (the slot), then its sub-pages
+// as in the sidebar's tree, nested and foldable (remembered), those holding none, nor any of
+// their pages, left out. Flat: everything in
 // one list, each item naming its page, sorted by name, page, or what the kind has (size and
 // type for files, site for bookmarks, rows for databases). Without sub-pages (`items` null), or
 // with nothing of this kind in the page or under it (no choice to make),
@@ -12,6 +13,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { openWebsite, usesLabel } from '~/composables/useBookmarks'
 import { fileIconSvg } from '~/utils/file-icons'
 import { sortSubtreeItems, type SubtreeItem, type SubtreeSort } from '~/utils/subtree-items'
+import type { SubtreeBranch } from './SideSubtreeBranch.vue'
 
 export type SubtreeKind = 'links' | 'bookmarks' | 'files' | 'databases'
 
@@ -118,13 +120,44 @@ function itemsOf(page: SubtreePage, index: number): SubtreeItem[] {
 
 const all = computed(() => (props.items?.pages ?? []).flatMap((page, i) => itemsOf(page, i)))
 
-/** Tree: the sub-pages holding any, each with its items. */
-const groups = computed(() =>
-  (props.items?.pages ?? [])
-    .slice(1)
-    .map((page) => ({ page, items: all.value.filter((item) => item.page.id === page.id) }))
-    .filter((group) => group.items.length),
-)
+/** The branches holding items, themselves or in their pages, each with its count. */
+function prune(list: SubtreeBranch[]): SubtreeBranch[] {
+  return list.flatMap((branch) => {
+    const children = prune(branch.children)
+    const count = branch.items.length + children.reduce((sum, child) => sum + child.count, 0)
+    return count ? [{ ...branch, children, count }] : []
+  })
+}
+
+/**
+ * Tree: the sub-pages nested as in the pages' tree (they come depth first, each with its depth),
+ * those holding none, nor any of their pages, left out.
+ */
+const branches = computed(() => {
+  const pages = props.items?.pages ?? []
+  const roots: SubtreeBranch[] = []
+  const stack: SubtreeBranch[] = []
+  for (const page of pages.slice(1)) {
+    const branch: SubtreeBranch = {
+      page,
+      items: all.value.filter((item) => item.page.id === page.id),
+      children: [],
+      count: 0,
+    }
+    while (stack.length && stack.at(-1)!.page.depth >= page.depth) stack.pop()
+    ;(stack.at(-1)?.children ?? roots).push(branch)
+    stack.push(branch)
+  }
+  return prune(roots)
+})
+
+/** The sub-pages folded in Tree, for every page and tab. */
+const folded = useLocalStorage<string[]>('tandem-side-folded', [])
+function toggle(id: string) {
+  folded.value = folded.value.includes(id)
+    ? folded.value.filter((other) => other !== id)
+    : [...folded.value, id]
+}
 
 /**
  * In Tree, the page itself holding none of a kind whose tab has nothing else to offer
@@ -185,29 +218,15 @@ const displays = [
         None in this page itself.
       </p>
       <slot v-else />
-      <section
-        v-for="group in groups"
-        :key="group.page.id"
-        :style="{ paddingInlineStart: `${(group.page.depth - 1) * 0.75}rem` }"
-        :data-testid="`side-group-${group.page.title}`"
-      >
-        <button
-          type="button"
-          class="mb-0.5 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-start text-xs font-medium text-muted hover:bg-elevated hover:text-default"
-          @click="tabs.open(`/notes/${group.page.id}`)"
-        >
-          <UIcon
-            :name="group.page.kind === 'folder' ? 'i-lucide-folder' : 'i-lucide-file-text'"
-            class="size-3.5 shrink-0"
-          />
-          <span class="truncate">{{ group.page.title }}</span>
-        </button>
-        <ul class="space-y-0.5">
-          <li v-for="item in group.items" :key="item.key">
-            <SideSubtreeRow :item="item" />
-          </li>
-        </ul>
-      </section>
+      <div v-if="branches.length" class="space-y-0.5">
+        <SideSubtreeBranch
+          v-for="branch in branches"
+          :key="branch.page.id"
+          :branch="branch"
+          :folded="folded"
+          @toggle="toggle"
+        />
+      </div>
     </template>
 
     <template v-else>
