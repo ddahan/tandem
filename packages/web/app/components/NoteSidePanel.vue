@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The note's side panel: headings, links, bookmarks (when on), history, files and databases, and
+// The note's side panel: headings, links, bookmarks (when on), files and databases, and
 // the calendar when daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
 // it in a narrower one (`over`), where Esc or a click outside closes it.
 import type { Attachment, SubtreeItems } from '@tandem/shared'
@@ -21,7 +21,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   goToHeading: [pos: number]
   goToDatabase: [id: string]
-  restored: [content: string]
   attach: [markdown: string]
   deleted: [attachment: Attachment]
   close: []
@@ -30,6 +29,8 @@ const emit = defineEmits<{
 const saved = useLocalStorage('tandem-side-tab', 'headings')
 // Its old name.
 if (saved.value === 'outline') saved.value = 'headings'
+// History is a view of the note now (next to Authorship), not a tab.
+if (saved.value === 'history') saved.value = 'headings'
 const { settings } = useSettings()
 // On a day's note the calendar shows, without changing the tab other notes open on; a tab
 // picked here is remembered as usual. (The panel is shown again for each note.)
@@ -145,7 +146,6 @@ const tabs = computed(() => [
   ...(settings.value.bookmarks
     ? [{ label: 'Bookmarks', value: 'bookmarks', icon: 'i-lucide-bookmark' }]
     : []),
-  { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
   { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
 ])
@@ -225,13 +225,6 @@ const tabs = computed(() => [
       <SideSubtree v-else-if="tab === 'bookmarks'" kind="bookmarks" :items="subtreeShown">
         <SideBookmarks :content="content" />
       </SideSubtree>
-      <SideHistory
-        v-else-if="tab === 'history'"
-        :note-id="noteId"
-        :note-path="notePath"
-        :content="content"
-        @restored="(c) => emit('restored', c)"
-      />
       <SideSubtree v-else-if="tab === 'databases'" kind="databases" :items="subtreeShown">
         <SideDatabases
           :note-id="noteId"

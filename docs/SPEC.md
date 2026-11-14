@@ -240,8 +240,10 @@ inside OneDrive so that it is backed up and synced.
 - A snapshot of a note is kept at the end of each editing session: after 30 seconds without
   saves, or as soon as another author writes. Snapshots are Markdown files in
   `<data>/.tandem/history/<note id>/`; their metadata is in SQLite.
-- The history panel lists versions (date, author), shows a diff against the current version
-  and restores one (restoring is itself a new version). Old versions are thinned out: all
+- The **History** view (a button of the note's bar, next to Authorship) lists versions by day
+  (time, author, size); the one picked shows beside them, rendered, with "Compare with
+  current" (a diff against the current version) and "Restore this version" (restoring is
+  itself a new version, and the editor shows it). Old versions are thinned out: all
   are kept for 7 days, then one per day for 3 months, then one per week.
 - **Line authorship**: every save records its author: the owner (from the UI), an agent
   (named by the CLI `--author` or `TANDEM_AUTHOR`, or by the MCP connection), or
@@ -519,9 +521,9 @@ inside OneDrive so that it is backed up and synced.
 ## Interface
 
 - Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Unsorted when bookmarks are on; TODOs and Trash when on, Settings and Docs at the
-  bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
+  bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes (Edit, Markdown, Authorship, History), side panel
   and ⋯), editor,
-  collapsible right panel (Headings, Links, Bookmarks when on, History, Files, Databases: icon tabs
+  collapsible right panel (Headings, Links, Bookmarks when on, Files, Databases: icon tabs
   named by tooltips; below 1024px there's no room beside the note: the note stays, the panel
   hides, and its button or ⌘\ opens it over the note, closed by Esc, a click on the note or
   its ×; back above 1024px it is as it was left there), resizable from its left

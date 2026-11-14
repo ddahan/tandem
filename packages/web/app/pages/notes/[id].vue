@@ -73,7 +73,7 @@ useHead({ title: () => dayTitle.value || node.value?.title || 'Untitled' })
 
 // --- Content and modes ---------------------------------------------------------------------
 
-type Mode = 'edit' | 'source' | 'authorship'
+type Mode = 'edit' | 'source' | 'authorship' | 'history'
 const mode = ref<Mode>('edit')
 /** Latest content in file form, whatever the mode. */
 const content = ref(doc.note.value?.content ?? '')
@@ -222,6 +222,12 @@ function setMode(next: Mode) {
     }
   }
   mode.value = next
+}
+
+/** A version restored from the History view: the editor shows it. */
+function onRestored(restored: string) {
+  resetEditor(restored)
+  mode.value = 'edit'
 }
 
 function appendMarkdown(markdown: string) {
@@ -470,6 +476,7 @@ const modes = [
     kbds: ['meta', 'shift', 'e'],
   },
   { value: 'authorship', icon: 'i-lucide-users', label: 'Authorship', kbds: undefined },
+  { value: 'history', icon: 'i-lucide-history', label: 'History', kbds: undefined },
 ] as const
 
 // The Markdown view's copy button (shown on hover), as on code blocks.
@@ -847,6 +854,14 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           </div>
         </div>
 
+        <NoteHistory
+          v-else-if="mode === 'history'"
+          :note-id="id"
+          :note-path="notePath"
+          :content="content"
+          @restored="onRestored"
+        />
+
         <AuthorshipView
           v-else
           :key="authorshipKey"
@@ -889,7 +904,6 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     :content="content"
     @go-to-heading="(pos) => editor?.scrollTo(pos)"
     @go-to-database="goToDatabase"
-    @restored="(restored) => resetEditor(restored)"
     @attach="appendMarkdown"
     @deleted="fileDeleted"
     @close="closePanel"
