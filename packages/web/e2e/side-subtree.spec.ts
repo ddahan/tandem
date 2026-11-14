@@ -48,6 +48,12 @@ test('a page’s side panel shows its sub-pages’ files, as a tree or a flat li
     /z-big\.txt/,
   ])
 
+  // A tab with nothing, in the page or under it: no choice to make, its empty state alone.
+  await page.getByRole('tab', { name: 'Databases' }).click()
+  await expect(panel.getByText('No databases')).toBeVisible()
+  await expect(panel.getByTestId('side-display')).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Files' }).click()
+
   // A click on a sub-page's title opens it (back to Tree); a page without sub-pages has no choice.
   await panel.getByRole('radio', { name: 'Tree' }).click()
   await group.getByRole('button', { name: 'Subtree child' }).click()

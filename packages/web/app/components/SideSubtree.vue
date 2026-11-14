@@ -3,7 +3,8 @@
 // too, shown two ways (remembered). Tree: this page's tab as usual (the slot), then each
 // sub-page holding any, under its title, indented as in the pages' tree. Flat: everything in
 // one list, each item naming its page, sorted by name, page, or what the kind has (size and
-// type for files, site for bookmarks, rows for databases). Without sub-pages (`items` null),
+// type for files, site for bookmarks, rows for databases). Without sub-pages (`items` null), or
+// with nothing of this kind in the page or under it (no choice to make),
 // only the slot. The items come from `GET /notes/:id/subtree`, read by NoteSidePanel only while
 // such a tab shows.
 import { formatSize, siteOf, type SubtreeItems, type SubtreePage } from '@tandem/shared'
@@ -145,7 +146,7 @@ const displays = [
 </script>
 
 <template>
-  <slot v-if="!items" />
+  <slot v-if="!items || !all.length" />
   <div v-else class="flex flex-col gap-3" data-testid="side-subtree">
     <div class="flex items-center gap-2">
       <div role="radiogroup" aria-label="Display" class="flex gap-0.5" data-testid="side-display">
@@ -210,10 +211,7 @@ const displays = [
     </template>
 
     <template v-else>
-      <p v-if="!flat.length" class="px-2 text-sm text-dimmed">
-        Nothing here, in this page or under it.
-      </p>
-      <ul v-else class="space-y-0.5" data-testid="side-flat">
+      <ul class="space-y-0.5" data-testid="side-flat">
         <li v-for="item in flat" :key="item.key">
           <SideSubtreeRow :item="item" show-page />
         </li>

@@ -540,7 +540,8 @@ inside OneDrive so that it is backed up and synced.
   its website), a file, a website. Links lists the pages they link to ("Linked from" stays the
   page's own, in Tree). Read only while the panel shows one of those tabs, and again when
   pages change; at most 500 pages under it (it says so beyond). A page without sub-pages shows
-  its tab alone, without the switch.
+  its tab alone, without the switch, and so does a tab with nothing in the page nor under it
+  (its empty state).
 - **Tabs**, as VS Code's editors, in the page's bar, left of its actions (a note's side panel
   has its own header on the same row). Notes open in tabs, and so do Settings, Docs (one tab,
   which remembers its section), TODOs and the trash; Home has none, and shows its title when no
