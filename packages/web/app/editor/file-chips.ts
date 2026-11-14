@@ -68,6 +68,18 @@ export function removeFiles(
   return tr
 }
 
+/**
+ * A file deleted for good from outside the text (the Files panel): its images and chips leave
+ * the document by a change out of the undo history (the steps before it stay, mapped through
+ * it: typing is still undone), and the file is marked deleted, so that nothing (undo, redo, a
+ * paste) brings them back (DeletedFiles). A file the note doesn't link to is only marked.
+ */
+export function fileDeletedChange(state: EditorState, name: string, prefix: string): Transaction {
+  const tr = removeFiles(state, new Set([name]), prefix) ?? state.tr
+  const meta: DeletedFilesMeta = { deleted: [name] }
+  return tr.setMeta(deletedFilesKey, meta).setMeta('addToHistory', false)
+}
+
 /** Content replaced from outside (setContent), or a change another extension appended to it. */
 export function isFromOutside(tr: Transaction): boolean {
   const root = tr.getMeta('appendedTransaction') as Transaction | undefined
@@ -82,8 +94,15 @@ export function removesContent(tr: Transaction): boolean {
   })
 }
 
-/** The link, drawn as a chip (class and the file type's icon) when it points to an attachment. */
+/**
+ * The link, drawn as a chip (class and the file type's icon) when it points to an attachment.
+ * Not "exitable": TipTap's exit typed a space when → was pressed at the end of a line ending
+ * with a link, instead of going on to the next line (the first press seemed stuck). A space
+ * typed after a link already ends it (the link extension's `unlinkTrailingWhitespace`).
+ */
 export const FileLink = Link.extend({
+  exitable: false,
+
   renderHTML(props) {
     // The parent's rendering keeps its checks (unsafe URLs are dropped).
     const [tag, attributes, hole] = this.parent!(props) as [string, Record<string, unknown>, 0]

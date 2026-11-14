@@ -5,7 +5,15 @@ import { Markdown } from '@tiptap/markdown'
 import { StarterKit } from '@tiptap/starter-kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createExtensions, starterKitOptions } from '../app/editor/extensions'
-import { extraSelections, findOccurrences } from '../app/editor/occurrences'
+import {
+  extraSelections,
+  findOccurrences,
+  mergeRanges,
+  motionOf,
+  moveInText,
+} from '../app/editor/occurrences'
+import { isMac } from '../app/utils/platform-keys'
+import { normalizeMarkdown } from '../app/utils/markdown-paths'
 
 let editor: Editor | null = null
 afterEach(() => editor?.destroy())
@@ -26,7 +34,8 @@ function cursorAt(e: Editor, text: string, offset = 0) {
   e.commands.setTextSelection(range.from + offset)
 }
 
-const markdown = (e: Editor) => e.getMarkdown().trim()
+/** The note's Markdown as saved (normalizeMarkdown: an empty line the editor keeps at the end goes). */
+const markdown = (e: Editor) => normalizeMarkdown(e.getMarkdown()).trim()
 
 /** Types like a user: through the editor's text input handlers. */
 function type(e: Editor, text: string) {
@@ -36,9 +45,15 @@ function type(e: Editor, text: string) {
   if (!handled) e.view.dispatch(insert())
 }
 
-function press(e: Editor, key: string) {
-  const event = new KeyboardEvent('keydown', { key })
+function press(e: Editor, key: string, modifiers: KeyboardEventInit = {}) {
+  const event = new KeyboardEvent('keydown', { key, ...modifiers })
   e.view.someProp('handleKeyDown', (f) => f(e.view, event))
+}
+
+/** The cursor at the end of the paragraph holding `text`. */
+function endOf(e: Editor, text: string) {
+  cursorAt(e, text)
+  e.commands.setTextSelection(e.state.selection.$from.end())
 }
 
 describe('block moves (⌥↑ / ⌥↓)', () => {
@@ -161,6 +176,157 @@ describe('occurrences (⌘D, ⌘⇧L)', () => {
     expect(extraSelections(e.state)).toHaveLength(0)
     type(e, 'x')
     expect(markdown(e)).toBe('xa b a')
+  })
+})
+
+/** The text of each selection, main first, then the extra ones. */
+const selected = (e: Editor) =>
+  [{ from: e.state.selection.from, to: e.state.selection.to }, ...extraSelections(e.state)].map(
+    (r) => e.state.doc.textBetween(r.from, r.to),
+  )
+const keydown = (key: string, init: KeyboardEventInit = {}) =>
+  new KeyboardEvent('keydown', { key, ...init })
+
+describe('several cursors and the arrows', () => {
+  const word = isMac() ? { altKey: true } : { ctrlKey: true }
+
+  it('moves every cursor: a selection collapses to its end, then character by character', () => {
+    const e = setup('cat one\n\ncat two')
+    cursorAt(e, 'cat')
+    e.commands.selectAllOccurrences()
+    press(e, 'ArrowRight')
+    expect(extraSelections(e.state)).toHaveLength(1)
+    type(e, 's')
+    expect(markdown(e)).toBe('cats one\n\ncats two')
+    press(e, 'ArrowLeft')
+    press(e, 'ArrowLeft')
+    type(e, '-')
+    expect(markdown(e)).toBe('ca-ts one\n\nca-ts two')
+  })
+
+  it('selects with ⇧, from where each cursor is', () => {
+    const e = setup('cat one\n\ncat two')
+    cursorAt(e, 'cat')
+    e.commands.selectAllOccurrences()
+    press(e, 'ArrowRight')
+    press(e, 'ArrowRight', { shiftKey: true })
+    press(e, 'ArrowRight', { shiftKey: true })
+    press(e, 'ArrowRight', { shiftKey: true })
+    press(e, 'ArrowRight', { shiftKey: true })
+    expect(selected(e)).toEqual([' one', ' two'])
+    press(e, 'ArrowLeft', { shiftKey: true })
+    expect(selected(e)).toEqual([' on', ' tw'])
+    type(e, '!')
+    expect(markdown(e)).toBe('cat!e\n\ncat!o')
+  })
+
+  it('goes by word, as with one cursor', () => {
+    const e = setup('cat one more\n\ncat two more')
+    cursorAt(e, 'cat')
+    e.commands.selectAllOccurrences()
+    press(e, 'ArrowRight')
+    press(e, 'ArrowRight', word)
+    type(e, '!')
+    expect(markdown(e)).toBe('cat one! more\n\ncat two! more')
+    press(e, 'ArrowLeft', { ...word, shiftKey: true })
+    expect(selected(e)).toEqual(['one!', 'two!'])
+  })
+
+  it('goes on to the next line from a line’s end, and cursors that meet become one', () => {
+    const e = setup('ab\n\ncd')
+    // `ab` is 1…3, `cd` 5…7.
+    expect(moveInText(e.state.doc, 3, 1, 'char')).toBe(5)
+    expect(moveInText(e.state.doc, 5, -1, 'char')).toBe(3)
+    expect(
+      mergeRanges([
+        { from: 3, to: 3 },
+        { from: 3, to: 3 },
+        { from: 5, to: 5 },
+      ]),
+    ).toEqual([
+      { from: 3, to: 3 },
+      { from: 5, to: 5 },
+    ])
+    expect(
+      mergeRanges([
+        { from: 1, to: 4 },
+        { from: 3, to: 6 },
+      ]),
+    ).toEqual([{ from: 1, to: 6 }])
+  })
+
+  it('steps over an emoji whole', () => {
+    const e = setup('a😀b')
+    expect(moveInText(e.state.doc, 2, 1, 'char')).toBe(4)
+    expect(moveInText(e.state.doc, 4, -1, 'char')).toBe(2)
+  })
+
+  it('reads the keys as VS Code does, on a Mac and elsewhere', () => {
+    expect(motionOf(keydown('ArrowLeft'), true)).toEqual({ unit: 'char', dir: -1, extend: false })
+    expect(motionOf(keydown('ArrowRight', { altKey: true, shiftKey: true }), true)).toEqual({
+      unit: 'word',
+      dir: 1,
+      extend: true,
+    })
+    expect(motionOf(keydown('ArrowRight', { ctrlKey: true }), false)?.unit).toBe('word')
+    expect(motionOf(keydown('ArrowRight', { metaKey: true }), true)?.unit).toBe('lineEdge')
+    expect(motionOf(keydown('End'), false)).toEqual({ unit: 'lineEdge', dir: 1, extend: false })
+    expect(motionOf(keydown('ArrowDown'), true)).toEqual({ unit: 'line', dir: 1, extend: false })
+    // ⌥↑ moves the block, ⌘↑ goes to the note's start: not for every cursor.
+    expect(motionOf(keydown('ArrowUp', { altKey: true }), true)).toBeNull()
+    expect(motionOf(keydown('ArrowUp', { metaKey: true }), true)).toBeNull()
+    expect(motionOf(keydown('a'), true)).toBeNull()
+  })
+
+  it('goes back to one cursor with Escape, after moving', () => {
+    const e = setup('cat one\n\ncat two')
+    cursorAt(e, 'cat')
+    e.commands.selectAllOccurrences()
+    press(e, 'ArrowRight')
+    press(e, 'Escape')
+    expect(extraSelections(e.state)).toHaveLength(0)
+    type(e, 's')
+    expect(markdown(e)).toBe('cats one\n\ncat two')
+  })
+})
+
+describe('inline code and links end where they end', () => {
+  it('Enter after inline code starts a plain line, in a paragraph and in a to-do', () => {
+    const e = setup('Some `code`')
+    endOf(e, 'Some')
+    press(e, 'Enter')
+    type(e, 'plain')
+    expect(markdown(e)).toBe('Some `code`\n\nplain')
+
+    const todo = setup('- [ ] Some `code`')
+    endOf(todo, 'Some')
+    press(todo, 'Enter')
+    type(todo, 'plain')
+    expect(markdown(todo)).toBe('- [ ] Some `code`\n- [ ] plain')
+  })
+
+  it('→ at the end of a line ending with code or a link adds nothing (it moves on)', () => {
+    for (const note of ['Some `code`\n\nNext', 'See https://example.com\n\nNext']) {
+      const e = setup(note)
+      endOf(e, 'S')
+      const before = e.state.doc
+      press(e, 'ArrowRight')
+      expect(e.state.doc).toBe(before)
+    }
+  })
+
+  it('a backtick at the end of inline code leaves it; inside it, it is typed', () => {
+    const e = setup('Some `code`')
+    endOf(e, 'Some')
+    type(e, 'd')
+    type(e, '`')
+    type(e, ' then')
+    expect(markdown(e)).toBe('Some `coded` then')
+
+    const inside = setup('Some `code` here')
+    cursorAt(inside, 'code', 2)
+    type(inside, '`')
+    expect(inside.state.doc.textContent).toBe('Some co`de here')
   })
 })
 

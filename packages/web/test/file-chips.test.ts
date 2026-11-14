@@ -7,7 +7,13 @@ import { Markdown } from '@tiptap/markdown'
 import { StarterKit } from '@tiptap/starter-kit'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createExtensions, starterKitOptions } from '../app/editor/extensions'
-import { attachmentNames, deletedFilesKey, type DeletedFilesMeta } from '../app/editor/file-chips'
+import {
+  attachmentNames,
+  deletedFilesKey,
+  fileDeletedChange,
+  type DeletedFilesMeta,
+} from '../app/editor/file-chips'
+import { normalizeMarkdown } from '../app/utils/markdown-paths'
 
 const PREFIX = '/files/A/My%20note.assets/'
 
@@ -189,5 +195,83 @@ describe('a file deleted for good', () => {
     removeLinksTo(e, 'pic.png')
     e.commands.undo()
     expect(linked(e)).toEqual(['other.png', 'pic.png', 'report.pdf'])
+  })
+})
+
+const deleteFromPanel = (e: Editor, name: string) =>
+  e.view.dispatch(fileDeletedChange(e.state, name, PREFIX))
+/** What the app saves. */
+const saved = (e: Editor) => normalizeMarkdown(e.getMarkdown())
+
+describe('a file deleted from the Files panel', () => {
+  it('leaves the note at once, its chips’ text too, the other words staying', () => {
+    const e = setup(NOTE)
+    deleteFromPanel(e, 'pic.png')
+    deleteFromPanel(e, 'report.pdf')
+    expect(linked(e)).toEqual(['other.png'])
+    expect(text(e)).toContain('A file:')
+    expect(text(e)).not.toContain('report.pdf')
+  })
+
+  it('makes no undo step: undo goes on with the typing before it, never with the image', () => {
+    const e = setup(NOTE)
+    newStep(e)
+    e.commands.insertContentAt('Intro.'.length + 1, ' Typed.')
+    newStep(e)
+    deleteFromPanel(e, 'pic.png')
+    expect(linked(e)).toEqual(['other.png', 'report.pdf'])
+    e.commands.undo()
+    expect(text(e)).not.toContain('Typed.')
+    expect(linked(e)).toEqual(['other.png', 'report.pdf'])
+    e.commands.redo()
+    expect(text(e)).toContain('Intro. Typed.')
+    expect(linked(e)).toEqual(['other.png', 'report.pdf'])
+    // As many undos and redos as there are: never the image.
+    for (const step of ['undo', 'undo', 'redo', 'redo', 'undo'] as const) {
+      e.commands[step]()
+      expect(linked(e)).not.toContain('pic.png')
+    }
+  })
+
+  it('doesn’t come back with the redo of the step that added it', () => {
+    const e = setup('Intro.')
+    newStep(e)
+    e.commands.insertContentAt(e.state.doc.content.size, {
+      type: 'image',
+      attrs: { src: `${PREFIX}pic.png`, alt: 'pic.png' },
+    })
+    newStep(e)
+    deleteFromPanel(e, 'pic.png')
+    expect(linked(e)).toEqual([])
+    e.commands.undo()
+    e.commands.redo()
+    expect(linked(e)).toEqual([])
+    expect(text(e)).toBe('Intro.')
+  })
+
+  it('leaves no empty line where the image was', () => {
+    const e = setup(NOTE)
+    deleteFromPanel(e, 'pic.png')
+    expect(saved(e)).toBe(
+      `Intro.\n\nA file: [report.pdf](${PREFIX}report.pdf) end\n\n![other.png](${PREFIX}other.png)\n`,
+    )
+  })
+
+  it('only marks a file the note doesn’t link to: a link to it can’t be added after', () => {
+    const e = setup(NOTE)
+    const before = saved(e)
+    deleteFromPanel(e, 'kept.txt')
+    expect(saved(e)).toBe(before)
+    e.commands.insertContentAt(1, {
+      type: 'paragraph',
+      content: [
+        {
+          type: 'text',
+          text: 'kept.txt',
+          marks: [{ type: 'link', attrs: { href: `${PREFIX}kept.txt` } }],
+        },
+      ],
+    })
+    expect(linked(e)).not.toContain('kept.txt')
   })
 })

@@ -700,6 +700,13 @@ html.dark[data-tone='cool'] {
   position: relative;
   max-width: 100%;
 }
+/* Always in proportion: TipTap's resizing gives the image a height in pixels too, which
+   stretched it once the column, narrower than its width, capped that width. Its width alone
+   counts; the height follows. */
+.note-editor [data-resize-container] img {
+  max-width: 100%;
+  height: auto !important;
+}
 .note-editor [data-resize-handle] {
   position: absolute;
   width: 0.75rem;

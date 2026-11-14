@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // Docs › Shortcuts: every keyboard shortcut and typing rule (from utils/shortcuts.ts), in this
 // computer's keys: macOS's on a Mac, Ctrl and Alt elsewhere (keysText for the text), and only
-// those that work here: in a browser tab, the browser keeps some (keysHere).
+// those that work here: in a browser tab, and in Safari's Add to Dock app, the browser keeps
+// some (keysHere, useAppWindow).
 import { isMac, keysText } from '~/utils/platform-keys'
 import { keysHere, SHORTCUT_GROUPS, type Shortcut, type ShortcutGroup } from '~/utils/shortcuts'
 
 const mac = isMac()
-const appWindow = useAppWindow()
+const windowKind = useWindowKind()
+const appWindow = computed(() => windowKind.value === 'app')
+/** The keys only the app installed from Chrome gets. */
+const APP_KEYS = keysText('⌘N, ⌘T (today’s note), ⌘W, ⌘⇧T and ⌥⌘← ⌥⌘→ (tabs)')
 
 /** The shortcut's keys that work here. */
 const keysOf = (shortcut: Shortcut) => keysHere(shortcut, appWindow.value, mac)
@@ -26,12 +30,24 @@ useHead({ title: 'Keyboard shortcuts' })
       </template>
       Open this page from anywhere with <UKbd value="meta" /> <UKbd value="/" />.
     </p>
-    <p v-if="!appWindow" class="text-sm text-muted" data-testid="shortcuts-browser">
+    <p v-if="windowKind === 'tab'" class="text-sm text-muted" data-testid="shortcuts-browser">
       In a browser tab, the browser keeps some keys for itself: the installed app (<ULink
         to="/docs/install"
         class="text-primary"
         >Docs › Install</ULink
-      >) also has {{ keysText('⌘N, ⌘T (today’s note), ⌘W, ⌘⇧T and ⌥⌘← ⌥⌘→ (tabs)') }}.
+      >) also has {{ APP_KEYS }}.
+    </p>
+    <p
+      v-else-if="windowKind === 'safariApp'"
+      class="text-sm text-muted"
+      data-testid="shortcuts-browser"
+    >
+      Safari’s app keeps some keys for its windows ({{ keysText('⌘N, ⌘W, ⌥⌘← ⌥⌘→') }}): these are
+      the keys that work in a browser tab. The app installed from Chrome (<ULink
+        to="/docs/install"
+        class="text-primary"
+        >Docs › Install</ULink
+      >) also has {{ APP_KEYS }}.
     </p>
 
     <section

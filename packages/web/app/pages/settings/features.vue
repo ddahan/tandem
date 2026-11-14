@@ -1,5 +1,7 @@
 <script setup lang="ts">
 // Settings › Features: optional parts of the app (types.ts says what "off" keeps).
+import { keysText } from '~/utils/platform-keys'
+
 const { settings } = useSettings()
 const set = useSettingsSave()
 useHead({ title: 'Features' })
@@ -55,7 +57,7 @@ const features: {
       <USeparator v-if="index" />
       <SettingsSection
         :title="feature.label"
-        :description="feature.description"
+        :description="keysText(feature.description)"
         :for="`feature-${feature.key}`"
       >
         <template #action>

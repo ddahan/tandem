@@ -324,7 +324,12 @@ sent as an attachment.
 - Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree`, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
-  history, files). The editor reports the heading being read (`currentHeading`: measured on
+  history, files): beside the note from lg up (`panelOpen`, remembered), over it below
+  (`panelOver`, not remembered: `NoteSidePanel`'s `over`, fixed on the right, closed by a
+  click outside, VueUse's `onClickOutside`, and Esc: outside the editor a plain key listener;
+  in it, `NoteEditor`'s `escape`, since ProseMirror prevents every Esc's default: the
+  `escapeOut` plugin, last of the editor's keys, reports one that no extra cursors or open
+  menu (an active suggestion plugin) used). The editor reports the heading being read (`currentHeading`: measured on
   scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
 - Several rows selected in either tree: `utils/tree-selection.ts` (pure: ⌘/⇧-clicks, what an
   action acts on, the rows shown); the trees act on them with `useTree.moveMany` /
@@ -359,9 +364,24 @@ sent as an attachment.
   saved under an older name is read as its pair). Each has Markdown parse/render rules,
   unit-tested for round-trips (`test/markdown.test.ts`). Node views (code blocks with language
   picker, copy and Mermaid preview; callouts with a type picker) are Vue components.
+- Images (`editor/image.ts`): TipTap's resizable image node view sets a height in pixels as
+  well as the width; CSS makes the height `auto`, so the width alone counts (a narrower column
+  can't stretch it). The node view sets its width only when created and while dragging: its
+  `update` is wrapped to follow the node's width (the one saved, after a resize or a change
+  from outside). A double click calls the `onOpenImage` option: `NoteEditor` shows it in
+  `ImageViewer.vue` (a full-screen UModal), which the Files panel uses too.
+- Inline code (`editor/inline-code.ts`): the mark is UEditor's own (TipTap's, `excludes:
+  'code'`), whose options can't be set from here, so `InlineCodeEnds` adjusts it: it takes
+  `code` out of the extension manager's `splittableMarks` (Enter doesn't carry it), moves past
+  the end of a line on → before the mark's `exitable` handler (which typed a space), and leaves
+  it on a backtick typed at its end. `FileLink` is not exitable either.
+- Empty lines (`editor/paragraph.ts`): `NoteParagraph` replaces the starter kit's paragraph and
+  writes every empty paragraph at the note's top level as `&nbsp;` (TipTap writes the first of
+  a row as a blank line, which `normalizeMarkdown` collapsed); TipTap reads `&nbsp;` back as an
+  empty paragraph. `normalizeMarkdown` drops those ending the note.
 - Attachment paths: notes use paths relative to themselves; the editor gets `/files/…` URLs
   (`utils/markdown-paths.ts`), converted back on save, and `normalizeMarkdown` tidies blank
-  lines the serializer adds.
+  lines the serializer adds (and empty lines ending the note).
 - Lists: `editor/list-keys.ts` takes Tab, Shift+Tab, Enter in an empty item, Backspace and
   Delete before TipTap's list keys, which look for the nearest item of their own type (in a
   bullet nested in a to-do, Shift+Tab lifted the to-do) and lose the kind across levels:
@@ -426,7 +446,10 @@ sent as an attachment.
   insert blocks, on `NodeRange`s so list items move within their list) and
   `editor/find.ts` with `FindBar.vue` (⌘F: query, matches and current match in plugin state,
   decorations, replace), `editor/occurrences.ts` (⌘D: extra selections kept in plugin state, mapped through changes,
-  drawn as decorations; typing, Backspace and Delete apply to all of them). Docs › Shortcuts
+  drawn as decorations; typing, Backspace and Delete apply to all of them; the arrows move
+  them all, `motionOf` reading the keys as VS Code, characters and words on the text, lines
+  and line edges measured on the view: `posAtCoords` half a line at a time, skipping the
+  space between blocks; a cursor out of sight goes by paragraphs). Docs › Shortcuts
   (`pages/docs/shortcuts.vue`) reads `utils/shortcuts.ts`, the list of every shortcut.
 - Tabs (`composables/useTabs.ts`, `components/TabBar.vue`): the route is the active tab. The
   layout calls `show(route)` on each navigation, which opens a tab for it or updates the one
@@ -449,7 +472,9 @@ sent as an attachment.
   app's window (browsers reserve no keys there); ⌘W is a plain keydown listener, not
   `defineShortcuts` (which always prevents the default): with an active tab it prevents the
   default and closes it, with none it lets the window close and adds a `beforeunload` handler
-  for that second only, so the browser asks first. ⌘B uses `defineShortcuts`' default (not in a
+  for that second only, so the browser asks first. `defineShortcuts` compares a shortcut's key
+  with the key typed (`event.key`): name it as typed (`'meta_\\'`, not `meta_backslash`, which
+  never matched). ⌘B uses `defineShortcuts`' default (not in a
   text field or the editor, where it is Bold); ⌥⌘B works everywhere. Text that names shortcuts
   in Docs goes through `utils/platform-keys.ts` (`keysText`: ⌥⌘W on a Mac, Ctrl+Alt+W
   elsewhere); key chips (UKbd) already adapt.
@@ -475,8 +500,10 @@ sent as an attachment.
   the head (`nuxt.config.ts`) keeps Chrome's `beforeinstallprompt`, which can fire before the
   app starts; the plugin `install-prompt.client.ts` takes it over. Safari is detected from the
   user agent (it has no install API); `display-mode: standalone` means installed.
-- Keys a browser keeps (⌘N, ⌘T, ⌘W, ⌘⇧T, ⌥⌘← ⌥⌘→): `useAppWindow` says whether this is the
-  installed app's window; `utils/shortcuts.ts` marks those keys `appKeys`, and `keysHere`
+- Keys a browser keeps (⌘N, ⌘T, ⌘W, ⌘⇧T, ⌥⌘← ⌥⌘→): `useWindowKind` says where Tandem runs (a
+  browser tab, the app installed from Chrome, or Safari's Add to Dock app: standalone with
+  Safari's user agent, which keeps some of them), and `useAppWindow` whether those keys reach
+  it (the installed app only); `utils/shortcuts.ts` marks those keys `appKeys`, and `keysHere`
   gives the keys that work here (deduplicated: outside macOS ⌃⌥ and ⌥⌘ are both Ctrl+Alt), for
   Docs › Shortcuts and the calendar. Menus and tooltips pick their key the same way.
 - Files left behind (`NoteEditor`'s `followRemovedFiles`, `attachmentNames` in
@@ -484,8 +511,11 @@ sent as an attachment.
   `setContent`), the note's own attachment names linked before and after are compared; for
   those gone, a confirmation, then `DELETE /notes/:id/attachments/:name` (`vault.deleteAttachment`:
   the file, and the `.assets/` folder once empty; a `note` event with the unchanged hash
-  refreshes the Files panel). The Files panel's own delete takes the links out of the note's
-  Markdown (`removeAttachmentLinks`) before deleting the file.
+  refreshes the Files panel). The Files panel's own delete deletes the file first, then the
+  note page takes its links out: in the editor by `fileDeletedChange` (one change, out of the
+  undo history, the file marked deleted: the editor and its history stay, where resetting it
+  lost every undo step), elsewhere (Markdown view, a read-only editor) from the Markdown
+  (`removeAttachmentLinks`).
 - Deleted files stay deleted (`DeletedFiles` in `editor/file-chips.ts`): the editor's state
   keeps the names deleted while it is open (the editor marks them after each delete, the Files
   panel through `fileDeleted`; an upload under the same name, or content set from outside that

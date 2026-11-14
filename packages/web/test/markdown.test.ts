@@ -231,12 +231,73 @@ describe('attachment paths', () => {
   })
 })
 
+/** A note of paragraphs (null: an empty line), as the editor holds it. */
+function editorOf(blocks: (string | null)[]) {
+  editor = new Editor({
+    extensions: [
+      StarterKit.configure(starterKitOptions),
+      Markdown.configure(markdownOptions()),
+      ...createExtensions(),
+    ],
+    content: {
+      type: 'doc',
+      content: blocks.map((text) =>
+        text === null
+          ? { type: 'paragraph' }
+          : { type: 'paragraph', content: [{ type: 'text', text }] },
+      ),
+    },
+  })
+  return editor
+}
+/** What the app saves. */
+const saved = (e: Editor) => normalizeMarkdown(e.getMarkdown())
+/** The paragraphs the editor shows for some Markdown (null: an empty line). */
+const shown = (markdown: string) => {
+  const blocks: (string | null)[] = []
+  createEditor(markdown).state.doc.forEach((node) => blocks.push(node.textContent || null))
+  return blocks
+}
+
+describe('empty lines', () => {
+  it.each([0, 1, 2, 3])('keeps %i empty line(s) between paragraphs, save after save', (count) => {
+    const blocks = ['A', ...Array<null>(count).fill(null), 'B']
+    const markdown = saved(editorOf(blocks))
+    expect(markdown).toBe(`${['A', ...Array<string>(count).fill('&nbsp;'), 'B'].join('\n\n')}\n`)
+    expect(shown(markdown)).toEqual(blocks)
+    expect(saved(createEditor(markdown))).toBe(markdown)
+  })
+
+  it('keeps an empty first line, and drops those ending the note', () => {
+    const markdown = saved(editorOf([null, 'A', null, null]))
+    expect(markdown).toBe('&nbsp;\n\nA\n')
+    expect(shown(markdown)).toEqual([null, 'A'])
+    expect(saved(editorOf([null]))).toBe('')
+    expect(saved(editorOf([null, null]))).toBe('')
+  })
+
+  it('keeps empty lines around other blocks, and none after a final list', () => {
+    const markdown = '# Title\n\n&nbsp;\n\n- one\n- two'
+    const e = createEditor(markdown)
+    // The editor keeps an empty line after a final list (to type below it): not saved.
+    expect(saved(e)).toBe(`${markdown}\n`)
+  })
+
+  it('keeps blank lines written elsewhere as the editor shows them: one empty line', () => {
+    expect(shown('A\n\n\n\nB')).toEqual(['A', null, 'B'])
+    expect(saved(createEditor('A\n\n\n\nB'))).toBe('A\n\n&nbsp;\n\nB\n')
+  })
+})
+
 describe('normalizing', () => {
   it('removes extra blank lines outside code, and ends with one newline', () => {
     expect(normalizeMarkdown('\n\nA\n  \n\n\nB\n\n```\nx\n\n\n\ny\n```\n\n\n')).toBe(
       'A\n\nB\n\n```\nx\n\n\n\ny\n```\n',
     )
     expect(normalizeMarkdown('\n\n')).toBe('')
+    // Empty lines (`&nbsp;` paragraphs) stay between blocks, not at the end.
+    expect(normalizeMarkdown('A\n\n&nbsp;\n\nB\n\n&nbsp;\n\n&nbsp;\n')).toBe('A\n\n&nbsp;\n\nB\n')
+    expect(normalizeMarkdown('&nbsp;\n\n&nbsp;')).toBe('')
     // Two trailing spaces are a hard line break.
     expect(normalizeMarkdown('a  \nb')).toBe('a  \nb\n')
   })

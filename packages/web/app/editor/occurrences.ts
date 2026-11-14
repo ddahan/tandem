@@ -1,6 +1,8 @@
 // VS Code's ⌘D: the first press selects the word at the cursor, each next press adds the next
 // occurrence of the selection; ⌘⇧L adds all of them. Typing, Backspace and Delete then apply to
-// every occurrence. Esc, a click or moving the cursor goes back to a single selection.
+// every occurrence, and the arrows move every cursor (⇧ selects, ⌥ by word, ⌘ to the line's
+// start or end; Ctrl for words outside macOS, Home and End too). Esc or a click goes back to a
+// single selection.
 //
 // ProseMirror has one selection: the extra ones are kept here (mapped through every change) and
 // drawn as decorations. Keys are listed on the Shortcuts page (utils/shortcuts.ts).
@@ -9,11 +11,13 @@ import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import {
   Plugin,
   PluginKey,
+  Selection,
   TextSelection,
   type EditorState,
   type Transaction,
 } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
+import { isMac } from '../utils/platform-keys'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -27,6 +31,8 @@ declare module '@tiptap/core' {
 export interface Range {
   from: number
   to: number
+  /** Selected from the end (⇧←): its moving end is `from`. */
+  backward?: boolean
 }
 
 export const occurrencesKey = new PluginKey<Range[]>('occurrences')
@@ -116,6 +122,201 @@ function editAll(view: EditorView, edit: (tr: Transaction, range: Range) => Rang
   return true
 }
 
+// --- Moving every cursor (arrows) ------------------------------------------------------------
+
+/** How far an arrow moves: a character, a word, to the line's edge, or a line up or down. */
+export type Unit = 'char' | 'word' | 'lineEdge' | 'line'
+
+export interface Motion {
+  unit: Unit
+  /** -1: left or up; 1: right or down. */
+  dir: -1 | 1
+  /** ⇧: the selection grows from its fixed end. */
+  extend: boolean
+}
+
+/** The motion of a key, as VS Code moves its cursors; null for keys that aren't one. */
+export function motionOf(event: KeyboardEvent, mac = isMac()): Motion | null {
+  const { key, shiftKey: extend, altKey, ctrlKey, metaKey } = event
+  const horizontal = key === 'ArrowLeft' || key === 'ArrowRight'
+  const dir = key === 'ArrowLeft' || key === 'ArrowUp' || key === 'Home' ? -1 : 1
+  if (key === 'Home' || key === 'End') {
+    return altKey || ctrlKey || metaKey ? null : { unit: 'lineEdge', dir, extend }
+  }
+  if (horizontal) {
+    const word = mac ? altKey && !ctrlKey && !metaKey : ctrlKey && !altKey && !metaKey
+    const edge = mac && metaKey && !altKey && !ctrlKey
+    if (word) return { unit: 'word', dir, extend }
+    if (edge) return { unit: 'lineEdge', dir, extend }
+    return altKey || ctrlKey || metaKey ? null : { unit: 'char', dir, extend }
+  }
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
+    // ⌥↑ moves the block, ⌘↑ goes to the note's start: not for every cursor.
+    return altKey || ctrlKey || metaKey ? null : { unit: 'line', dir, extend }
+  }
+  return null
+}
+
+const isWordChar = (char: string | undefined) => !!char && /[\p{L}\p{N}_]/u.test(char)
+const isLowSurrogate = (code: number) => code >= 0xdc00 && code <= 0xdfff
+
+/** The nearest text position in the textblock after (or before) the one holding `pos`. */
+function acrossBlocks(doc: ProseMirrorNode, pos: number, dir: -1 | 1): number {
+  const $pos = doc.resolve(pos)
+  if (!$pos.parent.isTextblock) return pos
+  const edge = doc.resolve(dir > 0 ? $pos.after() : $pos.before())
+  return Selection.findFrom(edge, dir, true)?.head ?? pos
+}
+
+/**
+ * Where a cursor at `pos` goes by a character or a word (VS Code's ⌥→: to the end of the next
+ * word; ⌥←: to the start of the previous one). From a line's edge, to the next or previous line.
+ */
+export function moveInText(
+  doc: ProseMirrorNode,
+  pos: number,
+  dir: -1 | 1,
+  unit: 'char' | 'word',
+): number {
+  const $pos = doc.resolve(pos)
+  if (!$pos.parent.isTextblock) return pos
+  // One character per position: inline leaves (links to notes, line breaks) count as one.
+  const text = $pos.parent.textBetween(0, $pos.parent.content.size, undefined, '￼')
+  let offset = $pos.parentOffset
+  if (dir < 0 ? offset === 0 : offset === text.length) return acrossBlocks(doc, pos, dir)
+  if (unit === 'char') {
+    offset += dir
+    // Not between the two halves of an emoji.
+    if (offset > 0 && offset < text.length && isLowSurrogate(text.charCodeAt(offset))) {
+      offset += dir
+    }
+  } else if (dir > 0) {
+    while (offset < text.length && !isWordChar(text[offset])) offset++
+    while (offset < text.length && isWordChar(text[offset])) offset++
+  } else {
+    while (offset > 0 && !isWordChar(text[offset - 1])) offset--
+    while (offset > 0 && isWordChar(text[offset - 1])) offset--
+  }
+  return $pos.start() + offset
+}
+
+/** The start or end of the line (as shown, wrapped) holding `pos`. */
+function lineEdge(view: EditorView, pos: number, dir: -1 | 1): number {
+  const $pos = view.state.doc.resolve(pos)
+  if (!$pos.parent.isTextblock) return pos
+  const [start, end] = [$pos.start(), $pos.end()]
+  try {
+    const top = (at: number, side: -1 | 1) => view.coordsAtPos(at, side).top
+    const line = top(pos, pos === end ? -1 : 1)
+    let at = pos
+    if (dir > 0) while (at < end && Math.abs(top(at + 1, -1) - line) < 2) at++
+    else while (at > start && Math.abs(top(at - 1, 1) - line) < 2) at--
+    return at
+  } catch {
+    // Not laid out (no layout to measure): the paragraph's edge.
+    return dir > 0 ? end : start
+  }
+}
+
+/** The first (or last) place for a cursor in the note. */
+function noteEdge(doc: ProseMirrorNode, dir: -1 | 1): number {
+  const at = doc.resolve(dir < 0 ? 0 : doc.content.size)
+  return Selection.findFrom(at, -dir as -1 | 1, true)?.head ?? at.pos
+}
+
+/**
+ * The cursor a line up or down: the place under it on the line above or below (as shown),
+ * looked for in steps of half a line (the space between two blocks is no line). From the first
+ * line up: the note's start; from the last one down: its end. A cursor out of sight (nothing
+ * to measure there) goes to the same column of the previous or next paragraph.
+ */
+function lineMove(view: EditorView, pos: number, dir: -1 | 1): number {
+  const { doc } = view.state
+  try {
+    const from = view.coordsAtPos(pos)
+    const box = view.dom.getBoundingClientRect()
+    const step = Math.max(2, (from.bottom - from.top) / 2)
+    for (let y = dir < 0 ? from.top - step : from.bottom + step; ; y += dir * step) {
+      if (dir < 0 ? y < box.top : y > box.bottom) return noteEdge(doc, dir)
+      if (y < 0 || y > window.innerHeight) break
+      const found = view.posAtCoords({ left: from.left, top: y })
+      if (!found || !doc.resolve(found.pos).parent.isTextblock) continue
+      const to = view.coordsAtPos(found.pos)
+      if (dir < 0 ? to.bottom <= from.top + 1 : to.top >= from.bottom - 1) return found.pos
+    }
+  } catch {
+    // Not laid out: by paragraphs, below.
+  }
+  const $pos = doc.resolve(pos)
+  if (!$pos.parent.isTextblock) return pos
+  const next = acrossBlocks(doc, pos, dir)
+  if (next === pos) return noteEdge(doc, dir)
+  const $next = doc.resolve(next)
+  return $next.start() + Math.min($pos.parentOffset, $next.parent.content.size)
+}
+
+/** A range as anchor (fixed end) and head (moving end). */
+const endsOf = (range: Range) =>
+  range.backward ? { anchor: range.to, head: range.from } : { anchor: range.from, head: range.to }
+
+function rangeFrom(anchor: number, head: number): Range {
+  return head < anchor ? { from: head, to: anchor, backward: true } : { from: anchor, to: head }
+}
+
+/** Where a range goes with a motion (`to`: where its head goes, by the unit). */
+export function moveRange(range: Range, motion: Motion, to: (head: number) => number): Range {
+  const { anchor, head } = endsOf(range)
+  if (motion.extend) return rangeFrom(anchor, to(head))
+  // A selection collapses to its start (←) or end (→); ↑ ↓ go from its head.
+  if (range.from !== range.to && motion.unit === 'char') {
+    const at = motion.dir < 0 ? range.from : range.to
+    return { from: at, to: at }
+  }
+  const at = to(head)
+  return { from: at, to: at }
+}
+
+/**
+ * Ranges merged where they meet, as VS Code does: two cursors that end in the same place are
+ * one, overlapping selections one selection. The main one (index 0) keeps its place first.
+ */
+export function mergeRanges(ranges: Range[]): Range[] {
+  const merged: Range[] = []
+  for (const range of ranges) {
+    const overlapping = merged.find((other) =>
+      range.from === range.to || other.from === other.to
+        ? range.from === other.from && range.to === other.to
+        : range.from < other.to && other.from < range.to,
+    )
+    if (!overlapping) {
+      merged.push(range)
+      continue
+    }
+    overlapping.from = Math.min(overlapping.from, range.from)
+    overlapping.to = Math.max(overlapping.to, range.to)
+  }
+  return merged
+}
+
+/** Moves the main selection and every extra one; false when there are no extra ones. */
+function moveAll(view: EditorView, motion: Motion): boolean {
+  const { state } = view
+  const extras = extraSelections(state)
+  if (!extras.length) return false
+  const { selection, doc } = state
+  const main = rangeFrom(selection.anchor, selection.head)
+  const to = (head: number) => {
+    if (motion.unit === 'lineEdge') return lineEdge(view, head, motion.dir)
+    if (motion.unit === 'line') return lineMove(view, head, motion.dir)
+    return moveInText(doc, head, motion.dir, motion.unit)
+  }
+  const [first, ...others] = mergeRanges([main, ...extras].map((r) => moveRange(r, motion, to)))
+  const { anchor, head } = endsOf(first!)
+  const tr = state.tr.setSelection(TextSelection.create(doc, anchor, head))
+  view.dispatch(withExtras(tr, others).scrollIntoView())
+  return true
+}
+
 function scrollTo(view: EditorView, pos: number) {
   requestAnimationFrame(() => {
     // The editor may be gone (note closed) by the next frame.
@@ -128,6 +329,8 @@ function scrollTo(view: EditorView, pos: number) {
 
 export const Occurrences = Extension.create({
   name: 'occurrences',
+  // Before the other keys (block and list keys): with several cursors, the arrows move them all.
+  priority: 1100,
 
   addCommands() {
     return {
@@ -225,10 +428,11 @@ export const Occurrences = Extension.create({
             const set = tr.getMeta(occurrencesKey) as Range[] | undefined
             if (set) return set
             if (!ranges.length) return ranges
-            // Moving the selection (click, arrows) goes back to a single selection.
+            // Moving the selection otherwise (a click, keys the cursors don't follow): one again.
             if (tr.selectionSet && !tr.docChanged) return []
             if (!tr.docChanged) return ranges
             return ranges.map((r) => ({
+              ...r,
               from: tr.mapping.map(r.from, 1),
               to: tr.mapping.map(r.to, -1),
             }))
@@ -250,6 +454,11 @@ export const Occurrences = Extension.create({
                   : Decoration.inline(r.from, r.to, { class: 'occurrence-selection' }),
               ),
             )
+          },
+          handleKeyDown(view, event) {
+            if (event.isComposing || !extraSelections(view.state).length) return false
+            const motion = motionOf(event)
+            return !!motion && moveAll(view, motion)
           },
           handleTextInput(view, from, to, text) {
             const extras = extraSelections(view.state)

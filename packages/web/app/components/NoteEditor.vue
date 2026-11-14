@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // The note editor: Nuxt UI's Editor (TipTap, Markdown in and out) with our extensions, a slash
 // menu, a selection toolbar, a table toolbar, emoji and `[[` link menus, block drag handles,
-// and file drops/pastes (uploaded to the note's attachments).
+// file drops/pastes (uploaded to the note's attachments), and images shown full screen on a
+// double click.
 import type { EditorCustomHandlers, EditorSuggestionMenuItem, EditorToolbarItem } from '@nuxt/ui'
 import type { EmojiItem } from '@tiptap/extension-emoji'
 import type { Editor as CoreEditor } from '@tiptap/core'
@@ -20,11 +21,13 @@ import { dropOldAgenda } from '~/editor/agenda'
 import { Bookmark } from '~/editor/bookmark'
 import { Callout, type CalloutType } from '~/editor/callout'
 import { Database } from '~/editor/database'
+import type { OpenedImage } from '~/editor/image'
 import { createExtensions, markdownOptions, starterKitOptions } from '~/editor/extensions'
 import {
   attachmentNames,
   deletedFiles,
   deletedFilesKey,
+  fileDeletedChange,
   isFromOutside,
   removesContent,
   type DeletedFilesMeta,
@@ -47,6 +50,8 @@ const emit = defineEmits<{
   headings: [headings: Heading[]]
   /** The heading the reader is in, as an index in `headings` (-1 before the first one). */
   activeHeading: [index: number]
+  /** Esc in the note, unused by it (no extra cursors, no menu open). */
+  escape: []
 }>()
 
 export interface Heading {
@@ -132,12 +137,33 @@ watch(
   },
 )
 
+// An image double-clicked, shown full screen (ImageViewer). `viewedImage` outlives
+// `viewingImage`, so the viewer keeps its image while it closes.
+const viewedImage = ref<OpenedImage | null>(null)
+const viewingImage = ref(false)
+function openImage(image: OpenedImage) {
+  viewedImage.value = image
+  viewingImage.value = true
+}
+/** Its alt text, or its file's name. */
+function imageName(image: OpenedImage) {
+  if (image.alt) return image.alt
+  const last = image.src.split(/[?#]/)[0]!.split('/').pop() ?? ''
+  try {
+    return decodeURIComponent(last)
+  } catch {
+    return last
+  }
+}
+
 const markdownParser = markdownOptions()
 const extensions = createExtensions({
   onOpenWikiLink: openWikiLink,
   wikiLinkExists: (target) => !!linkedPage(target),
   onFiles: (editor, files, pos) => void uploadFiles(editor, files, pos),
   assetsPrefix: () => ownAssetsPrefix(),
+  onOpenImage: openImage,
+  onEscape: () => emit('escape'),
 }).map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {
     return (extension as typeof CodeBlockLowlight).extend({
@@ -607,7 +633,7 @@ const toolbarItems: EditorToolbarItem<Handlers>[][] = [
       kind: 'mark',
       mark: 'strike',
       icon: 'i-lucide-strikethrough',
-      tooltip: { text: 'Strikethrough' },
+      tooltip: { text: 'Strikethrough', kbds: ['meta', 'shift', 's'] },
     },
     {
       kind: 'mark',
@@ -951,10 +977,16 @@ function followHistory(editor: Editor) {
 }
 
 defineExpose({
-  /** A file deleted for good (from the Files panel): its links can't come back (undo…). */
+  /**
+   * A file deleted for good (from the Files panel): its images and chips leave the note, by a
+   * change out of the undo history (earlier steps stay), and can't come back (undo, redo, a
+   * paste: DeletedFiles). No question asked: the file is already gone.
+   */
   fileDeleted(name: string) {
     const editor = editorRef.value?.editor
-    if (editor && !editor.isDestroyed) markFiles(editor, { deleted: [name] })
+    if (editor && !editor.isDestroyed) {
+      editor.view.dispatch(fileDeletedChange(editor.state, name, ownAssetsPrefix()))
+    }
   },
   /** The TipTap editor (for the find bar). */
   editor: computed(() => editorRef.value?.editor),
@@ -1107,6 +1139,12 @@ defineExpose({
     </UEditor>
 
     <input ref="fileInput" type="file" multiple class="hidden" @change="onFilesPicked" />
+
+    <ImageViewer
+      v-model:open="viewingImage"
+      :src="viewedImage?.src ?? null"
+      :name="viewedImage ? imageName(viewedImage) : ''"
+    />
 
     <UModal
       :open="largeFiles.length > 0"

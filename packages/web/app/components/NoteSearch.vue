@@ -151,6 +151,8 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
               {
                 label: 'Today’s note',
                 icon: 'i-lucide-calendar-days',
+                // ⌘T, where it reaches Tandem (as next to Today in the sidebar).
+                kbds: appWindow.value ? ['meta', 't'] : undefined,
                 onSelect: () => void daily.open(),
               },
               {

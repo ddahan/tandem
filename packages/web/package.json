@@ -31,6 +31,7 @@
     "@tiptap/extension-image": "catalog:",
     "@tiptap/extension-link": "catalog:",
     "@tiptap/extension-list": "catalog:",
+    "@tiptap/extension-paragraph": "catalog:",
     "@tiptap/extension-table": "catalog:",
     "@tiptap/extensions": "catalog:",
     "@tiptap/markdown": "catalog:",

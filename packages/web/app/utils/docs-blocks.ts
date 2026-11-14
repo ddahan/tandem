@@ -44,10 +44,20 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         id: 'formatting',
         title: 'Formatting',
         icon: 'i-lucide-bold',
-        description: 'On the selection (the floating toolbar or the keys), or typed as Markdown.',
+        description:
+          'On the selection (the floating toolbar or the keys), or typed as Markdown. A backtick typed at the end of inline code leaves it; Enter never takes it to the next line.',
         typed: '**bold**',
         keys: [['meta', 'b']],
         markdown: 'Text in **bold**, *italic*, ~~struck through~~ and `inline code`.',
+      },
+      {
+        id: 'empty-lines',
+        title: 'Empty lines',
+        icon: 'i-lucide-pilcrow',
+        description:
+          'Left between blocks, they stay: one empty line is one when the note opens again, two are two. Each is written `&nbsp;` alone on its line (Markdown has no empty paragraph). None are kept at the end of the note.',
+        keys: [['enter']],
+        markdown: 'Before the pause.\n\n&nbsp;\n\nAfter it.',
       },
       {
         id: 'links',

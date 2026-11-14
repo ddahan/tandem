@@ -180,3 +180,40 @@ test('shows shortcuts’ keys, unless Appearance says not to; Docs always do', a
   await page.goto('/docs/shortcuts')
   await expect(page.getByTestId('shortcut').first().locator('kbd').first()).toBeVisible()
 })
+
+test('Safari’s Add to Dock app shows the keys of a browser tab (Safari keeps the others)', async ({
+  page,
+  request,
+}) => {
+  await api(request, 'PATCH', '/settings', { daily: true })
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'userAgent', {
+      get: () =>
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+    })
+    const original = window.matchMedia.bind(window)
+    window.matchMedia = (query: string) => {
+      if (!query.includes('display-mode: standalone')) return original(query)
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      } as MediaQueryList
+    }
+  })
+  await page.goto('/docs/shortcuts')
+  await expect(page.getByTestId('shortcuts-browser')).toContainText('Safari’s app keeps some keys')
+  // ⌘W isn't Tandem's there: no "Close the tab" shortcut.
+  await expect(page.getByTestId('shortcut').filter({ hasText: 'Close the tab' })).toHaveCount(0)
+  // Today: no ⌘T beside it; the calendar: ⌃⌥ and the arrows (⌥⌘← ⌥⌘→ are Safari's).
+  const today = page.getByRole('navigation', { name: 'Calendar notes' })
+  await expect(today.locator('kbd')).toHaveCount(0)
+  await today.getByText('Today').click()
+  await expect(page.getByTestId('calendar-keys')).toContainText('⌃')
+  await expect(page.getByTestId('calendar-keys')).not.toContainText('⌘')
+})

@@ -87,6 +87,7 @@ GitHub-flavored Markdown, plus:
 | Database            | a ` ```database ` block with `id: …` (from `create_database`; see Databases)            |
 | Bookmark card       | a ` ```bookmark ` block with `id: …` (from `add_bookmark`; see Bookmarks)               |
 | Image with a width  | `<img src="Note.assets/a.png" alt="…" width="320">`                                     |
+| Empty line          | `&nbsp;` alone on its line, between blank lines (one per empty line the owner left)     |
 | Attachment          | `[report.pdf](Note.assets/report.pdf)` (shown as a file chip)                           |
 
 - Attachments live in `<Note title>.assets/` next to the note; link them with paths relative

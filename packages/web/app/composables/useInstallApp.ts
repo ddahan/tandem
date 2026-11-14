@@ -8,6 +8,7 @@
 // - Other browsers can't install web apps: `method` is null, and so is it once installed (the
 //   app runs in its own window, `display-mode: standalone`).
 import { useLocalStorage, useMediaQuery } from '@vueuse/core'
+import { isSafari } from '~/utils/platform-keys'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>
@@ -46,8 +47,7 @@ async function installApp(): Promise<boolean> {
 
 function safariPlatform(): 'safari' | 'ios' | null {
   const agent = navigator.userAgent
-  if (!/Safari/.test(agent) || /Chrome|Chromium|CriOS|Edg|Firefox|FxiOS|OPR/.test(agent))
-    return null
+  if (!isSafari(agent)) return null
   const ios =
     /iPhone|iPad|iPod/.test(agent) || (/Macintosh/.test(agent) && navigator.maxTouchPoints > 1)
   return ios ? 'ios' : 'safari'

@@ -4,6 +4,11 @@
 export const isMac = () =>
   typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.userAgent)
 
+/** Safari (macOS or iOS), not another browser naming Safari in its user agent. */
+export function isSafari(agent = typeof navigator === 'undefined' ? '' : navigator.userAgent) {
+  return /Safari/.test(agent) && !/Chrome|Chromium|CriOS|Edg|Firefox|FxiOS|OPR/.test(agent)
+}
+
 const MODIFIERS: Record<string, string> = { '⌃': 'Ctrl', '⌘': 'Ctrl', '⌥': 'Alt', '⇧': 'Shift' }
 const ORDER = ['Ctrl', 'Alt', 'Shift']
 const KEYS: Record<string, string> = {

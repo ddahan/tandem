@@ -120,6 +120,18 @@ inside OneDrive so that it is backed up and synced.
   (`> [!NOTE]`, `> [!TIP]`, `> [!WARNING]`…), collapsible sections (`<details>`), horizontal
   rules, emojis (`:shortcode:` and a picker), tables (GFM: no merged cells, inline content
   only), a `/` slash menu and a floating toolbar.
+- **Inline code and links end where they end**: Enter at the end of inline code starts the new
+  line (or item) in plain text; → at the end of a line ending with inline code or a link goes
+  on to the next line at once, typing nothing (it used to type a space first: the first press
+  seemed stuck); a backtick typed at the end of inline code leaves it, as Markdown's closing
+  backtick would (what's typed next is plain; ⌘E toggles it too), and a space typed after a
+  link ends it.
+- **Empty lines** between blocks are kept as they are: one empty line in the editor is one
+  empty line when the note is opened again, two are two. Each is written `&nbsp;` alone on
+  its line (Markdown has no empty paragraph; any Markdown viewer shows it as an empty line).
+  Empty lines ending the note aren't saved (the editor keeps one there after a final list or
+  table, to type below it). Blank lines written elsewhere show as the editor reads them (an
+  extra blank line between two blocks is one empty line) and are then kept the same way.
 - **Lists**: each level of a list has one kind, and any level can have any kind (a to-do list
   under a bullet item, bullets under a to-do…). A list marker (`- `, `1. `, `[ ] ` or `[] `)
   typed at the start of an item, the slash menu, the toolbar or ⌘⇧7/8/9 change the kind of the
@@ -142,7 +154,9 @@ inside OneDrive so that it is backed up and synced.
   Moving keeps each line's author.
 - **Backspace in an empty first line** (with blocks after it) removes it.
 - **Images** display inline and can be resized (saved as `<img src="…" width="…">`); a
-  selected one is framed (the image only, its resize dots on the frame).
+  selected one is framed (the image only, its resize dots on the frame). Resizing keeps its
+  proportions, and so does a column narrower than its width (it shrinks, its height with it).
+  A double click shows it full screen (as the Files panel does).
 - **Files**: drop or paste a file anywhere in a note: it is copied into the note's `.assets/`
   folder and inserted at the drop point, as an image or as a file chip (a link, with the
   icon of its file type, or a generic one). A chip is a button: clicking it opens the file
@@ -194,16 +208,19 @@ inside OneDrive so that it is backed up and synced.
   counts; a click scrolls to one.
 - **Files panel** (side panel): the note's attachments, with their size. No drop zone: files
   are dropped on the note; the panel's "click here" opens the file picker, and picked files are
-  attached and added at the end of the note (empty, the panel says so like the other tabs). Clicking an image shows it in a
-  modal, scaled to fit, with its name and size; Esc, a click outside or its close button
-  close it, and its new-tab button (next to the close button, aligned with it) opens the
-  file. Other files, and ⌘/Ctrl-clicks, open in a new tab.
+  attached and added at the end of the note (empty, the panel says so like the other tabs). Clicking an image shows it
+  full screen (as a double click on one in the note), as large as the window lets it be without
+  cropping or stretching it (a small one at its own size), with its name and size; Esc, a click
+  around it or its close button close it, and its new-tab button (next to the close button,
+  aligned with it) opens the file. Other files, and ⌘/Ctrl-clicks, open in a new tab.
 - **Removing a file's last link** (its chip or image deleted from the note, by a key, an
   undo…; not a cut, pasted back elsewhere) asks whether to delete the file too: "Delete the
   file" deletes it for good (undo doesn't bring it back), "Keep it" leaves it in the Files
   panel. A file linked again meanwhile stays. Only the note's own attachments.
 - **Deleting a file from the Files panel**: a trash button on hover (or focus), in place of its
-  size, asks first, then deletes it for good, and its links and images leave the note.
+  size, for any file, linked from the note or not (a file kept when its last link went), asks
+  first, then deletes it for good, and its links and images leave the note at once, leaving no
+  empty line. That isn't an undo step: ⌘Z goes on with what was typed before it.
 - **A file deleted for good doesn't come back** while the note is open: undo (⌘Z), redo or a
   paste that would bring back one of its images or chips brings back the rest of the change,
   not them (an undo that only took the file out then changes nothing visible, and the next one
@@ -342,7 +359,7 @@ inside OneDrive so that it is backed up and synced.
   breadcrumb, no creation date. ‹ › (and ⌃⌥← ⌃⌥→, anywhere; ⌥⌘← ⌥⌘→ in the installed app)
   go to the day before and after, ⌃⌥↑ ⌃⌥↓ (and ⌥⌘↑ ⌥⌘↓) a week earlier and later, "Today"
   back to today. ⌃⌥ is for where ⌥⌘← ⌥⌘→ don't reach Tandem: a browser tab (they switch its
-  tabs) and Safari's Add to Dock app (it keeps them).
+  tabs) and Safari's Add to Dock app (it keeps them): there, only ⌃⌥ is shown.
 - From one day to another (‹ ›, the shortcuts, the calendar, Today), the day shows in the same
   tab: days don't pile up in tabs, unlike pages.
 - The side panel has a **Calendar** tab (daily notes on), selected by itself on a day's note
@@ -351,7 +368,7 @@ inside OneDrive so that it is backed up and synced.
   left (`- [ ]`), a check when all its to-dos are done. A click opens the day. Below it, on a
   day's note, the keys that browse days and weeks, in one line: "Navigate days and weeks",
   the modifiers then one chip for any arrow (a four-way arrow: ← → a day, ↑ ↓ a week), one
-  shortcut: ⌥⌘ in the installed app's window, ⌃⌥ in a browser tab (no "or": ⌃⌥ also works
+  shortcut: ⌥⌘ in the installed app's window, ⌃⌥ in a browser tab and Safari's app (no "or": ⌃⌥ also works
   in the app). It follows changes live.
 - Everything else is as in any note: history, authorship, links (`[[2026-10-21]]`), search,
   files, TODOs. Agents: `daily_note` (MCP), `tandem daily`.
@@ -485,7 +502,9 @@ inside OneDrive so that it is backed up and synced.
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
   and ⋯), editor,
   collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
-  named by tooltips; below 1024px it takes the whole width, replacing the note while open), resizable from its left
+  named by tooltips; below 1024px there's no room beside the note: the note stays, the panel
+  hides, and its button or ⌘\ opens it over the note, closed by Esc, a click on the note or
+  its ×; back above 1024px it is as it was left there), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
   The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
@@ -523,8 +542,10 @@ inside OneDrive so that it is backed up and synced.
     closes them all.
 - VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),
   delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a
-  word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once (Esc goes back to one
-  selection; pasting into several isn't supported).
+  word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once. The arrows then move every
+  cursor (⇧ selects, by word and to the line's start or end as with one cursor; ↑ ↓ by lines as
+  shown; cursors that meet become one); Esc or a click goes back to one selection; pasting
+  into several isn't supported.
 - Find in the note (⌘F, ⌘⌥F with replace), as in VS Code: highlighted matches, count, next /
   previous, match case, replace and replace all. The current match is always scrolled into view
   (a third down the note), however far it is. ⌘⇧F opens the search across all notes, with the
@@ -587,9 +608,11 @@ inside OneDrive so that it is backed up and synced.
     (importing Chrome's bookmarks too).
   - **Shortcuts**: every shortcut and typing rule; ⌘/ opens it from anywhere. Only the keys
     that work where it is shown: in a browser tab, not those the browser keeps (⌘N, ⌘T, ⌘W,
-    ⌘⇧T, ⌥⌘← ⌥⌘→: a line says the installed app has them); in the installed app's window
-    (Chrome's app, Safari's Add to Dock), those too. Menus and tooltips do the same (⌘N for a
-    new page and ⌘W in a tab's menu in the app; ⌥⌘N and no key in a browser tab). The tree's
+    ⌘⇧T, ⌥⌘← ⌥⌘→: a line says the installed app has them); in the window of the app installed
+    from Chrome (or Edge, Brave…), those too. Safari's Add to Dock app keeps some of them for its
+    windows (⌘N, ⌘W, ⌥⌘← ⌥⌘→): it shows the keys of a browser tab, and a line says so. Menus and
+    tooltips do the same (⌘N for a new page, ⌘W in a tab's menu, ⌘T next to Today and on
+    "Today's note" in the palette, in the installed app; ⌥⌘N and no key elsewhere). The tree's
     menu shows the shortcuts of its actions.
     `/docs` opens Install; the old `/shortcuts` address leads to Docs › Shortcuts.
 - **Settings**, in tabs with their own addresses, as the Docs (`/settings` opens General; the

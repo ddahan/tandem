@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // The note's side panel: headings, links, history, files and databases, and the calendar when
-// daily notes are on (shown by itself on a day's note).
-import { useLocalStorage } from '@vueuse/core'
+// daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
+// it in a narrower one (`over`), where Esc or a click outside closes it.
+import type { Attachment } from '@tandem/shared'
+import { onClickOutside, onKeyStroke, useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
 const props = defineProps<{
@@ -13,14 +15,15 @@ const props = defineProps<{
   /** Index in `headings` of the heading the reader is in (-1: none). */
   activeHeading: number
   content: string
+  /** Over the note (a narrow window), not beside it. */
+  over?: boolean
 }>()
-defineEmits<{
+const emit = defineEmits<{
   goToHeading: [pos: number]
   goToDatabase: [id: string]
   restored: [content: string]
   attach: [markdown: string]
-  detach: [markdownPath: string]
-  deleted: [name: string]
+  deleted: [attachment: Attachment]
   close: []
 }>()
 
@@ -80,6 +83,22 @@ function startResize(event: PointerEvent) {
   handle.addEventListener('pointercancel', end)
 }
 
+// Over the note: closed by Esc or a click outside it (not on its own button, which toggles it,
+// nor in a dialog or menu it opened, outside it in the page).
+const panel = useTemplateRef('panel')
+onClickOutside(panel, () => props.over && emit('close'), {
+  ignore: [
+    '[data-side-panel-toggle]',
+    '[role="dialog"]',
+    '[role="menu"]',
+    '[data-reka-popper-content-wrapper]',
+  ],
+})
+onKeyStroke('Escape', (event) => {
+  if (!props.over || event.defaultPrevented || document.querySelector('[role="dialog"]')) return
+  emit('close')
+})
+
 const tabs = computed(() => [
   ...(settings.value.daily
     ? [{ label: 'Calendar', value: 'calendar', icon: 'i-lucide-calendar-days' }]
@@ -94,6 +113,7 @@ const tabs = computed(() => [
 
 <template>
   <UDashboardResizeHandle
+    v-if="!over"
     aria-label="Resize the side panel"
     aria-controls="tandem-panels-panel-note-side"
     :aria-valuenow="width"
@@ -105,10 +125,17 @@ const tabs = computed(() => [
   />
   <UDashboardPanel
     id="note-side"
+    ref="panel"
     data-testid="side-panel"
     :data-dragging="dragging || undefined"
+    :data-over="over || undefined"
     :style="{ '--side-width': `${width}rem` }"
-    :ui="{ root: 'w-full flex-none lg:w-(--side-width)', body: 'gap-2 p-3 sm:p-3' }"
+    :ui="{
+      root: over
+        ? 'fixed inset-y-0 end-0 z-40 min-h-0 w-(--side-width) max-w-full border-s border-default bg-default shadow-xl'
+        : 'w-(--side-width) flex-none',
+      body: 'gap-2 p-3 sm:p-3',
+    }"
   >
     <template #header>
       <div
@@ -139,7 +166,7 @@ const tabs = computed(() => [
           variant="ghost"
           size="xs"
           aria-label="Close panel"
-          @click="$emit('close')"
+          @click="emit('close')"
         />
       </div>
     </template>
@@ -150,7 +177,7 @@ const tabs = computed(() => [
         v-else-if="tab === 'headings'"
         :headings="headings"
         :active="activeHeading"
-        @go="(pos) => $emit('goToHeading', pos)"
+        @go="(pos) => emit('goToHeading', pos)"
       />
       <SideBacklinks v-else-if="tab === 'links'" :note-id="noteId" :content="content" />
       <SideHistory
@@ -158,21 +185,20 @@ const tabs = computed(() => [
         :note-id="noteId"
         :note-path="notePath"
         :content="content"
-        @restored="(c) => $emit('restored', c)"
+        @restored="(c) => emit('restored', c)"
       />
       <SideDatabases
         v-else-if="tab === 'databases'"
         :note-id="noteId"
         :content="content"
-        @go="(id) => $emit('goToDatabase', id)"
+        @go="(id) => emit('goToDatabase', id)"
       />
       <SideAttachments
         v-else
         :note-id="noteId"
         :note-path="notePath"
-        @insert="(md) => $emit('attach', md)"
-        @detach="(path) => $emit('detach', path)"
-        @deleted="(name) => $emit('deleted', name)"
+        @insert="(md) => emit('attach', md)"
+        @deleted="(attachment) => emit('deleted', attachment)"
       />
     </template>
   </UDashboardPanel>

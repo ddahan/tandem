@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
-import { useLocalStorage, watchDebounced } from '@vueuse/core'
+import { useLocalStorage, useMediaQuery, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import {
   OWNER,
+  type Attachment,
   authorLabel,
   calendarDateOf,
   dayLabel,
@@ -229,9 +230,18 @@ function appendMarkdown(markdown: string) {
   doc.change(next)
 }
 
-/** A file deleted from the Files panel: its links and images leave the note. */
-function detachFile(markdownPath: string) {
-  const next = removeAttachmentLinks(content.value, markdownPath)
+/**
+ * A file deleted from the Files panel: its links and images leave the note. In the editor, by a
+ * change of its own, out of the undo history (the steps before it stay: typing is still undone),
+ * the file marked deleted so that no undo, redo or paste brings them back. In the other views
+ * (and a read-only editor, which can't write all of the note), from the Markdown.
+ */
+function fileDeleted(attachment: Attachment) {
+  if (mode.value === 'edit' && !lossBlocks.value && editor.value?.editor) {
+    editor.value.fileDeleted(attachment.name)
+    return
+  }
+  const next = removeAttachmentLinks(content.value, attachment.markdownPath)
   if (next === content.value) return
   resetEditor(next)
   doc.change(next)
@@ -418,7 +428,23 @@ const widthNeeded = computed(() => {
   return text !== null && Math.max(0, ...blockWidths.values()) > text
 })
 const wide = computed(() => fullWidth.value || widthNeeded.value)
+// The side panel: beside the note in a large window (lg and up), open or closed as last left
+// (remembered). In a narrower one there is no room beside it: the note stays, and the panel
+// opens over it only when asked (its button, ⌘\), closing with Esc (in the note: one it didn't
+// use) or a click on the note.
 const panelOpen = useLocalStorage('tandem-side-panel', true)
+const largeWindow = useMediaQuery('(min-width: 1024px)')
+const panelOver = ref(false)
+watch(largeWindow, () => (panelOver.value = false))
+const panelShown = computed(() => (largeWindow.value ? panelOpen.value : panelOver.value))
+function togglePanel() {
+  if (largeWindow.value) panelOpen.value = !panelOpen.value
+  else panelOver.value = !panelOver.value
+}
+function closePanel() {
+  if (largeWindow.value) panelOpen.value = false
+  else panelOver.value = false
+}
 const authorshipKey = ref(0)
 const iconPickerOpen = ref(false)
 
@@ -434,10 +460,16 @@ const breadcrumb = computed<BreadcrumbItem[]>(() =>
     .map((n) => ({ label: n.title, node: n, to: `/notes/${n.id}` })),
 )
 
+// ⌘⇧E switches between the editor and the Markdown: their tooltips say so.
 const modes = [
-  { value: 'edit', icon: 'i-lucide-pencil-line', label: 'Edit' },
-  { value: 'source', icon: 'i-lucide-code-xml', label: 'Markdown source' },
-  { value: 'authorship', icon: 'i-lucide-users', label: 'Authorship' },
+  { value: 'edit', icon: 'i-lucide-pencil-line', label: 'Edit', kbds: ['meta', 'shift', 'e'] },
+  {
+    value: 'source',
+    icon: 'i-lucide-code-xml',
+    label: 'Markdown source',
+    kbds: ['meta', 'shift', 'e'],
+  },
+  { value: 'authorship', icon: 'i-lucide-users', label: 'Authorship', kbds: undefined },
 ] as const
 
 // The Markdown view's copy button (shown on hover), as on code blocks.
@@ -511,20 +543,25 @@ defineShortcuts({
     usingInput: true,
     handler: () => setMode(mode.value === 'source' ? 'edit' : 'source'),
   },
-  meta_backslash: { usingInput: true, handler: () => (panelOpen.value = !panelOpen.value) },
+  // The key itself, `\`: Nuxt UI compares the key typed with this name (`backslash` never matched).
+  'meta_\\': { usingInput: true, handler: togglePanel },
 })
 
 const created = computed(() => (node.value ? formatDateTime(node.value.createdAt) : ''))
 </script>
 
 <template>
-  <!-- Below lg the side panel takes the whole width: it replaces the note while it's open. -->
-  <UDashboardPanel id="note" :ui="{ root: panelOpen ? 'max-lg:hidden' : '', body: 'p-0 sm:p-0' }">
+  <UDashboardPanel id="note" :ui="{ body: 'p-0 sm:p-0' }">
     <template #header>
       <PageNavbar :title="node?.title ?? ''">
         <template #right>
           <UFieldGroup size="sm" class="hidden sm:flex">
-            <UTooltip v-for="m in modes" :key="m.value" :text="m.label">
+            <UTooltip
+              v-for="m in modes"
+              :key="m.value"
+              :text="m.label"
+              :kbds="m.kbds && [...m.kbds]"
+            >
               <UButton
                 :icon="m.icon"
                 :aria-label="m.label"
@@ -538,10 +575,11 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
             <UButton
               icon="i-lucide-panel-right"
               color="neutral"
-              :variant="panelOpen ? 'soft' : 'ghost'"
+              :variant="panelShown ? 'soft' : 'ghost'"
               size="sm"
               aria-label="Toggle side panel"
-              @click="panelOpen = !panelOpen"
+              data-side-panel-toggle
+              @click="togglePanel"
             />
           </UTooltip>
           <UDropdownMenu :items="moreItems" :content="{ align: 'end', ...keepMovedFocus }">
@@ -760,6 +798,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           @change="onEditorChange"
           @headings="headings = $event"
           @active-heading="activeHeading = $event"
+          @escape="panelOver = false"
         />
 
         <div v-else-if="mode === 'source'">
@@ -840,7 +879,8 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
   </UDashboardPanel>
 
   <NoteSidePanel
-    v-if="panelOpen && node && !doc.loadError.value"
+    v-if="panelShown && node && !doc.loadError.value"
+    :over="!largeWindow"
     :note-id="id"
     :calendar-date="calendarDate"
     :note-path="notePath"
@@ -851,9 +891,8 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     @go-to-database="goToDatabase"
     @restored="(restored) => resetEditor(restored)"
     @attach="appendMarkdown"
-    @detach="detachFile"
-    @deleted="(name) => editor?.fileDeleted(name)"
-    @close="panelOpen = false"
+    @deleted="fileDeleted"
+    @close="closePanel"
   />
 
   <DiffModal

@@ -373,9 +373,15 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
       { keys: [['meta', 'shift', 'l']], label: 'Select all occurrences' },
       {
+        keys: [['arrows']],
+        label: 'Move every cursor',
+        description:
+          'Typing, ⌫ and Delete then apply at each one. ⇧ selects as they move; by word, and to the line’s start or end, as with one cursor.',
+      },
+      {
         keys: [['escape']],
         label: 'Back to a single selection',
-        description: 'Clicking or moving the cursor does too.',
+        description: 'A click in the note does too.',
       },
     ],
   },
@@ -443,6 +449,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { typed: '**bold**', label: 'Bold' },
       { typed: '*italic*', label: 'Italic' },
       { typed: '`code`', label: 'Inline code' },
+      {
+        typed: '`',
+        label: 'Leave inline code',
+        description:
+          'At its end: what you type next is plain text (⌘E too). Enter never takes it to the next line.',
+      },
       { typed: '~~strike~~', label: 'Strikethrough' },
     ],
   },

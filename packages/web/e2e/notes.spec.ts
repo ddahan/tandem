@@ -199,12 +199,12 @@ test('attaches files from the side panel', async ({ page, request }) => {
     .toContain('![pixel.png](Attachments%20note.assets/pixel.png)')
 })
 
-test('shows an image of the Files panel in a modal, other files in a new tab', async ({
+test('shows an image of the Files panel full screen, other files in a new tab', async ({
   page,
   request,
 }) => {
   const note = await createNote(request, 'Gallery note', 'Files below.')
-  // Larger than the window: the modal scales it down.
+  // Larger than the window: the viewer scales it down.
   const svg =
     '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="3000"><rect width="4000" height="3000" fill="teal"/></svg>'
   for (const file of [
@@ -228,19 +228,22 @@ test('shows an image of the Files panel in a modal, other files in a new tab', a
   await expect(dialog).toContainText('wide.svg')
   await expect.poll(() => preview.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(4000)
   expect(page.context().pages()).toHaveLength(1)
-  // Inside the modal, itself smaller than the window (not full screen).
+  // Full screen: the window's size (once it has grown in), the image as large as it lets it
+  // be, whole.
   const viewport = page.viewportSize()!
+  await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(viewport.width)
   const frame = (await dialog.boundingBox())!
   const shown = (await preview.boundingBox())!
-  expect(frame.width).toBeLessThan(viewport.width)
-  expect(frame.height).toBeLessThan(viewport.height)
+  expect(frame.width).toBe(viewport.width)
+  expect(frame.height).toBe(viewport.height)
+  expect(Math.max(shown.width / frame.width, shown.height / frame.height)).toBeGreaterThan(0.75)
   expect(shown.x).toBeGreaterThanOrEqual(frame.x)
   expect(shown.y).toBeGreaterThanOrEqual(frame.y)
   expect(shown.x + shown.width).toBeLessThanOrEqual(frame.x + frame.width)
   expect(shown.y + shown.height).toBeLessThanOrEqual(frame.y + frame.height)
   expect(shown.width / shown.height).toBeCloseTo(4 / 3, 1)
 
-  // Closed with Esc, its close button, or a click outside.
+  // Closed with Esc, its close button, or a click around the image.
   await page.keyboard.press('Escape')
   await expect(dialog).toBeHidden()
   await image.click()
@@ -248,7 +251,9 @@ test('shows an image of the Files panel in a modal, other files in a new tab', a
   await expect(dialog).toBeHidden()
   await image.click()
   await expect(dialog).toBeVisible()
-  await page.mouse.click(5, 5)
+  await preview.click()
+  await expect(dialog).toBeVisible()
+  await page.mouse.click(5, viewport.height - 5)
   await expect(dialog).toBeHidden()
 
   // Other files open in a new tab, as before.
@@ -657,11 +662,24 @@ test('a file deleted for good never comes back: undo, redo, the Files panel, a r
   await undo()
   await expect(chips).toHaveCount(0)
 
-  // An image the note shows, deleted from the Files panel: gone, and ⌘Z doesn't bring it back.
+  // An image the note shows, deleted from the Files panel: gone at once, with no empty line
+  // left, and ⌘Z goes on with what was typed before (the editor's history stays), never
+  // bringing it back.
+  await page.locator('.ProseMirror p').first().click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' More.')
+  await waitSaved(page)
   await deleteFromPanel('shown.png')
   await expect.poll(files).toEqual([])
   await expect(images).toHaveCount(0)
+  await expect.poll(() => noteContent(request, note.id)).not.toContain('shown.png')
+  expect(await noteContent(request, note.id)).not.toContain('&nbsp;')
   await page.locator('.ProseMirror p').first().click()
+  await undo()
+  await expect.poll(editorText).not.toContain('More.')
+  await expect(images).toHaveCount(0)
+  await redo()
+  await expect.poll(editorText).toContain('More.')
   await undo()
   await undo()
   await expect(images).toHaveCount(0)
@@ -1670,4 +1688,181 @@ test('shows a page without content but with child pages as a folder, until writt
   await expect(pages.getByRole('link')).toHaveText(['Health'])
   await pages.getByRole('link', { name: 'Health' }).click()
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Health')
+})
+
+test('shows an image full screen on a double click; resized, it keeps its proportions', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Picture note', 'Above.')
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="teal"/></svg>'
+  const response = await request.post(`/api/notes/${note.id}/attachments`, {
+    multipart: { file: { name: 'wide.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(svg) } },
+  })
+  expect(response.ok()).toBe(true)
+  // Given a width larger than the column (resized in a wider window).
+  await api(request, 'PUT', `/notes/${note.id}/content`, {
+    content: 'Above.\n\n<img src="Picture%20note.assets/wide.svg" alt="wide.svg" width="3000">\n',
+  })
+  await openNote(page, note.id)
+  const image = page.locator('.ProseMirror img')
+  const column = (await page.locator('.ProseMirror').boundingBox())!
+  const ratio = async () => {
+    const box = (await image.boundingBox())!
+    expect(box.width).toBeLessThanOrEqual(column.width + 1)
+    return box.width / box.height
+  }
+  // As wide as the column, its height in proportion (2:1), not stretched.
+  await expect.poll(async () => (await image.boundingBox())?.height ?? 0).toBeGreaterThan(50)
+  expect(await ratio()).toBeCloseTo(2, 1)
+
+  // Made smaller by an agent (the width shown follows), then dragged far past the column's
+  // edge: still 2:1.
+  await api(
+    request,
+    'PUT',
+    `/notes/${note.id}/content`,
+    {
+      content: 'Above.\n\n<img src="Picture%20note.assets/wide.svg" alt="wide.svg" width="200">\n',
+    },
+    'claude',
+  )
+  await expect.poll(async () => Math.round((await image.boundingBox())?.width ?? 0)).toBe(200)
+  await image.hover()
+  const handle = page.locator('.ProseMirror [data-resize-handle="bottom-right"]')
+  const grab = (await handle.boundingBox())!
+  await page.mouse.move(grab.x + grab.width / 2, grab.y + grab.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(grab.x + 900, grab.y + 40, { steps: 8 })
+  await page.mouse.up()
+  expect(await ratio()).toBeCloseTo(2, 1)
+
+  // A double click shows it full screen, named; Esc closes it.
+  await image.dblclick()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('wide.svg')
+  const viewport = page.viewportSize()!
+  await expect.poll(async () => (await dialog.boundingBox())?.width).toBe(viewport.width)
+  await expect(dialog.getByTestId('image-preview')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+})
+
+test('in a narrow window, the side panel opens over the note, never instead of it', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Narrow note', 'Some text')
+  await openNote(page, note.id)
+  const panel = page.locator('#tandem-panels-panel-note-side')
+  const toggle = page.getByRole('button', { name: 'Toggle side panel' })
+  if (!(await panel.isVisible())) await toggle.click()
+  await expect(panel).toBeVisible()
+  const text = page.locator('.ProseMirror p', { hasText: 'Some text' })
+
+  // Narrower than lg: the note stays, the panel goes (it was open).
+  await page.setViewportSize({ width: 800, height: 700 })
+  await expect(text).toBeVisible()
+  await expect(panel).toBeHidden()
+  // Its button opens it over the note; a click on the note closes it, and so does Esc.
+  await toggle.click()
+  await expect(panel).toBeVisible()
+  await expect(text).toBeVisible()
+  await text.click({ position: { x: 5, y: 5 } })
+  await expect(panel).toBeHidden()
+  await page.keyboard.press('ControlOrMeta+\\')
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+
+  // Large again: beside the note, as it was left there; ⌘\ closes it.
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await expect(panel).toBeVisible()
+  await page.keyboard.press('ControlOrMeta+\\')
+  await expect(panel).toBeHidden()
+  await page.keyboard.press('ControlOrMeta+\\')
+  await expect(panel).toBeVisible()
+})
+
+test('keeps an empty line as one empty line, save after save', async ({ page, request }) => {
+  const note = await createNote(request, 'Empty lines', 'One\n\nTwo\n')
+  await openNote(page, note.id)
+  await page.locator('.ProseMirror p', { hasText: 'One' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await expect.poll(() => noteContent(request, note.id)).toBe('One\n\n&nbsp;\n\nTwo\n')
+  await page.reload()
+  await expect(page.locator('.ProseMirror > p')).toHaveCount(3)
+  await page.locator('.ProseMirror p', { hasText: 'Two' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type('!')
+  await expect.poll(() => noteContent(request, note.id)).toBe('One\n\n&nbsp;\n\nTwo!\n')
+})
+
+test('inline code and links end where they end: Enter, → at a line’s end, a backtick', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(
+    request,
+    'Code ends',
+    '- [ ] Some `code`\n\nA link https://example.com\n\nLast\n\nCode `here`\n',
+  )
+  await openNote(page, note.id)
+  // Enter after inline code: a new to-do in plain text.
+  await page.locator('.ProseMirror li', { hasText: 'Some' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('plain')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toContain('- [ ] Some `code`\n- [ ] plain\n')
+  // → at the end of a line ending with a link, or with code: on to the next line at once,
+  // nothing typed.
+  await page.locator('.ProseMirror p', { hasText: 'A link' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.type('X')
+  await expect.poll(() => noteContent(request, note.id)).toContain('\n\nXLast\n')
+  await page.locator('.ProseMirror li', { hasText: 'Some' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.type('Y')
+  await expect.poll(() => noteContent(request, note.id)).toContain('- [ ] Yplain\n')
+  // A backtick at the end of inline code leaves it: what follows is plain text.
+  await page.locator('.ProseMirror p', { hasText: /^Code/ }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type('` after')
+  await expect.poll(() => noteContent(request, note.id)).toContain('Code `here` after\n')
+})
+
+test('moves every cursor with the arrows after ⌘D, until Esc', async ({ page, request }) => {
+  const note = await createNote(request, 'Cursors', 'cat one\n\ncat two\n\ncat three\n')
+  await openNote(page, note.id)
+  await page.locator('.ProseMirror p', { hasText: 'cat one' }).click({ position: { x: 5, y: 5 } })
+  for (let i = 0; i < 3; i++) await page.keyboard.press('ControlOrMeta+D')
+  // → ends each selection, typing goes to every cursor.
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.type('s')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('cats one\n\ncats two\n\ncats three\n')
+  // ↓ takes each a line down (the last one, on the last line, to the note's end); ⇧← selects.
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.type('|')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('cats one\n\ncats| two\n\ncats| three|\n')
+  await page.keyboard.press('Shift+ArrowLeft')
+  await page.keyboard.type('+')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('cats one\n\ncats+ two\n\ncats+ three+\n')
+  // Esc: one cursor again.
+  await page.keyboard.press('Escape')
+  await page.keyboard.type('!')
+  await expect
+    .poll(() => noteContent(request, note.id))
+    .toBe('cats one\n\ncats+! two\n\ncats+ three+\n')
 })

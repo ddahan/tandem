@@ -5,7 +5,8 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { FileHandler } from '@tiptap/extension-file-handler'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
 import { TableKit } from '@tiptap/extension-table'
-import type { AnyExtension, Editor } from '@tiptap/core'
+import { Extension, type AnyExtension, type Editor } from '@tiptap/core'
+import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { MarkdownExtensionOptions } from '@tiptap/markdown'
 import type { StarterKitOptions } from '@tiptap/starter-kit'
 import { common, createLowlight } from 'lowlight'
@@ -18,13 +19,15 @@ import { Database } from './database'
 import { Details, DetailsContent, DetailsSummary } from './details'
 import { DeletedFiles, FileChips, FileLink } from './file-chips'
 import { Find } from './find'
+import { InlineCodeEnds } from './inline-code'
 import { JoinLists } from './join-lists'
 import { ListKeys } from './list-keys'
 import { NestedOrderedList } from './ordered-list'
 import { ListMarkers } from './list-markers'
+import { NoteParagraph } from './paragraph'
 import { Todos } from './todos'
 import { Occurrences } from './occurrences'
-import { ResizableImage } from './image'
+import { ResizableImage, type OpenedImage } from './image'
 import { WikiLink, type WikiLinkAttributes } from './wiki-link'
 
 export const lowlight = createLowlight(common)
@@ -50,10 +53,47 @@ export interface ExtensionOptions {
   onFiles?: (editor: Editor, files: File[], pos: number | null) => void
   /** The editor address of the note's attachments folder (files deleted: DeletedFiles). */
   assetsPrefix?: () => string
+  /** An image double-clicked: shown full screen by the note. */
+  onOpenImage?: (image: OpenedImage) => void
+  /** Esc in the note that nothing in it used (extra cursors, a menu): the page's to use. */
+  onEscape?: () => void
+}
+
+/**
+ * Esc in the note, when nothing in it used it: ProseMirror takes every Esc (it prevents the
+ * browser's), so the page can't tell from the event. Last of the editor's keys; a menu open
+ * (a suggestion plugin, such as `/` or `[[`, is active) uses it.
+ */
+function escapeOut(onEscape: () => void) {
+  return Extension.create({
+    name: 'escapeOut',
+    priority: 1,
+    addProseMirrorPlugins() {
+      return [
+        new Plugin({
+          key: new PluginKey('escapeOut'),
+          props: {
+            handleKeyDown(view, event) {
+              if (event.key !== 'Escape' || event.isComposing) return false
+              const menuOpen = view.state.plugins.some(
+                (plugin) =>
+                  (plugin.getState(view.state) as { active?: unknown } | undefined)?.active ===
+                  true,
+              )
+              if (!menuOpen) onEscape()
+              return false
+            },
+          },
+        }),
+      ]
+    },
+  })
 }
 
 export function createExtensions(options: ExtensionOptions = {}): AnyExtension[] {
   return [
+    NoteParagraph,
+    InlineCodeEnds,
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),
     TableKit.configure({ table: { resizable: false } }),
     NestedOrderedList,
@@ -67,7 +107,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
     Details.configure({ persist: true, HTMLAttributes: { class: 'details' } }),
     DetailsSummary,
     DetailsContent,
-    ResizableImage,
+    ResizableImage.configure({ onOpen: options.onOpenImage }),
     FileLink.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https' }),
     WikiLink.configure({
       onOpen: options.onOpenWikiLink ?? (() => {}),
@@ -91,11 +131,16 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
         options.onFiles?.(editor, files, null)
       },
     }),
+    ...(options.onEscape ? [escapeOut(options.onEscape)] : []),
   ]
 }
 
-/** UEditor's starter kit options: our code block, link (FileLink) and numbered list replace its own. */
+/**
+ * UEditor's starter kit options: our paragraph, code block, link (FileLink) and numbered list
+ * replace its own. (Inline code is UEditor's own mark, adjusted by InlineCodeEnds.)
+ */
 export const starterKitOptions: Partial<StarterKitOptions> = {
+  paragraph: false,
   codeBlock: false,
   link: false,
   // NestedOrderedList replaces it (its Markdown parser).

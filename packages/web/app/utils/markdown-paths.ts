@@ -59,12 +59,16 @@ export function removeAttachmentLinks(markdown: string, markdownPath: string): s
 // A list item with nothing in it (the editor writes its marker alone).
 const EMPTY_LIST_ITEM = /^[ \t]*(?:[-*+]|\d+[.)])(?: \[[ xX]\])?[ \t]*$\n?/gm
 
+// Empty lines (`&nbsp;` paragraphs: editor/paragraph.ts) ending the note.
+const FINAL_EMPTY_LINES = /(?:^|\n\n)&nbsp;(?:\n\n&nbsp;)*$/
+
 /**
  * Tidies the editor's Markdown before saving: no blank lines at the start, at most one blank
- * line between blocks (the editor adds some around tables and empty paragraphs), one final
- * newline, no empty list items (Markdown can't keep them: an empty sub-item right under its
- * parent's text reads back as a heading, an empty numbered item disappears). Fenced code and
- * trailing spaces (hard line breaks) are left untouched.
+ * line between blocks (the editor adds some around tables), one final newline, no empty list
+ * items (Markdown can't keep them: an empty sub-item right under its parent's text reads back
+ * as a heading, an empty numbered item disappears), no empty lines ending the note (the editor
+ * keeps one after a final list or table). Empty lines between blocks are `&nbsp;` paragraphs:
+ * they stay. Fenced code and trailing spaces (hard line breaks) are left untouched.
  */
 export function normalizeMarkdown(markdown: string): string {
   const parts = markdown.split(/(^(?:```|~~~)[^\n]*\n[\s\S]*?^(?:```|~~~)[ \t]*$)/m)
@@ -80,5 +84,6 @@ export function normalizeMarkdown(markdown: string): string {
     .join('')
     .replace(/^\n+/, '')
     .replace(/\s+$/, '')
+    .replace(FINAL_EMPTY_LINES, '')
   return tidy ? `${tidy}\n` : ''
 }
