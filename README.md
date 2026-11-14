@@ -32,9 +32,11 @@ MCP server or a CLI, and every line remembers who wrote it.
   sidebar or a calendar showing which days have notes, to-dos left and events; agents write in
   them too. Each day has an agenda, above its note: events typed on one line (`14h Standup`),
   which can repeat, plus read-only events from calendar feeds (`.ics` addresses).
-- **Bookmarks** (optional): links to websites in folders, in the sidebar right after the pages,
-  shown in notes as cards (`/bookmark`), found by `⌘⇧F`; saved from Chrome with Tandem's
-  extension (see below), which also finds them from the address bar (`tb`, then Tab).
+- **Bookmarks** (optional): links to websites kept in your notes as cards (`/bookmark`), so a
+  theme's note holds its websites too; listed in the side panel with the note's links, found
+  by `⌘⇧F`. Saved from Chrome with Tandem's extension (see below), they land in **Unsorted**,
+  right after the pages, to drag into notes; the extension also finds them from the address
+  bar (`tb`, then Tab).
 - **Optional features**, in Settings › Features: tags, TODOs, bookmarks, daily notes and spell
   check are off by default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
   its data stays.
@@ -169,11 +171,12 @@ To save pages to Tandem from Chrome (its button, or ⌥⇧D) and find them from 
 4. Pin it (the puzzle piece, then the pin). If Tandem isn't at `http://localhost:3864`, set
    its address in the extension's options.
 
-Its options also **import Chrome's bookmarks**, folders and icons included, into a "Chrome"
+Its options also **import Chrome's bookmarks**, icons included, into Unsorted, a heading per
 folder (again: only the new ones). Tandem's **Docs › Browser Extension** shows the same steps, with your folder. Updating Tandem updates
 the extension (Chrome reads it again when it restarts). Chrome only for now. The other way, a
-right click on the sidebar's Bookmarks › **Export all for Chrome** downloads a file Chrome
-imports (Settings › Import bookmarks and settings › Bookmarks HTML file).
+right click on the sidebar's Unsorted › **Export all for Chrome** downloads a file Chrome
+imports, your pages as its folders (Settings › Import bookmarks and settings › Bookmarks HTML
+file).
 
 ## Agents
 

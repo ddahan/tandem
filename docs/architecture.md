@@ -58,24 +58,24 @@ The web app and the CLI use the server's API through Hono's typed client
 
 ### Database (`packages/server/src/db/schema.ts`)
 
-| Table                        | Contents                                                                                                                                                                                                                      |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `nodes`                      | Pages and folders: id, path, order, dates; for pages the last known content, hash, mtime/size, editing session (last author, last save, pending snapshot) and line authorship                                                 |
-| `tags`                       | Tags of nodes                                                                                                                                                                                                                 |
-| `links`                      | Wiki link targets of each page (normalized with `linkKey`)                                                                                                                                                                    |
-| `versions`                   | History metadata; contents in `<data>/.tandem/history/`                                                                                                                                                                       |
-| `trash`                      | Deleted items, with the rows needed to restore them                                                                                                                                                                           |
-| `settings`                   | The owner's settings (JSON values)                                                                                                                                                                                            |
-| `databases`                  | Databases: page (`node_id`, no foreign key: a page in the trash has no row), title, columns, sort and filters (JSON)                                                                                                          |
-| `database_rows`              | Their rows: order (`position`), values by column id (JSON); deleted with their database                                                                                                                                       |
-| `nodes.icon`                 | Custom icon of a page or folder: `emoji:<emoji>` or `image:<file>` (in `<data>/.tandem/icons/`, served at `/api/nodes/:id/icon`); the API returns a `NodeIcon`                                                                |
-| `notes_fts`, `notes_trigram` | FTS5 indexes (words; trigrams), filled by the vault                                                                                                                                                                           |
-| `search_rows`                | The rowid of each page in both FTS5 indexes (FTS5 can't index `node_id`): updates and lookups by page go straight to its rows                                                                                                 |
-| `bookmarks`                  | Bookmarks and folders: parent folder, order, title, address and its duplicate key (`url_key`, `urlKey` in shared), description, icon (`image:<file>` in `.tandem/icons/`: the favicon or an image chosen; or `emoji:<emoji>`) |
-| `bookmark_refs`              | The bookmarks each page shows (its ` ```bookmark ` blocks), filled when a page is indexed, as `links`                                                                                                                         |
-| `agenda_events`              | Tandem's events: title, day, start and end (`HH:MM`, null for all day), repeat preset and until, skipped days (JSON), the repeating event a day was taken out of                                                              |
-| `agenda_checks`              | The days of events checked off: `ref` is the event's id, or a feed's id and the event's UID (`checkRef`)                                                                                                                      |
-| `agenda_feeds`               | Calendar feeds: name, address, color, order, and the last good copy of their `.ics` text, when it was read, and the last error                                                                                                |
+| Table                        | Contents                                                                                                                                                                                                  |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nodes`                      | Pages and folders: id, path, order, dates; for pages the last known content, hash, mtime/size, editing session (last author, last save, pending snapshot) and line authorship                             |
+| `tags`                       | Tags of nodes                                                                                                                                                                                             |
+| `links`                      | Wiki link targets of each page (normalized with `linkKey`)                                                                                                                                                |
+| `versions`                   | History metadata; contents in `<data>/.tandem/history/`                                                                                                                                                   |
+| `trash`                      | Deleted items, with the rows needed to restore them                                                                                                                                                       |
+| `settings`                   | The owner's settings (JSON values)                                                                                                                                                                        |
+| `databases`                  | Databases: page (`node_id`, no foreign key: a page in the trash has no row), title, columns, sort and filters (JSON)                                                                                      |
+| `database_rows`              | Their rows: order (`position`), values by column id (JSON); deleted with their database                                                                                                                   |
+| `nodes.icon`                 | Custom icon of a page or folder: `emoji:<emoji>` or `image:<file>` (in `<data>/.tandem/icons/`, served at `/api/nodes/:id/icon`); the API returns a `NodeIcon`                                            |
+| `notes_fts`, `notes_trigram` | FTS5 indexes (words; trigrams), filled by the vault                                                                                                                                                       |
+| `search_rows`                | The rowid of each page in both FTS5 indexes (FTS5 can't index `node_id`): updates and lookups by page go straight to its rows                                                                             |
+| `bookmarks`                  | Bookmarks, one per page: title, address and its duplicate key (`url_key`, `urlKey` in shared), description, icon (`image:<file>` in `.tandem/icons/`: the favicon or an image chosen; or `emoji:<emoji>`) |
+| `bookmark_refs`              | The bookmarks each page shows (its ` ```bookmark ` blocks), filled when a page is indexed, as `links`                                                                                                     |
+| `agenda_events`              | Tandem's events: title, day, start and end (`HH:MM`, null for all day), repeat preset and until, skipped days (JSON), the repeating event a day was taken out of                                          |
+| `agenda_checks`              | The days of events checked off: `ref` is the event's id, or a feed's id and the event's UID (`checkRef`)                                                                                                  |
+| `agenda_feeds`               | Calendar feeds: name, address, color, order, and the last good copy of their `.ics` text, when it was read, and the last error                                                                            |
 
 - Drizzle (`sqlite-proxy` driver over `node:sqlite`: no native module). Migrations are in
   `packages/server/drizzle/`, generated by `drizzle-kit generate`; the FTS tables are a custom
@@ -255,41 +255,63 @@ deleted since by others aren't brought back by a change to their values.
 
 ### Bookmarks (`bookmarks.ts`, `web-pages.ts`)
 
-`BookmarkStore` keeps bookmarks and folders in SQLite; the vault runs it under its lock and
-announces changes (`bookmarks` event). Order is a position among siblings, renumbered on each
-move. Duplicates are found by `url_key` (shared `urlKey`: no scheme, `www.`, fragment or final
-`/`); the vault refuses them with a `DuplicateBookmarkError` naming the bookmark (409). Folders
-can be given by path (`Work/Tools`, made if missing: agents). Search runs in memory over every
-bookmark (a few thousand at most), reading queries with the notes' `parseQuery`: prefixes in
-the title (weighted most), the address and the description, then substrings of three letters
-or more, typos replaced by the closest word (`editDistance`).
+`BookmarkStore` keeps bookmarks in SQLite, one per page, without folders (the notes showing
+them organize them); the vault runs it under its lock. Duplicates are found by `url_key`
+(shared `urlKey`: no scheme, `www.`, fragment or final `/`): `createBookmark` uses the one
+there instead of making another (`created: false`, a 200 instead of a 201), and an update to
+another one's address is refused with a `DuplicateBookmarkError` naming it (409). A bookmark's
+`uses` is how many pages show it (a `count` over `bookmark_refs`). Search runs in memory over
+every bookmark (a few thousand at most), reading queries with the notes' `parseQuery`: prefixes
+in the title (weighted most), the address and the description, then substrings of three
+letters or more, typos replaced by the closest word (`editDistance`); `in:` matches the paths
+of the pages showing it.
 
 `indexPage` records the bookmarks a page shows (`bookmarkIdsIn`) in `bookmark_refs`, as wiki
-links in `links`; a page in the trash has none (the rows go with it), and gets them back when
-restored. Deleting a bookmark (or a folder, with its contents) removes its blocks from those
-pages (`removeBookmarkBlocks`), saved as the one deleting, after a snapshot of an editing
-session in progress so that the history keeps the cards; then its rows and favicon files.
-The server credits the web app's changes to the owner, which an open note doesn't reload (its
-own saves): the web app announces `cards-removed` for the pages it changed
-(`useServerEvents`' `announce`), and they reload.
+links in `links`, and announces a `bookmarks` event when they changed (uses, Unsorted); a page
+in the trash has none (the rows go with it), and gets them back when restored. Deleting a
+bookmark removes its blocks from those pages (`removeBookmarkBlocks`), saved as the one
+deleting, after a snapshot of an editing session in progress so that the history keeps the
+cards; then its row and favicon files. The server credits the web app's changes to the owner,
+which an open note doesn't reload (its own saves): the web app announces `cards-changed` for
+the pages it changed (`useServerEvents`' `announce`), and they reload.
+
+The **inbox note** is a note like any other, whose id is the `bookmarkInbox` setting;
+`inboxRowOrNew` makes `Bookmarks` at the top when there is none (never set, or no longer a
+page). A `BookmarkPlace` says where a new bookmark's card goes: the inbox's start
+(`inbox`: the extension, Unsorted's "+", agents by default), a note's end (`noteId`), or
+nowhere (the editor puts it). `unsortedBookmarks` reads the inbox note's blocks, in order;
+`removeBookmarkCards` takes one out of a note (sorted: `DELETE /bookmarks/:id/cards/:noteId`).
+In the web app, a card dropped in a note from Unsorted carries the inbox's id
+(`BOOKMARK_FROM_TYPE`): the editor's `onMoved` removes it there; dropped on a page of the tree,
+`useBookmarks.moveCard` posts its address with that page as `noteId`, then removes it.
 
 What isn't given when a bookmark is made (title, description, favicon) is read from its page:
 `web-pages.ts` fetches its head (5 s, 1 MB at most), reads `<title>`/`og:title` and the meta
 description, then the first declared favicon that loads (or `/favicon.ico`, 512 KB at most).
-The vault only fetches with a `fetch` given (the server's; none in tests, unless faked). The
-extension sends the browser's favicon instead (a `data:` URL). `POST /api/bookmarks/preview` is
-a POST: it makes the server fetch, which only Tandem's own pages may ask for (the guard).
+The vault only fetches with a `fetch` given (the server's; none in tests, unless faked), and not
+for a page already saved. The extension sends the browser's favicon instead (a `data:` URL).
+`POST /api/bookmarks/preview` is a POST: it makes the server fetch, which only Tandem's own
+pages may ask for (the guard).
 
 `POST /api/bookmarks/import` takes a browser's tree (`BookmarkImportNode`: folders with
-`children`, bookmarks with a `url` and an `iconDataUrl`). `BookmarkStore.importTree` reads the
-bookmarks once, finds or makes each folder by name (any case) under its parent, skips addresses
-already there (`urlKey`) or not web addresses, and inserts the rest with their positions given
-(no renumbering per row); the vault writes their favicons and announces one `bookmarks` change.
+`children`, bookmarks with a `url` and an `iconDataUrl`). `importBookmarks` reads the bookmarks
+once, skips addresses already there (`urlKey`) or not web addresses, makes the rest with their
+favicons, and appends their cards to the inbox note in one save (`cardsMarkdown`: a heading per
+folder path), so that one `bookmarks` change is announced.
 
-`GET /api/bookmarks/export` (`?folder=<id>`: that subtree) is the other way: `bookmark-export.ts`
-writes the Netscape bookmarks file browsers import, one element per line (Chrome's reader is
-line-based), each favicon a `data:` URL (a PNG told by its bytes, whatever its file's extension),
-sent as an attachment.
+`GET /api/bookmarks/export` (`?note=<id>`: that page and what is under it) is the other way:
+the vault walks the pages' tree (`ExportFolder`: a page's cards, in order, then its child
+pages; pages without cards below them left out) and `bookmark-export.ts` writes the Netscape
+bookmarks file browsers import, one element per line (Chrome's reader is line-based), each
+favicon a `data:` URL (a PNG told by its bytes, whatever its file's extension), sent as an
+attachment.
+
+Bookmarks had folders up to 0.7.2. Migration 0007 copies their tree into
+`bookmark_tree_legacy` and deletes the folder rows, 0008 drops the columns (`kind`,
+`parent_id`, `position`). At start-up, after `reindexAll` (so that `bookmark_refs` is right),
+`convertLegacyBookmarks` makes each folder a page folder (`legacyFolderNode`: one of that name
+used instead, its emoji or image icon carried over), puts the bookmarks no page shows into the
+inbox note under a heading per folder path, and drops the table: it runs once.
 
 ## HTTP
 
@@ -331,17 +353,20 @@ sent as an attachment.
   `escapeOut` plugin, last of the editor's keys, reports one that no extra cursors or open
   menu (an active suggestion plugin) used). The editor reports the heading being read (`currentHeading`: measured on
   scroll, from heading positions, not anchors); Nuxt UI's `ContentToc` needs Nuxt Content.
-- Several rows selected in either tree: `utils/tree-selection.ts` (pure: ⌘/⇧-clicks, what an
-  action acts on, the rows shown); the trees act on them with `useTree.moveMany` /
-  `moveManyToTrash` and `useBookmarks.moveMany` / `useBookmarkActions.removeMany`, each one undo
-  step.
-- Bookmarks: `useBookmarks` (all of them, shared by the sidebar's `BookmarkTree`, the cards,
-  the palette and the tab bar; loaded even when off, for cards already in notes),
-  `useBookmarkActions` (dialogs, made when first opened: `BookmarkDialog` for a new one,
-  `BookmarkPicker`, `BookmarkDeleteDialog`), and `pages/bookmarks/[id].vue`, a bookmark's or
-  folder's page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks`
-  closes the tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for bookmarks
-  dragged from the sidebar: `application/x-tandem-bookmark`) with `BookmarkView.vue`.
+- Several rows selected in the pages' tree: `utils/tree-selection.ts` (pure: ⌘/⇧-clicks, what
+  an action acts on, the rows shown); the tree acts on them with `useTree.moveMany` /
+  `moveManyToTrash`, each one undo step.
+- Bookmarks: `useBookmarks` (all of them and the inbox note's, `unsorted`, shared by the
+  sidebar's `UnsortedBookmarks`, the cards, the side panel's `SideBookmarks`, the palette and the
+  tab bar; loaded even when off, for cards already in notes, and again on `bookmarks` and `tree`
+  events), `useBookmarkActions` (dialogs, made when first opened: `BookmarkDialog` for a new
+  one, `BookmarkPicker`, `BookmarkDeleteDialog`), and `pages/bookmarks/[id].vue`, a bookmark's
+  page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks` closes the
+  tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for
+  bookmarks dragged from Unsorted: `application/x-tandem-bookmark`, with
+  `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. `SideBookmarks`
+  reads the note's Markdown (`bookmarkIdsIn`, shared `externalLinksIn`) only while its tab
+  shows.
 - Undo: one history for the app (`useUndo`, logic in `utils/undo-history.ts`): steps with
   `undo`/`redo` functions, run one at a time, recorded by the code that changes things
   (`useDatabase`, `useTree`, `useBookmarks`, tags, `IconPicker`); nothing is recorded while a
@@ -628,8 +653,9 @@ public key; the private one isn't kept: no packed extension) fixes its id, so it
 the server trusts (`EXTENSION_ORIGIN`). With host permissions on localhost and 127.0.0.1 only,
 its requests need no CORS.
 
-- `tandem.ts`: the API client (status, list, lookup by address, search, create, change), its
-  errors as `offline` (nothing answers), `off` (`bookmarks_off`) or `error`.
+- `tandem.ts`: the API client (status, list, lookup by address, search, create into the inbox
+  note, change), its errors as `offline` (nothing answers), `off` (`bookmarks_off`) or `error`;
+  a create answered with a 200 is the page's existing bookmark.
 - `popup.ts`: the active tab (`?tab=<id>` when opened as a page: tests), its description read in
   the page (`chrome.scripting`, `page.ts`'s `readDescription`, self-contained), its favicon from
   the tab (a `data:` URL) or Chrome's `_favicon` service (a PNG without a `Content-Type`:

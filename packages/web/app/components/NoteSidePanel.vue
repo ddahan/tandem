@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// The note's side panel: headings, links, history, files and databases, and the calendar when
-// daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
+// The note's side panel: headings, links, bookmarks (when on), history, files and databases, and
+// the calendar when daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
 // it in a narrower one (`over`), where Esc or a click outside closes it.
 import type { Attachment } from '@tandem/shared'
 import { onClickOutside, onKeyStroke, useLocalStorage } from '@vueuse/core'
@@ -37,6 +37,7 @@ const picked = ref(false)
 const tab = computed({
   get: () => {
     if (!settings.value.daily && saved.value === 'calendar') return 'headings'
+    if (!settings.value.bookmarks && saved.value === 'bookmarks') return 'headings'
     return props.calendarDate && settings.value.daily && !picked.value ? 'calendar' : saved.value
   },
   set: (value: string) => {
@@ -105,6 +106,9 @@ const tabs = computed(() => [
     : []),
   { label: 'Headings', value: 'headings', icon: 'i-lucide-list-tree' },
   { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
+  ...(settings.value.bookmarks
+    ? [{ label: 'Bookmarks', value: 'bookmarks', icon: 'i-lucide-bookmark' }]
+    : []),
   { label: 'History', value: 'history', icon: 'i-lucide-history' },
   { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
   { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
@@ -180,6 +184,7 @@ const tabs = computed(() => [
         @go="(pos) => emit('goToHeading', pos)"
       />
       <SideBacklinks v-else-if="tab === 'links'" :note-id="noteId" :content="content" />
+      <SideBookmarks v-else-if="tab === 'bookmarks'" :content="content" />
       <SideHistory
         v-else-if="tab === 'history'"
         :note-id="noteId"

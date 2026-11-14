@@ -72,6 +72,13 @@ export async function startServer(options: ServerOptions): Promise<{ stop(): Pro
   console.log(`Data folder: ${dataDir}`)
   await vault.reconcile()
   await vault.reindexAll()
+  // Once, after the update that took bookmarks' folders away (migration 0007).
+  const converted = await vault.convertLegacyBookmarks()
+  if (converted) {
+    console.log(
+      `Bookmarks: ${converted.folders} folders now page folders, ${converted.bookmarks} bookmarks in the inbox note`,
+    )
+  }
   if (options.welcome) await welcome(vault, dataDir, port)
 
   const watcher = watchVault(vault, { polling: options.watchPolling ?? false })

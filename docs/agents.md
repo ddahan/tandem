@@ -126,24 +126,29 @@ writing the block's content.
 
 ## Bookmarks
 
-Links to websites, in folders, which the owner keeps in Tandem instead of their browser (saved
-from Chrome with Tandem's extension, or in the app). Like databases, their data is in Tandem: a
-note shows one as a card with a ` ```bookmark ` block holding only its id. `read_note` (and
-`tandem read --meta`) name the bookmarks a note shows, with their titles and addresses.
+Links to websites, one per page, which the owner keeps in Tandem instead of their browser
+(saved from Chrome with Tandem's extension, or in the app). They have no folders: the notes
+showing them organize them. Like databases, their data is in Tandem: a note shows one as a card
+with a ` ```bookmark ` block holding only its id. `read_note` (and `tandem read --meta`) name
+the bookmarks a note shows, with their titles and addresses. New ones go into the **inbox
+note** (`Bookmarks` at the top, unless renamed or moved), shown as "Unsorted" in the app, until
+their block is moved into another note: to sort one, put its block in the note it belongs to
+and take it out of the inbox note.
 
-- MCP: `list_bookmarks` (the tree, with ids and addresses), `search_bookmarks` (title, address
-  and description: prefixes, `"phrases"`, `-word`, `in:Folder`, typos corrected),
-  `add_bookmark` (`url`; `title` and `description` read from the page when not given; `folder`
-  by id or path, `Work/Tools`, made if missing; `note` to add its card at that note's end),
-  `update_bookmark` (title, address, description, or `folder` to move it; `""` is the top),
-  `delete_bookmark` (a bookmark, or a folder with everything in it; only when asked: it removes
-  their cards from the notes showing them, and there is no trash for bookmarks).
+- MCP: `list_bookmarks` (all of them, with ids, addresses, how many notes show each, and those
+  unsorted), `search_bookmarks` (title, address and description: prefixes, `"phrases"`, `-word`,
+  `in:Folder` for the notes showing them, typos corrected), `add_bookmark` (`url`; `title` and
+  `description` read from the page when not given; its card at the start of the inbox note,
+  or at the end of `note`), `update_bookmark` (title, address, description), `delete_bookmark`
+  (only when asked: it removes its cards from the notes showing them, and there is no trash for
+  bookmarks).
 - CLI: `tandem bookmarks [query]`, `tandem bookmark-add <url> [--title …] [--description …]
-  [--folder Work/Tools] [--note <note>]`, `tandem bookmark-set <id> [new address] [--title …]
-  [--description …] [--folder …]`, `tandem bookmark-delete <id>`, `tandem bookmarks-export
-  [folder id] > bookmarks.html` (a file Chrome imports).
-- One bookmark per page: an address already bookmarked (give or take `www.`, `http`/`https`, a
-  `#fragment` or a final `/`) is refused, naming its bookmark. Only web addresses (http,
-  https).
+  [--note <note>]`, `tandem bookmark-set <id> [new address] [--title …] [--description …]`,
+  `tandem bookmark-delete <id>`, `tandem bookmarks-export [note] > bookmarks.html` (a file
+  Chrome imports, the pages as its folders).
+- One bookmark per page: adding an address already bookmarked (give or take `www.`,
+  `http`/`https`, a `#fragment` or a final `/`) uses its bookmark (`created: false`) and puts
+  its card where asked; changing a bookmark's address to another one's is refused. Only web
+  addresses (http, https).
 - The owner may turn bookmarks off in the app (Settings › Features): they are still there for
   agents.

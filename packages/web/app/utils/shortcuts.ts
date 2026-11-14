@@ -204,38 +204,18 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: 'bookmarks',
     title: 'Bookmarks',
     description:
-      'On the bookmark or folder focused in the sidebar’s Bookmarks (with bookmarks on, in Settings › Features).',
+      'On a bookmark focused in the sidebar’s Unsorted (with bookmarks on, in Settings › Features).',
     icon: 'i-lucide-bookmark',
     shortcuts: [
       {
-        keys: [['arrowup'], ['arrowdown']],
-        label: 'Previous or next bookmark',
-        description: 'Opens its page, as a click does, once you stop on it.',
-      },
-      { keys: [['arrowright'], ['arrowleft']], label: 'Expand or collapse a folder' },
-      {
         keys: [['enter']],
         label: 'Open the website',
-        description: 'In a new browser tab, as a double click. On a folder, its page in a tab.',
-      },
-      { keys: [['F2']], label: 'Rename' },
-      {
-        keys: [
-          ['alt', 'arrowup'],
-          ['alt', 'arrowdown'],
-        ],
-        label: 'Move up or down',
+        description: 'In a new browser tab, as a double click. A click opens its page.',
       },
       {
         keys: [['meta', 'backspace'], ['delete']],
         label: 'Delete',
         description: 'Asks first, naming the pages that show it: their cards go with it.',
-      },
-      {
-        keys: [['meta'], ['shift']],
-        label: 'Select several bookmarks (with a click)',
-        description:
-          '⌘-click adds or removes one, ⇧-click selects a range. ⌘⌫, dragging and the menu then act on all of them; Esc lets go.',
       },
     ],
   },

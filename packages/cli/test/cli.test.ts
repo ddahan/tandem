@@ -208,65 +208,50 @@ describe('CLI', () => {
       'A post',
       '--description',
       'Worth reading',
-      '--folder',
-      'Read/Later',
       '--note',
       'Reading',
     ])
     expect(added.code).toBe(0)
     expect(added.out).toContain('Bookmarked A post')
     expect(added.out).toContain('its card in Reading.md')
-    const [folder, inner, bookmark] = await vault.listBookmarks()
-    expect([folder?.title, inner?.title, bookmark?.url]).toEqual([
-      'Read',
-      'Later',
-      'https://example.com/post',
-    ])
+    const [bookmark] = await vault.listBookmarks()
+    expect(bookmark?.url).toBe('https://example.com/post')
     expect((await cli(['read', 'Reading', '--meta'])).out).toContain(
       `bookmark ${bookmark!.id}: A post <https://example.com/post>`,
     )
-    // No title given, none read (no web in tests): the site's name.
-    expect((await cli(['bookmark-add', 'https://other.org'])).out).toContain('Bookmarked other.org')
-    const duplicate = await cli(['bookmark-add', 'http://www.example.com/post/'])
-    expect(duplicate.code).toBe(1)
-    expect(duplicate.err).toContain(`Already bookmarked: A post (${bookmark!.id})`)
+    // No title given, none read (no web in tests): the site's name; no note: the inbox.
+    const other = await cli(['bookmark-add', 'https://other.org'])
+    expect(other.out).toContain('Bookmarked other.org')
+    expect(other.out).toContain('its card in the inbox note')
+    // Already saved: its bookmark, its card put there too.
+    const again = await cli(['bookmark-add', 'http://www.example.com/post/'])
+    expect(again.code).toBe(0)
+    expect(again.out).toContain(`Already bookmarked: A post (${bookmark!.id})`)
 
-    const tree = (await cli(['bookmarks'])).out
-    expect(tree).toContain('├─ Read/')
-    expect(tree).toContain('│  └─ Later/')
-    expect(tree).toContain('A post  https://example.com/post')
-    expect((await cli(['bookmarks', 'worth'])).out).toContain('Read / Later / A post')
+    const list = (await cli(['bookmarks'])).out
+    expect(list).toContain(`A post  (${bookmark!.id}, unsorted)\n  https://example.com/post`)
+    expect(list).toContain('other.org  (')
+    expect((await cli(['bookmarks', 'worth'])).out).toContain(`A post  (${bookmark!.id})`)
     expect((await cli(['bookmarks', 'zzz'])).out).toContain('No bookmarks found.')
 
     expect((await cli(['bookmark-set', bookmark!.id])).err).toContain('Nothing to change')
-    await cli([
-      'bookmark-set',
-      bookmark!.id,
-      'https://example.com/v2',
-      '--title',
-      'V2',
-      '--folder',
-      '',
-    ])
+    await cli(['bookmark-set', bookmark!.id, 'https://example.com/v2', '--title', 'V2'])
     expect(await vault.getBookmark(bookmark!.id)).toMatchObject({
       url: 'https://example.com/v2',
       title: 'V2',
-      parentId: null,
     })
 
-    // A bookmarks file, as it is (for `> bookmarks.html`): all, or a folder.
+    // A bookmarks file, as it is (for `> bookmarks.html`): all, or a note's.
     const file = (await cli(['bookmarks-export'])).out
     expect(file).toMatch(/^<!DOCTYPE NETSCAPE-Bookmark-file-1>/)
-    expect(file).toContain('<H3 ')
+    expect(file).toContain('>Reading</H3>')
+    expect(file).toContain('>Bookmarks</H3>')
     expect(file).toContain('HREF="https://example.com/v2"')
-    expect((await cli(['bookmarks-export', bookmark!.id])).out).not.toContain('<H3 ')
-    expect((await cli(['bookmarks-export', 'nope'])).err).toContain('No such bookmark')
+    expect((await cli(['bookmarks-export', 'Reading'])).out).not.toContain('other.org')
+    expect((await cli(['bookmarks-export', 'nope'])).code).toBe(1)
 
     const deleted = await cli(['bookmark-delete', bookmark!.id])
-    expect(deleted.out).toContain('cards removed from Reading.md')
+    expect(deleted.out).toContain('cards removed from Bookmarks.md, Reading.md')
     expect((await cli(['read', 'Reading'])).out).toBe('\n')
-    expect((await cli(['bookmark-delete', folder!.id])).out).toContain(
-      'Deleted 2 bookmarks and folders',
-    )
   })
 })

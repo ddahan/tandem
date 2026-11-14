@@ -12,7 +12,6 @@ import {
   REPEATS,
   agendaLine,
   dayLabel,
-  bookmarkBlock,
   bookmarkIdsIn,
   cellsByName,
   databaseBlock,
@@ -40,9 +39,10 @@ Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates 
 Days have an agenda, kept in Tandem (shown above the day's note, never in its Markdown): use
 agenda, add_event, update_event and delete_event for events. Events from calendar feeds are
 read-only.
-Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
-\`\`\`bookmark block naming it (id: …). Use the bookmark tools for them; add_bookmark can put
-its card in a note.`
+Bookmarks (links to websites, one per page) also live in Tandem: a note shows one as a card with
+a \`\`\`bookmark block naming it (id: …); the notes showing them are what organizes them. New
+ones go into the inbox note ("Unsorted") unless add_bookmark is given a note. Use the bookmark
+tools for them.`
 
 type Text = { content: { type: 'text'; text: string }[]; isError?: boolean }
 
@@ -81,20 +81,15 @@ function describeTree(nodes: TreeNode[]): string {
   return lines.join('\n') || '(no notes yet)'
 }
 
-/** Bookmarks and folders as an indented list, with ids and addresses. */
-function describeBookmarks(all: Bookmark[]): string {
-  const lines: string[] = []
-  const walk = (parentId: string | null, depth: number) => {
-    for (const bookmark of all.filter((b) => b.parentId === parentId)) {
-      lines.push(
-        bookmark.kind === 'folder'
-          ? `${'  '.repeat(depth)}- 📁 ${bookmark.title}  (id ${bookmark.id})`
-          : `${'  '.repeat(depth)}- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id})${bookmark.description ? ` — ${bookmark.description}` : ''}`,
-      )
-      walk(bookmark.id, depth + 1)
-    }
-  }
-  walk(null, 0)
+/** Bookmarks as a list, with ids, addresses, and how many notes show them. */
+function describeBookmarks(all: Bookmark[], unsorted: Set<string>): string {
+  const lines = all.map((bookmark) => {
+    const where = [
+      unsorted.has(bookmark.id) ? 'unsorted' : '',
+      bookmark.uses ? `in ${bookmark.uses} note${bookmark.uses === 1 ? '' : 's'}` : 'in no note',
+    ].filter(Boolean)
+    return `- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id}, ${where.join(', ')})${bookmark.description ? ` — ${bookmark.description}` : ''}`
+  })
   return lines.join('\n') || '(no bookmarks yet)'
 }
 
@@ -678,21 +673,21 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
       }),
   )
 
-  const folder = z
-    .string()
-    .describe(
-      'A folder: its id, or its path of names ("Work/Tools"), made if missing; "" for the top',
-    )
-
   server.registerTool(
     'list_bookmarks',
     {
       title: 'List bookmarks',
-      description: 'All bookmarks and their folders, with ids, addresses and descriptions.',
+      description:
+        'All bookmarks, the latest first, with ids, addresses, descriptions, how many notes show them, and those still unsorted (only in the inbox note).',
       inputSchema: {},
       annotations: { readOnlyHint: true },
     },
-    async () => attempt(async () => text(describeBookmarks(await vault.listBookmarks()))),
+    async () =>
+      attempt(async () => {
+        const unsorted = await vault.unsortedBookmarks()
+        const ids = new Set(unsorted.bookmarks.map((bookmark) => bookmark.id))
+        return text(describeBookmarks(await vault.listBookmarks(), ids))
+      }),
   )
 
   server.registerTool(
@@ -700,19 +695,19 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
     {
       title: 'Search bookmarks',
       description:
-        'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder; typos corrected).',
+        'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder for the notes showing them; typos corrected).',
       inputSchema: { query: z.string(), limit: z.number().int().min(1).max(100).optional() },
       annotations: { readOnlyHint: true },
     },
     async ({ query, limit }) =>
       attempt(async () =>
         json(
-          (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark, folders }) => ({
+          (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark }) => ({
             id: bookmark.id,
             title: bookmark.title,
             url: bookmark.url,
             description: bookmark.description,
-            folders,
+            uses: bookmark.uses,
           })),
         ),
       ),
@@ -723,36 +718,38 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
     {
       title: 'Add a bookmark',
       description:
-        'Bookmarks a web page (its title, description and favicon read from it when not given). A page already bookmarked is refused, naming its bookmark. With `note`, its card is added at the end of that note.',
+        'Bookmarks a web page (its title, description and favicon read from it when not given), its card at the start of the inbox note ("Unsorted"), or at the end of `note`. A page already bookmarked keeps its bookmark: its card is put there all the same.',
       inputSchema: {
         url: z.string(),
         title: z.string().optional(),
         description: z.string().optional(),
-        folder: folder.optional(),
-        note: ref.optional().describe('A note to show its card in (at the end)'),
+        note: ref.optional().describe('A note to show its card in (at the end), not the inbox'),
       },
     },
-    async ({ url, title, description, folder: path, note }) =>
+    async ({ url, title, description, note }) =>
       attempt(async () => {
         const node = note ? await vault.resolveRef(note) : null
-        const bookmark = await vault.createBookmark({ url, title, description, folder: path })
-        if (node) await vault.appendContent(node.id, bookmarkBlock(bookmark.id), author)
-        return json({ id: bookmark.id, title: bookmark.title, url: bookmark.url })
+        const place = node ? { noteId: node.id, author } : { inbox: true, author }
+        const { bookmark, created } = await vault.createBookmark(
+          { url, title, description },
+          undefined,
+          place,
+        )
+        return json({ id: bookmark.id, title: bookmark.title, url: bookmark.url, created })
       }),
   )
 
   server.registerTool(
     'update_bookmark',
     {
-      title: 'Change or move a bookmark',
+      title: 'Change a bookmark',
       description:
-        'Changes a bookmark’s title, address or description, or moves it (or a folder) to another folder. Its cards in notes show the change.',
+        'Changes a bookmark’s title, address or description. Its cards in notes show the change. To sort it, move its ```bookmark block from one note to another.',
       inputSchema: {
-        bookmark: z.string().describe('Bookmark or folder id'),
+        bookmark: z.string().describe('Bookmark id'),
         title: z.string().optional(),
         url: z.string().optional(),
         description: z.string().optional(),
-        folder: folder.optional(),
       },
     },
     async ({ bookmark: id, ...patch }) =>
@@ -767,15 +764,15 @@ export function createMcpServer(vault: Vault, author: string): McpServer {
     {
       title: 'Delete a bookmark',
       description:
-        'Deletes a bookmark, or a folder with everything in it, for good; its cards are removed from the notes showing them. Only when the user asked.',
-      inputSchema: { bookmark: z.string().describe('Bookmark or folder id') },
+        'Deletes a bookmark for good; its cards are removed from the notes showing them. Only when the user asked.',
+      inputSchema: { bookmark: z.string().describe('Bookmark id') },
       annotations: { destructiveHint: true },
     },
     async ({ bookmark: id }) =>
       attempt(async () => {
-        const { deleted, pages } = await vault.deleteBookmark(id, author)
+        const { pages } = await vault.deleteBookmark(id, author)
         return text(
-          `Deleted ${deleted === 1 ? 'it' : `${deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(', ')}` : ''}`,
+          `Deleted${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(', ')}` : ''}`,
         )
       }),
   )

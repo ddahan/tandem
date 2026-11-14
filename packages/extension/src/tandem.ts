@@ -61,7 +61,11 @@ export function normalizeAddress(input: string): string {
 export function createTandem(address: string, fetcher: typeof fetch = fetch) {
   const base = normalizeAddress(address)
 
-  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  async function request<T>(
+    path: string,
+    init: RequestInit = {},
+    onStatus?: (status: number) => void,
+  ): Promise<T> {
     let response: Response
     try {
       response = await fetcher(`${base}${path}`, {
@@ -71,6 +75,7 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
     } catch {
       throw new TandemError('offline', `Tandem isn’t running at ${base}.`)
     }
+    onStatus?.(response.status)
     const body = (await response.json().catch(() => null)) as
       | (T & { error?: string; code?: string })
       | null
@@ -88,11 +93,19 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
     return body as T
   }
 
-  /** A create or change, the page's existing bookmark when it's already saved. */
+  /**
+   * A create or change, the page's existing bookmark when it's already saved: a create answers
+   * with it (200, not 201), a change of address to another bookmark's is refused naming it.
+   */
   async function save(path: string, method: string, fields: object): Promise<Saved> {
+    let status = 0
     try {
-      const bookmark = await request<Bookmark>(path, { method, body: JSON.stringify(fields) })
-      return { bookmark, duplicate: false }
+      const bookmark = await request<Bookmark>(
+        path,
+        { method, body: JSON.stringify(fields) },
+        (s) => (status = s),
+      )
+      return { bookmark, duplicate: method === 'POST' && status === 200 }
     } catch (error) {
       const existing =
         error instanceof TandemError && error.status === 409
@@ -121,10 +134,11 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
       request<BookmarkSearchResult[]>(
         `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`,
       ),
-    create: (fields: BookmarkFields) => save('/api/bookmarks', 'POST', fields),
+    /** A new bookmark, its card at the start of the inbox note ("Unsorted" in Tandem). */
+    create: (fields: BookmarkFields) => save('/api/bookmarks', 'POST', { ...fields, inbox: true }),
     update: (id: string, fields: Partial<BookmarkFields>) =>
       save(`/api/bookmarks/${encodeURIComponent(id)}`, 'PATCH', fields),
-    /** Imports a browser's tree into Tandem's "Chrome" folder (see import.ts). */
+    /** Imports a browser's tree into Tandem's inbox note (see import.ts). */
     importBookmarks: (children: BookmarkImportNode[]) =>
       request<BookmarkImportResult>('/api/bookmarks/import', {
         method: 'POST',
@@ -135,14 +149,8 @@ export function createTandem(address: string, fetcher: typeof fetch = fetch) {
 
 export type Tandem = ReturnType<typeof createTandem>
 
-/** A bookmark's folders, `Work / Tools`, or `Bookmarks` at the top. */
-export function folderPath(bookmarks: Bookmark[], bookmark: Bookmark): string {
-  const byId = new Map(bookmarks.map((b) => [b.id, b]))
-  const names: string[] = []
-  let parent = bookmark.parentId ? byId.get(bookmark.parentId) : undefined
-  while (parent) {
-    names.unshift(parent.title)
-    parent = parent.parentId ? byId.get(parent.parentId) : undefined
-  }
-  return names.join(' / ') || 'Bookmarks'
+/** Where a bookmark is, for the popup: `In 2 notes`, or `In no note` (deleted cards). */
+export function whereShown(bookmark: Bookmark): string {
+  if (!bookmark.uses) return 'In no note'
+  return `In ${bookmark.uses} note${bookmark.uses === 1 ? '' : 's'}`
 }

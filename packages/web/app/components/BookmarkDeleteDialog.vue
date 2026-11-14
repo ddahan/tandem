@@ -1,35 +1,24 @@
 <script setup lang="ts">
-// Deleting a bookmark or folder asks first (bookmarks have no trash), and says which pages show
-// it: their cards go with it.
+// Deleting a bookmark asks first (bookmarks have no trash), and says which pages show it: their
+// cards go with it.
 import type { Bookmark, BookmarkRef } from '@tandem/shared'
 
-const props = defineProps<{ bookmark: Bookmark; pages: BookmarkRef[]; count: number }>()
+defineProps<{ bookmark: Bookmark; pages: BookmarkRef[] }>()
 const emit = defineEmits<{ close: [confirmed: boolean] }>()
-
-const folder = computed(() => props.bookmark.kind === 'folder')
-const what = computed(() => {
-  if (!folder.value) return 'This cannot be undone.'
-  const inside = props.count - 1
-  return inside
-    ? `It and the ${inside} ${inside === 1 ? 'bookmark or folder' : 'bookmarks and folders'} in it are deleted. This cannot be undone.`
-    : 'This cannot be undone.'
-})
 </script>
 
 <template>
   <UModal
     :title="`Delete “${bookmark.title}”?`"
-    :description="what"
+    :description="'This cannot be undone.'"
     :close="false"
     @update:open="(open) => !open && emit('close', false)"
   >
     <template v-if="pages.length" #body>
       <div class="text-sm" data-testid="bookmark-delete-pages">
         <p class="mb-2">
-          {{ folder ? 'Its bookmarks are' : 'It is' }} shown in
-          {{ pages.length === 1 ? 'a page' : `${pages.length} pages` }}; the
-          {{ folder ? 'cards' : 'card' }} will be removed from
-          {{ pages.length === 1 ? 'it' : 'them' }}:
+          It is shown in {{ pages.length === 1 ? 'a page' : `${pages.length} pages` }}; the card
+          will be removed from {{ pages.length === 1 ? 'it' : 'them' }}:
         </p>
         <ul class="flex flex-col gap-1">
           <li v-for="page in pages" :key="page.id">

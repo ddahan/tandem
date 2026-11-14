@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// A bookmark's icon: an emoji or image chosen for it (a folder's, mostly), else its site's
-// favicon, a globe without one (or when it doesn't load), or a folder.
+// A bookmark's icon: an emoji or image chosen for it, else its site's favicon, a globe without
+// one (or when it doesn't load).
 import type { Bookmark } from '@tandem/shared'
 
 const props = withDefaults(
   defineProps<{
-    bookmark: Pick<Bookmark, 'kind' | 'icon' | 'emoji'> | null
+    bookmark: Pick<Bookmark, 'icon' | 'emoji'> | null
     size?: 'sm' | 'md' | 'lg'
   }>(),
   { size: 'sm' },
@@ -37,11 +37,6 @@ watch(
       class="size-full rounded-[20%] object-contain"
       draggable="false"
       @error="broken = true"
-    />
-    <UIcon
-      v-else-if="bookmark?.kind === 'folder'"
-      name="i-lucide-folder"
-      class="size-full text-dimmed"
     />
     <UIcon v-else name="i-lucide-globe" class="size-full text-dimmed" />
   </span>

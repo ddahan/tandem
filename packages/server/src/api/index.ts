@@ -16,7 +16,6 @@ import {
   BOOKMARKS_OFF,
   EVENT_TITLE_MAX,
   REPEATS,
-  BOOKMARK_IMPORT_FOLDER,
   BOOKMARK_IMPORT_MAX,
   BOOKMARK_DESCRIPTION_MAX,
   BOOKMARK_TITLE_MAX,
@@ -47,7 +46,7 @@ import {
   NotFoundError,
   ValidationError,
 } from '../vault/errors.ts'
-import type { ImportNode } from '../vault/bookmarks.ts'
+import type { ImportNode } from '../vault/vault.ts'
 import type { Vault } from '../vault/vault.ts'
 import { ICON_TYPES, type Favicon } from '../vault/web-pages.ts'
 
@@ -90,6 +89,7 @@ const settingsPatch = z
     trash: z.boolean(),
     todos: z.boolean(),
     bookmarks: z.boolean(),
+    bookmarkInbox: z.string().max(64).nullable(),
     daily: z.boolean(),
     homeRecent: z.boolean(),
     shortcutHints: z.boolean(),
@@ -205,9 +205,6 @@ const bookmarkFields = {
     .string()
     .max(BOOKMARK_DESCRIPTION_MAX * 2)
     .optional(),
-  parentId: z.string().nullable().optional(),
-  index: z.number().int().min(0).optional(),
-  folder: z.string().max(1000).optional(),
   iconDataUrl: iconDataUrl.optional(),
 }
 // A browser's tree (the extension sends Chrome's): folders with children, bookmarks with a URL.
@@ -219,10 +216,7 @@ const importNode: z.ZodType<BookmarkImportNode> = z.lazy(() =>
     children: z.array(importNode).optional(),
   }),
 )
-const bookmarkImport = z.object({
-  folder: z.string().max(BOOKMARK_TITLE_MAX).optional(),
-  children: z.array(importNode),
-})
+const bookmarkImport = z.object({ children: z.array(importNode) })
 
 /** The nodes of an import, with their favicons read (an unreadable one: none). */
 function importNodes(nodes: BookmarkImportNode[]): ImportNode<Favicon>[] {
@@ -237,8 +231,10 @@ const countNodes = (nodes: BookmarkImportNode[]): number =>
   nodes.reduce((sum, node) => sum + 1 + countNodes(node.children ?? []), 0)
 
 const bookmarkInput = z.object({
-  kind: z.enum(['folder', 'bookmark']).optional(),
   ...bookmarkFields,
+  /** Its card at the start of the inbox note (the extension's), or at the end of a note. */
+  inbox: z.boolean().optional(),
+  noteId: z.string().optional(),
 })
 
 /**
@@ -628,24 +624,29 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     .use('/bookmarks', bookmarksOn(vault))
     .use('/bookmarks/*', bookmarksOn(vault))
     .get('/bookmarks', async (c) => c.json(await vault.listBookmarks()))
+    // A page already bookmarked: its bookmark (200), its card put where asked all the same.
     .post('/bookmarks', zValidator('json', bookmarkInput), async (c) => {
-      const { iconDataUrl: icon, ...input } = c.req.valid('json')
-      return c.json(await vault.createBookmark(input, iconOf(icon)), 201)
+      const { iconDataUrl: icon, inbox, noteId, ...input } = c.req.valid('json')
+      const place = { inbox, noteId, author: authorOf(c) }
+      const { bookmark, created } = await vault.createBookmark(input, iconOf(icon), place)
+      return c.json(bookmark, created ? 201 : 200)
     })
+    // What the inbox note shows: the bookmarks still to sort.
+    .get('/bookmarks/unsorted', async (c) => c.json(await vault.unsortedBookmarks()))
     .post('/bookmarks/import', zValidator('json', bookmarkImport), async (c) => {
-      const { folder, children } = c.req.valid('json')
+      const { children } = c.req.valid('json')
       if (countNodes(children) > BOOKMARK_IMPORT_MAX) {
         throw new ValidationError(`At most ${formatNumber(BOOKMARK_IMPORT_MAX)} bookmarks at once`)
       }
-      const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER
-      return c.json(await vault.importBookmarks(into, importNodes(children)))
+      return c.json(await vault.importBookmarks(importNodes(children), authorOf(c)))
     })
-    // A browser's bookmarks file (Chrome imports it): all of them, or a folder (`?folder=<id>`).
+    // A browser's bookmarks file (Chrome imports it), the pages as its folders: all of them, or
+    // a page with what is under it (`?note=<id>`).
     .get(
       '/bookmarks/export',
-      zValidator('query', z.object({ folder: z.string().optional() })),
+      zValidator('query', z.object({ note: z.string().optional() })),
       async (c) => {
-        const html = await vault.exportBookmarks(c.req.valid('query').folder)
+        const html = await vault.exportBookmarks(c.req.valid('query').note)
         c.header('Content-Type', 'text/html; charset=utf-8')
         c.header('Content-Disposition', `attachment; filename="tandem-bookmarks-${isoDate()}.html"`)
         return c.body(html)
@@ -693,7 +694,17 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
     .delete('/bookmarks/:id', zValidator('param', idParam), async (c) =>
       c.json(await vault.deleteBookmark(c.req.valid('param').id, authorOf(c))),
     )
-    // Its icon chosen (a folder's, mostly), as a page's: an emoji, an image, or the default.
+    // Its cards taken out of a note (moved into another one: the bookmark stays).
+    .delete(
+      '/bookmarks/:id/cards/:noteId',
+      zValidator('param', z.object({ id: z.string(), noteId: z.string() })),
+      async (c) => {
+        const { id, noteId } = c.req.valid('param')
+        await vault.removeBookmarkCards(noteId, id, authorOf(c))
+        return c.json({ ok: true })
+      },
+    )
+    // Its icon chosen, as a page's: an emoji, an image, or its favicon.
     .put(
       '/bookmarks/:id/icon',
       zValidator('param', idParam),

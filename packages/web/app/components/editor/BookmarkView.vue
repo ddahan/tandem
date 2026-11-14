@@ -1,13 +1,14 @@
 <script setup lang="ts">
-// A bookmark block: the bookmark's card (favicon, name, site, description), as it is now: the
-// data is in Tandem (useBookmarks), the note only names it. A click selects it, as any block
+// A bookmark block: the bookmark's card (favicon, name, site, description; "Used 3 times" when
+// other notes show it too), as it is now: the data is in Tandem (useBookmarks), the note only
+// names it. A click selects it, as any block
 // (framed), and opens its menu (the website, the bookmark's page, another bookmark, removing
 // it); the focus stays in the editor, so ⌫ deletes it and ⌘Z brings it back, as any content. A
 // double click opens the website.
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { siteOf } from '@tandem/shared'
-import { openWebsite } from '~/composables/useBookmarks'
+import { openWebsite, usesLabel } from '~/composables/useBookmarks'
 
 const props = defineProps(nodeViewProps)
 
@@ -117,7 +118,12 @@ const menu = computed<DropdownMenuItem[][]>(() => [
       <BookmarkIcon :bookmark="bookmark" size="lg" />
       <div class="min-w-0 flex-1">
         <p class="truncate font-medium text-highlighted">{{ bookmark?.title ?? '…' }}</p>
-        <p v-if="bookmark" class="truncate text-xs text-muted">{{ siteOf(bookmark.url) }}</p>
+        <p v-if="bookmark" class="truncate text-xs text-muted">
+          {{ siteOf(bookmark.url) }}
+          <span v-if="usesLabel(bookmark)" data-testid="bookmark-card-uses">
+            · {{ usesLabel(bookmark) }}</span
+          >
+        </p>
         <p
           v-if="bookmark?.description"
           class="mt-0.5 line-clamp-2 text-sm text-default"

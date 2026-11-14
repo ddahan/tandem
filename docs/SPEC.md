@@ -274,8 +274,8 @@ inside OneDrive so that it is backed up and synced.
 
 - One search: the `Cmd+Shift+F` palette (also the sidebar's search button, the Home page's Search
   button, and tags on Home, which open it filtered on the tag), over note titles, note text and
-  attachment file names, and bookmarks when they're on (a group of their own, under the notes;
-  picking one opens its website). With an empty query it lists recent notes and the search
+  attachment file names, and bookmarks when they're on (a group of their own, under the notes,
+  "Used 3 times" beside those used more than once; picking one opens its website). With an empty query it lists recent notes and the search
   syntax.
 - Prefix matching while typing, accent-insensitive (`ete` finds `été`), typo-tolerant (a
   word without matches is replaced by the closest known word, with "Showing results for…"),
@@ -290,7 +290,7 @@ inside OneDrive so that it is backed up and synced.
 - ⌘Z undoes and ⌘⇧Z redoes (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y elsewhere) anywhere in the app,
   in one history, in the order things were done: a note's text, its databases (values, rows
   added, moved or deleted, columns, title, sort, filters, widths), pages (made, renamed, moved,
-  moved to the trash, tags, emoji icons) and bookmarks (made, edited, moved). Typing in a note
+  moved to the trash, tags, emoji icons) and bookmarks (made, edited). Typing in a note
   then changing a database: ⌘Z undoes the database change first, then the typing.
 - A text field being typed in (a cell, a title) undoes its own typing first; once its text is
   as it was when it got the focus, ⌘Z goes to the history.
@@ -322,7 +322,7 @@ inside OneDrive so that it is backed up and synced.
   search, tree, read, create, write, append, replace text, move, delete, tags, history,
   restore, attach files, databases (list a note's, read rows as the saved view shows
   them, create one, add, change and delete rows; columns by name), and bookmarks (list, search,
-  add, change, move, delete; a card added to a note).
+  add, change, delete, export; a new one's card in the inbox note, or at the end of a note).
 - **MCP server** over HTTP at `http://localhost:3864/mcp` with the same operations, so any
   MCP client (Claude Code, Claude Desktop…) can use Tandem.
 - No public REST API: the HTTP API is internal to the web app, the CLI and the MCP server.
@@ -427,81 +427,100 @@ inside OneDrive so that it is backed up and synced.
 ## Bookmarks
 
 - Links to websites, kept in Tandem instead of the browser: optional (Settings › Features, off
-  by default). Off, the sidebar's section and `/bookmark` go, and the extension says so; cards
-  already in notes still show, and agents still use them.
-- **Folders and bookmarks**, as in a browser: a bookmark is not a page and holds nothing;
-  folders hold bookmarks and folders. Stored in SQLite (and its backup), never in the notes'
-  Markdown. A bookmark has a name, a web address (http or https only), an optional
-  description, and its site's favicon (`.tandem/icons/`; a globe without one). A folder can
-  have an icon of its own, as a page: an emoji or an image ("Change icon…" in its menu, or a
-  click on its icon on its page), or back to the default. One bookmark per
-  page: an address already saved (give or take `www.`, `http`/`https`, a `#fragment` or a final
-  `/`) is refused, naming the bookmark that has it.
-- **Sidebar**: a Bookmarks section right after the pages (they scroll together), folded by
-  default (open or folded is then remembered). A tree like the pages' (drag and drop, ⌥↑ ⌥↓,
-  F2, a menu on each row: open the website, open in a tab, rename, move, copy the address,
-  delete); "+" makes a bookmark or a folder (renamed in place), and so does a right click on
-  the section (its title, or anywhere below: it takes the sidebar's room left), which also
-  exports. A click on a bookmark or a
-  folder opens its **page** in the preview tab, as a page's (a folder also unfolds), and so
-  does browsing them with ↑ ↓; a double click or ↵ opens a bookmark's website in a new browser
-  tab (from the installed app, in the default browser), a folder's page in a tab of its own.
-- **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): its folders as a
-  breadcrumb, then everything **edited in place**, saved when a field is left (↵ in one-line
-  fields, Esc puts a field back): name, address (an address already saved is refused, with a
-  link to its bookmark), description and folder; its site and dates; Open website and Delete
-  under them (not in the header); the pages showing its card, as links. Editing keeps a preview tab open. A
-  **folder's page**: its name and the folder it's in, edited the same way, and what it holds
-  (a click opens one's page, a double click a bookmark's website), with New bookmark and New
-  folder. A deleted bookmark's tab closes.
-- **New**: a dialog with the address, name, description and folder. Its name and description
-  are read from its page by the server (best effort, a few seconds at most), as its favicon;
-  a page already saved offers to show its bookmark instead.
+  by default). Off, Unsorted, the side panel's Bookmarks tab and `/bookmark` go, and the
+  extension says so; cards already in notes still show, and agents still use them.
+- **Part of the notes**: bookmarks have no folders of their own. A theme's note holds its
+  websites as cards, with its text, files and databases: the notes showing them (and their
+  pages' tree) are what organizes them. A bookmark is not a page and holds nothing; it is stored
+  in SQLite (and its backup), never in the notes' Markdown. It has a name, a web address (http
+  or https only), an optional description, and its site's favicon (`.tandem/icons/`; a globe
+  without one), or an icon of its own: an emoji or an image ("Change icon" on its page), or
+  back to the favicon.
+- **One bookmark per page**: an address already saved (give or take `www.`, `http`/`https`, a
+  `#fragment` or a final `/`) isn't saved again: its bookmark is used, its card shown where
+  the new one was asked for. Shown in several notes, a card says "Used 3 times" (nothing for
+  one). Changing a bookmark's address to another one's is refused, naming that one.
+- **Unsorted** (the sidebar, right after the pages; they scroll together; open or folded is
+  remembered): the bookmarks still to sort, those the **inbox note** shows, in its order, with
+  their count. Bookmarks saved from Chrome, imported, or made with Unsorted's "+" go at the
+  start of the inbox note (`Bookmarks` at the top, made when one is first needed, and again
+  if it was deleted; it is a note as any other, which can be renamed or moved). Its title
+  opens the inbox note. A click on a bookmark opens its **page** in the preview tab, a double
+  click or ↵ its website in a new browser tab (from the installed app, in the default
+  browser); its menu (⋯ or a right click): open the website, open in a tab, copy the address,
+  delete. Dragged into a note, its card goes where it's dropped; dragged onto a page of the
+  tree, at that page's end; either way it leaves the inbox note (sorted). A right click on the
+  section: New bookmark, Open the inbox note, Export all for Chrome. Empty, it says where
+  bookmarks come from.
+- **Bookmarks panel** (side panel, a tab between Links and History): the note's bookmark cards,
+  in order (favicon, name, site, "Used 3 times"; a button to the bookmark's page), then its
+  links to websites in the text (`[text](https://…)`, `<https://…>`, bare addresses; each
+  address once; not in code, nor images), with the favicon of their bookmark when the page is
+  saved. A click scrolls to one in the note, a double click or ↵ opens its website. Read from
+  the note's Markdown, only while the tab shows. Empty, it says how to add one.
+- **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): everything
+  **edited in place**, saved when a field is left (↵ in one-line fields, Esc puts a field
+  back): its icon, name, address (an address already saved is refused, with a link to its
+  bookmark) and description; its site and dates; Open website and Delete under them (not in
+  the header); the pages showing its card, as links. Editing keeps a preview tab open. A
+  deleted bookmark's tab closes.
+- **New**: a dialog with the address, name and description. Its name and description are read
+  from its page by the server (best effort, a few seconds at most), as its favicon; a page
+  already saved says so ("Use it" instead of Create).
 - **Deleting** asks first (bookmarks have no trash), naming the pages that show its card, as
   links: they lose it (each page's history keeps the version with it, and an open note shows
-  the change at once). A folder goes with everything in it; an empty one goes without asking.
+  the change at once).
 - **Cards in notes**: `/bookmark` picks one (a search over names, addresses and descriptions,
-  the latest first; New bookmark…, at the top until words are typed, makes one there in the usual
-  dialog, as does a pasted address that isn't saved yet: its card shows once saved), and a
-  bookmark dragged from the sidebar into a note becomes one. A card shows the bookmark as it is
-  now (favicon, name, site, two lines of description). A click selects it (framed, as any
-  block) and opens its menu, also on its ⋯ button: open the website, the bookmark's page, put
-  another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes the
-  selected card and ⌘Z brings it back, as any content. A double click opens the website. The
-  note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is gone
-  says so.
+  the latest first, "Used 3 times" beside those used more than once; New bookmark…, at the top
+  until words are typed, makes one there in the usual dialog, as does a pasted address that
+  isn't saved yet: its card shows once saved). A card shows the bookmark as it is now
+  (favicon, name, site, "Used 3 times", two lines of description). A click selects it (framed,
+  as any block) and opens its menu, also on its ⋯ button: open the website, the bookmark's
+  page, put another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes
+  the selected card and ⌘Z brings it back, as any content. A double click opens the website.
+  The note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is
+  gone says so.
 - **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded
   unpacked: Docs › Browser Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
   title), address and description (its meta tags; the field grows with the text), Cancel and
-  Create; its favicon is the browser's. No folder to pick: new bookmarks go to the top, sorted
+  Create; its favicon is the browser's. No note to pick: new bookmarks go to Unsorted, sorted
   in the app. Create closes the popup at once and the button shows ✓; the save goes on behind
   (a failure turns the ✓ into a red ! that says why). A page already in Tandem shows "Already
-  in Tandem" and edits its bookmark (Save, the same way), and the button shows ✓ on it. In the address bar, `tb` then Tab
-  searches the bookmarks; ↵ opens one. Tandem not running at its address (options; default
-  `http://localhost:3864`), or bookmarks off: the popup says so, and how to fix it (the
-  extension can't start Tandem; the login item restarts it anyway). Chrome only for now.
+  in Tandem", in how many notes, and edits its bookmark (Save, the same way), and the button
+  shows ✓ on it. In the address bar, `tb` then Tab searches the bookmarks; ↵ opens one. Tandem
+  not running at its address (options; default `http://localhost:3864`), or bookmarks off: the
+  popup says so, and how to fix it (the extension can't start Tandem; the login item restarts
+  it anyway). Chrome only for now.
 - **Importing Chrome's bookmarks** (the extension's options, "Import Chrome's bookmarks"): Chrome
   asks to let the extension read them (asked then, not when it's installed). The whole tree
-  (bookmarks bar, other bookmarks, mobile bookmarks, their folders, with Chrome's names; a top
-  folder without bookmarks left out) goes into a "Chrome" folder at the top of Tandem's
-  bookmarks, each bookmark with its favicon from Chrome (none when Chrome only has its generic
-  one: Tandem shows its own). In one change, announced once. Importing again merges: folders of
-  the same name (any case) are reused, pages already in Tandem (anywhere) are kept as they are,
-  and what isn't a web page (bookmarklets, `chrome://`) is left out; the options say how many
-  were imported, already there, left out. Chrome's bookmarks aren't changed. At most 20 000 at once.
-- **Exporting for Chrome** (a right click on the section, "Export all for Chrome"; on a folder,
-  "Export for Chrome": that folder with its content): a browser's bookmarks file
-  (`tandem-bookmarks-<date>.html`, the HTML format every browser imports; in Chrome: Settings ›
-  Import bookmarks and settings › Bookmarks HTML file), with folders, order, dates, descriptions
-  and favicons (Chrome only shows the PNG ones). Also `tandem bookmarks-export`.
+  (bookmarks bar, other bookmarks, mobile bookmarks, their folders; a top folder without
+  bookmarks left out) goes at the end of the inbox note: those at the top first, then each
+  folder's under a heading naming its folders (`## Bookmarks bar / Work`), each bookmark with
+  its favicon from Chrome (none when Chrome only has its generic one: Tandem shows its own). In
+  one change, announced once. Pages already in Tandem (anywhere) are left as they are, and so
+  is what isn't a web page (bookmarklets, `chrome://`), so importing again only adds what is
+  new; the options say how many were imported, already there, left out. Chrome's bookmarks
+  aren't changed. At most 20 000 at once.
+- **Exporting for Chrome** (a right click on Unsorted, "Export all for Chrome"; on a page of the
+  tree, "Export bookmarks for Chrome": that page with what is under it): a browser's bookmarks
+  file (`tandem-bookmarks-<date>.html`, the HTML format every browser imports; in Chrome:
+  Settings › Import bookmarks and settings › Bookmarks HTML file). The pages are its folders,
+  each with its cards (in order) then its child pages; pages without any card in them are left
+  out. With dates, descriptions and favicons (Chrome only shows the PNG ones). Also `tandem
+  bookmarks-export`.
+- **From the folders of before** (bookmarks had folders of their own up to version 0.7.2):
+  once, when the app starts after the update, each folder becomes a page folder where it was
+  (a page or folder of that name there is used instead), with its icon, and the bookmarks no
+  note showed go into the inbox note, under a heading naming their folders. The rest (moving
+  them into notes, removing the folders) is the owner's.
 - Safari may come later.
 
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Bookmarks when on; TODOs and Trash when on, Settings and Docs at the
+- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Unsorted when bookmarks are on; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes, side panel
   and ⋯), editor,
-  collapsible right panel (Headings, Links, History, Files, Databases: icon tabs
+  collapsible right panel (Headings, Links, Bookmarks when on, History, Files, Databases: icon tabs
   named by tooltips; below 1024px there's no room beside the note: the note stays, the panel
   hides, and its button or ⌘\ opens it over the note, closed by Esc, a click on the note or
   its ×; back above 1024px it is as it was left there), resizable from its left
@@ -550,22 +569,20 @@ inside OneDrive so that it is backed up and synced.
   previous, match case, replace and replace all. The current match is always scrolled into view
   (a third down the note), however far it is. ⌘⇧F opens the search across all notes, with the
   selected text.
-- Pages and bookmarks trees: a row's title takes its whole width (cut with an ellipsis when
+- Pages tree and Unsorted: a row's title takes its whole width (cut with an ellipsis when
   too long); its buttons (menu, new page inside) show on hover or focus, over the title's end,
   which fades out under them, as a tab's ×.
 - Pages tree from the keyboard: arrows to move and expand (↑ ↓ preview the page reached, as a
   click does, once they pause), ↵ to open it in a tab of its own (as a double click), F2 to rename, ⌥↑/⌥↓ to
   reorder, ⌘⌫ to move to the trash. Moving to the trash from the tree has no confirmation: the
   message that follows offers Undo (as ⌘Z does). With the trash off, it asks, then deletes forever (unless there's nothing to lose).
-- **Several at once**, in the pages' tree and the bookmarks' (as in Finder): ⌘-click adds a row
+- **Several at once**, in the pages' tree (as in Finder): ⌘-click adds a row
   or takes it out (starting from the open one), ⇧-click selects the rows shown from the last one
   clicked; the rows selected are highlighted, and a plain click or Esc lets go. An action on a
   selected row acts on all of them (on another row, on that row alone; what a selected folder
   holds goes with it): ⌘⌫ deletes them (pages to the trash in one step, one message and one
-  Undo; asked once with the trash off, or for bookmarks, saying how many and the pages losing
-  cards), dragging moves them together, and their menu offers Open N in tabs (pages) or Open N
-  websites (bookmarks), Move to (the top, or a folder: for pages, any page holding pages), and
-  Delete.
+  Undo; asked once with the trash off, saying how many), dragging moves them together, and
+  their menu offers Open N in tabs, Move to (the top, or any page holding pages), and Delete.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
   has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
   Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install

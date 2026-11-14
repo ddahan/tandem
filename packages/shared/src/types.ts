@@ -184,6 +184,11 @@ export interface Settings {
   todos: boolean
   /** Bookmarks: links to websites, in the sidebar and in notes (shared/bookmarks.ts). */
   bookmarks: boolean
+  /**
+   * The inbox note's id: where bookmarks saved from the browser (or imported) go, listed as
+   * "Unsorted" in the sidebar. Null until one is needed (then a "Bookmarks" note is made).
+   */
+  bookmarkInbox: string | null
   /** Daily notes: a note per day, reached from a calendar (shared/calendar.ts). */
   daily: boolean
   /** Home lists the recently updated pages. */
@@ -208,6 +213,7 @@ export const DEFAULT_SETTINGS: Settings = {
   trash: true,
   todos: false,
   bookmarks: false,
+  bookmarkInbox: null,
   daily: false,
   homeRecent: true,
   shortcutHints: true,
@@ -221,7 +227,7 @@ export type ServerEvent =
   | { type: 'settings' }
   /** A database changed (its columns, view or rows). */
   | { type: 'database'; id: string }
-  /** Bookmarks changed (one, or the tree of them). */
+  /** Bookmarks changed: one, or the notes showing them (the inbox's too). */
   | { type: 'bookmarks' }
   /** The agenda changed (an event, a check, a feed or its events). */
   | { type: 'agenda' }

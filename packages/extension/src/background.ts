@@ -107,9 +107,9 @@ chrome.omnibox.onInputChanged.addListener((text, suggest) => {
           : `No bookmark matches <match>${xml(text)}</match> in Tandem`,
       })
       suggest(
-        results.map(({ bookmark, titleHtml, folders }) => ({
+        results.map(({ bookmark, titleHtml }) => ({
           content: bookmark.url,
-          description: `${matched(titleHtml)} <dim>—</dim> <url>${xml(siteOf(bookmark.url))}</url>${folders ? ` <dim>${xml(folders)}</dim>` : ''}`,
+          description: `${matched(titleHtml)} <dim>—</dim> <url>${xml(siteOf(bookmark.url))}</url>`,
         })),
       )
     } catch (error) {

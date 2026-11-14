@@ -1,4 +1,4 @@
-// What can be done with a bookmark from anywhere (the sidebar, a card, its page): make one in a
+// What can be done with a bookmark from anywhere (Unsorted, a card, its page): make one in a
 // dialog, pick one for a note, delete one once confirmed (naming the pages that show it).
 // Editing one is done on its page (pages/bookmarks/[id].vue).
 import type { Bookmark } from '@tandem/shared'
@@ -15,10 +15,9 @@ export function useBookmarkActions() {
   const bookmarks = useBookmarks()
   const toast = useToast()
   const showError = useApiErrorToast()
-  const confirm = useConfirm()
 
-  /** A new bookmark (in a folder, for an address). */
-  async function create(options: { parentId?: string | null; url?: string } = {}) {
+  /** A new bookmark (for an address; with `inbox`, its card in the inbox note). */
+  async function create(options: { url?: string; inbox?: boolean } = {}) {
     editor ??= overlay.create(BookmarkDialog)
     return ((await editor.open(options).result) as Bookmark | null) ?? null
   }
@@ -29,7 +28,7 @@ export function useBookmarkActions() {
     return ((await picker.open().result) as string | null) ?? null
   }
 
-  /** Deletes a bookmark or folder once confirmed; resolves to whether it was. */
+  /** Deletes a bookmark once confirmed; resolves to whether it was. */
   async function remove(bookmark: Bookmark): Promise<boolean> {
     let pages
     try {
@@ -38,13 +37,8 @@ export function useBookmarkActions() {
       showError(error, 'Could not delete the bookmark')
       return false
     }
-    const count = bookmark.kind === 'folder' ? countIn(bookmark.id) : 1
-    // An empty folder (nothing in it, on no page) goes without asking.
-    const empty = bookmark.kind === 'folder' && count === 1 && !pages.length
-    if (!empty) {
-      deleter ??= overlay.create(BookmarkDeleteDialog)
-      if (!(await deleter.open({ bookmark, pages, count }).result)) return false
-    }
+    deleter ??= overlay.create(BookmarkDeleteDialog)
+    if (!(await deleter.open({ bookmark, pages }).result)) return false
     try {
       const result = await bookmarks.remove(bookmark.id)
       toast.add({
@@ -61,60 +55,5 @@ export function useBookmarkActions() {
     }
   }
 
-  /**
-   * Deletes several (a selection) once confirmed, asked once: how many, with what their folders
-   * hold, and the pages that lose their cards. Empty folders on no page go without asking.
-   */
-  async function removeMany(list: Bookmark[]): Promise<boolean> {
-    let pages
-    try {
-      const refs = await Promise.all(list.map((bookmark) => bookmarks.refs(bookmark.id)))
-      pages = [...new Map(refs.flat().map((page) => [page.id, page])).values()]
-    } catch (error) {
-      showError(error, 'Could not delete the bookmarks')
-      return false
-    }
-    const count = list.reduce((sum, bookmark) => sum + countIn(bookmark.id), 0)
-    const folders = list.some((bookmark) => bookmark.kind === 'folder')
-    const what = folders ? `${list.length} bookmarks and folders` : `${list.length} bookmarks`
-    if (count > list.length || pages.length || !list.every((b) => b.kind === 'folder')) {
-      const confirmed = await confirm({
-        title: `Delete ${what}?`,
-        description: [
-          count > list.length ? `With what their folders hold: ${count} in all.` : '',
-          pages.length
-            ? `Their cards leave ${pages.length === 1 ? '1 page' : `${pages.length} pages`}: ${pages.map((page) => page.title).join(', ')}.`
-            : '',
-          'Bookmarks have no trash: this cannot be undone.',
-        ]
-          .filter(Boolean)
-          .join(' '),
-        confirmLabel: 'Delete',
-        confirmColor: 'error',
-        icon: 'i-lucide-trash-2',
-      })
-      if (!confirmed) return false
-    }
-    try {
-      for (const bookmark of list) await bookmarks.remove(bookmark.id)
-      toast.add({ title: `Deleted ${what}`, icon: 'i-lucide-trash-2' })
-      return true
-    } catch (error) {
-      showError(error, 'Could not delete the bookmarks')
-      return false
-    }
-  }
-
-  /** The bookmark or folder and everything in it. */
-  function countIn(id: string) {
-    let count = 0
-    const walk = (parentId: string) => {
-      count++
-      for (const child of bookmarks.childrenOf.value.get(parentId) ?? []) walk(child.id)
-    }
-    walk(id)
-    return count
-  }
-
-  return { create, pick, remove, removeMany }
+  return { create, pick, remove }
 }

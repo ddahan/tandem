@@ -134,31 +134,25 @@ export const databaseRows = sqliteTable(
   (table) => [index('database_rows_order').on(table.databaseId, table.position)],
 )
 
-/** Bookmarks and their folders (shared/bookmarks.ts); a note shows one with a `bookmark` block. */
+/**
+ * Bookmarks (shared/bookmarks.ts): one per web page. A note shows one with a `bookmark` block;
+ * what organizes them is the notes showing them (no folders since migration 0007).
+ */
 export const bookmarks = sqliteTable(
   'bookmarks',
   {
     id: text('id').primaryKey(),
-    kind: text('kind', { enum: ['folder', 'bookmark'] }).notNull(),
-    /** A folder's id, or null at the top. Deleting a folder deletes its contents (the store). */
-    parentId: text('parent_id'),
     title: text('title').notNull(),
-    /** Empty for a folder. */
-    url: text('url').notNull().default(''),
-    /** `urlKey(url)`: two bookmarks of one page are duplicates. Empty for a folder. */
-    urlKey: text('url_key').notNull().default(''),
+    url: text('url').notNull(),
+    /** `urlKey(url)`: two bookmarks of one page are duplicates. */
+    urlKey: text('url_key').notNull(),
     description: text('description').notNull().default(''),
-    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, or null. */
+    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, `emoji:<emoji>`, or null. */
     icon: text('icon'),
-    /** Order among siblings (ascending). */
-    position: real('position').notNull(),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
-  (table) => [
-    index('bookmarks_parent').on(table.parentId, table.position),
-    index('bookmarks_url_key').on(table.urlKey),
-  ],
+  (table) => [index('bookmarks_url_key').on(table.urlKey)],
 )
 
 /** The bookmarks each page shows (its `bookmark` blocks), as `links` for wiki links. */

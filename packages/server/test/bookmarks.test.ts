@@ -1,16 +1,23 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   BOOKMARKS_OFF,
   EXTENSION_ORIGIN,
   OWNER,
   bookmarkBlock,
+  type BookmarkImportResult,
   type ServerEvent,
 } from '@tandem/shared'
+import { openDatabase } from '../src/db/client.ts'
 import { createApp } from '../src/app.ts'
 import { createClient } from '../src/client.ts'
+import { Vault, type BookmarkPlace } from '../src/vault/vault.ts'
+import type { BookmarkInput } from '../src/vault/bookmarks.ts'
+import type { Favicon } from '../src/vault/web-pages.ts'
 import { createTestVault } from './helpers.ts'
 
 /** A fake web: pages and files by URL. */
@@ -29,106 +36,94 @@ function fakeWeb(files: Record<string, { type: string; body: string | Uint8Array
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
 
+/** A new bookmark (or the one of its page), without what else `createBookmark` answers. */
+async function add(
+  vault: Vault,
+  input: BookmarkInput,
+  icon?: Favicon | null,
+  place?: BookmarkPlace,
+) {
+  return (await vault.createBookmark(input, icon, place)).bookmark
+}
+
 describe('bookmarks', () => {
-  it('keeps bookmarks in folders, in order, and moves them', async () => {
-    const { vault } = await createTestVault()
+  it('keeps one bookmark per page, the latest first, and changes them', async () => {
+    const { vault, clock } = await createTestVault()
     const events: ServerEvent[] = []
     vault.events.on('event', (event) => events.push(event))
-    const work = await vault.createBookmark({ kind: 'folder', title: 'Work' })
-    const a = await vault.createBookmark({
-      url: 'github.com/ddahan',
-      title: 'GitHub',
-      parentId: work.id,
-    })
-    const b = await vault.createBookmark({ url: 'https://example.com', parentId: work.id })
-    const c = await vault.createBookmark({
-      url: 'https://nuxt.com',
-      title: 'Nuxt',
-      parentId: work.id,
-      index: 0,
-    })
-    expect(a).toMatchObject({ kind: 'bookmark', url: 'https://github.com/ddahan', title: 'GitHub' })
+    const a = await add(vault, { url: 'github.com/ddahan', title: 'GitHub' })
+    clock.advance(1000)
+    const b = await add(vault, { url: 'https://example.com' })
+    expect(a).toMatchObject({ url: 'https://github.com/ddahan', title: 'GitHub', uses: 0 })
     // No title: the site's name.
     expect(b.title).toBe('example.com')
-    const order = async () =>
-      (await vault.listBookmarks()).filter((x) => x.parentId === work.id).map((x) => x.title)
-    expect(await order()).toEqual(['Nuxt', 'GitHub', 'example.com'])
-    expect(events.filter((event) => event.type === 'bookmarks')).toHaveLength(4)
+    expect((await vault.listBookmarks()).map((x) => x.title)).toEqual(['example.com', 'GitHub'])
+    expect(events.filter((event) => event.type === 'bookmarks')).toHaveLength(2)
 
-    await vault.updateBookmark(c.id, { index: 2 })
-    expect(await order()).toEqual(['GitHub', 'example.com', 'Nuxt'])
-    const moved = await vault.updateBookmark(a.id, { parentId: null, title: '  GitHub  me ' })
-    expect(moved).toMatchObject({ parentId: null, title: 'GitHub me' })
-    expect(await order()).toEqual(['example.com', 'Nuxt'])
     const edited = await vault.updateBookmark(b.id, {
       url: 'http://example.org/x',
       description: 'An example',
+      title: '  Example  site ',
     })
-    expect(edited).toMatchObject({ url: 'http://example.org/x', description: 'An example' })
+    expect(edited).toMatchObject({
+      url: 'http://example.org/x',
+      description: 'An example',
+      title: 'Example site',
+    })
   })
 
-  it('refuses what isn’t a bookmark: other schemes, folders inside themselves, empty names', async () => {
+  it('refuses what isn’t a bookmark: other schemes, empty names', async () => {
     const { vault } = await createTestVault()
     await expect(vault.createBookmark({ url: 'javascript:alert(1)' })).rejects.toThrow(
       'web address',
     )
     await expect(vault.createBookmark({ url: '' })).rejects.toThrow('web address')
-    await expect(vault.createBookmark({ kind: 'folder', title: ' ' })).rejects.toThrow('name')
-    const folder = await vault.createBookmark({ kind: 'folder', title: 'F' })
-    const inner = await vault.createBookmark({ kind: 'folder', title: 'G', parentId: folder.id })
-    const link = await vault.createBookmark({ url: 'https://a.com' })
-    await expect(vault.updateBookmark(folder.id, { parentId: inner.id })).rejects.toThrow('itself')
-    await expect(vault.createBookmark({ url: 'https://b.com', parentId: link.id })).rejects.toThrow(
-      'folders only',
-    )
-    await expect(vault.createBookmark({ url: 'https://b.com', parentId: 'nope' })).rejects.toThrow(
-      'No such folder',
-    )
+    const link = await add(vault, { url: 'https://a.com' })
     await expect(vault.updateBookmark(link.id, { title: '' })).rejects.toThrow('empty')
     await expect(vault.updateBookmark(link.id, { url: 'ftp://x' })).rejects.toThrow('web address')
     await expect(vault.getBookmark('nope')).rejects.toThrow('No such bookmark')
+    await expect(vault.bookmarkRefs('nope')).rejects.toThrow('No such bookmark')
   })
 
-  it('finds duplicates by address, give or take www, the scheme, #… and a final /', async () => {
+  it('uses the bookmark of a page already saved (give or take www, the scheme, #…, a final /)', async () => {
     const { vault } = await createTestVault()
     const first = await vault.createBookmark({ url: 'https://www.example.com/docs/' })
+    expect(first.created).toBe(true)
     expect(await vault.findBookmark('http://example.com/docs#intro')).toMatchObject({
-      id: first.id,
+      id: first.bookmark.id,
     })
     expect(await vault.findBookmark('https://example.com/Docs')).toBeNull()
     expect(await vault.findBookmark('not a url at all ://')).toBeNull()
-    await expect(vault.createBookmark({ url: 'example.com/docs' })).rejects.toMatchObject({
-      name: 'DuplicateBookmarkError',
-      bookmark: { id: first.id },
-    })
-    const other = await vault.createBookmark({ url: 'https://example.com/other' })
+    const again = await vault.createBookmark({ url: 'example.com/docs', title: 'Other name' })
+    expect(again).toMatchObject({ created: false, bookmark: { id: first.bookmark.id } })
+    // Kept as it was.
+    expect(again.bookmark.title).toBe(first.bookmark.title)
+    expect(await vault.listBookmarks()).toHaveLength(1)
+    // Changing another one's address to it is refused, naming it.
+    const other = await add(vault, { url: 'https://example.com/other' })
     await expect(
       vault.updateBookmark(other.id, { url: 'https://example.com/docs' }),
-    ).rejects.toThrow('Already bookmarked')
+    ).rejects.toMatchObject({ name: 'DuplicateBookmarkError', bookmark: { id: first.bookmark.id } })
     // Its own address again is fine.
-    await vault.updateBookmark(first.id, { url: 'https://www.example.com/docs' })
+    await vault.updateBookmark(first.bookmark.id, { url: 'https://www.example.com/docs' })
   })
 
   it('searches titles, addresses and descriptions, as notes are searched', async () => {
     const { vault, clock } = await createTestVault()
-    const tools = await vault.createBookmark({ kind: 'folder', title: 'Tools' })
-    await vault.createBookmark({
+    const github = await add(vault, {
       url: 'https://github.com',
       title: 'GitHub',
       description: 'Where the code lives',
-      parentId: tools.id,
     })
+    await vault.createPage({ title: 'Tools', content: bookmarkBlock(github.id), author: OWNER })
     clock.advance(1000)
-    await vault.createBookmark({
+    await add(vault, {
       url: 'https://www.lemonde.fr',
       title: 'Le Monde',
       description: 'Actualités',
     })
     clock.advance(1000)
-    await vault.createBookmark({
-      url: 'https://code.visualstudio.com',
-      title: 'Visual Studio Code',
-    })
+    await add(vault, { url: 'https://code.visualstudio.com', title: 'Visual Studio Code' })
     const titles = async (query: string) =>
       (await vault.searchBookmarks(query)).map((result) => result.bookmark.title)
 
@@ -143,24 +138,30 @@ describe('bookmarks', () => {
     expect(await titles('vsual')).toEqual(['Visual Studio Code'])
     expect(await titles('code -studio')).toEqual(['GitHub'])
     expect(await titles('"code lives"')).toEqual(['GitHub'])
+    // in: the notes showing it.
     expect(await titles('in:Tools')).toEqual(['GitHub'])
     expect(await titles('code in:tools')).toEqual(['GitHub'])
+    expect(await titles('in:Nowhere')).toEqual([])
     expect(await titles('tag:work')).toEqual([])
     // No words: the latest.
     expect(await titles('')).toEqual(['Visual Studio Code', 'Le Monde', 'GitHub'])
     expect(await titles('-monde')).toEqual(['Visual Studio Code', 'GitHub'])
 
     const [result] = await vault.searchBookmarks('vis')
-    expect(result).toMatchObject({ titleHtml: '<mark>Visual</mark> Studio Code', folders: '' })
-    const [github] = await vault.searchBookmarks('git')
-    expect(github?.folders).toBe('Tools')
+    expect(result).toEqual({
+      bookmark: expect.objectContaining({ title: 'Visual Studio Code' }),
+      titleHtml: '<mark>Visual</mark> Studio Code',
+    })
+    expect((await vault.searchBookmarks('git'))[0]?.bookmark.uses).toBe(1)
   })
 
-  it('knows the pages showing a bookmark, and removes its cards when it is deleted', async () => {
+  it('counts the notes showing a bookmark, and removes its cards when it is deleted', async () => {
     const { vault, dataDir, clock } = await createTestVault()
-    const folder = await vault.createBookmark({ kind: 'folder', title: 'Docs' })
-    const a = await vault.createBookmark({ url: 'https://a.com', title: 'A', parentId: folder.id })
-    const b = await vault.createBookmark({ url: 'https://b.com', title: 'B' })
+    const a = await add(vault, { url: 'https://a.com', title: 'A' })
+    clock.advance(1000)
+    const b = await add(vault, { url: 'https://b.com', title: 'B' })
+    const events: ServerEvent[] = []
+    vault.events.on('event', (event) => events.push(event))
     const first = await vault.createPage({
       title: 'First',
       content: `Intro\n\n${bookmarkBlock(a.id)}\n\nMiddle\n\n${bookmarkBlock(b.id)}\n`,
@@ -168,20 +169,18 @@ describe('bookmarks', () => {
     })
     const second = await vault.createPage({
       title: 'Second',
-      content: `${bookmarkBlock(a.id)}\n`,
+      content: `${bookmarkBlock(a.id)}\n\n${bookmarkBlock(a.id)}\n`,
       author: OWNER,
     })
+    // Its uses changed: announced.
+    expect(events.filter((event) => event.type === 'bookmarks')).toHaveLength(2)
     expect((await vault.bookmarkRefs(a.id)).map((page) => page.title)).toEqual(['First', 'Second'])
-    // A folder: the pages of everything in it.
-    expect((await vault.bookmarkRefs(folder.id)).map((page) => page.title)).toEqual([
-      'First',
-      'Second',
-    ])
-    expect((await vault.bookmarkRefs(b.id)).map((page) => page.title)).toEqual(['First'])
+    expect((await vault.getBookmark(a.id)).uses).toBe(2)
+    expect((await vault.getBookmark(b.id)).uses).toBe(1)
+    expect((await vault.listBookmarks()).map((x) => x.uses)).toEqual([1, 2])
 
     clock.advance(1000)
-    const result = await vault.deleteBookmark(folder.id, 'claude')
-    expect(result.deleted).toBe(2)
+    const result = await vault.deleteBookmark(a.id, 'claude')
     expect(result.pages.map((page) => page.title)).toEqual(['First', 'Second'])
     expect(await readFile(join(dataDir, 'First.md'), 'utf8')).toBe(
       `Intro\n\nMiddle\n\n${bookmarkBlock(b.id)}\n`,
@@ -197,7 +196,7 @@ describe('bookmarks', () => {
 
   it('forgets a page’s cards when it is edited, trashed or emptied, and back when restored', async () => {
     const { vault } = await createTestVault()
-    const a = await vault.createBookmark({ url: 'https://a.com' })
+    const a = await add(vault, { url: 'https://a.com' })
     const page = await vault.createPage({ title: 'P', content: bookmarkBlock(a.id), author: OWNER })
     expect(await vault.bookmarkRefs(a.id)).toHaveLength(1)
     const { trashId } = await vault.remove(page.id)
@@ -206,6 +205,56 @@ describe('bookmarks', () => {
     expect(await vault.bookmarkRefs(a.id)).toHaveLength(1)
     await vault.saveContent(page.id, 'No card', { author: OWNER })
     expect(await vault.bookmarkRefs(a.id)).toHaveLength(0)
+  })
+
+  it('puts new cards in the inbox note (made when needed), or at the end of a note', async () => {
+    const { vault, dataDir } = await createTestVault()
+    expect(await vault.unsortedBookmarks()).toEqual({ noteId: null, bookmarks: [] })
+    // Nothing asked: no card anywhere (the editor puts it), and no inbox made.
+    await add(vault, { url: 'https://none.com' })
+    expect((await vault.getSettings()).bookmarkInbox).toBeNull()
+
+    const a = await add(vault, { url: 'https://a.com', title: 'A' }, undefined, { inbox: true })
+    const inbox = (await vault.getSettings()).bookmarkInbox!
+    expect((await vault.getNode(inbox)).path).toBe('Bookmarks.md')
+    const b = await add(vault, { url: 'https://b.com', title: 'B' }, undefined, {
+      inbox: true,
+      author: 'claude',
+    })
+    // The latest at the start.
+    expect(await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')).toBe(
+      `${bookmarkBlock(b.id)}\n\n${bookmarkBlock(a.id)}\n`,
+    )
+    expect((await vault.getNote(inbox)).lastAuthor).toBe('claude')
+    const unsorted = await vault.unsortedBookmarks()
+    expect(unsorted.noteId).toBe(inbox)
+    expect(unsorted.bookmarks.map((x) => x.title)).toEqual(['B', 'A'])
+    // Already there: not twice.
+    await vault.createBookmark({ url: 'https://a.com' }, undefined, { inbox: true })
+    expect((await vault.unsortedBookmarks()).bookmarks).toHaveLength(2)
+
+    // Into a note: at its end, the page already saved used.
+    const note = await vault.createPage({ title: 'Work', content: 'Text', author: OWNER })
+    const again = await vault.createBookmark({ url: 'a.com' }, undefined, { noteId: note.id })
+    expect(again).toMatchObject({ created: false, bookmark: { id: a.id, uses: 2 } })
+    expect(await readFile(join(dataDir, 'Work.md'), 'utf8')).toBe(
+      `Text\n\n${bookmarkBlock(a.id)}\n`,
+    )
+
+    // Sorted: out of the inbox, the bookmark kept.
+    await vault.removeBookmarkCards(inbox, a.id, OWNER)
+    expect((await vault.unsortedBookmarks()).bookmarks.map((x) => x.title)).toEqual(['B'])
+    expect((await vault.getBookmark(a.id)).uses).toBe(1)
+    // A note not showing it: unchanged.
+    await vault.removeBookmarkCards(inbox, a.id, OWNER)
+
+    // The inbox trashed: Unsorted is empty, and a new one is made when needed.
+    await vault.remove(inbox)
+    expect(await vault.unsortedBookmarks()).toEqual({ noteId: null, bookmarks: [] })
+    await add(vault, { url: 'https://c.com' }, undefined, { inbox: true })
+    const next = (await vault.getSettings()).bookmarkInbox!
+    expect(next).not.toBe(inbox)
+    expect((await vault.unsortedBookmarks()).bookmarks).toHaveLength(1)
   })
 
   it('reads favicons and page previews from the web, or takes the one given', async () => {
@@ -239,28 +288,29 @@ describe('bookmarks', () => {
     expect(await vault.previewPage('https://nowhere.com/')).toMatchObject({ title: '' })
 
     // Its title, description and favicon, from one read of the page.
-    const site = await vault.createBookmark({ url: 'https://site.com/' })
+    const site = await add(vault, { url: 'https://site.com/' })
     expect(site).toMatchObject({ title: 'Site & co', description: 'All about "sites"' })
     expect(requested.filter((url) => url === 'https://site.com/')).toHaveLength(2)
     expect(site.icon).toMatch(/^\/api\/bookmarks\/\w+\/icon\?v=bookmark-/)
     expect(requested).not.toContain('https://site.com/body.png')
     expect(await readFile(await vault.bookmarkIconFile(site.id))).toEqual(Buffer.from(PNG))
 
-    const bare = await vault.createBookmark({ url: 'https://bare.com/' })
+    const bare = await add(vault, { url: 'https://bare.com/' })
     expect(await vault.bookmarkIconFile(bare.id)).toMatch(/\.ico$/)
-    const none = await vault.createBookmark({ url: 'https://nowhere.com/' })
+    const none = await add(vault, { url: 'https://nowhere.com/' })
     expect(none.icon).toBeNull()
 
     // Given (the extension), nothing is fetched; a title given is kept.
     const count = requested.length
-    const given = await vault.createBookmark(
+    const given = await add(
+      vault,
       { url: 'https://given.com/', title: 'Given', description: '' },
       { data: PNG, extension: 'png' },
     )
     expect(requested).toHaveLength(count)
     expect(given.title).toBe('Given')
     // Only the title missing: the page is read, not its favicon.
-    await vault.createBookmark({ url: 'https://site.com/other' }, { data: PNG, extension: 'png' })
+    await add(vault, { url: 'https://site.com/other' }, { data: PNG, extension: 'png' })
     expect(requested.slice(count)).toEqual(['https://site.com/other'])
     expect(given.icon).not.toBeNull()
 
@@ -295,31 +345,31 @@ describe('bookmarks', () => {
     const fetcher = ((...args: Parameters<typeof fetch>) => app.request(...args)) as typeof fetch
     const client = createClient('http://localhost', { author: OWNER, fetch: fetcher })
 
-    const folder = await (
-      await client.bookmarks.$post({ json: { kind: 'folder', title: 'Read later' } })
-    ).json()
     const created = await client.bookmarks.$post({
       json: {
         url: 'https://example.com/a',
         title: 'A',
         description: 'Desc',
-        parentId: folder.id,
+        inbox: true,
         iconDataUrl: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`,
       },
     })
     expect(created.status).toBe(201)
     const bookmark = await created.json()
-    expect(bookmark).toMatchObject({ title: 'A', parentId: folder.id })
+    expect(bookmark).toMatchObject({ title: 'A', uses: 1 })
 
     const icon = await app.request(`http://localhost${bookmark.icon}`)
     expect(icon.headers.get('content-type')).toBe('image/png')
     expect(new Uint8Array(await icon.arrayBuffer())).toEqual(PNG)
 
+    // Already saved: its bookmark, not a new one.
     const duplicate = await client.bookmarks.$post({ json: { url: 'example.com/a/' } })
-    expect(duplicate.status).toBe(409)
-    expect(await duplicate.json()).toMatchObject({ bookmark: { id: bookmark.id } })
+    expect(duplicate.status).toBe(200)
+    expect(await duplicate.json()).toMatchObject({ id: bookmark.id })
 
-    expect(await (await client.bookmarks.$get()).json()).toHaveLength(2)
+    const unsorted = await (await client.bookmarks.unsorted.$get()).json()
+    expect(unsorted.bookmarks.map((b) => b.id)).toEqual([bookmark.id])
+    expect(await (await client.bookmarks.$get()).json()).toHaveLength(1)
     expect(
       await (
         await client.bookmarks.lookup.$get({ query: { url: 'https://example.com/a' } })
@@ -335,7 +385,12 @@ describe('bookmarks', () => {
     expect((await client.bookmarks[':id'].$get({ param: { id: bookmark.id } })).status).toBe(200)
     expect(
       await (await client.bookmarks[':id'].refs.$get({ param: { id: bookmark.id } })).json(),
-    ).toEqual([])
+    ).toMatchObject([{ title: 'Bookmarks' }])
+    // Its card taken out of the inbox note.
+    const cards = client.bookmarks[':id'].cards[':noteId']
+    const param = { id: bookmark.id, noteId: unsorted.noteId! }
+    expect((await cards.$delete({ param })).status).toBe(200)
+    expect((await (await client.bookmarks.unsorted.$get()).json()).bookmarks).toEqual([])
     // Without a fetcher (tests), a preview is empty; a non-web address is refused.
     expect(
       await (await client.bookmarks.preview.$post({ json: { url: 'https://example.com' } })).json(),
@@ -372,22 +427,22 @@ describe('bookmarks', () => {
       (
         await fromExtension('/bookmarks', {
           method: 'POST',
-          body: JSON.stringify({ url: 'https://new.com' }),
+          body: JSON.stringify({ url: 'https://new.com', inbox: true }),
         })
       ).status,
     ).toBe(201)
 
-    const deleted = await client.bookmarks[':id'].$delete({ param: { id: folder.id } })
-    expect(await deleted.json()).toEqual({ deleted: 2, pages: [] })
+    const deleted = await client.bookmarks[':id'].$delete({ param: { id: bookmark.id } })
+    expect(await deleted.json()).toEqual({ pages: [] })
     expect((await client.bookmarks[':id'].$get({ param: { id: bookmark.id } })).status).toBe(404)
     expect((await app.request(`http://localhost${bookmark.icon}`)).status).toBe(404)
   })
 
-  it('imports a browser’s tree into one folder, merging with what is there', async () => {
-    const { vault } = await createTestVault()
+  it('imports a browser’s tree into the inbox note, a heading per folder', async () => {
+    const { vault, dataDir } = await createTestVault()
     await vault.updateSettings({ bookmarks: true })
     const app = createApp(vault)
-    const already = await vault.createBookmark({
+    const already = await add(vault, {
       url: 'https://github.com',
       title: 'GitHub',
       description: '',
@@ -399,12 +454,13 @@ describe('bookmarks', () => {
         body: JSON.stringify({ children }),
       })
       expect(response.status).toBe(200)
-      return response.json()
+      return (await response.json()) as BookmarkImportResult
     }
     const events: ServerEvent[] = []
     vault.events.on('event', (event) => events.push(event))
     const icon = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
     const tree = [
+      { title: 'Loose', url: 'https://loose.example.com' },
       {
         title: 'Bookmarks bar',
         children: [
@@ -417,47 +473,44 @@ describe('bookmarks', () => {
       },
     ]
     const result = await send(tree)
-    expect(result).toMatchObject({ folders: 4, bookmarks: 2, duplicates: 1, skipped: 1 })
-    // One change, announced once.
+    expect(result).toMatchObject({ bookmarks: 3, duplicates: 1, skipped: 1 })
+    expect(result.noteId).toBe((await vault.getSettings()).bookmarkInbox)
     expect(events.filter((event) => event.type === 'bookmarks')).toHaveLength(1)
 
     const all = await vault.listBookmarks()
-    const byTitle = (title: string) => all.find((b) => b.title === title)!
-    const chrome = byTitle('Chrome')
-    expect(chrome).toMatchObject({ kind: 'folder', parentId: null, position: 2 })
-    expect(byTitle('Bookmarks bar').parentId).toBe(chrome.id)
-    const bar = byTitle('Bookmarks bar').id
-    expect(all.filter((b) => b.parentId === bar).map((b) => b.title)).toEqual([
-      'Docs',
-      'Work',
-      'Empty',
-    ])
-    expect(byTitle('Board').parentId).toBe(byTitle('Work').id)
-    expect(byTitle('Docs').icon).toMatch(/^\/api\/bookmarks\/\w+\/icon/)
-    const image = await app.request(`http://localhost${byTitle('Docs').icon}`)
+    const idOf = (title: string) => all.find((b) => b.title === title)!.id
+    expect(await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')).toBe(
+      [
+        bookmarkBlock(idOf('Loose')),
+        '## Bookmarks bar',
+        bookmarkBlock(idOf('Docs')),
+        '## Bookmarks bar / Work',
+        `${bookmarkBlock(idOf('Board'))}\n`,
+      ].join('\n\n'),
+    )
+    const docs = all.find((b) => b.title === 'Docs')!
+    const image = await app.request(`http://localhost${docs.icon}`)
     expect(new Uint8Array(await image.arrayBuffer())).toEqual(PNG)
-    expect(byTitle('GitHub').id).toBe(already.id)
+    expect(all.find((b) => b.title === 'GitHub')!.id).toBe(already.id)
 
-    // Again, with one more: only that one is added, in the folders already there.
-    tree[0]!.children[3]!.children!.push({ title: 'Wiki', url: 'https://wiki.example.com' })
-    expect(await send(tree)).toMatchObject({
-      folderId: chrome.id,
-      folders: 0,
-      bookmarks: 1,
-      duplicates: 3,
-    })
-    const after = await vault.listBookmarks()
-    expect(after.find((b) => b.title === 'Wiki')!.parentId).toBe(byTitle('Work').id)
-    expect(after).toHaveLength(all.length + 1)
+    // Again, with one more: only that one is added, at the end.
+    tree[1]!.children![3]!.children!.push({ title: 'Wiki', url: 'https://wiki.example.com' })
+    expect(await send(tree)).toMatchObject({ bookmarks: 1, duplicates: 4 })
+    const wiki = (await vault.listBookmarks()).find((b) => b.title === 'Wiki')!
+    const content = await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')
+    expect(content.endsWith(`\n\n## Bookmarks bar / Work\n\n${bookmarkBlock(wiki.id)}\n`)).toBe(
+      true,
+    )
+    expect(await vault.listBookmarks()).toHaveLength(all.length + 1)
   })
 
-  it('takes an icon chosen for a folder: an emoji, an image, or back to none', async () => {
+  it('takes an icon chosen for a bookmark: an emoji, an image, or back to its favicon', async () => {
     const { vault } = await createTestVault()
     await vault.updateSettings({ bookmarks: true })
     const app = createApp(vault)
-    const folder = await vault.createBookmark({ kind: 'folder', title: 'Work' })
+    const bookmark = await add(vault, { url: 'https://work.com', title: 'Work' })
     const call = (method: string, init: RequestInit = {}) =>
-      app.request(`http://localhost/api/bookmarks/${folder.id}/icon`, { method, ...init })
+      app.request(`http://localhost/api/bookmarks/${bookmark.id}/icon`, { method, ...init })
     const json = { 'content-type': 'application/json' }
 
     const withEmoji = await call('PUT', { headers: json, body: JSON.stringify({ emoji: '📚' }) })
@@ -483,27 +536,33 @@ describe('bookmarks', () => {
     expect((await app.request(`http://localhost${withImage.icon}`)).status).toBe(404)
   })
 
-  it('exports them as a browser’s bookmarks file: all, or a folder', async () => {
-    const { vault, clock } = await createTestVault()
+  it('exports them as a browser’s bookmarks file, the pages as folders: all, or a page’s', async () => {
+    const { vault } = await createTestVault()
     await vault.updateSettings({ bookmarks: true })
     const app = createApp(vault)
-    const work = await vault.createBookmark({ kind: 'folder', title: 'Work & play' })
-    const docs = await vault.createBookmark(
+    const docs = await add(
+      vault,
       {
         url: 'https://docs.example.com/?a=1&b="2"',
         title: 'Docs <new>\nline',
         description: 'The  docs',
-        parentId: work.id,
       },
       { data: PNG, extension: 'png' },
     )
-    clock.advance(1000)
-    await vault.createBookmark({
-      url: 'https://board.example.com',
-      title: 'Board',
-      parentId: work.id,
+    const board = await add(vault, { url: 'https://board.example.com', title: 'Board' })
+    const top = await add(vault, { url: 'https://top.example.com', title: 'Top', description: '' })
+    const work = await vault.createPage({
+      title: 'Work & play',
+      content: `${bookmarkBlock(docs.id)}\n\n${bookmarkBlock(board.id)}\n`,
+      author: OWNER,
     })
-    await vault.createBookmark({ url: 'https://top.example.com', title: 'Top', description: '' })
+    const inner = await vault.createPage({
+      parentId: work.id,
+      title: 'Inner',
+      content: bookmarkBlock(top.id),
+      author: OWNER,
+    })
+    await vault.createPage({ title: 'No cards', content: 'Text', author: OWNER })
 
     const response = await app.request('http://localhost/api/bookmarks/export')
     expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8')
@@ -511,7 +570,8 @@ describe('bookmarks', () => {
       /^attachment; filename="tandem-bookmarks-\d{4}-\d{2}-\d{2}\.html"$/,
     )
     const html = await response.text()
-    const added = Math.floor(docs.createdAt / 1000)
+    const at = Math.floor(docs.createdAt / 1000)
+    const dates = `ADD_DATE="${at}" LAST_MODIFIED="${at}"`
     const icon = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
     // Chrome reads it line by line: one element per line, texts escaped, in the tree's order.
     expect(html).toBe(`<!DOCTYPE NETSCAPE-Bookmark-file-1>
@@ -522,35 +582,100 @@ describe('bookmarks', () => {
 <TITLE>Bookmarks</TITLE>
 <H1>Bookmarks</H1>
 <DL><p>
-    <DT><H3 ADD_DATE="${added}" LAST_MODIFIED="${added}">Work &amp; play</H3>
+    <DT><H3 ${dates}>Work &amp; play</H3>
     <DL><p>
-        <DT><A HREF="https://docs.example.com/?a=1&amp;b=%222%22" ADD_DATE="${added}" LAST_MODIFIED="${added}" ICON="${icon}">Docs &lt;new&gt; line</A>
+        <DT><A HREF="https://docs.example.com/?a=1&amp;b=%222%22" ${dates} ICON="${icon}">Docs &lt;new&gt; line</A>
         <DD>The docs
-        <DT><A HREF="https://board.example.com/" ADD_DATE="${added + 1}" LAST_MODIFIED="${added + 1}">Board</A>
+        <DT><A HREF="https://board.example.com/" ${dates}>Board</A>
+        <DT><H3 ${dates}>Inner</H3>
+        <DL><p>
+            <DT><A HREF="https://top.example.com/" ${dates}>Top</A>
+        </DL><p>
     </DL><p>
-    <DT><A HREF="https://top.example.com/" ADD_DATE="${added + 1}" LAST_MODIFIED="${added + 1}">Top</A>
 </DL><p>
 `)
 
-    // A folder alone: that folder, with its content.
-    const folder = await (
-      await app.request(`http://localhost/api/bookmarks/export?folder=${work.id}`)
+    // A page alone: that page, with what is under it.
+    const page = await (
+      await app.request(`http://localhost/api/bookmarks/export?note=${inner.id}`)
     ).text()
-    expect(folder).toContain('<H3 ')
-    expect(folder).toContain('Board')
-    expect(folder).not.toContain('Top')
+    expect(page).toContain('>Inner</H3>')
+    expect(page).not.toContain('Board')
     // A PNG saved as .ico is told as a PNG (Chrome only shows those); an ICO as one.
     const ico = new Uint8Array([0, 0, 1, 0, 1])
+    const exported = async () =>
+      (await app.request(`http://localhost/api/bookmarks/export?note=${work.id}`)).text()
     await vault.setBookmarkIcon(docs.id, 'icon.ico', PNG)
-    expect(
-      await (await app.request(`http://localhost/api/bookmarks/export?folder=${docs.id}`)).text(),
-    ).toContain(`ICON="${icon}"`)
+    expect(await exported()).toContain(`ICON="${icon}"`)
     await vault.setBookmarkIcon(docs.id, 'icon.ico', ico)
-    expect(
-      await (await app.request(`http://localhost/api/bookmarks/export?folder=${docs.id}`)).text(),
-    ).toContain(`ICON="data:image/x-icon;base64,${Buffer.from(ico).toString('base64')}"`)
-    expect((await app.request('http://localhost/api/bookmarks/export?folder=nope')).status).toBe(
-      404,
+    expect(await exported()).toContain(
+      `ICON="data:image/x-icon;base64,${Buffer.from(ico).toString('base64')}"`,
     )
+    expect((await app.request('http://localhost/api/bookmarks/export?note=nope')).status).toBe(404)
+  })
+
+  it('turns the folders of before 0007 into page folders, and the bookmarks into the inbox note', async () => {
+    // A database as it was before migration 0007, with folders.
+    const temp = await mkdtemp(join(tmpdir(), 'tandem-legacy-'))
+    const dataDir = join(temp, 'notes')
+    await mkdir(join(dataDir, '.tandem', 'icons'), { recursive: true })
+    const migrations = fileURLToPath(new URL('../drizzle', import.meta.url))
+    const old = join(temp, 'drizzle')
+    await cp(migrations, old, { recursive: true })
+    const journal = JSON.parse(await readFile(join(old, 'meta', '_journal.json'), 'utf8')) as {
+      entries: { tag: string }[]
+    }
+    journal.entries = journal.entries.filter((entry) => entry.tag < '0007')
+    await writeFile(join(old, 'meta', '_journal.json'), JSON.stringify(journal))
+    const path = join(temp, 'db.sqlite')
+    const before = await openDatabase(path, undefined, { migrationsFolder: old })
+    const insert = before.sqlite.prepare(
+      'insert into bookmarks (id, kind, parent_id, title, url, url_key, description, icon, position, created_at, updated_at) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)',
+    )
+    await writeFile(join(dataDir, '.tandem', 'icons', 'bookmark-F2-1.png'), PNG)
+    insert.run('F1', 'folder', null, 'Work', '', '', '', 'emoji:💼', 2)
+    insert.run('F2', 'folder', 'F1', 'Tools', '', '', '', 'image:bookmark-F2-1.png', 1)
+    insert.run('F3', 'folder', null, 'Empty', '', '', '', null, 3)
+    insert.run('B1', 'bookmark', null, 'Top', 'https://top.com/', 'top.com', '', null, 1)
+    insert.run('B2', 'bookmark', 'F1', 'Board', 'https://board.com/', 'board.com', '', null, 2)
+    insert.run('B3', 'bookmark', 'F2', 'Git', 'https://git.com/', 'git.com', '', null, 1)
+    insert.run('B4', 'bookmark', 'F2', 'Shown', 'https://shown.com/', 'shown.com', '', null, 2)
+    before.close()
+
+    const database = await openDatabase(path)
+    const vault = new Vault({ dataDir, database, now: () => 1000 })
+    try {
+      // A page already showing one, and a page named as a folder (used, not made again).
+      await writeFile(join(dataDir, 'Elsewhere.md'), `${bookmarkBlock('B4')}\n`)
+      await writeFile(join(dataDir, 'Work.md'), 'My work\n')
+      await vault.reconcile()
+      await vault.reindexAll()
+      expect(await vault.listBookmarks()).toHaveLength(4)
+
+      expect(await vault.convertLegacyBookmarks()).toEqual({ folders: 3, bookmarks: 3 })
+      const tree = await vault.tree()
+      const node = (p: string) => tree.find((n) => n.path === p)
+      expect(node('Work.md')?.icon).toEqual({ type: 'emoji', emoji: '💼' })
+      expect(node('Work/Tools')).toMatchObject({ kind: 'folder' })
+      expect(node('Work/Tools')?.icon).toMatchObject({ type: 'image' })
+      expect(existsSync(join(dataDir, '.tandem', 'icons', 'bookmark-F2-1.png'))).toBe(false)
+      expect(node('Empty')).toMatchObject({ kind: 'folder' })
+      expect(await readFile(join(dataDir, 'Bookmarks.md'), 'utf8')).toBe(
+        [
+          bookmarkBlock('B1'),
+          '## Work',
+          bookmarkBlock('B2'),
+          '## Work / Tools',
+          `${bookmarkBlock('B3')}\n`,
+        ].join('\n\n'),
+      )
+      const unsorted = await vault.unsortedBookmarks()
+      expect(unsorted.bookmarks.map((b) => b.id)).toEqual(['B1', 'B2', 'B3'])
+      // Once.
+      expect(await vault.convertLegacyBookmarks()).toBeNull()
+    } finally {
+      database.close()
+      await rm(temp, { recursive: true, force: true })
+    }
   })
 })

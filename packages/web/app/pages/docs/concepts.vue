@@ -113,7 +113,7 @@ const GROUPS: Group[] = [
         icon: 'i-lucide-bookmark',
         title: 'Bookmarks',
         paragraphs: [
-          'Once turned on in Settings › Features, keep your bookmarks in Tandem: in folders, right after the pages in the sidebar, saved from Chrome with Tandem’s extension (Docs › Browser Extension). A click opens one as a page, edited in place, a double click opens its website; /bookmark shows one as a card in a note, and ⌘⇧F finds them. Like databases, they are kept in Tandem: a note only holds a block naming one.',
+          'Once turned on in Settings › Features, keep your bookmarks in your notes, as cards (/bookmark): a theme’s note holds its websites with the rest. Saved from Chrome with Tandem’s extension (Docs › Browser Extension), they land in Unsorted, right after the pages in the sidebar, to drag into notes. A page used in several notes is one bookmark (“Used 3 times”); the side panel’s Bookmarks tab lists a note’s, with its links to websites. A click opens one as a page, edited in place, a double click opens its website, and ⌘⇧F finds them. Like databases, they are kept in Tandem: a note only holds a block naming one.',
         ],
       },
       {

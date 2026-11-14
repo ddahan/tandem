@@ -70,11 +70,11 @@ const bookmarkGroup = computed<CommandPaletteGroup<CommandPaletteItem>>(() => ({
   id: 'bookmarks',
   label: term.value.trim() ? 'Bookmarks' : 'Latest bookmarks',
   ignoreFilter: true,
-  items: results.value.map(({ bookmark, titleHtml, folders }) => ({
+  items: results.value.map(({ bookmark, titleHtml }) => ({
     id: bookmark.id,
     label: bookmark.title,
     labelHtml: titleHtml,
-    suffix: [siteOf(bookmark.url), folders].filter(Boolean).join(' · '),
+    suffix: [siteOf(bookmark.url), usesLabel(bookmark)].filter(Boolean).join(' · '),
     slot: 'bookmark' as const,
     bookmark,
     onSelect: () => emit('close', bookmark.id),

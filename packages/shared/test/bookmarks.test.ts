@@ -4,6 +4,7 @@ import {
   EXTENSION_ORIGIN,
   bookmarkBlock,
   bookmarkIdsIn,
+  externalLinksIn,
   removeBookmarkBlocks,
   siteOf,
   urlKey,
@@ -44,6 +45,26 @@ describe('bookmarks', () => {
     )
     expect(removeBookmarkBlocks(`${bookmarkBlock('b2')}\n\nAfter`, ['b2'])).toBe('After')
     expect(removeBookmarkBlocks(markdown, ['zz'])).toBe(markdown)
+  })
+
+  it('finds the links to websites in a note’s text', () => {
+    const markdown = [
+      'See [the docs](https://docs.example.com/a "Title") and <https://angle.com>.',
+      'Bare: https://bare.com/path?x=1, then text. Again [twice](https://docs.example.com/a).',
+      '![an image](https://img.com/a.png) [[Wiki link]] [local](notes/a.md) [mail](mailto:a@b.c)',
+      '`https://inline.code` [\\[escaped\\]](http://esc.com) [](https://empty.com)',
+      '```',
+      'https://in-a-code-block.com',
+      '```',
+    ].join('\n')
+    expect(externalLinksIn(markdown)).toEqual([
+      { text: 'the docs', url: 'https://docs.example.com/a' },
+      { text: 'angle.com', url: 'https://angle.com/' },
+      { text: 'bare.com', url: 'https://bare.com/path?x=1' },
+      { text: '[escaped]', url: 'http://esc.com/' },
+      { text: 'empty.com', url: 'https://empty.com/' },
+    ])
+    expect(externalLinksIn('No links')).toEqual([])
   })
 
   it('knows the extension', () => {

@@ -220,7 +220,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'Bookmark',
         icon: 'i-lucide-bookmark',
         description:
-          'A website’s card (its favicon, name, site and description), from your bookmarks (Settings › Features). A click selects it and opens its menu (the website, the bookmark, another one, removing it), a double click opens the website; ⌫ deletes it, as any block. Changing the bookmark changes every card. Its data is in Tandem: the note only has a block naming it.',
+          'A website’s card (its favicon, name, site and description), from your bookmarks (Settings › Features). A click selects it and opens its menu (the website, the bookmark, another one, removing it), a double click opens the website; ⌫ deletes it, as any block. One bookmark per page: shown in several notes, its card says “Used 3 times”, and changing it changes every card. Dragged from Unsorted into a note, it moves there. Its data is in Tandem: the note only has a block naming it.',
         slash: 'Bookmark',
         markdown: '```bookmark\nid: Kx3fq9P2mZ0a\n```',
         preview: null,

@@ -1,45 +1,27 @@
 <script setup lang="ts">
 // Making a bookmark, opened by useBookmarkActions (editing one is done in place, on its page).
 // Its name and description are read from its page once its address is typed (the server
-// fetches it), unless already filled. A page already bookmarked says so, and offers to show
-// that bookmark instead.
+// fetches it), unless already filled. A page already bookmarked says so: its bookmark is used
+// (one per page), its card shown where this one was asked for. `inbox`: its card goes at the
+// start of the inbox note (Unsorted's "+"); otherwise the caller puts it (a note's `/bookmark`).
 import type { Bookmark } from '@tandem/shared'
 
-const props = defineProps<{
-  /** Its folder and address. */
-  parentId?: string | null
-  url?: string
-}>()
+const props = defineProps<{ url?: string; inbox?: boolean }>()
 const emit = defineEmits<{ close: [saved: Bookmark | null] }>()
 
 const bookmarks = useBookmarks()
 const api = useApi()
-const tabs = useTabs()
 const showError = useApiErrorToast()
 
 const url = ref(props.url ?? '')
 const title = ref('')
 const description = ref('')
-const parentId = ref<string | null>(props.parentId ?? null)
 const saving = ref(false)
 const reading = ref(false)
-const duplicate = ref<Bookmark | null>(null)
+const existing = ref<Bookmark | null>(null)
 
-// The top of the bookmarks, in the folder picker (whose values can't be empty).
-const TOP = 'top'
-const folders = computed(() =>
-  bookmarks.folderOptions().map((option) => ({
-    value: option.id ?? TOP,
-    label: option.label,
-    depth: option.depth,
-  })),
-)
-const folderValue = computed({
-  get: () => parentId.value ?? TOP,
-  set: (value: string) => (parentId.value = value === TOP ? null : value),
-})
-
-// Its name and description, from its page (what the browser extension also does).
+// Its name and description, from its page (what the browser extension also does), unless it
+// is already bookmarked.
 let lastRead = ''
 async function readPage() {
   const address = url.value.trim()
@@ -47,6 +29,9 @@ async function readPage() {
   lastRead = address
   reading.value = true
   try {
+    const found = await unwrap(api.bookmarks.lookup.$get({ query: { url: address } }))
+    existing.value = found.bookmark
+    if (found.bookmark) return
     const preview = await unwrap(api.bookmarks.preview.$post({ json: { url: address } }))
     if (!title.value.trim()) title.value = preview.title
     if (!description.value.trim()) description.value = preview.description
@@ -59,38 +44,25 @@ async function readPage() {
 onMounted(() => {
   if (url.value) void readPage()
 })
-
-/** Shows the bookmark already saved for this page, instead of making another. */
-function showDuplicate() {
-  const existing = duplicate.value
-  if (!existing) return
-  emit('close', null)
-  void tabs.open(`/bookmarks/${existing.id}`)
-}
+watch(url, () => {
+  if (existing.value && url.value.trim() !== lastRead) existing.value = null
+})
 
 async function save() {
   if (saving.value) return
   saving.value = true
-  duplicate.value = null
   // ↵ typed in the address: its page is read first.
   if (!title.value.trim()) await readPage()
   try {
-    emit(
-      'close',
-      await bookmarks.create({
-        url: url.value,
-        title: title.value,
-        description: description.value,
-        parentId: parentId.value,
-      }),
-    )
+    const { bookmark } = await bookmarks.create({
+      url: url.value,
+      title: title.value,
+      description: description.value,
+      ...(props.inbox ? { inbox: true } : {}),
+    })
+    emit('close', bookmark)
   } catch (error) {
-    const existing =
-      error instanceof ApiError && error.status === 409
-        ? (error.body as { bookmark?: Bookmark } | null)?.bookmark
-        : undefined
-    if (existing) duplicate.value = existing
-    else showError(error, 'Could not save the bookmark')
+    showError(error, 'Could not save the bookmark')
   } finally {
     saving.value = false
   }
@@ -134,32 +106,13 @@ async function save() {
             data-testid="bookmark-description"
           />
         </UFormField>
-        <UFormField label="Folder" name="folder">
-          <USelectMenu
-            v-model="folderValue"
-            :items="folders"
-            value-key="value"
-            :search-input="{ placeholder: 'Find a folder…' }"
-            class="w-full"
-            data-testid="bookmark-folder"
-          >
-            <template #item-label="{ item }">
-              <span :style="{ paddingInlineStart: `${item.depth * 0.75}rem` }">{{
-                item.label
-              }}</span>
-            </template>
-          </USelectMenu>
-        </UFormField>
-
         <UAlert
-          v-if="duplicate"
-          color="warning"
+          v-if="existing"
+          color="info"
           variant="subtle"
           icon="i-lucide-bookmark-check"
-          :title="`Already bookmarked as “${duplicate.title}”`"
-          :actions="[
-            { label: 'Show it', color: 'neutral', variant: 'outline', onClick: showDuplicate },
-          ]"
+          :title="`Already bookmarked as “${existing.title}”`"
+          :description="`${usesLabel(existing) ?? 'One bookmark per page'}: its card is used${inbox ? ' in Unsorted' : ' here'}.`"
           data-testid="bookmark-duplicate"
         />
       </form>
@@ -170,7 +123,7 @@ async function save() {
         <UButton
           type="submit"
           form="bookmark-form"
-          label="Create"
+          :label="existing ? 'Use it' : 'Create'"
           :loading="saving"
           data-testid="bookmark-save"
         />

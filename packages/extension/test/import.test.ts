@@ -64,10 +64,10 @@ describe('importing Chrome’s bookmarks', () => {
   })
 
   it('says what it did', () => {
-    const result = { folderId: 'f', folders: 3, bookmarks: 1, duplicates: 0, skipped: 0 }
-    expect(importSummary(result)).toBe('Imported 1 bookmark into the “Chrome” folder.')
+    const result = { noteId: 'n', bookmarks: 1, duplicates: 0, skipped: 0 }
+    expect(importSummary(result)).toBe('Imported 1 bookmark into Unsorted (the inbox note).')
     expect(importSummary({ ...result, bookmarks: 1200, duplicates: 3, skipped: 1 })).toBe(
-      'Imported 1\u202f200 bookmarks into the “Chrome” folder; 3 already in Tandem, 1 left out (not web pages).',
+      'Imported 1\u202f200 bookmarks into Unsorted (the inbox note); 3 already in Tandem, 1 left out (not web pages).',
     )
     expect(importSummary({ ...result, bookmarks: 0, duplicates: 2 })).toBe(
       'Nothing new to import; 2 already in Tandem.',

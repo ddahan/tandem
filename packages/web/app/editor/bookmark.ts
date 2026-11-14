@@ -6,22 +6,35 @@
 //   ```
 //
 // One unit in the text (an atom), as databases; its card is `BookmarkView.vue`, added by the
-// editor component. A bookmark dragged from the sidebar is dropped as its card.
+// editor component. A bookmark dragged from the sidebar (Unsorted) or a side panel is dropped as
+// its card; when it came from another note (`BOOKMARK_FROM_TYPE`), `onMoved` takes it out of
+// that one (the editor component knows its note).
 import { Node, mergeAttributes } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { bookmarkBlock } from '@tandem/shared'
 
 /** The drag data of a bookmark from the sidebar: its id. */
 export const BOOKMARK_DRAG_TYPE = 'application/x-tandem-bookmark'
+/** With it, the note it is dragged out of (the inbox, for Unsorted): a move, not a copy. */
+export const BOOKMARK_FROM_TYPE = 'application/x-tandem-bookmark-from'
+
+export interface BookmarkOptions {
+  /** A bookmark dropped here came from another note (`from`). */
+  onMoved: ((id: string, from: string) => void) | null
+}
 
 const BLOCK = /^```bookmark[ \t]*\n([\s\S]*?)\n```[ \t]*(?:\n|$)/
 
-export const Bookmark = Node.create({
+export const Bookmark = Node.create<BookmarkOptions>({
   name: 'bookmark',
   group: 'block',
   atom: true,
   selectable: true,
   draggable: true,
+
+  addOptions() {
+    return { onMoved: null }
+  },
 
   addAttributes() {
     return {
@@ -66,6 +79,7 @@ export const Bookmark = Node.create({
 
   addProseMirrorPlugins() {
     const editor = this.editor
+    const options = this.options
     return [
       new Plugin({
         key: new PluginKey('bookmarkDrop'),
@@ -86,6 +100,8 @@ export const Bookmark = Node.create({
               .chain()
               .insertContentAt(at.pos < middle ? block : after, { type: 'bookmark', attrs: { id } })
               .run()
+            const from = event.dataTransfer?.getData(BOOKMARK_FROM_TYPE)
+            if (from) options.onMoved?.(id, from)
             return true
           },
         },

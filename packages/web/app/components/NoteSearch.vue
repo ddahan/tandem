@@ -6,7 +6,7 @@ import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
 import { isoDate, siteOf, type BookmarkSearchResult, type SearchResponse } from '@tandem/shared'
 import AgendaEventDialog from '~/components/agenda/AgendaEventDialog.vue'
-import { openWebsite } from '~/composables/useBookmarks'
+import { openWebsite, usesLabel } from '~/composables/useBookmarks'
 
 const api = useApi()
 const tree = useTree()
@@ -92,11 +92,11 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
             id: 'bookmarks',
             label: 'Bookmarks',
             ignoreFilter: true,
-            items: bookmarkResults.value.map(({ bookmark, titleHtml, folders }) => ({
+            items: bookmarkResults.value.map(({ bookmark, titleHtml }) => ({
               id: `bookmark-${bookmark.id}`,
               label: bookmark.title,
               labelHtml: titleHtml,
-              suffix: [siteOf(bookmark.url), folders].filter(Boolean).join(' · '),
+              suffix: [siteOf(bookmark.url), usesLabel(bookmark)].filter(Boolean).join(' · '),
               slot: 'bookmark' as const,
               bookmark,
               class: 'search-snippet',
@@ -142,7 +142,7 @@ const groups = computed<CommandPaletteGroup<CommandPaletteItem>[]>(() => {
               {
                 label: 'New bookmark',
                 icon: 'i-lucide-bookmark-plus',
-                onSelect: () => void bookmarkActions.create(),
+                onSelect: () => void bookmarkActions.create({ inbox: true }),
               },
             ]
           : []),

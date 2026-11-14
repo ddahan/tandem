@@ -7,8 +7,10 @@ import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import { DELETE_FOREVER, DELETE_MANY_FOREVER, type TreeItem } from '~/composables/useTree'
 import { actedOn, clickRow, emptySelection, isSelected, shownIds } from '~/utils/tree-selection'
+import { BOOKMARK_DRAG_TYPE, BOOKMARK_FROM_TYPE } from '~/editor/bookmark'
 
 const tree = useTree()
+const bookmarks = useBookmarks()
 const route = useRoute()
 const showError = useApiErrorToast()
 const { settings } = useSettings()
@@ -245,6 +247,16 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
         onSelect: () =>
           void navigator.clipboard.writeText(`[[${item.node.path.replace(/\.md$/, '')}]]`),
       },
+      // Its bookmarks (and its pages'), as a file Chrome imports: the pages are its folders.
+      ...(settings.value.bookmarks
+        ? [
+            {
+              label: 'Export bookmarks for Chrome',
+              icon: 'i-lucide-download',
+              onSelect: () => exportBookmarks(item.id),
+            },
+          ]
+        : []),
     ],
     [
       {
@@ -256,6 +268,14 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
       },
     ],
   ]
+}
+
+/** Downloads a bookmarks file of the page and what is under it (the server writes it). */
+function exportBookmarks(id: string) {
+  const link = document.createElement('a')
+  link.href = `/api/bookmarks/export?note=${encodeURIComponent(id)}`
+  link.download = ''
+  link.click()
 }
 
 /** The menu of a selected row: for all of them. */
@@ -368,7 +388,17 @@ function canDrop(targetId: string): boolean {
   return dragged.value.length > 0 && !dragged.value.some((id) => tree.isWithin(targetId, id))
 }
 
+/** A bookmark dragged from Unsorted (or a side panel): dropped on a page, its card goes there. */
+function draggingBookmark(event: DragEvent) {
+  return !!event.dataTransfer?.types.includes(BOOKMARK_DRAG_TYPE)
+}
+
 function onDragOver(event: DragEvent, item: TreeItem) {
+  if (draggingBookmark(event)) {
+    event.preventDefault()
+    dropTarget.value = { id: item.id, zone: 'inside' }
+    return
+  }
   if (!canDrop(item.id)) return
   event.preventDefault()
   dropTarget.value = { id: item.id, zone: zoneOf(event) }
@@ -376,6 +406,13 @@ function onDragOver(event: DragEvent, item: TreeItem) {
 
 async function onDrop(event: DragEvent, item: TreeItem) {
   event.preventDefault()
+  if (draggingBookmark(event)) {
+    reset()
+    const id = event.dataTransfer!.getData(BOOKMARK_DRAG_TYPE)
+    const from = event.dataTransfer!.getData(BOOKMARK_FROM_TYPE) || null
+    await bookmarks.moveCard(id, from, item.id).catch(showError)
+    return
+  }
   const ids = dragged.value
   const zone = zoneOf(event)
   const allowed = canDrop(item.id)

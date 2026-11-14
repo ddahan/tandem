@@ -1,10 +1,12 @@
-// Bookmarks: links to websites kept in Tandem (SQLite), in folders, shown in the sidebar and
-// as cards in notes. A note only has a block naming one, as for databases:
+// Bookmarks: links to websites kept in Tandem (SQLite), one per web page, organized by the
+// notes showing them as cards. A note only has a block naming one, as for databases:
 //
 //   ```bookmark
 //   id: Kx3fq9P2mZ0a
 //   ```
 //
+// Bookmarks saved from the browser go into the inbox note (`Settings.bookmarkInbox`), shown as
+// "Unsorted" in the sidebar, until they are moved into other notes.
 // Their rules, shared by the server, the web app, the CLI and the browser extension.
 
 /** Tandem's Chrome extension: its id is fixed by the public key in its manifest. */
@@ -14,23 +16,22 @@ export const EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}`
 /** The error code of a bookmark request from the extension while bookmarks are off. */
 export const BOOKMARKS_OFF = 'bookmarks_off'
 
-export type BookmarkKind = 'folder' | 'bookmark'
+/** The title of the inbox note, made at the top when bookmarks need one and there is none. */
+export const BOOKMARK_INBOX_TITLE = 'Bookmarks'
 
-/** A bookmark or a folder of bookmarks. `parentId` is a folder, or null at the top. */
+/** A bookmark: a web page saved, shown as cards in notes. */
 export interface Bookmark {
   id: string
-  kind: BookmarkKind
-  parentId: string | null
   title: string
-  /** Empty for a folder. */
   url: string
   /** Optional; the page's meta description when it was saved. */
   description: string
-  /** The favicon's (or chosen image's) address in the API, or null (none: a globe, or a folder). */
+  /** The favicon's (or chosen image's) address in the API, or null (none: a globe). */
   icon: string | null
-  /** An emoji chosen as its icon (a folder's, usually), shown instead of the image or default. */
+  /** An emoji chosen as its icon, shown instead of the image or default. */
   emoji: string | null
-  position: number
+  /** How many notes show its card ("Used 3 times" from 2 on). */
+  uses: number
   createdAt: number
   updatedAt: number
 }
@@ -47,8 +48,13 @@ export interface BookmarkSearchResult {
   bookmark: Bookmark
   /** The title with matches wrapped in `<mark>` (all other text is HTML-escaped). */
   titleHtml: string
-  /** Its folders, `Work / Tools`, empty at the top. */
-  folders: string
+}
+
+/** The inbox note and the bookmarks it shows, in order: those still to sort. */
+export interface UnsortedBookmarks {
+  /** The inbox note's id, or null when there is none (yet, or it was deleted). */
+  noteId: string | null
+  bookmarks: Bookmark[]
 }
 
 /** What a web page says about itself, read when it is bookmarked. */
@@ -69,20 +75,18 @@ export interface BookmarkImportNode {
   children?: BookmarkImportNode[]
 }
 
-/** What an import did: into which folder, what it added, what it left out. */
+/**
+ * What an import did: into which note (the inbox, where the browser's folders are headings),
+ * what it added, what it left out.
+ */
 export interface BookmarkImportResult {
-  /** The folder everything went into (`Chrome`, at the top). */
-  folderId: string
-  folders: number
+  noteId: string
   bookmarks: number
   /** Pages already bookmarked in Tandem (or twice in the import): kept as they were. */
   duplicates: number
   /** Not web addresses (`javascript:` bookmarklets, `chrome://` pages): left out. */
   skipped: number
 }
-
-/** The folder an import from Chrome goes into, at the top; importing again merges into it. */
-export const BOOKMARK_IMPORT_FOLDER = 'Chrome'
 
 /** At most this many bookmarks and folders in one import. */
 export const BOOKMARK_IMPORT_MAX = 20_000
@@ -172,4 +176,33 @@ export function removeBookmarkBlocks(markdown: string, ids: Iterable<string>): s
     },
   )
   return removed ? result.replace(/\n{3,}/g, '\n\n').replace(/^\n+/, '') : markdown
+}
+
+/** A link to a website in a note's text: `[text](https://…)`, `<https://…>` or a bare address. */
+export interface ExternalLink {
+  text: string
+  url: string
+}
+
+const CODE = /^(```|~~~)[\s\S]*?^\1[ \t]*$|`[^`\n]*`/gm
+const LINKS =
+  /!?\[((?:\\.|[^\]\\])*)\]\(\s*<?(https?:\/\/[^\s)>]+)>?(?:\s+"[^"]*")?\s*\)|<(https?:\/\/[^\s>]+)>|(https?:\/\/[^\s<>()[\]`]+[^\s<>()[\]`.,;:!?'"*_~])/gi
+
+/**
+ * The links to websites in a note's text, in order, each address once (its first text): what
+ * the Bookmarks panel lists besides the cards. Not those in code, nor images (`![…](…)`).
+ */
+export function externalLinksIn(markdown: string): ExternalLink[] {
+  const text = markdown.replace(CODE, (code) => ' '.repeat(code.length))
+  const seen = new Set<string>()
+  const result: ExternalLink[] = []
+  for (const match of text.matchAll(LINKS)) {
+    if (match[0].startsWith('!')) continue
+    const url = webUrl(match[2] ?? match[3] ?? match[4] ?? '')
+    if (!url || seen.has(url)) continue
+    seen.add(url)
+    const label = (match[1] ?? '').replace(/\\(.)/g, '$1').trim()
+    result.push({ text: label || siteOf(url), url })
+  }
+  return result
 }

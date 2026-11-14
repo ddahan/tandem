@@ -370,8 +370,8 @@ useServerEvents(async (event) => {
     if (latest) await applyExternal(latest.hash, 'someone')
     return
   }
-  if (event.type === 'cards-removed' && event.id === id.value) {
-    // A new hash, whatever it is: the note is read again (the deletion's toast said why).
+  if (event.type === 'cards-changed' && event.id === id.value) {
+    // A new hash, whatever it is: the note is read again (a deletion's toast said why).
     await applyExternal('', OWNER, { quiet: true })
     return
   }

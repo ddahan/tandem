@@ -1,9 +1,10 @@
-// Bookmarks (see @tandem/shared's bookmarks.ts), shared by the sidebar, the cards in notes and
-// the search palette. All of them are loaded at once (a few thousand at most) and kept current
-// by the layout (`follow`): an agent, the extension or another window changes them. Making,
-// editing and moving them are steps of the undo history (useUndo); deleting isn't (it removes
-// their cards from notes too): it asks first.
-import type { Bookmark } from '@tandem/shared'
+// Bookmarks (see @tandem/shared's bookmarks.ts), shared by the sidebar's Unsorted, the cards in
+// notes, the side panel and the search palette. All of them are loaded at once (a few thousand
+// at most), with the inbox note's (`unsorted`), and kept current by the layout (`follow`): an
+// agent, the extension, another window or a note's cards change them. Making and editing them
+// are steps of the undo history (useUndo); deleting isn't (it removes their cards from notes
+// too): it asks first.
+import type { Bookmark, UnsortedBookmarks } from '@tandem/shared'
 import { announce } from '~/composables/useServerEvents'
 
 /**
@@ -17,95 +18,38 @@ function currentId(id: string): string {
   return current
 }
 
-/** A bookmark or folder as the sidebar's tree shows it. */
-export interface BookmarkItem {
-  id: string
-  label: string
-  bookmark: Bookmark
-  children?: BookmarkItem[]
-}
-
-/** A folder, as pickers list them: its path of names, indented by depth. */
-export interface FolderOption {
-  id: string | null
-  label: string
-  depth: number
-}
-
-export type BookmarkFields = Partial<
-  Pick<Bookmark, 'title' | 'url' | 'description' | 'parentId'>
-> & { index?: number }
+export type BookmarkFields = Partial<Pick<Bookmark, 'title' | 'url' | 'description'>>
 
 /** Opens a website in a new browser tab (from the installed app, in the default browser). */
 export function openWebsite(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+/** "Used 3 times": a bookmark shown by several notes (nothing for one). */
+export function usesLabel(bookmark: Pick<Bookmark, 'uses'>): string | null {
+  return bookmark.uses >= 2 ? `Used ${bookmark.uses} times` : null
+}
+
 export function useBookmarks() {
   const list = useState<Bookmark[]>('bookmarks:list', () => [])
+  const unsorted = useState<UnsortedBookmarks>('bookmarks:unsorted', () => ({
+    noteId: null,
+    bookmarks: [],
+  }))
   const loaded = useState('bookmarks:loaded', () => false)
   const api = useApi()
   const undoHistory = useUndo()
 
   const byId = computed(() => new Map(list.value.map((bookmark) => [bookmark.id, bookmark])))
 
-  const childrenOf = computed(() => {
-    const map = new Map<string | null, Bookmark[]>()
-    for (const bookmark of list.value)
-      map.set(bookmark.parentId, [...(map.get(bookmark.parentId) ?? []), bookmark])
-    for (const children of map.values()) children.sort((a, b) => a.position - b.position)
-    return map
-  })
-
-  function build(parentId: string | null): BookmarkItem[] {
-    return (childrenOf.value.get(parentId) ?? []).map((bookmark) => {
-      const children = build(bookmark.id)
-      return {
-        id: bookmark.id,
-        label: bookmark.title,
-        bookmark,
-        children: children.length ? children : undefined,
-      }
-    })
-  }
-
-  const items = computed(() => build(null))
-
-  /** The folders above a bookmark, top first. */
-  function foldersOf(id: string): Bookmark[] {
-    const chain: Bookmark[] = []
-    let parent = byId.value.get(id)?.parentId
-    while (parent) {
-      const folder = byId.value.get(parent)
-      if (!folder) break
-      chain.unshift(folder)
-      parent = folder.parentId
-    }
-    return chain
-  }
-
-  /** Every folder (the top first), for pickers; never `except` or what's inside it. */
-  function folderOptions(except?: string): FolderOption[] {
-    const options: FolderOption[] = [{ id: null, label: 'Bookmarks', depth: 0 }]
-    const walk = (parentId: string | null, depth: number) => {
-      for (const bookmark of childrenOf.value.get(parentId) ?? []) {
-        if (bookmark.kind !== 'folder' || bookmark.id === except) continue
-        options.push({ id: bookmark.id, label: bookmark.title, depth })
-        walk(bookmark.id, depth + 1)
-      }
-    }
-    walk(null, 1)
-    return options
-  }
-
-  /** Whether `id` is `folderId` or inside it. */
-  function isWithin(id: string, folderId: string): boolean {
-    return id === folderId || foldersOf(id).some((folder) => folder.id === folderId)
-  }
-
   async function load() {
     try {
-      list.value = await unwrap(api.bookmarks.$get())
+      const [all, inbox] = await Promise.all([
+        unwrap(api.bookmarks.$get()),
+        unwrap(api.bookmarks.unsorted.$get()),
+      ])
+      list.value = all
+      unsorted.value = inbox
       loaded.value = true
     } catch {
       // Kept as they were: the next change reloads them.
@@ -116,32 +60,41 @@ export function useBookmarks() {
   function follow() {
     void load()
     useServerEvents((event) => {
-      if (event.type === 'bookmarks' || event.type === 'resync') void load()
+      // Pages trashed or restored take their cards with them.
+      if (event.type === 'bookmarks' || event.type === 'tree' || event.type === 'resync') {
+        void load()
+      }
     })
   }
 
   /** A change the server answers with the bookmark: shown at once, the list reloaded after. */
   function keep(bookmark: Bookmark) {
-    list.value = [...list.value.filter((other) => other.id !== bookmark.id), bookmark]
+    list.value = [bookmark, ...list.value.filter((other) => other.id !== bookmark.id)]
     void load()
     return bookmark
   }
 
-  /** A new bookmark or folder. A page already bookmarked fails with a 409 naming its bookmark. */
-  async function create(fields: BookmarkFields & { kind?: Bookmark['kind'] }) {
-    const made = keep(await unwrap(api.bookmarks.$post({ json: fields })))
-    undoHistory.record({
-      label: made.kind === 'folder' ? 'New folder' : 'New bookmark',
-      undo: async () => {
-        await unwrap(api.bookmarks[':id'].$delete({ param: { id: currentId(made.id) } }))
-        void load()
-      },
-      redo: async () => {
-        const again = keep(await unwrap(api.bookmarks.$post({ json: fields })))
-        remade.set(currentId(made.id), again.id)
-      },
-    })
-    return made
+  /**
+   * A new bookmark (with `inbox`, its card at the start of the inbox note). A page already
+   * bookmarked gives its bookmark (`created` false): nothing to undo then.
+   */
+  async function create(fields: BookmarkFields & { inbox?: boolean }) {
+    const response = await api.bookmarks.$post({ json: fields })
+    const made = keep(await unwrap(Promise.resolve(response)))
+    const created = response.status === 201
+    if (created) {
+      undoHistory.record({
+        label: 'New bookmark',
+        undo: async () => {
+          await remove(currentId(made.id))
+        },
+        redo: async () => {
+          const again = keep(await unwrap(api.bookmarks.$post({ json: fields })))
+          remade.set(currentId(made.id), again.id)
+        },
+      })
+    }
+    return { bookmark: made, created }
   }
 
   /** Changes a bookmark's fields, as a step of the undo history. */
@@ -152,7 +105,11 @@ export function useBookmarks() {
       const before = Object.fromEntries(
         Object.keys(fields).map((key) => [key, old[key as keyof typeof old]]),
       ) as BookmarkFields
-      remember('Edit the bookmark', id, before, fields)
+      undoHistory.record({
+        label: 'Edit the bookmark',
+        undo: () => patch(id, before).then(() => true),
+        redo: () => patch(id, fields).then(() => true),
+      })
     }
     return changed
   }
@@ -163,96 +120,56 @@ export function useBookmarks() {
     )
   }
 
-  function remember(label: string, id: string, before: BookmarkFields, after: BookmarkFields) {
-    undoHistory.record({
-      label,
-      undo: () => patch(id, before).then(() => true),
-      redo: () => patch(id, after).then(() => true),
-    })
-  }
-
-  /** Moves a bookmark or folder into a folder (null: the top), at `index` (default: last). */
-  async function move(id: string, parentId: string | null, index?: number) {
-    const old = byId.value.get(id)
-    const from = old?.parentId ?? null
-    const was = (childrenOf.value.get(from) ?? []).findIndex((b) => b.id === id)
-    // Shown at once where it goes, before the server's answer.
-    const siblings = (childrenOf.value.get(parentId) ?? []).filter((b) => b.id !== id)
-    const at = index ?? siblings.length
-    const before = siblings[at - 1]?.position ?? 0
-    const after = siblings[at]?.position ?? before + 2
-    list.value = list.value.map((bookmark) =>
-      bookmark.id === id ? { ...bookmark, parentId, position: (before + after) / 2 } : bookmark,
-    )
-    const moved = await patch(id, { parentId, index: at })
-    if (old) remember('Move', id, { parentId: from, index: was }, { parentId, index: at })
-    return moved
-  }
-
-  /** Where a bookmark is: its folder and index there. */
-  function placeOf(id: string) {
-    const from = byId.value.get(id)?.parentId ?? null
-    return {
-      parentId: from,
-      index: (childrenOf.value.get(from) ?? []).findIndex((b) => b.id === id),
-    }
-  }
-
-  /**
-   * Moves several (a selection) into a folder (null: the top), one after the other from `index`
-   * (default: at the end), as one step of the undo history.
-   */
-  async function moveMany(ids: string[], parentId: string | null, index?: number) {
-    const before = ids.map((id) => ({ id, ...placeOf(id) }))
-    for (const [i, id] of ids.entries()) {
-      await patch(id, { parentId, ...(index === undefined ? {} : { index: index + i }) })
-    }
-    await load()
-    const after = ids.map((id) => ({ id, ...placeOf(id) }))
-    undoHistory.record({
-      label: `Move ${ids.length} bookmarks`,
-      // Back in the reverse order: each one's place is as it was when it left.
-      undo: async () => {
-        for (const { id, ...at } of before.toReversed()) await patch(id, at)
-        return true
-      },
-      redo: async () => {
-        for (const { id, ...at } of after) await patch(id, at)
-        return true
-      },
-    })
-  }
-
-  /** Deletes it (a folder with its contents) for good; its cards leave the pages showing them. */
+  /** Deletes it for good; its cards leave the pages showing them. */
   async function remove(id: string) {
     const result = await unwrap(api.bookmarks[':id'].$delete({ param: { id } }))
     void load()
     // Open notes reload: the server's changes are credited to the owner, which they skip.
-    for (const page of result.pages) announce({ type: 'cards-removed', id: page.id })
+    for (const page of result.pages) announce({ type: 'cards-changed', id: page.id })
     return result
   }
 
-  /** The pages showing a bookmark (or anything in a folder). */
+  /** Takes its cards out of a note (moved into another one), shown at once in Unsorted. */
+  async function removeCards(id: string, noteId: string) {
+    if (unsorted.value.noteId === noteId) {
+      const rest = unsorted.value.bookmarks.filter((bookmark) => bookmark.id !== id)
+      unsorted.value = { noteId, bookmarks: rest }
+    }
+    await unwrap(api.bookmarks[':id'].cards[':noteId'].$delete({ param: { id, noteId } }))
+    announce({ type: 'cards-changed', id: noteId })
+    void load()
+  }
+
+  /**
+   * Puts its card at the end of a note (`to`: dropped on it in the pages' tree), and takes it out
+   * of `from` (Unsorted's inbox), unless that is the same note.
+   */
+  async function moveCard(id: string, from: string | null, to: string) {
+    const bookmark = byId.value.get(id)
+    if (!bookmark) return
+    await unwrap(api.bookmarks.$post({ json: { url: bookmark.url, noteId: to } }))
+    announce({ type: 'cards-changed', id: to })
+    if (from && from !== to) await removeCards(id, from)
+    else void load()
+  }
+
+  /** The pages showing a bookmark. */
   async function refs(id: string) {
     return unwrap(api.bookmarks[':id'].refs.$get({ param: { id } }))
   }
 
   return {
     list,
+    unsorted,
     loaded,
     byId,
-    childrenOf,
-    items,
-    foldersOf,
-    folderOptions,
-    isWithin,
     load,
     follow,
     create,
     update,
-    move,
-    moveMany,
     remove,
+    removeCards,
+    moveCard,
     refs,
   }
 }

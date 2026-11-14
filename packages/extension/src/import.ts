@@ -1,6 +1,7 @@
 // Importing Chrome's bookmarks into Tandem: the whole tree (the bookmarks bar, other bookmarks,
 // mobile bookmarks, their folders), each bookmark with its favicon from Chrome's own copy. Sent
-// at once; Tandem puts it in its "Chrome" folder, merging with what an earlier import left there.
+// at once; Tandem puts the new ones in its inbox note ("Unsorted"), under a heading per folder,
+// and leaves out the pages it already has (so importing again only adds what is new).
 import { formatNumber, type BookmarkImportNode, type BookmarkImportResult } from '@tandem/shared'
 
 /** Favicons read at the same time (Chrome answers from its cache, quickly). */
@@ -65,14 +66,14 @@ export async function withIcons(
   return copy
 }
 
-/** `Imported 2 bookmarks into the “Chrome” folder; 3 already in Tandem, 1 left out (…).` */
+/** `Imported 2 bookmarks into Unsorted; 3 already in Tandem, 1 left out (…).` */
 export function importSummary(result: BookmarkImportResult): string {
   const notes = [
     result.duplicates ? `${formatNumber(result.duplicates)} already in Tandem` : '',
     result.skipped ? `${formatNumber(result.skipped)} left out (not web pages)` : '',
   ].filter(Boolean)
   const added = result.bookmarks
-    ? `Imported ${formatNumber(result.bookmarks)} bookmark${result.bookmarks === 1 ? '' : 's'} into the “Chrome” folder`
+    ? `Imported ${formatNumber(result.bookmarks)} bookmark${result.bookmarks === 1 ? '' : 's'} into Unsorted (the inbox note)`
     : 'Nothing new to import'
   return `${added}${notes.length ? `; ${notes.join(', ')}` : ''}.`
 }

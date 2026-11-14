@@ -7,8 +7,8 @@ import type { ServerEvent } from '@tandem/shared'
 export type AppEvent =
   | ServerEvent
   | { type: 'resync' }
-  /** Deleting a bookmark removed its cards from this page (as the owner, in this window). */
-  | { type: 'cards-removed'; id: string }
+  /** Bookmark cards were added to or removed from this page (as the owner, in this window). */
+  | { type: 'cards-changed'; id: string }
 
 const listeners = new Set<(event: AppEvent) => void>()
 let source: EventSource | null = null

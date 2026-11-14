@@ -50,6 +50,20 @@
       "when": 1792776485577,
       "tag": "0006_agenda",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794667399231,
+      "tag": "0007_bookmark-tree-legacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794667416157,
+      "tag": "0008_bookmarks-without-folders",
+      "breakpoints": true
     }
   ]
 }

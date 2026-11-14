@@ -31,7 +31,7 @@ const features: {
     key: 'bookmarks',
     label: 'Bookmarks',
     description:
-      'Links to websites in the sidebar, right after the pages, shown in notes as cards (/bookmark), and saved from Chrome with Tandem’s extension. Off, cards already in notes still show.',
+      'Links to websites, shown in notes as cards (/bookmark) and in the side panel; saved from Chrome with Tandem’s extension into Unsorted, right after the pages, to sort into notes. Off, cards already in notes still show.',
   },
   {
     key: 'daily',

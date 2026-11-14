@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Picks the icon of a page or folder, or of a bookmarks folder (`bookmarkId`): an emoji (search,
+// Picks the icon of a page or folder, or of a bookmark (`bookmarkId`): an emoji (search,
 // categories, recently used), an image from the computer, or none. Changes between emojis and
 // none are steps of the undo history (an image can't be put back once replaced).
 import { useLocalStorage } from '@vueuse/core'

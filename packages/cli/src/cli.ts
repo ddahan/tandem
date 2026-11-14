@@ -14,7 +14,6 @@ import {
   parseEventLine,
   type AgendaItem,
   type Repeat,
-  bookmarkBlock,
   bookmarkIdsIn,
   cellText,
   cellsByName,
@@ -81,17 +80,17 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-set <database> <row> <Column=value…>  change values (Column= empties one)
   row-delete <database> <row>               delete a row
 
-Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookmark block)
-  bookmarks [query…]            all bookmarks and folders, or those matching a query
+Bookmarks (links kept in Tandem, one per page; a note shows one with a \`\`\`bookmark block)
+  bookmarks [query…]            all bookmarks (unsorted ones marked), or those matching a query
   bookmark-add <web address>    bookmark a page (title and description read from it unless
-                                given: --title, --description); --folder Work/Tools (made if
-                                missing); --note <note> to add its card at the note's end
+                                given: --title, --description), its card at the start of the
+                                inbox note ("Unsorted"), or at the end of --note <note>; a page
+                                already bookmarked keeps its bookmark, its card put there
   bookmark-set <bookmark> [new address]
-                                change it (--title, --description), or move it (--folder;
-                                "" for the top)
-  bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
-  bookmarks-export [folder]     a browser's bookmarks file (Chrome imports it), on standard
-                                output: all of them, or a folder (its id) with its content
+                                change it (--title, --description)
+  bookmark-delete <bookmark>    delete it; its cards leave notes
+  bookmarks-export [note]       a browser's bookmarks file (Chrome imports it), on standard
+                                output, the pages as its folders: all of them, or a note's
 
 Agenda (days' events, kept in Tandem; a day's note shows them; feeds' events are read-only)
   agenda [date]                 a day's events (today by default), or the days up to --to <date>
@@ -133,7 +132,6 @@ type Values = {
   date?: string
   title?: string
   description?: string
-  folder?: string
   note?: string
   repeat?: string
   until?: string
@@ -249,19 +247,15 @@ function describeAgenda(items: AgendaItem[], several: boolean): string {
     .join('\n\n')
 }
 
-function describeBookmarks(all: Bookmark[]): string {
-  const lines: string[] = []
-  const walk = (parentId: string | null, prefix: string) => {
-    const list = all.filter((bookmark) => bookmark.parentId === parentId)
-    list.forEach((bookmark, index) => {
-      const last = index === list.length - 1
-      lines.push(
-        `${prefix}${last ? '└─ ' : '├─ '}${bookmark.kind === 'folder' ? `${bookmark.title}/` : `${bookmark.title}  ${bookmark.url}`}  (${bookmark.id})`,
-      )
-      walk(bookmark.id, `${prefix}${last ? '   ' : '│  '}`)
-    })
-  }
-  walk(null, '')
+function describeBookmarks(all: Bookmark[], unsorted: Set<string>): string {
+  const lines = all.map((bookmark) => {
+    const where = unsorted.has(bookmark.id)
+      ? 'unsorted'
+      : bookmark.uses
+        ? `in ${bookmark.uses} note${bookmark.uses === 1 ? '' : 's'}`
+        : 'in no note'
+    return `${bookmark.title}  (${bookmark.id}, ${where})\n  ${bookmark.url}`
+  })
   return lines.join('\n') || '(no bookmarks yet)'
 }
 
@@ -314,7 +308,6 @@ export async function run(
         date: { type: 'string' },
         title: { type: 'string' },
         description: { type: 'string' },
-        folder: { type: 'string' },
         note: { type: 'string' },
         repeat: { type: 'string' },
         until: { type: 'string' },
@@ -524,14 +517,16 @@ async function execute(
     case 'bookmarks': {
       if (!args.length) {
         const all = await call(client.bookmarks.$get())
-        return print(describeBookmarks(all), all)
+        const unsorted = await call(client.bookmarks.unsorted.$get())
+        const ids = new Set(unsorted.bookmarks.map((bookmark) => bookmark.id))
+        return print(describeBookmarks(all, ids), all)
       }
       const results = await call(
         client.bookmarks.search.$get({ query: { q: args.join(' '), limit: values.limit ?? '20' } }),
       )
       const lines = results.map(
-        ({ bookmark, folders }) =>
-          `${folders ? `${folders} / ` : ''}${bookmark.title}  (${bookmark.id})\n  ${bookmark.url}${bookmark.description ? `\n  ${bookmark.description}` : ''}`,
+        ({ bookmark }) =>
+          `${bookmark.title}  (${bookmark.id})\n  ${bookmark.url}${bookmark.description ? `\n  ${bookmark.description}` : ''}`,
       )
       return print(lines.join('\n\n') || 'No bookmarks found.', results)
     }
@@ -540,32 +535,16 @@ async function execute(
       const node = values.note ? await resolve(values.note) : null
       // What isn't given (title, description, favicon) is read from the page by Tandem.
       const { title, description } = values
+      const place = node ? { noteId: node.id } : { inbox: true }
       const response = await client.bookmarks
-        .$post({ json: { url, title, description, folder: values.folder } })
+        .$post({ json: { url, title, description, ...place } })
         .catch(unreachable)
-      if (!response.ok) {
-        // A page already bookmarked: Tandem names its bookmark.
-        const body = (await response.json().catch(() => null)) as {
-          error?: string
-          bookmark?: Bookmark
-        } | null
-        throw new CliError(
-          body?.bookmark
-            ? `Already bookmarked: ${body.bookmark.title} (${body.bookmark.id})`
-            : (body?.error ?? `Request failed (${response.status})`),
-        )
-      }
-      const bookmark = await response.json()
-      if (node) {
-        await call(
-          client.notes[':id'].append.$post({
-            param: { id: node.id },
-            json: { content: bookmarkBlock(bookmark.id) },
-          }),
-        )
-      }
+      const bookmark = await call(Promise.resolve(response))
+      const where = node ? node.path : 'the inbox note'
       return print(
-        `Bookmarked ${bookmark.title} (${bookmark.id})${node ? `, its card in ${node.path}` : ''}`,
+        response.status === 201
+          ? `Bookmarked ${bookmark.title} (${bookmark.id}), its card in ${where}`
+          : `Already bookmarked: ${bookmark.title} (${bookmark.id}), its card in ${where}`,
         bookmark,
       )
     }
@@ -575,15 +554,14 @@ async function execute(
         ...(args[1] ? { url: args[1] } : {}),
         ...(values.title !== undefined ? { title: values.title } : {}),
         ...(values.description !== undefined ? { description: values.description } : {}),
-        ...(values.folder !== undefined ? { folder: values.folder } : {}),
       }
       if (!Object.keys(json).length)
-        throw new CliError('Nothing to change: a new address, --title, --description or --folder.')
+        throw new CliError('Nothing to change: a new address, --title or --description.')
       const bookmark = await call(client.bookmarks[':id'].$patch({ param: { id }, json }))
       return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark)
     }
     case 'bookmarks-export': {
-      const query = args[0] ? { folder: args[0] } : {}
+      const query = args[0] ? { note: (await resolve(args[0])).id } : {}
       const response = await client.bookmarks.export.$get({ query }).catch(unreachable)
       if (!response.ok) await call(Promise.resolve(response))
       // The file itself, as it is (for `> bookmarks.html`).
@@ -594,7 +572,7 @@ async function execute(
       const result = await call(client.bookmarks[':id'].$delete({ param: { id } }))
       const pages = result.pages.map((page) => page.path)
       return print(
-        `Deleted ${result.deleted === 1 ? id : `${result.deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.join(', ')}` : ''}`,
+        `Deleted ${id}${pages.length ? `; cards removed from ${pages.join(', ')}` : ''}`,
         result,
       )
     }

@@ -1,19 +1,18 @@
 // The popup ("Add to Tandem"): the current page as a bookmark, its name, address and
-// description filled from the tab. New bookmarks go to the top: they're sorted in the app. A
+// description filled from the tab. New bookmarks go to the inbox note ("Unsorted"), to sort. A
 // page already in Tandem is edited instead (as Chrome's star does). Tandem not running, or
 // bookmarks off, says so plainly. Saving is the service worker's (background.ts): the popup
 // closes at once.
 import type { Bookmark } from '@tandem/shared'
 import { bookmarkable, faviconDataUrl, pageDescription } from './page.ts'
 import { getAddress } from './settings.ts'
-import { createTandem, folderPath, TandemError, type SaveMessage, type Tandem } from './tandem.ts'
+import { createTandem, TandemError, whereShown, type SaveMessage, type Tandem } from './tandem.ts'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
 let tandem: Tandem
 let tab: chrome.tabs.Tab
 let existing: Bookmark | null = null
-let bookmarks: Bookmark[] = []
 let iconDataUrl: string | undefined
 
 function show(section: 'loading' | 'problem' | 'form') {
@@ -67,7 +66,7 @@ function useExisting(bookmark: Bookmark) {
   existing = bookmark
   $('heading').textContent = 'Already in Tandem'
   const notice = $('existing')
-  notice.textContent = `In ${folderPath(bookmarks, bookmark)}. Saving changes it.`
+  notice.textContent = `${whereShown(bookmark)}. Saving changes it.`
   notice.hidden = false
   $<HTMLInputElement>('title').value = bookmark.title
   $<HTMLInputElement>('url').value = bookmark.url
@@ -98,13 +97,11 @@ async function start() {
   tab = current
   try {
     if (!(await tandem.enabled())) throw new TandemError('off', 'Bookmarks are off in Tandem.')
-    const [all, found, description, icon] = await Promise.all([
-      tandem.list(),
+    const [found, description, icon] = await Promise.all([
       tandem.lookup(url),
       pageDescription(current.id),
       faviconDataUrl(url, current.favIconUrl),
     ])
-    bookmarks = all
     iconDataUrl = icon
     if (found) useExisting(found)
     else {

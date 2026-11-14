@@ -4,21 +4,19 @@ import {
   DEFAULT_ADDRESS,
   TandemError,
   createTandem,
-  folderPath,
   normalizeAddress,
+  whereShown,
 } from '../src/tandem.ts'
 
 function bookmark(fields: Partial<Bookmark>): Bookmark {
   return {
     id: 'b1',
-    kind: 'bookmark',
-    parentId: null,
     title: 'Example',
     url: 'https://example.com/',
     description: '',
     icon: null,
     emoji: null,
-    position: 1,
+    uses: 0,
     createdAt: 0,
     updatedAt: 0,
     ...fields,
@@ -75,19 +73,30 @@ describe('the extension’s Tandem client', () => {
     const tandem = createTandem(DEFAULT_ADDRESS, fetcher)
     const fields = { url: 'https://e.com', title: 'E', description: '' }
     expect(await tandem.create(fields)).toEqual({ bookmark: created, duplicate: false })
-    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual(fields)
+    // Its card in the inbox note ("Unsorted").
+    expect(JSON.parse(String(calls[0]?.init?.body))).toEqual({ ...fields, inbox: true })
     expect(await tandem.update('old', { title: 'T' })).toEqual({
       bookmark: existing,
       duplicate: false,
     })
 
+    // Already saved: Tandem answers with its bookmark (200, not 201).
     const duplicate = createTandem(
       DEFAULT_ADDRESS,
       fake({
-        'POST /api/bookmarks': { status: 409, body: { error: 'Already', bookmark: existing } },
+        'POST /api/bookmarks': { status: 200, body: existing },
+        'PATCH /api/bookmarks/new': {
+          status: 409,
+          body: { error: 'Already', bookmark: existing },
+        },
       }).fetcher,
     )
     expect(await duplicate.create(fields)).toEqual({ bookmark: existing, duplicate: true })
+    // Another bookmark's address: refused, naming it.
+    expect(await duplicate.update('new', { url: 'https://e.com' })).toEqual({
+      bookmark: existing,
+      duplicate: true,
+    })
   })
 
   it('tells Tandem not running, bookmarks off and other errors apart', async () => {
@@ -119,13 +128,9 @@ describe('the extension’s Tandem client', () => {
     expect(error).toMatchObject({ message: 'Bad address', status: 400 })
   })
 
-  it('names a bookmark’s folders', () => {
-    const work = bookmark({ id: 'w', kind: 'folder', title: 'Work', position: 2 })
-    const home = bookmark({ id: 'h', kind: 'folder', title: 'Home', position: 1 })
-    const tools = bookmark({ id: 't', kind: 'folder', title: 'Tools', parentId: 'w' })
-    const link = bookmark({ parentId: 't' })
-    const all = [work, home, tools, link]
-    expect(folderPath(all, link)).toBe('Work / Tools')
-    expect(folderPath(all, bookmark({}))).toBe('Bookmarks')
+  it('says where a bookmark is', () => {
+    expect(whereShown(bookmark({}))).toBe('In no note')
+    expect(whereShown(bookmark({ uses: 1 }))).toBe('In 1 note')
+    expect(whereShown(bookmark({ uses: 3 }))).toBe('In 3 notes')
   })
 })

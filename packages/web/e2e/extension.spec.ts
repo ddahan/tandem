@@ -77,7 +77,7 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
   await popup.reload()
   await expect(popup.locator('#problem')).toContainText('Bookmarks are off in Tandem')
 
-  // On: the page's title and description, at the top (no folder to pick: the app sorts).
+  // On: the page's title and description (no note to pick: it goes to Unsorted, sorted in the app).
   await api(request, 'PATCH', '/settings', { bookmarks: true })
   await popup.getByRole('button', { name: 'Try again' }).click()
   await expect(popup.locator('#url')).toHaveValue(PAGE)
@@ -101,18 +101,19 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
 
   interface Saved {
     id: string
-    kind: string
     title: string
     url: string
     icon: string | null
-    parentId: string | null
   }
   await expect
     .poll(async () =>
       (await api<Saved[]>(request, 'GET', '/bookmarks')).find((b) => b.url === PAGE),
     )
-    .toMatchObject({ title, parentId: null })
+    .toMatchObject({ title })
   const bookmark = (await api<Saved[]>(request, 'GET', '/bookmarks')).find((b) => b.url === PAGE)
+  // In the inbox note: Unsorted.
+  const unsorted = await api<{ bookmarks: Saved[] }>(request, 'GET', '/bookmarks/unsorted')
+  expect(unsorted.bookmarks.map((b) => b.id)).toContain(bookmark!.id)
 
   // The toolbar button shows it's saved; the popup now edits it.
   await expect
@@ -121,7 +122,7 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
   const again = await context.newPage()
   await again.goto(`chrome-extension://${EXTENSION_ID}/popup.html?tab=${tabId}`)
   await expect(again.locator('#heading')).toHaveText('Already in Tandem')
-  await expect(again.locator('#existing')).toContainText('In Bookmarks')
+  await expect(again.locator('#existing')).toContainText('In 1 note')
   await again.locator('#title').fill('Renamed from Chrome')
   await again.getByRole('button', { name: 'Save' }).click()
   await expect
@@ -183,27 +184,26 @@ test('imports Chrome’s bookmarks from its options, again without duplicates', 
   const button = options.getByRole('button', { name: 'Import Chrome’s bookmarks' })
   await button.click()
   await expect(options.locator('#import-status')).toHaveText(
-    'Imported 2 bookmarks into the “Chrome” folder; 1 left out (not web pages).',
+    'Imported 2 bookmarks into Unsorted (the inbox note); 1 left out (not web pages).',
   )
 
   interface Saved {
     id: string
-    kind: string
     title: string
     url: string
     icon: string | null
-    parentId: string | null
   }
   const all = await api<Saved[]>(request, 'GET', '/bookmarks')
-  const chromeFolder = all.find((b) => b.title === 'Chrome' && b.parentId === null)!
-  const bar = all.find((b) => b.title === 'Bookmarks bar')!
-  expect(bar.parentId).toBe(chromeFolder.id)
   const docs = all.find((b) => b.title === 'Imported docs')!
-  expect(docs).toMatchObject({ parentId: bar.id, url: 'https://docs.example.com/' })
+  const board = all.find((b) => b.title === 'Board')!
+  expect(docs).toMatchObject({ url: 'https://docs.example.com/' })
   // Chrome has no icon of these sites: its generic one is left out (Tandem shows its own).
   expect(docs.icon).toBeNull()
-  expect(all.find((b) => b.title === 'Board')!.parentId).toBe(
-    all.find((b) => b.title === 'Imported work')!.id,
+  // In the inbox note, a heading per folder.
+  const { noteId } = await api<{ noteId: string }>(request, 'GET', '/bookmarks/unsorted')
+  const inbox = await api<{ content: string }>(request, 'GET', `/notes/${noteId}`)
+  expect(inbox.content).toContain(
+    `## Bookmarks bar\n\n\`\`\`bookmark\nid: ${docs.id}\n\`\`\`\n\n## Bookmarks bar / Imported work\n\n\`\`\`bookmark\nid: ${board.id}\n\`\`\``,
   )
 
   // Again: nothing new.
@@ -214,5 +214,5 @@ test('imports Chrome’s bookmarks from its options, again without duplicates', 
   expect(await api<Saved[]>(request, 'GET', '/bookmarks')).toHaveLength(all.length)
 
   // Cleaned up for the other tests.
-  await api(request, 'DELETE', `/bookmarks/${chromeFolder.id}`)
+  for (const bookmark of all) await api(request, 'DELETE', `/bookmarks/${bookmark.id}`)
 })

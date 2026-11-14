@@ -114,8 +114,8 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
             value="shift"
           /><UKbd value="d" />, changed in
           <code :class="code">chrome://extensions/shortcuts</code>). Its name, address and
-          description are filled in from the page; Create, and it’s saved at the top of your
-          bookmarks, to sort in Tandem.
+          description are filled in from the page; Create, and it’s saved in Unsorted (at the top of
+          the inbox note), to sort into your notes in Tandem.
         </li>
         <li>
           <strong>Already saved</strong>: the button shows ✓, and opens the bookmark to change it.
@@ -127,13 +127,14 @@ const code = 'rounded border border-muted bg-muted px-1 font-mono text-xs text-h
         <li>
           <strong>Import Chrome’s bookmarks</strong>: in the extension’s options (right-click its
           button, then Options), Import Chrome’s bookmarks. Chrome asks to let it read them first.
-          They all go, with their folders and icons, into a “Chrome” folder; importing again only
-          adds the new ones, and Chrome’s stay as they are.
+          They all go, with their icons, into Unsorted (the inbox note), a heading per folder;
+          importing again only adds the new ones, and Chrome’s stay as they are.
         </li>
         <li>
-          <strong>Back to Chrome</strong>: right-click Bookmarks in Tandem’s sidebar, then Export
-          all for Chrome (or a folder’s Export for Chrome). In Chrome: Settings › Import bookmarks
-          and settings › Bookmarks HTML file, and choose the downloaded file.
+          <strong>Back to Chrome</strong>: right-click Unsorted in Tandem’s sidebar, then Export all
+          for Chrome (or a page’s Export bookmarks for Chrome): your pages become its folders. In
+          Chrome: Settings › Import bookmarks and settings › Bookmarks HTML file, and choose the
+          downloaded file.
         </li>
         <li>Tandem not running, or bookmarks off: the extension says so, and how to fix it.</li>
       </ul>

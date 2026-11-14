@@ -228,14 +228,13 @@ describe('MCP server', () => {
           url: 'https://example.com',
           title: 'Example',
           description: 'A test site',
-          folder: 'Web/Test',
           note: 'Links',
         }),
       ),
     )
-    expect(added).toMatchObject({ title: 'Example', url: 'https://example.com/' })
-    expect(textOf(await tool('list_bookmarks', {}))).toContain(
-      `    - Example <https://example.com/>  (id ${added.id}) — A test site`,
+    expect(added).toMatchObject({ title: 'Example', url: 'https://example.com/', created: true })
+    expect(textOf(await tool('list_bookmarks', {}))).toBe(
+      `- Example <https://example.com/>  (id ${added.id}, in 1 note) — A test site`,
     )
     const read = textOf(await tool('read_note', { note: 'Links' }))
     expect(read).toContain(`bookmark ${added.id}: Example <https://example.com/>`)
@@ -248,27 +247,29 @@ describe('MCP server', () => {
         title: 'Example',
         url: 'https://example.com/',
         description: 'A test site',
-        folders: 'Web / Test',
+        uses: 1,
       },
     ])
-    const duplicate = await tool('add_bookmark', { url: 'example.com', title: 'Again' })
-    expect(duplicate.result.isError).toBe(true)
-    expect(textOf(duplicate)).toContain('Already bookmarked as “Example”')
+    // Already saved: its bookmark, its card in the inbox note too.
+    const again = JSON.parse(textOf(await tool('add_bookmark', { url: 'example.com' })))
+    expect(again).toMatchObject({ id: added.id, created: false })
+    expect(textOf(await tool('list_bookmarks', {}))).toContain(
+      `(id ${added.id}, unsorted, in 2 notes)`,
+    )
     // No title (and no web in tests): the site's name.
-    expect(JSON.parse(textOf(await tool('add_bookmark', { url: 'other.org' }))).title).toBe(
-      'other.org',
+    const other = JSON.parse(textOf(await tool('add_bookmark', { url: 'other.org' })))
+    expect(other.title).toBe('other.org')
+    expect(textOf(await tool('read_note', { note: 'Bookmarks' }))).toContain(
+      `bookmark ${other.id}: other.org`,
     )
 
-    await tool('update_bookmark', { bookmark: added.id, title: 'Renamed', folder: '' })
-    expect(await vault.getBookmark(added.id)).toMatchObject({ title: 'Renamed', parentId: null })
+    await tool('update_bookmark', { bookmark: added.id, title: 'Renamed' })
+    expect(await vault.getBookmark(added.id)).toMatchObject({ title: 'Renamed' })
     expect(textOf(await tool('delete_bookmark', { bookmark: added.id }))).toBe(
-      'Deleted it; cards removed from Links.md',
+      'Deleted; cards removed from Bookmarks.md, Links.md',
     )
     expect(textOf(await tool('read_note', { note: 'Links' }))).not.toContain('bookmark')
-    const [web] = await vault.listBookmarks()
-    expect(textOf(await tool('delete_bookmark', { bookmark: web!.id }))).toBe(
-      'Deleted 2 bookmarks and folders',
-    )
+    expect(textOf(await tool('delete_bookmark', { bookmark: 'nope' }))).toContain('No such')
   })
 
   it('says when a note shows a deleted bookmark', async () => {

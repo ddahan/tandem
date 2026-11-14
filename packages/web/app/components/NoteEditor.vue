@@ -64,6 +64,7 @@ const api = useApi()
 const tree = useTree()
 const toast = useToast()
 const showError = useApiErrorToast()
+const bookmarkStore = useBookmarks()
 const editorRef = useTemplateRef<{ editor: Editor | undefined }>('editorRef')
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 // UEditor reads `editable` once, at its start: later changes go to the editor itself.
@@ -177,7 +178,12 @@ const extensions = createExtensions({
     return Database.extend({ addNodeView: () => VueNodeViewRenderer(DatabaseView) })
   }
   if (extension.name === Bookmark.name) {
-    return Bookmark.extend({ addNodeView: () => VueNodeViewRenderer(BookmarkView) })
+    // Dropped here from another note (Unsorted's inbox): it leaves that one.
+    return Bookmark.extend({ addNodeView: () => VueNodeViewRenderer(BookmarkView) }).configure({
+      onMoved: (id, from) => {
+        if (from !== props.noteId) void bookmarkStore.removeCards(id, from).catch(showError)
+      },
+    })
   }
   return extension
 })

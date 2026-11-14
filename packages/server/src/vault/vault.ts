@@ -25,14 +25,19 @@ import {
   sanitizeTitle,
   titleFromPath,
   findTodos,
+  BOOKMARK_INBOX_TITLE,
+  OWNER,
+  bookmarkBlock,
   bookmarkIdsIn,
   removeBookmarkBlocks,
+  urlKey,
   webUrl,
   type Attachment,
   type Bookmark,
   type BookmarkImportResult,
   type BookmarkRef,
   type BookmarkSearchResult,
+  type UnsortedBookmarks,
   type PagePreview,
   type Backlink,
   type BlameRange,
@@ -73,13 +78,12 @@ import {
 } from './agenda.ts'
 import { readFeed } from './feeds.ts'
 import { initialBlame, parseBlame, runsToRanges, updateBlame } from './blame.ts'
-import { bookmarksHtml } from './bookmark-export.ts'
+import { bookmarksHtml, type ExportFolder } from './bookmark-export.ts'
 import {
   BOOKMARK_ICON_PREFIX,
   BookmarkStore,
   type BookmarkInput,
   type BookmarkPatch,
-  type ImportNode,
 } from './bookmarks.ts'
 import { DatabaseStore, type ColumnInput, type DatabasePatch } from './databases.ts'
 import { ConflictError, DuplicateBookmarkError, NotFoundError, ValidationError } from './errors.ts'
@@ -138,6 +142,50 @@ interface TrashPayload {
 
 const DAY = 86_400_000
 
+/**
+ * Where a new bookmark's card goes: at the start of the inbox note (the extension's, the
+ * sidebar's), or at the end of a note (agents'); neither, the editor puts it where it's typed.
+ */
+export interface BookmarkPlace {
+  inbox?: boolean
+  noteId?: string
+  /** Who writes the card (default: the owner). */
+  author?: string
+}
+
+/** A browser's folder or bookmark to import, with its favicon (`extra`). */
+export interface ImportNode<T> {
+  title: string
+  url?: string
+  children?: ImportNode<T>[]
+  extra?: T
+}
+
+/** A row of `bookmark_tree_legacy` (migration 0007): bookmarks' folders, before notes. */
+interface LegacyBookmarkRow {
+  id: string
+  kind: 'folder' | 'bookmark'
+  parentId: string | null
+  title: string
+  icon: string | null
+}
+
+/**
+ * Cards grouped by the folders they were in: those at the top first, each other group under a
+ * heading naming its folders (`Bookmarks bar / Work`). Empty groups are left out.
+ */
+function cardsMarkdown(sections: { folders: string[]; ids: string[] }[]): string {
+  return sections
+    .filter((section) => section.ids.length)
+    .map((section) => {
+      const cards = section.ids.map(bookmarkBlock).join('\n\n')
+      if (!section.folders.length) return cards
+      const heading = section.folders.map((name) => name.replace(/\s+/g, ' ').trim()).join(' / ')
+      return `## ${heading.replace(/^#+/, '')}\n\n${cards}`
+    })
+    .join('\n\n')
+}
+
 export class Vault {
   readonly events = new EventEmitter<{ event: [ServerEvent] }>()
   readonly dataDir: string
@@ -154,6 +202,7 @@ export class Vault {
   private readonly bookmarks: BookmarkStore
   private readonly agenda: AgendaStore
   private readonly fetcher: Fetcher | null
+  private readonly sqlite: Database['sqlite']
 
   constructor(options: VaultOptions) {
     this.dataDir = options.dataDir
@@ -166,6 +215,7 @@ export class Vault {
     this.bookmarks = new BookmarkStore(this.db, this.now)
     this.agenda = new AgendaStore(this.db, this.now)
     this.fetcher = options.fetch ?? null
+    this.sqlite = options.database.sqlite
   }
 
   // --- Reading -------------------------------------------------------------------------------
@@ -582,18 +632,7 @@ export class Vault {
   /** Appends Markdown at the end of a page, as a new block. */
   async appendContent(id: string, text: string, author: string): Promise<{ hash: string }> {
     return this.lock.run(async () => {
-      const row = await this.writablePage(id, author)
-      const current = row.content ?? ''
-      const separator =
-        current === '' ? '' : current.endsWith('\n\n') ? '' : current.endsWith('\n') ? '\n' : '\n\n'
-      const next = await this.saveInternal(
-        row,
-        `${current}${separator}${text.replace(/\n*$/, '\n')}`,
-        author,
-        {
-          write: true,
-        },
-      )
+      const next = await this.appendInternal(await this.writablePage(id, author), text, author)
       return { hash: next.hash! }
     })
   }
@@ -850,10 +889,19 @@ export class Vault {
     return this.bookmarks.search(query, limit)
   }
 
-  /** The pages showing a bookmark, or any bookmark in a folder, by title. */
+  /** The pages showing a bookmark, by title. */
   async bookmarkRefs(id: string): Promise<BookmarkRef[]> {
-    const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id)
-    return this.refsTo(ids)
+    await this.bookmarks.get(id)
+    return this.refsTo([id])
+  }
+
+  /** The inbox note and the bookmarks it shows, in order: those still to sort ("Unsorted"). */
+  async unsortedBookmarks(): Promise<UnsortedBookmarks> {
+    const row = await this.inboxRow()
+    if (!row) return { noteId: null, bookmarks: [] }
+    const ids = [...new Set(bookmarkIdsIn(row.content ?? ''))]
+    const found = await this.bookmarks.getMany(ids)
+    return { noteId: row.id, bookmarks: ids.flatMap((id) => found.get(id) ?? []) }
   }
 
   /** A web page's title and description, for a bookmark being made (empty when unreadable). */
@@ -863,40 +911,43 @@ export class Vault {
   }
 
   /**
-   * A new bookmark or folder. A page already bookmarked is refused (with its bookmark). What
-   * isn't given is read from its page: its favicon (the extension sends the browser's), its
-   * title and description.
+   * A new bookmark, its card put in the inbox note (at its start) or at the end of a note when
+   * asked (`place`; otherwise the editor puts it where it is typed). A page already bookmarked
+   * isn't made again: its bookmark is used (`created` false), its card put there all the same
+   * unless that note shows it. What isn't given is read from its page: its favicon (the
+   * extension sends the browser's), its title and description.
    */
-  async createBookmark(input: BookmarkInput, icon?: Favicon | null): Promise<Bookmark> {
-    const kind = input.kind ?? 'bookmark'
+  async createBookmark(
+    input: BookmarkInput,
+    icon?: Favicon | null,
+    place: BookmarkPlace = {},
+  ): Promise<{ bookmark: Bookmark; created: boolean }> {
     let favicon = icon ?? null
     const missing = icon === undefined || !input.title?.trim() || input.description === undefined
     const url = webUrl(input.url ?? '')
-    if (kind === 'bookmark' && missing && this.fetcher && url) {
-      const existing = await this.bookmarks.findByUrl(url)
-      if (!existing) {
-        const site = await readSite(this.fetcher, url, { favicon: icon === undefined })
-        if (icon === undefined) favicon = site.favicon
-        input = {
-          ...input,
-          title: input.title?.trim() ? input.title : site.preview.title,
-          description: input.description ?? site.preview.description,
-        }
+    if (missing && this.fetcher && url && !(await this.bookmarks.findByUrl(url))) {
+      const site = await readSite(this.fetcher, url, { favicon: icon === undefined })
+      if (icon === undefined) favicon = site.favicon
+      input = {
+        ...input,
+        title: input.title?.trim() ? input.title : site.preview.title,
+        description: input.description ?? site.preview.description,
       }
     }
     return this.lock.run(async () => {
-      if (kind === 'bookmark' && input.url) {
-        const existing = await this.bookmarks.findByUrl(input.url)
-        if (existing) throw new DuplicateBookmarkError(existing)
+      const existing = input.url ? await this.bookmarks.findByUrl(input.url) : null
+      const bookmark = existing ?? (await this.bookmarks.create(input))
+      if (!existing && favicon) {
+        await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension)
       }
-      const bookmark = await this.bookmarks.create(input)
-      if (favicon) await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension)
-      this.changed({ type: 'bookmarks' })
-      return this.bookmarks.get(bookmark.id)
+      // A card written announces the change itself (indexPage).
+      const placed = await this.placeCard(bookmark.id, place, place.author ?? OWNER)
+      if (!placed && !existing) this.changed({ type: 'bookmarks' })
+      return { bookmark: await this.bookmarks.get(bookmark.id), created: !existing }
     })
   }
 
-  /** Changes a bookmark (another page already bookmarked is refused), or moves it. */
+  /** Changes a bookmark (another page already bookmarked is refused). */
   async updateBookmark(id: string, patch: BookmarkPatch): Promise<Bookmark> {
     return this.lock.run(async () => {
       if (patch.url !== undefined) {
@@ -910,49 +961,89 @@ export class Vault {
   }
 
   /**
-   * Deletes a bookmark, or a folder with everything in it, for good (bookmarks have no trash).
-   * Their cards are removed from the pages showing them, as `author`: each page's history keeps
-   * the version with them.
+   * Takes a bookmark's cards out of a note (it was moved into another one; the bookmark stays).
+   * Unchanged when the note doesn't show it.
    */
-  async deleteBookmark(
-    id: string,
-    author: string,
-  ): Promise<{ deleted: number; pages: BookmarkRef[] }> {
+  async removeBookmarkCards(noteId: string, bookmarkId: string, author: string): Promise<void> {
     return this.lock.run(async () => {
-      const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id)
-      const pages = await this.refsTo(ids)
+      const row = await this.freshPage(noteId)
+      const content = removeBookmarkBlocks(row.content ?? '', [bookmarkId])
+      if (content !== row.content) await this.saveOrFold(row, content, author)
+    })
+  }
+
+  /**
+   * Deletes a bookmark for good (bookmarks have no trash). Its cards are removed from the pages
+   * showing them, as `author`: each page's history keeps the version with them.
+   */
+  async deleteBookmark(id: string, author: string): Promise<{ pages: BookmarkRef[] }> {
+    return this.lock.run(async () => {
+      await this.bookmarks.get(id)
+      const pages = await this.refsTo([id])
       for (const page of pages) {
         let row = await this.freshPage(page.id)
-        const content = removeBookmarkBlocks(row.content ?? '', ids)
+        const content = removeBookmarkBlocks(row.content ?? '', [id])
         if (content === row.content) continue
-        // A version with the cards, even in the middle of an editing session.
+        // A version with the card, even in the middle of an editing session.
         if (row.pendingSnapshot) {
           await this.snapshot(row)
           row = await this.requireRow(row.id)
         }
         await this.saveOrFold(row, content, author)
       }
-      for (const removed of ids) await this.removeBookmarkIconFiles(removed)
-      await this.bookmarks.deleteMany(ids)
-      await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids))
+      await this.removeBookmarkIconFiles(id)
+      await this.bookmarks.deleteMany([id])
+      await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.bookmarkId, id))
       this.changed({ type: 'bookmarks' })
-      return { deleted: ids.length, pages }
+      return { pages }
     })
   }
 
   /**
-   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the folder `into` at
-   * the top, with their favicons: see `BookmarkStore.importTree`. One change, announced once.
+   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the inbox note, with
+   * their favicons: at its end, those at the top first, then each folder's under a heading
+   * naming its folders (`Bookmarks bar / Work`). Pages already bookmarked are left as they are,
+   * and so is what isn't a web address. One change, announced once.
    */
-  async importBookmarks(into: string, tree: ImportNode<Favicon>[]): Promise<BookmarkImportResult> {
+  async importBookmarks(
+    tree: ImportNode<Favicon>[],
+    author: string,
+  ): Promise<BookmarkImportResult> {
     return this.lock.run(async () => {
-      const { result, created } = await this.bookmarks.importTree(into, tree)
-      for (const { id, extra } of created) {
-        if (extra.data.byteLength <= ICON_MAX_BYTES) {
-          await this.writeBookmarkIcon(id, extra.data, extra.extension)
+      const known = new Set((await this.bookmarks.list()).map((bookmark) => urlKey(bookmark.url)))
+      const result = { noteId: '', bookmarks: 0, duplicates: 0, skipped: 0 }
+      const sections: { folders: string[]; ids: string[] }[] = []
+      const walk = async (folders: string[], list: ImportNode<Favicon>[]) => {
+        const section = { folders, ids: [] as string[] }
+        sections.push(section)
+        for (const node of list.filter((item) => !item.children)) {
+          const url = webUrl(node.url ?? '')
+          if (!url) {
+            result.skipped++
+            continue
+          }
+          if (known.has(urlKey(url))) {
+            result.duplicates++
+            continue
+          }
+          known.add(urlKey(url))
+          const { id } = await this.bookmarks.create({ title: node.title, url })
+          if (node.extra && node.extra.data.byteLength <= ICON_MAX_BYTES) {
+            await this.writeBookmarkIcon(id, node.extra.data, node.extra.extension)
+          }
+          section.ids.push(id)
+          result.bookmarks++
+        }
+        for (const node of list.filter((item) => item.children)) {
+          await walk([...folders, node.title.trim() || 'Untitled folder'], node.children!)
         }
       }
-      this.changed({ type: 'bookmarks' })
+      await walk([], tree)
+      const inbox = await this.inboxRowOrNew(author)
+      result.noteId = inbox.id
+      // Announced once, by writing the cards (indexPage).
+      const markdown = cardsMarkdown(sections)
+      if (markdown) await this.appendInternal(inbox, markdown, author)
       return result
     })
   }
@@ -973,7 +1064,7 @@ export class Vault {
     })
   }
 
-  /** Sets an emoji as a bookmark's (or folder's) icon, or none (null: its default). */
+  /** Sets an emoji as a bookmark's icon, or none (null: its favicon). */
   async setBookmarkEmoji(id: string, emoji: string | null): Promise<Bookmark> {
     const value = emoji?.trim() ?? ''
     if (emoji !== null && (!value || [...value].length > 8))
@@ -993,11 +1084,44 @@ export class Vault {
   }
 
   /**
-   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): all of them, or a folder
-   * with its content. Favicons go in it, those over 256 KB (none a browser keeps) left out.
+   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): the pages are its folders,
+   * each with its cards (in order) then its child pages; pages without any card in them are left
+   * out. All of them, or a page (or folder) with what is under it. Favicons go in it, those over
+   * 256 KB (none a browser keeps) left out.
    */
-  async exportBookmarks(id?: string): Promise<string> {
-    const all = id ? await this.bookmarks.subtree(id) : await this.bookmarks.list()
+  async exportBookmarks(nodeId?: string): Promise<string> {
+    const rows = (await this.allRows()).toSorted((a, b) => a.position - b.position)
+    const root = nodeId ? rows.find((row) => row.id === nodeId) : undefined
+    if (nodeId && !root) throw new NotFoundError('No such page')
+    const shown = await this.db
+      .selectDistinct({ id: bookmarkRefs.nodeId })
+      .from(bookmarkRefs)
+      .then((list) => list.map((row) => row.id))
+    const contents = shown.length
+      ? await this.db
+          .select({ id: nodes.id, content: nodes.content })
+          .from(nodes)
+          .where(inArray(nodes.id, shown))
+      : []
+    const cards = new Map(contents.map((row) => [row.id, bookmarkIdsIn(row.content ?? '')]))
+    const all = await this.bookmarks.getMany([...new Set([...cards.values()].flat())])
+
+    const byDir = new Map<string, NodeMeta[]>()
+    for (const row of rows) {
+      const dir = dirnameOf(row.path)
+      byDir.set(dir, [...(byDir.get(dir) ?? []), row])
+    }
+    const folderOf = (row: NodeMeta): ExportFolder | null => {
+      const inside = row.kind === 'page' ? childrenDirOf(row.path) : row.path
+      const folders = (byDir.get(inside) ?? []).flatMap((child) => folderOf(child) ?? [])
+      const bookmarks = [...new Set(cards.get(row.id) ?? [])].flatMap((id) => all.get(id) ?? [])
+      if (!folders.length && !bookmarks.length) return null
+      const { createdAt, updatedAt } = row
+      return { title: titleFromPath(row.path), createdAt, updatedAt, bookmarks, folders }
+    }
+    const top = root ? [root] : (byDir.get('') ?? [])
+    const folders = top.flatMap((row) => folderOf(row) ?? [])
+
     const files = await this.bookmarks.iconFiles()
     // By extension (an ICO as `image/x-icon`, what browsers write); a PNG by its bytes, as sites
     // often serve one as favicon.ico, and Chrome only shows PNG favicons it imports.
@@ -1006,16 +1130,70 @@ export class Vault {
       ico: 'image/x-icon',
     }
     const icons = new Map<string, string>()
-    for (const bookmark of all) {
-      const file = files.get(bookmark.id)
+    for (const id of all.keys()) {
+      const file = files.get(id)
       if (!file) continue
       const data = await readFile(join(this.metaDir, 'icons', file)).catch(() => null)
       if (!data || data.byteLength > EXPORT_ICON_MAX_BYTES) continue
       const png = data.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]))
       const type = png ? 'image/png' : types[file.split('.').pop() ?? '']
-      if (type) icons.set(bookmark.id, `data:${type};base64,${data.toString('base64')}`)
+      if (type) icons.set(id, `data:${type};base64,${data.toString('base64')}`)
     }
-    return bookmarksHtml(all, id ?? null, icons)
+    return bookmarksHtml(folders, icons)
+  }
+
+  /**
+   * Bookmarks had folders of their own until migration 0007, which kept their tree in
+   * `bookmark_tree_legacy`. Once, at start-up: each folder becomes a page folder where it was
+   * (a page or folder of that name there is used instead), with its icon; the bookmarks no note
+   * shows go into the inbox note, under a heading naming their folders; then the table goes.
+   * Null when there was nothing to convert.
+   */
+  async convertLegacyBookmarks(): Promise<{ folders: number; bookmarks: number } | null> {
+    const table = this.sqlite
+      .prepare("select 1 from sqlite_master where type = 'table' and name = 'bookmark_tree_legacy'")
+      .get()
+    if (!table) return null
+    return this.lock.run(async () => {
+      const rows = this.sqlite
+        .prepare(
+          'select id, kind, parent_id as parentId, title, icon from bookmark_tree_legacy order by position',
+        )
+        .all() as unknown as LegacyBookmarkRow[]
+      const shown = new Set(
+        (await this.db.selectDistinct({ id: bookmarkRefs.bookmarkId }).from(bookmarkRefs)).map(
+          (row) => row.id,
+        ),
+      )
+      const existing = new Set((await this.bookmarks.list()).map((bookmark) => bookmark.id))
+      const author = 'tandem'
+      const result = { folders: 0, bookmarks: 0 }
+      const sections: { folders: string[]; ids: string[] }[] = []
+      const walk = async (parentId: string | null, nodeId: string | null, folders: string[]) => {
+        const children = rows.filter((row) => row.parentId === parentId)
+        sections.push({
+          folders,
+          ids: children
+            .filter((row) => row.kind === 'bookmark' && existing.has(row.id) && !shown.has(row.id))
+            .map((row) => row.id),
+        })
+        for (const folder of children.filter((row) => row.kind === 'folder')) {
+          const node = await this.legacyFolderNode(folder, nodeId)
+          result.folders++
+          await walk(folder.id, node.id, [...folders, folder.title])
+        }
+      }
+      await walk(null, null, [])
+      const markdown = cardsMarkdown(sections)
+      if (markdown) {
+        const inbox = await this.inboxRowOrNew(author)
+        await this.appendInternal(inbox, markdown, author)
+        result.bookmarks = sections.reduce((sum, section) => sum + section.ids.length, 0)
+      }
+      this.sqlite.exec('drop table bookmark_tree_legacy')
+      this.changed({ type: 'tree' })
+      return result
+    })
   }
 
   // --- Agenda (agenda.ts) ------------------------------------------------------------------
@@ -1113,6 +1291,93 @@ export class Vault {
   private agendaChanged<T>(value: T): T {
     this.changed({ type: 'agenda' })
     return value
+  }
+
+  /** The inbox note (`bookmarkInbox`), when it is still a page (not deleted). */
+  private async inboxRow(): Promise<NodeRow | null> {
+    const { bookmarkInbox } = await this.getSettings()
+    if (!bookmarkInbox) return null
+    const row = await this.db.select().from(nodes).where(eq(nodes.id, bookmarkInbox)).get()
+    return row?.kind === 'page' ? this.freshPage(row.id) : null
+  }
+
+  /** The inbox note, made at the top (and remembered) when there is none. */
+  private async inboxRowOrNew(author: string): Promise<NodeRow> {
+    const found = await this.inboxRow()
+    if (found) return found
+    const name = uniqueName(BOOKMARK_INBOX_TITLE, '', await this.takenNames(''))
+    const row = await this.insertPage('', name, '', author)
+    const value = JSON.stringify(row.id)
+    await this.db
+      .insert(settings)
+      .values({ key: 'bookmarkInbox', value })
+      .onConflictDoUpdate({ target: settings.key, set: { value } })
+    this.changed({ type: 'tree' })
+    this.changed({ type: 'settings' })
+    return row
+  }
+
+  /**
+   * Puts a bookmark's card where asked (see `BookmarkPlace`), unless that note shows it; true
+   * when it did.
+   */
+  private async placeCard(id: string, place: BookmarkPlace, author: string): Promise<boolean> {
+    if (!place.inbox && !place.noteId) return false
+    const row = place.inbox
+      ? await this.inboxRowOrNew(author)
+      : await this.writablePage(place.noteId!, author)
+    const content = row.content ?? ''
+    if (bookmarkIdsIn(content).includes(id)) return false
+    const block = bookmarkBlock(id)
+    if (place.inbox) {
+      const rest = content.replace(/^\n+/, '')
+      await this.saveInternal(row, rest ? `${block}\n\n${rest}` : `${block}\n`, author, {
+        write: true,
+      })
+    } else {
+      await this.appendInternal(row, block, author)
+    }
+    return true
+  }
+
+  /** A bookmark folder of before migration 0007 as a page folder under `parentId` (see above). */
+  private async legacyFolderNode(folder: LegacyBookmarkRow, parentId: string | null) {
+    const dir = await this.dirOfParent(parentId)
+    const name = sanitizeTitle(folder.title) || 'Untitled folder'
+    let row =
+      (await this.rowByPath(joinPath(dir, name))) ??
+      (await this.rowByPath(joinPath(dir, `${name}.md`)))
+    if (!row) {
+      const path = joinPath(dir, name)
+      await mkdir(this.abs(path), { recursive: true })
+      row = await this.insertFolder(path, this.now())
+    }
+    const icon = folder.icon
+    const old = icon?.startsWith('image:') ? join(this.metaDir, 'icons', icon.slice(6)) : null
+    if (icon && !row.icon) {
+      let value: string | null = icon.startsWith('emoji:') ? icon : null
+      if (old && existsSync(old)) {
+        const file = `${row.id}-${this.now()}.${old.split('.').pop()}`
+        await atomicWrite(join(this.metaDir, 'icons', file), await readFile(old))
+        value = `image:${file}`
+      }
+      if (value) {
+        await this.db.update(nodes).set({ icon: value }).where(eq(nodes.id, row.id))
+        row = { ...row, icon: value }
+      }
+    }
+    if (old) await rm(old, { force: true })
+    return row
+  }
+
+  /** Appends Markdown at the end of a page, as a new block (under the lock). */
+  private async appendInternal(row: NodeRow, text: string, author: string): Promise<NodeRow> {
+    const current = row.content ?? ''
+    const separator =
+      current === '' ? '' : current.endsWith('\n\n') ? '' : current.endsWith('\n') ? '\n' : '\n\n'
+    return this.saveInternal(row, `${current}${separator}${text.replace(/\n*$/, '\n')}`, author, {
+      write: true,
+    })
   }
 
   private async writeBookmarkIcon(id: string, data: Uint8Array, extension: string) {
@@ -1716,11 +1981,20 @@ export class Vault {
     if (targets.length)
       await this.db.insert(links).values(targets.map((target) => ({ sourceId: row.id, target })))
     const shown = [...new Set(bookmarkIdsIn(content))]
+    const before = await this.db
+      .select({ id: bookmarkRefs.bookmarkId })
+      .from(bookmarkRefs)
+      .where(eq(bookmarkRefs.nodeId, row.id))
     await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id))
     if (shown.length) {
       await this.db
         .insert(bookmarkRefs)
         .values(shown.map((bookmarkId) => ({ nodeId: row.id, bookmarkId })))
+    }
+    // How many times each is used, and what is unsorted, change with the cards a page shows.
+    const was = new Set(before.map((ref) => ref.id))
+    if (was.size !== shown.length || shown.some((id) => !was.has(id))) {
+      this.changed({ type: 'bookmarks' })
     }
   }
 

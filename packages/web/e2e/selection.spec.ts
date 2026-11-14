@@ -1,16 +1,10 @@
-// Several rows selected in the sidebar's trees (⌘- and ⇧-click): opened in tabs, moved (from the
-// menu, or dragged), deleted at once (⌘⌫), for pages and for bookmarks.
+// Several rows selected in the pages' tree (⌘- and ⇧-click): opened in tabs, moved (from the
+// menu, or dragged), deleted at once (⌘⌫).
 import { expect, test, type Page } from '@playwright/test'
 import { api, createNote } from './helpers'
 
 interface Node {
   id: string
-  parentId: string | null
-}
-
-interface Bookmark {
-  id: string
-  title: string
   parentId: string | null
 }
 
@@ -85,51 +79,4 @@ test('pages: selected with ⌘ and ⇧, opened in tabs, moved, trashed at once',
   for (const id of [box.id, one.id, two.id, three.id]) {
     await request.delete(`/api/nodes/${id}`)
   }
-})
-
-test('bookmarks: selected with ⌘, moved into a folder, deleted with one question', async ({
-  page,
-  request,
-}) => {
-  await api(request, 'PATCH', '/settings', { bookmarks: true })
-  for (const bookmark of await api<Bookmark[]>(request, 'GET', '/bookmarks')) {
-    if (!bookmark.parentId) await api(request, 'DELETE', `/bookmarks/${bookmark.id}`)
-  }
-  const add = (fields: Record<string, unknown>) =>
-    api<Bookmark>(request, 'POST', '/bookmarks', fields)
-  const target = await add({ kind: 'folder', title: 'Target' })
-  const a = await add({ url: 'https://a.example.com', title: 'Site A' })
-  const b = await add({ url: 'https://b.example.com', title: 'Site B' })
-  const c = await add({ url: 'https://c.example.com', title: 'Site C' })
-  await page.goto('/')
-  const section = page.getByTestId('bookmarks')
-  await section.getByTestId('bookmarks-toggle').click()
-  const row = (title: string) => section.getByTestId(`bookmark-${title}`)
-
-  await row('Site A').click(meta)
-  await row('Site C').click(meta)
-  await expect(page.locator('[data-bookmark-id][data-selected]')).toHaveCount(2)
-  await row('Site C').click({ button: 'right' })
-  await expect(page.getByRole('menuitem', { name: 'Open 2 websites' })).toBeVisible()
-  await page.getByRole('menuitem', { name: 'Move to' }).click()
-  await page.getByRole('menuitem', { name: 'Target' }).click()
-  const parent = async (id: string) =>
-    (await api<Bookmark>(request, 'GET', `/bookmarks/${id}`)).parentId
-  await expect.poll(() => parent(a.id)).toBe(target.id)
-  expect(await parent(c.id)).toBe(target.id)
-  expect(await parent(b.id)).toBeNull()
-
-  // The folder (with what it holds) and a bookmark: asked once, then all gone.
-  await row('Site B').click(meta)
-  await row('Target').click(meta)
-  await row('Target').focus()
-  await page.keyboard.press('ControlOrMeta+Backspace')
-  const dialog = page.getByRole('dialog')
-  await expect(dialog).toContainText('Delete 2 bookmarks and folders?')
-  await expect(dialog).toContainText('4 in all')
-  await dialog.getByRole('button', { name: 'Delete' }).click()
-  await expect(row('Site B')).toHaveCount(0)
-  await expect(row('Target')).toHaveCount(0)
-  expect(await api<Bookmark[]>(request, 'GET', '/bookmarks')).toHaveLength(0)
-  await api(request, 'PATCH', '/settings', { bookmarks: false })
 })
