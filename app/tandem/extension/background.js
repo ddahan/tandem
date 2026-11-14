@@ -77,7 +77,7 @@ function normalizeAddress(input) {
 }
 function createTandem(address, fetcher = fetch) {
   const base = normalizeAddress(address);
-  async function request(path, init = {}) {
+  async function request(path, init = {}, onStatus) {
     let response;
     try {
       response = await fetcher(`${base}${path}`, {
@@ -87,6 +87,7 @@ function createTandem(address, fetcher = fetch) {
     } catch {
       throw new TandemError("offline", `Tandem isn\u2019t running at ${base}.`);
     }
+    onStatus?.(response.status);
     const body = await response.json().catch(() => null);
     if (response.status === 409 && body?.code === BOOKMARKS_OFF) {
       throw new TandemError("off", "Bookmarks are off in Tandem.", 409);
@@ -102,9 +103,14 @@ function createTandem(address, fetcher = fetch) {
     return body;
   }
   async function save2(path, method, fields) {
+    let status = 0;
     try {
-      const bookmark = await request(path, { method, body: JSON.stringify(fields) });
-      return { bookmark, duplicate: false };
+      const bookmark = await request(
+        path,
+        { method, body: JSON.stringify(fields) },
+        (s) => status = s
+      );
+      return { bookmark, duplicate: method === "POST" && status === 200 };
     } catch (error) {
       const existing = error instanceof TandemError && error.status === 409 ? error.body?.bookmark : void 0;
       if (existing) return { bookmark: existing, duplicate: true };
@@ -125,9 +131,10 @@ function createTandem(address, fetcher = fetch) {
     search: (query, limit = 6) => request(
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
-    create: (fields) => save2("/api/bookmarks", "POST", fields),
+    /** A new bookmark, its card at the start of the inbox note ("Unsorted" in Tandem). */
+    create: (fields) => save2("/api/bookmarks", "POST", { ...fields, inbox: true }),
     update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
-    /** Imports a browser's tree into Tandem's "Chrome" folder (see import.ts). */
+    /** Imports a browser's tree into Tandem's inbox note (see import.ts). */
     importBookmarks: (children) => request("/api/bookmarks/import", {
       method: "POST",
       body: JSON.stringify({ children })
@@ -214,9 +221,9 @@ chrome.omnibox.onInputChanged.addListener((text, suggest) => {
         description: results.length ? `Search your bookmarks in Tandem: <match>${xml(text)}</match>` : `No bookmark matches <match>${xml(text)}</match> in Tandem`
       });
       suggest(
-        results.map(({ bookmark, titleHtml, folders }) => ({
+        results.map(({ bookmark, titleHtml }) => ({
           content: bookmark.url,
-          description: `${matched(titleHtml)} <dim>\u2014</dim> <url>${xml(siteOf(bookmark.url))}</url>${folders ? ` <dim>${xml(folders)}</dim>` : ""}`
+          description: `${matched(titleHtml)} <dim>\u2014</dim> <url>${xml(siteOf(bookmark.url))}</url>`
         }))
       );
     } catch (error) {

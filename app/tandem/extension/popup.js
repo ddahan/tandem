@@ -108,7 +108,7 @@ function normalizeAddress(input) {
 }
 function createTandem(address, fetcher = fetch) {
   const base = normalizeAddress(address);
-  async function request(path, init = {}) {
+  async function request(path, init = {}, onStatus) {
     let response;
     try {
       response = await fetcher(`${base}${path}`, {
@@ -118,6 +118,7 @@ function createTandem(address, fetcher = fetch) {
     } catch {
       throw new TandemError("offline", `Tandem isn\u2019t running at ${base}.`);
     }
+    onStatus?.(response.status);
     const body = await response.json().catch(() => null);
     if (response.status === 409 && body?.code === BOOKMARKS_OFF) {
       throw new TandemError("off", "Bookmarks are off in Tandem.", 409);
@@ -133,9 +134,14 @@ function createTandem(address, fetcher = fetch) {
     return body;
   }
   async function save2(path, method, fields) {
+    let status = 0;
     try {
-      const bookmark = await request(path, { method, body: JSON.stringify(fields) });
-      return { bookmark, duplicate: false };
+      const bookmark = await request(
+        path,
+        { method, body: JSON.stringify(fields) },
+        (s) => status = s
+      );
+      return { bookmark, duplicate: method === "POST" && status === 200 };
     } catch (error) {
       const existing2 = error instanceof TandemError && error.status === 409 ? error.body?.bookmark : void 0;
       if (existing2) return { bookmark: existing2, duplicate: true };
@@ -156,24 +162,19 @@ function createTandem(address, fetcher = fetch) {
     search: (query, limit = 6) => request(
       `/api/bookmarks/search?q=${encodeURIComponent(query)}&limit=${limit}`
     ),
-    create: (fields) => save2("/api/bookmarks", "POST", fields),
+    /** A new bookmark, its card at the start of the inbox note ("Unsorted" in Tandem). */
+    create: (fields) => save2("/api/bookmarks", "POST", { ...fields, inbox: true }),
     update: (id, fields) => save2(`/api/bookmarks/${encodeURIComponent(id)}`, "PATCH", fields),
-    /** Imports a browser's tree into Tandem's "Chrome" folder (see import.ts). */
+    /** Imports a browser's tree into Tandem's inbox note (see import.ts). */
     importBookmarks: (children) => request("/api/bookmarks/import", {
       method: "POST",
       body: JSON.stringify({ children })
     })
   };
 }
-function folderPath(bookmarks2, bookmark) {
-  const byId = new Map(bookmarks2.map((b) => [b.id, b]));
-  const names = [];
-  let parent = bookmark.parentId ? byId.get(bookmark.parentId) : void 0;
-  while (parent) {
-    names.unshift(parent.title);
-    parent = parent.parentId ? byId.get(parent.parentId) : void 0;
-  }
-  return names.join(" / ") || "Bookmarks";
+function whereShown(bookmark) {
+  if (!bookmark.uses) return "In no note";
+  return `In ${bookmark.uses} note${bookmark.uses === 1 ? "" : "s"}`;
 }
 
 // src/settings.ts
@@ -187,7 +188,6 @@ var $ = (id) => document.getElementById(id);
 var tandem;
 var tab;
 var existing = null;
-var bookmarks = [];
 var iconDataUrl;
 function show(section) {
   for (const id of ["loading", "problem", "form"]) $(id).hidden = id !== section;
@@ -236,7 +236,7 @@ function useExisting(bookmark) {
   existing = bookmark;
   $("heading").textContent = "Already in Tandem";
   const notice = $("existing");
-  notice.textContent = `In ${folderPath(bookmarks, bookmark)}. Saving changes it.`;
+  notice.textContent = `${whereShown(bookmark)}. Saving changes it.`;
   notice.hidden = false;
   $("title").value = bookmark.title;
   $("url").value = bookmark.url;
@@ -264,13 +264,11 @@ async function start() {
   tab = current;
   try {
     if (!await tandem.enabled()) throw new TandemError("off", "Bookmarks are off in Tandem.");
-    const [all, found, description, icon] = await Promise.all([
-      tandem.list(),
+    const [found, description, icon] = await Promise.all([
       tandem.lookup(url),
       pageDescription(current.id),
       faviconDataUrl(url, current.favIconUrl)
     ]);
-    bookmarks = all;
     iconDataUrl = icon;
     if (found) useExisting(found);
     else {

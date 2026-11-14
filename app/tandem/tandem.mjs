@@ -2220,20 +2220,20 @@ var require_resolve = __commonJS({
       return false;
     }
     function countKeys(schema) {
-      let count = 0;
+      let count2 = 0;
       for (const key in schema) {
         if (key === "$ref")
           return Infinity;
-        count++;
+        count2++;
         if (SIMPLE_INLINED.has(key))
           continue;
         if (typeof schema[key] == "object") {
-          (0, util_1.eachItem)(schema[key], (sch) => count += countKeys(sch));
+          (0, util_1.eachItem)(schema[key], (sch) => count2 += countKeys(sch));
         }
-        if (count === Infinity)
+        if (count2 === Infinity)
           return Infinity;
       }
-      return count;
+      return count2;
     }
     function getFullPath(resolver, id = "", normalize3) {
       if (normalize3 !== false)
@@ -5715,8 +5715,8 @@ var require_contains = __commonJS({
         cxt.result(valid, () => cxt.reset());
         function validateItemsWithCount() {
           const schValid = gen.name("_valid");
-          const count = gen.let("count", 0);
-          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count)));
+          const count2 = gen.let("count", 0);
+          validateItems(schValid, () => gen.if(schValid, () => checkLimits(count2)));
         }
         function validateItems(_valid, block) {
           gen.forRange("i", 0, len, (i) => {
@@ -5729,16 +5729,16 @@ var require_contains = __commonJS({
             block();
           });
         }
-        function checkLimits(count) {
-          gen.code((0, codegen_1._)`${count}++`);
+        function checkLimits(count2) {
+          gen.code((0, codegen_1._)`${count2}++`);
           if (max === void 0) {
-            gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true).break());
+            gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true).break());
           } else {
-            gen.if((0, codegen_1._)`${count} > ${max}`, () => gen.assign(valid, false).break());
+            gen.if((0, codegen_1._)`${count2} > ${max}`, () => gen.assign(valid, false).break());
             if (min === 1)
               gen.assign(valid, true);
             else
-              gen.if((0, codegen_1._)`${count} >= ${min}`, () => gen.assign(valid, true));
+              gen.if((0, codegen_1._)`${count2} >= ${min}`, () => gen.assign(valid, true));
           }
         }
       }
@@ -7655,6 +7655,7 @@ function createClient(baseUrl, options) {
 }
 
 // ../shared/src/types.ts
+var SUBTREE_MAX_PAGES = 500;
 var CODE_THEMES = [
   "tandem",
   "github",
@@ -7686,6 +7687,7 @@ var DEFAULT_SETTINGS = {
   trash: true,
   todos: false,
   bookmarks: false,
+  bookmarkInbox: null,
   daily: false,
   homeRecent: true,
   shortcutHints: true
@@ -7772,6 +7774,7 @@ function maskCode(markdown) {
 }
 
 // ../shared/src/authors.ts
+var OWNER = "owner";
 var EXTERNAL = "external";
 var DEFAULT_AGENT = "agent";
 function normalizeAuthor(input2, fallback = DEFAULT_AGENT) {
@@ -8158,7 +8161,7 @@ function taskCounts(markdown) {
 var EXTENSION_ID = "kmecpgdldjmbehndpobipnndopjdgkci";
 var EXTENSION_ORIGIN = `chrome-extension://${EXTENSION_ID}`;
 var BOOKMARKS_OFF = "bookmarks_off";
-var BOOKMARK_IMPORT_FOLDER = "Chrome";
+var BOOKMARK_INBOX_TITLE = "Bookmarks";
 var BOOKMARK_IMPORT_MAX = 2e4;
 var BOOKMARK_TITLE_MAX = 300;
 var BOOKMARK_DESCRIPTION_MAX = 1e3;
@@ -8222,6 +8225,22 @@ function removeBookmarkBlocks(markdown, ids) {
     }
   );
   return removed ? result.replace(/\n{3,}/g, "\n\n").replace(/^\n+/, "") : markdown;
+}
+var CODE = /^(```|~~~)[\s\S]*?^\1[ \t]*$|`[^`\n]*`/gm;
+var LINKS = /!?\[((?:\\.|[^\]\\])*)\]\(\s*<?(https?:\/\/[^\s)>]+)>?(?:\s+"[^"]*")?\s*\)|<(https?:\/\/[^\s>]+)>|(https?:\/\/[^\s<>()[\]`]+[^\s<>()[\]`.,;:!?'"*_~])/gi;
+function externalLinksIn(markdown) {
+  const text4 = markdown.replace(CODE, (code) => " ".repeat(code.length));
+  const seen = /* @__PURE__ */ new Set();
+  const result = [];
+  for (const match2 of text4.matchAll(LINKS)) {
+    if (match2[0].startsWith("!")) continue;
+    const url2 = webUrl(match2[2] ?? match2[3] ?? match2[4] ?? "");
+    if (!url2 || seen.has(url2)) continue;
+    seen.add(url2);
+    const label = (match2[1] ?? "").replace(/\\(.)/g, "$1").trim();
+    result.push({ text: label || siteOf(url2), url: url2 });
+  }
+  return result;
 }
 
 // ../shared/src/agenda.ts
@@ -8395,17 +8414,17 @@ Databases (tables kept in Tandem; a note shows one with a \`\`\`database block)
   row-set <database> <row> <Column=value\u2026>  change values (Column= empties one)
   row-delete <database> <row>               delete a row
 
-Bookmarks (links kept in Tandem, in folders; a note shows one with a \`\`\`bookmark block)
-  bookmarks [query\u2026]            all bookmarks and folders, or those matching a query
+Bookmarks (links kept in Tandem, one per page; a note shows one with a \`\`\`bookmark block)
+  bookmarks [query\u2026]            all bookmarks (unsorted ones marked), or those matching a query
   bookmark-add <web address>    bookmark a page (title and description read from it unless
-                                given: --title, --description); --folder Work/Tools (made if
-                                missing); --note <note> to add its card at the note's end
+                                given: --title, --description), its card at the start of the
+                                inbox note ("Unsorted"), or at the end of --note <note>; a page
+                                already bookmarked keeps its bookmark, its card put there
   bookmark-set <bookmark> [new address]
-                                change it (--title, --description), or move it (--folder;
-                                "" for the top)
-  bookmark-delete <bookmark>    delete it (a folder with its contents); its cards leave notes
-  bookmarks-export [folder]     a browser's bookmarks file (Chrome imports it), on standard
-                                output: all of them, or a folder (its id) with its content
+                                change it (--title, --description)
+  bookmark-delete <bookmark>    delete it; its cards leave notes
+  bookmarks-export [note]       a browser's bookmarks file (Chrome imports it), on standard
+                                output, the pages as its folders: all of them, or a note's
 
 Agenda (days' events, kept in Tandem; a day's note shows them; feeds' events are read-only)
   agenda [date]                 a day's events (today by default), or the days up to --to <date>
@@ -8513,19 +8532,12 @@ function describeAgenda(items, several) {
 ${items.filter((item) => item.date === day).map(agendaLine).join("\n")}`
   ).join("\n\n");
 }
-function describeBookmarks(all) {
-  const lines = [];
-  const walk = (parentId, prefix) => {
-    const list = all.filter((bookmark) => bookmark.parentId === parentId);
-    list.forEach((bookmark, index2) => {
-      const last = index2 === list.length - 1;
-      lines.push(
-        `${prefix}${last ? "\u2514\u2500 " : "\u251C\u2500 "}${bookmark.kind === "folder" ? `${bookmark.title}/` : `${bookmark.title}  ${bookmark.url}`}  (${bookmark.id})`
-      );
-      walk(bookmark.id, `${prefix}${last ? "   " : "\u2502  "}`);
-    });
-  };
-  walk(null, "");
+function describeBookmarks(all, unsorted) {
+  const lines = all.map((bookmark) => {
+    const where = unsorted.has(bookmark.id) ? "unsorted" : bookmark.uses ? `in ${bookmark.uses} note${bookmark.uses === 1 ? "" : "s"}` : "in no note";
+    return `${bookmark.title}  (${bookmark.id}, ${where})
+  ${bookmark.url}`;
+  });
   return lines.join("\n") || "(no bookmarks yet)";
 }
 function describeTree(nodes2) {
@@ -8572,7 +8584,6 @@ async function run(argv, io, env = process.env) {
         date: { type: "string" },
         title: { type: "string" },
         description: { type: "string" },
-        folder: { type: "string" },
         note: { type: "string" },
         repeat: { type: "string" },
         until: { type: "string" },
@@ -8770,13 +8781,15 @@ ${note.content.replace(/\n$/, "")}`);
     case "bookmarks": {
       if (!args.length) {
         const all = await call(client.bookmarks.$get());
-        return print(describeBookmarks(all), all);
+        const unsorted = await call(client.bookmarks.unsorted.$get());
+        const ids = new Set(unsorted.bookmarks.map((bookmark) => bookmark.id));
+        return print(describeBookmarks(all, ids), all);
       }
       const results = await call(
         client.bookmarks.search.$get({ query: { q: args.join(" "), limit: values.limit ?? "20" } })
       );
       const lines = results.map(
-        ({ bookmark, folders }) => `${folders ? `${folders} / ` : ""}${bookmark.title}  (${bookmark.id})
+        ({ bookmark }) => `${bookmark.title}  (${bookmark.id})
   ${bookmark.url}${bookmark.description ? `
   ${bookmark.description}` : ""}`
       );
@@ -8786,24 +8799,12 @@ ${note.content.replace(/\n$/, "")}`);
       const url2 = need(0, "web address");
       const node2 = values.note ? await resolve5(values.note) : null;
       const { title, description } = values;
-      const response = await client.bookmarks.$post({ json: { url: url2, title, description, folder: values.folder } }).catch(unreachable);
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new CliError(
-          body?.bookmark ? `Already bookmarked: ${body.bookmark.title} (${body.bookmark.id})` : body?.error ?? `Request failed (${response.status})`
-        );
-      }
-      const bookmark = await response.json();
-      if (node2) {
-        await call(
-          client.notes[":id"].append.$post({
-            param: { id: node2.id },
-            json: { content: bookmarkBlock(bookmark.id) }
-          })
-        );
-      }
+      const place = node2 ? { noteId: node2.id } : { inbox: true };
+      const response = await client.bookmarks.$post({ json: { url: url2, title, description, ...place } }).catch(unreachable);
+      const bookmark = await call(Promise.resolve(response));
+      const where = node2 ? node2.path : "the inbox note";
       return print(
-        `Bookmarked ${bookmark.title} (${bookmark.id})${node2 ? `, its card in ${node2.path}` : ""}`,
+        response.status === 201 ? `Bookmarked ${bookmark.title} (${bookmark.id}), its card in ${where}` : `Already bookmarked: ${bookmark.title} (${bookmark.id}), its card in ${where}`,
         bookmark
       );
     }
@@ -8812,16 +8813,15 @@ ${note.content.replace(/\n$/, "")}`);
       const json4 = {
         ...args[1] ? { url: args[1] } : {},
         ...values.title !== void 0 ? { title: values.title } : {},
-        ...values.description !== void 0 ? { description: values.description } : {},
-        ...values.folder !== void 0 ? { folder: values.folder } : {}
+        ...values.description !== void 0 ? { description: values.description } : {}
       };
       if (!Object.keys(json4).length)
-        throw new CliError("Nothing to change: a new address, --title, --description or --folder.");
+        throw new CliError("Nothing to change: a new address, --title or --description.");
       const bookmark = await call(client.bookmarks[":id"].$patch({ param: { id }, json: json4 }));
       return print(`Saved ${bookmark.title} (${bookmark.id})`, bookmark);
     }
     case "bookmarks-export": {
-      const query = args[0] ? { folder: args[0] } : {};
+      const query = args[0] ? { note: (await resolve5(args[0])).id } : {};
       const response = await client.bookmarks.export.$get({ query }).catch(unreachable);
       if (!response.ok) await call(Promise.resolve(response));
       return io.stdout(await response.text());
@@ -8831,7 +8831,7 @@ ${note.content.replace(/\n$/, "")}`);
       const result = await call(client.bookmarks[":id"].$delete({ param: { id } }));
       const pages = result.pages.map((page) => page.path);
       return print(
-        `Deleted ${result.deleted === 1 ? id : `${result.deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.join(", ")}` : ""}`,
+        `Deleted ${id}${pages.length ? `; cards removed from ${pages.join(", ")}` : ""}`,
         result
       );
     }
@@ -11325,8 +11325,8 @@ var Context = class {
     }
     if (headers) {
       if (!responseHeaders) {
-        let count = 0;
-        for (const k in headers) if (++count > 1 || typeof headers[k] !== "string") {
+        let count2 = 0;
+        for (const k in headers) if (++count2 > 1 || typeof headers[k] !== "string") {
           responseHeaders = new Headers();
           break;
         }
@@ -13879,14 +13879,14 @@ function codePointLength(str) {
   const units = str.length;
   if (!highSurrogate.test(str))
     return units;
-  let count = units;
+  let count2 = units;
   for (let i = 0; i < units - 1; i++) {
     if ((str.charCodeAt(i) & 64512) === 55296 && (str.charCodeAt(i + 1) & 64512) === 56320) {
-      count--;
+      count2--;
       i++;
     }
   }
-  return count;
+  return count2;
 }
 function getLengthableOrigin(input2) {
   if (Array.isArray(input2))
@@ -18269,8 +18269,8 @@ function az_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/be.js
-function getBelarusianPlural(count, one, few, many) {
-  const absCount = Math.abs(count);
+function getBelarusianPlural(count2, one, few, many) {
+  const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -20917,8 +20917,8 @@ function hu_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/hy.js
-function getArmenianPlural(count, one, many) {
-  return Math.abs(count) === 1 ? one : many;
+function getArmenianPlural(count2, one, many) {
+  return Math.abs(count2) === 1 ? one : many;
 }
 function withDefiniteArticle(word) {
   if (!word)
@@ -23656,8 +23656,8 @@ function ro_default() {
 }
 
 // ../../node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/locales/ru.js
-function getRussianPlural(count, one, few, many) {
-  const absCount = Math.abs(count);
+function getRussianPlural(count2, one, few, many) {
+  const absCount = Math.abs(count2);
   const lastDigit = absCount % 10;
   const lastTwoDigits = absCount % 100;
   if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
@@ -32663,6 +32663,7 @@ var settingsPatch = external_exports.object({
   trash: external_exports.boolean(),
   todos: external_exports.boolean(),
   bookmarks: external_exports.boolean(),
+  bookmarkInbox: external_exports.string().max(64).nullable(),
   daily: external_exports.boolean(),
   homeRecent: external_exports.boolean(),
   shortcutHints: external_exports.boolean()
@@ -32752,9 +32753,6 @@ var bookmarkFields = {
   title: external_exports.string().max(BOOKMARK_TITLE_MAX * 2).optional(),
   url: external_exports.string().max(BOOKMARK_URL_MAX).optional(),
   description: external_exports.string().max(BOOKMARK_DESCRIPTION_MAX * 2).optional(),
-  parentId: external_exports.string().nullable().optional(),
-  index: external_exports.number().int().min(0).optional(),
-  folder: external_exports.string().max(1e3).optional(),
   iconDataUrl: iconDataUrl.optional()
 };
 var importNode = external_exports.lazy(
@@ -32765,10 +32763,7 @@ var importNode = external_exports.lazy(
     children: external_exports.array(importNode).optional()
   })
 );
-var bookmarkImport = external_exports.object({
-  folder: external_exports.string().max(BOOKMARK_TITLE_MAX).optional(),
-  children: external_exports.array(importNode)
-});
+var bookmarkImport = external_exports.object({ children: external_exports.array(importNode) });
 function importNodes(nodes2) {
   return nodes2.map(({ iconDataUrl: icon, children, ...node2 }) => ({
     ...node2,
@@ -32778,8 +32773,10 @@ function importNodes(nodes2) {
 }
 var countNodes = (nodes2) => nodes2.reduce((sum, node2) => sum + 1 + countNodes(node2.children ?? []), 0);
 var bookmarkInput = external_exports.object({
-  kind: external_exports.enum(["folder", "bookmark"]).optional(),
-  ...bookmarkFields
+  ...bookmarkFields,
+  /** Its card at the start of the inbox note (the extension's), or at the end of a note. */
+  inbox: external_exports.boolean().optional(),
+  noteId: external_exports.string().optional()
 });
 function bookmarksOn(vault) {
   return async (c, next) => {
@@ -32939,6 +32936,10 @@ function createApi(vault, options = {}) {
     zValidator2("json", external_exports.object({ tags: external_exports.array(external_exports.string().max(60)).max(50) })),
     async (c) => c.json(await vault.setTags(c.req.valid("param").id, c.req.valid("json").tags))
   ).get(
+    "/notes/:id/subtree",
+    zValidator2("param", idParam),
+    async (c) => c.json(await vault.subtreeItems(c.req.valid("param").id))
+  ).get(
     "/notes/:id/backlinks",
     zValidator2("param", idParam),
     async (c) => c.json(await vault.backlinks(c.req.valid("param").id))
@@ -33093,20 +33094,21 @@ function createApi(vault, options = {}) {
     "/bookmarks/status",
     async (c) => c.json({ enabled: (await vault.getSettings()).bookmarks })
   ).use("/bookmarks", bookmarksOn(vault)).use("/bookmarks/*", bookmarksOn(vault)).get("/bookmarks", async (c) => c.json(await vault.listBookmarks())).post("/bookmarks", zValidator2("json", bookmarkInput), async (c) => {
-    const { iconDataUrl: icon, ...input2 } = c.req.valid("json");
-    return c.json(await vault.createBookmark(input2, iconOf(icon)), 201);
-  }).post("/bookmarks/import", zValidator2("json", bookmarkImport), async (c) => {
-    const { folder, children } = c.req.valid("json");
+    const { iconDataUrl: icon, inbox, noteId, ...input2 } = c.req.valid("json");
+    const place = { inbox, noteId, author: authorOf(c) };
+    const { bookmark, created } = await vault.createBookmark(input2, iconOf(icon), place);
+    return c.json(bookmark, created ? 201 : 200);
+  }).get("/bookmarks/unsorted", async (c) => c.json(await vault.unsortedBookmarks())).post("/bookmarks/import", zValidator2("json", bookmarkImport), async (c) => {
+    const { children } = c.req.valid("json");
     if (countNodes(children) > BOOKMARK_IMPORT_MAX) {
       throw new ValidationError(`At most ${formatNumber(BOOKMARK_IMPORT_MAX)} bookmarks at once`);
     }
-    const into = folder?.trim() || BOOKMARK_IMPORT_FOLDER;
-    return c.json(await vault.importBookmarks(into, importNodes(children)));
+    return c.json(await vault.importBookmarks(importNodes(children), authorOf(c)));
   }).get(
     "/bookmarks/export",
-    zValidator2("query", external_exports.object({ folder: external_exports.string().optional() })),
+    zValidator2("query", external_exports.object({ note: external_exports.string().optional() })),
     async (c) => {
-      const html = await vault.exportBookmarks(c.req.valid("query").folder);
+      const html = await vault.exportBookmarks(c.req.valid("query").note);
       c.header("Content-Type", "text/html; charset=utf-8");
       c.header("Content-Disposition", `attachment; filename="tandem-bookmarks-${isoDate()}.html"`);
       return c.body(html);
@@ -33153,6 +33155,14 @@ function createApi(vault, options = {}) {
     "/bookmarks/:id",
     zValidator2("param", idParam),
     async (c) => c.json(await vault.deleteBookmark(c.req.valid("param").id, authorOf(c)))
+  ).delete(
+    "/bookmarks/:id/cards/:noteId",
+    zValidator2("param", external_exports.object({ id: external_exports.string(), noteId: external_exports.string() })),
+    async (c) => {
+      const { id, noteId } = c.req.valid("param");
+      await vault.removeBookmarkCards(noteId, id, authorOf(c));
+      return c.json({ ok: true });
+    }
   ).put(
     "/bookmarks/:id/icon",
     zValidator2("param", idParam),
@@ -42798,7 +42808,7 @@ var ExperimentalMcpServerTasks = class {
 
 // ../../node_modules/.pnpm/@modelcontextprotocol+sdk@1.32.1_supports-color@10.2.2_zod@4.6.7/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 function toolInputElementCount(value, max) {
-  let count = 0;
+  let count2 = 0;
   const stack = [value];
   while (stack.length > 0) {
     const node2 = stack.pop();
@@ -42806,8 +42816,8 @@ function toolInputElementCount(value, max) {
       continue;
     if (Array.isArray(node2)) {
       for (const child of node2) {
-        if (++count > max)
-          return count;
+        if (++count2 > max)
+          return count2;
         if (child !== null && typeof child === "object")
           stack.push(child);
       }
@@ -42815,15 +42825,15 @@ function toolInputElementCount(value, max) {
       for (const key in node2) {
         if (!Object.prototype.hasOwnProperty.call(node2, key))
           continue;
-        if (++count > max)
-          return count;
+        if (++count2 > max)
+          return count2;
         const child = node2[key];
         if (child !== null && typeof child === "object")
           stack.push(child);
       }
     }
   }
-  return count;
+  return count2;
 }
 function resolveMaxToolInputElements(value) {
   if (value === void 0 || value === Infinity)
@@ -43641,9 +43651,10 @@ Each day can have a daily note (Calendar/YYYY-MM-DD): daily_note reads, creates 
 Days have an agenda, kept in Tandem (shown above the day's note, never in its Markdown): use
 agenda, add_event, update_event and delete_event for events. Events from calendar feeds are
 read-only.
-Bookmarks (links to websites, in folders) also live in Tandem: a note shows one as a card with a
-\`\`\`bookmark block naming it (id: \u2026). Use the bookmark tools for them; add_bookmark can put
-its card in a note.`;
+Bookmarks (links to websites, one per page) also live in Tandem: a note shows one as a card with
+a \`\`\`bookmark block naming it (id: \u2026); the notes showing them are what organizes them. New
+ones go into the inbox note ("Unsorted") unless add_bookmark is given a note. Use the bookmark
+tools for them.`;
 function text(value) {
   return { content: [{ type: "text", text: value }] };
 }
@@ -43674,17 +43685,14 @@ function describeTree2(nodes2) {
   walk(null, 0);
   return lines.join("\n") || "(no notes yet)";
 }
-function describeBookmarks2(all) {
-  const lines = [];
-  const walk = (parentId, depth) => {
-    for (const bookmark of all.filter((b) => b.parentId === parentId)) {
-      lines.push(
-        bookmark.kind === "folder" ? `${"  ".repeat(depth)}- \u{1F4C1} ${bookmark.title}  (id ${bookmark.id})` : `${"  ".repeat(depth)}- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id})${bookmark.description ? ` \u2014 ${bookmark.description}` : ""}`
-      );
-      walk(bookmark.id, depth + 1);
-    }
-  };
-  walk(null, 0);
+function describeBookmarks2(all, unsorted) {
+  const lines = all.map((bookmark) => {
+    const where = [
+      unsorted.has(bookmark.id) ? "unsorted" : "",
+      bookmark.uses ? `in ${bookmark.uses} note${bookmark.uses === 1 ? "" : "s"}` : "in no note"
+    ].filter(Boolean);
+    return `- ${bookmark.title} <${bookmark.url}>  (id ${bookmark.id}, ${where.join(", ")})${bookmark.description ? ` \u2014 ${bookmark.description}` : ""}`;
+  });
   return lines.join("\n") || "(no bookmarks yet)";
 }
 function describeColumns(database) {
@@ -43914,8 +43922,8 @@ ${items.filter((item) => item.date === d).map(agendaLine).join("\n")}`
     },
     async ({ note, find, replace, all }) => attempt(async () => {
       const node2 = await vault.resolveRef(note);
-      const { count } = await vault.replaceText(node2.id, find, replace, { author, all });
-      return text(`Replaced ${count} occurrence(s) in ${node2.path}`);
+      const { count: count2 } = await vault.replaceText(node2.id, find, replace, { author, all });
+      return text(`Replaced ${count2} occurrence(s) in ${node2.path}`);
     })
   );
   server.registerTool(
@@ -44181,35 +44189,36 @@ ${items.filter((item) => item.date === d).map(agendaLine).join("\n")}`
       return text("Deleted");
     })
   );
-  const folder = external_exports.string().describe(
-    'A folder: its id, or its path of names ("Work/Tools"), made if missing; "" for the top'
-  );
   server.registerTool(
     "list_bookmarks",
     {
       title: "List bookmarks",
-      description: "All bookmarks and their folders, with ids, addresses and descriptions.",
+      description: "All bookmarks, the latest first, with ids, addresses, descriptions, how many notes show them, and those still unsorted (only in the inbox note).",
       inputSchema: {},
       annotations: { readOnlyHint: true }
     },
-    async () => attempt(async () => text(describeBookmarks2(await vault.listBookmarks())))
+    async () => attempt(async () => {
+      const unsorted = await vault.unsortedBookmarks();
+      const ids = new Set(unsorted.bookmarks.map((bookmark) => bookmark.id));
+      return text(describeBookmarks2(await vault.listBookmarks(), ids));
+    })
   );
   server.registerTool(
     "search_bookmarks",
     {
       title: "Search bookmarks",
-      description: 'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder; typos corrected).',
+      description: 'Searches bookmarks by title, address and description (prefixes, "phrases", -word, in:Folder for the notes showing them; typos corrected).',
       inputSchema: { query: external_exports.string(), limit: external_exports.number().int().min(1).max(100).optional() },
       annotations: { readOnlyHint: true }
     },
     async ({ query, limit }) => attempt(
       async () => json3(
-        (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark, folders }) => ({
+        (await vault.searchBookmarks(query, limit ?? 20)).map(({ bookmark }) => ({
           id: bookmark.id,
           title: bookmark.title,
           url: bookmark.url,
           description: bookmark.description,
-          folders
+          uses: bookmark.uses
         }))
       )
     )
@@ -44218,33 +44227,35 @@ ${items.filter((item) => item.date === d).map(agendaLine).join("\n")}`
     "add_bookmark",
     {
       title: "Add a bookmark",
-      description: "Bookmarks a web page (its title, description and favicon read from it when not given). A page already bookmarked is refused, naming its bookmark. With `note`, its card is added at the end of that note.",
+      description: 'Bookmarks a web page (its title, description and favicon read from it when not given), its card at the start of the inbox note ("Unsorted"), or at the end of `note`. A page already bookmarked keeps its bookmark: its card is put there all the same.',
       inputSchema: {
         url: external_exports.string(),
         title: external_exports.string().optional(),
         description: external_exports.string().optional(),
-        folder: folder.optional(),
-        note: ref.optional().describe("A note to show its card in (at the end)")
+        note: ref.optional().describe("A note to show its card in (at the end), not the inbox")
       }
     },
-    async ({ url: url2, title, description, folder: path, note }) => attempt(async () => {
+    async ({ url: url2, title, description, note }) => attempt(async () => {
       const node2 = note ? await vault.resolveRef(note) : null;
-      const bookmark = await vault.createBookmark({ url: url2, title, description, folder: path });
-      if (node2) await vault.appendContent(node2.id, bookmarkBlock(bookmark.id), author);
-      return json3({ id: bookmark.id, title: bookmark.title, url: bookmark.url });
+      const place = node2 ? { noteId: node2.id, author } : { inbox: true, author };
+      const { bookmark, created } = await vault.createBookmark(
+        { url: url2, title, description },
+        void 0,
+        place
+      );
+      return json3({ id: bookmark.id, title: bookmark.title, url: bookmark.url, created });
     })
   );
   server.registerTool(
     "update_bookmark",
     {
-      title: "Change or move a bookmark",
-      description: "Changes a bookmark\u2019s title, address or description, or moves it (or a folder) to another folder. Its cards in notes show the change.",
+      title: "Change a bookmark",
+      description: "Changes a bookmark\u2019s title, address or description. Its cards in notes show the change. To sort it, move its ```bookmark block from one note to another.",
       inputSchema: {
-        bookmark: external_exports.string().describe("Bookmark or folder id"),
+        bookmark: external_exports.string().describe("Bookmark id"),
         title: external_exports.string().optional(),
         url: external_exports.string().optional(),
-        description: external_exports.string().optional(),
-        folder: folder.optional()
+        description: external_exports.string().optional()
       }
     },
     async ({ bookmark: id, ...patch }) => attempt(async () => {
@@ -44256,14 +44267,14 @@ ${items.filter((item) => item.date === d).map(agendaLine).join("\n")}`
     "delete_bookmark",
     {
       title: "Delete a bookmark",
-      description: "Deletes a bookmark, or a folder with everything in it, for good; its cards are removed from the notes showing them. Only when the user asked.",
-      inputSchema: { bookmark: external_exports.string().describe("Bookmark or folder id") },
+      description: "Deletes a bookmark for good; its cards are removed from the notes showing them. Only when the user asked.",
+      inputSchema: { bookmark: external_exports.string().describe("Bookmark id") },
       annotations: { destructiveHint: true }
     },
     async ({ bookmark: id }) => attempt(async () => {
-      const { deleted, pages } = await vault.deleteBookmark(id, author);
+      const { pages } = await vault.deleteBookmark(id, author);
       return text(
-        `Deleted ${deleted === 1 ? "it" : `${deleted} bookmarks and folders`}${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(", ")}` : ""}`
+        `Deleted${pages.length ? `; cards removed from ${pages.map((p) => p.path).join(", ")}` : ""}`
       );
     })
   );
@@ -47121,6 +47132,11 @@ var TransactionRollbackError = class extends DrizzleError {
     super({ message: "Rollback" });
   }
 };
+
+// ../../node_modules/.pnpm/drizzle-orm@0.45.4/node_modules/drizzle-orm/sql/functions/aggregate.js
+function count(expression) {
+  return sql`count(${expression || sql.raw("*")})`.mapWith(Number);
+}
 
 // ../../node_modules/.pnpm/drizzle-orm@0.45.4/node_modules/drizzle-orm/sqlite-core/view-base.js
 var SQLiteViewBase = class extends View {
@@ -50036,26 +50052,17 @@ var bookmarks = sqliteTable(
   "bookmarks",
   {
     id: text2("id").primaryKey(),
-    kind: text2("kind", { enum: ["folder", "bookmark"] }).notNull(),
-    /** A folder's id, or null at the top. Deleting a folder deletes its contents (the store). */
-    parentId: text2("parent_id"),
     title: text2("title").notNull(),
-    /** Empty for a folder. */
-    url: text2("url").notNull().default(""),
-    /** `urlKey(url)`: two bookmarks of one page are duplicates. Empty for a folder. */
-    urlKey: text2("url_key").notNull().default(""),
+    url: text2("url").notNull(),
+    /** `urlKey(url)`: two bookmarks of one page are duplicates. */
+    urlKey: text2("url_key").notNull(),
     description: text2("description").notNull().default(""),
-    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, or null. */
+    /** The favicon: `image:<file>` in `<data>/.tandem/icons/`, `emoji:<emoji>`, or null. */
     icon: text2("icon"),
-    /** Order among siblings (ascending). */
-    position: real("position").notNull(),
     createdAt: integer2("created_at").notNull(),
     updatedAt: integer2("updated_at").notNull()
   },
-  (table) => [
-    index("bookmarks_parent").on(table.parentId, table.position),
-    index("bookmarks_url_key").on(table.urlKey)
-  ]
+  (table) => [index("bookmarks_url_key").on(table.urlKey)]
 );
 var bookmarkRefs = sqliteTable(
   "bookmark_refs",
@@ -57767,7 +57774,7 @@ function feedDays(feed, from, to) {
       continue;
     }
     const iterator = event.iterator();
-    for (let count = 0; count < MAX_REPEATS; count++) {
+    for (let count2 = 0; count2 < MAX_REPEATS; count2++) {
       const next = iterator.next();
       if (!next) break;
       const details = event.getOccurrenceDetails(next);
@@ -58367,8 +58374,8 @@ function normalizeLine(line) {
 }
 function expand(runs) {
   const lines = [];
-  for (const [count, author, at] of runs) {
-    for (let i = 0; i < count; i++) lines.push({ author, at });
+  for (const [count2, author, at] of runs) {
+    for (let i = 0; i < count2; i++) lines.push({ author, at });
   }
   return lines;
 }
@@ -58382,8 +58389,8 @@ function compress(lines) {
   return runs;
 }
 function initialBlame(content, author, at) {
-  const count = splitLines(content).length;
-  return count ? [[count, author, at]] : [];
+  const count2 = splitLines(content).length;
+  return count2 ? [[count2, author, at]] : [];
 }
 function updateBlame(oldContent, oldRuns, newContent, author, at) {
   const oldLines = splitLines(oldContent);
@@ -58397,28 +58404,28 @@ function updateBlame(oldContent, oldRuns, newContent, author, at) {
   const moved = /* @__PURE__ */ new Map();
   let oldIndex = 0;
   for (const change of changes) {
-    const count = change.count ?? change.value.length;
+    const count2 = change.count ?? change.value.length;
     if (change.added) continue;
     if (change.removed) {
-      for (let i = 0; i < count; i++) {
+      for (let i = 0; i < count2; i++) {
         const line = oldNormalized[oldIndex + i];
         if (line.trim() === "") continue;
         moved.set(line, [...moved.get(line) ?? [], oldAuthors[oldIndex + i] ?? { author, at }]);
       }
     }
-    oldIndex += count;
+    oldIndex += count2;
   }
   const result = [];
   oldIndex = 0;
   for (const change of changes) {
-    const count = change.count ?? change.value.length;
+    const count2 = change.count ?? change.value.length;
     if (change.removed) {
-      oldIndex += count;
+      oldIndex += count2;
     } else if (change.added) {
       for (const line of change.value) result.push(moved.get(line)?.shift() ?? { author, at });
     } else {
-      for (let i = 0; i < count; i++) result.push(oldAuthors[oldIndex + i] ?? { author, at });
-      oldIndex += count;
+      for (let i = 0; i < count2; i++) result.push(oldAuthors[oldIndex + i] ?? { author, at });
+      oldIndex += count2;
     }
   }
   return compress(result);
@@ -58426,9 +58433,9 @@ function updateBlame(oldContent, oldRuns, newContent, author, at) {
 function runsToRanges(runs) {
   const ranges = [];
   let start = 0;
-  for (const [count, author, at] of runs) {
-    ranges.push({ start, count, author, at });
-    start += count;
+  for (const [count2, author, at] of runs) {
+    ranges.push({ start, count: count2, author, at });
+    start += count2;
   }
   return ranges;
 }
@@ -58466,36 +58473,28 @@ var HEAD = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
 <H1>Bookmarks</H1>`;
 var text3 = (value) => escapeHtml(value.replace(/\s+/g, " ").trim());
 var seconds = (ms) => String(Math.floor(ms / 1e3));
-function bookmarksHtml(all, rootId, icons) {
-  const children = /* @__PURE__ */ new Map();
-  for (const bookmark of all.toSorted((a, b) => a.position - b.position)) {
-    const siblings = children.get(bookmark.parentId) ?? [];
-    siblings.push(bookmark);
-    children.set(bookmark.parentId, siblings);
-  }
+var dates = (item) => `ADD_DATE="${seconds(item.createdAt)}" LAST_MODIFIED="${seconds(item.updatedAt)}"`;
+function bookmarksHtml(folders, icons) {
   const lines = [HEAD];
-  const list = (items, depth) => {
+  const list = (folder, depth) => {
     const indent = "    ".repeat(depth);
     lines.push(`${indent}<DL><p>`);
-    for (const item of items) entry(item, depth + 1);
+    for (const item of folder.bookmarks) bookmark(item, depth + 1);
+    for (const item of folder.folders) {
+      lines.push(`${"    ".repeat(depth + 1)}<DT><H3 ${dates(item)}>${text3(item.title)}</H3>`);
+      list(item, depth + 1);
+    }
     lines.push(`${indent}</DL><p>`);
   };
-  const entry = (item, depth) => {
+  const bookmark = (item, depth) => {
     const indent = "    ".repeat(depth);
-    const dates = `ADD_DATE="${seconds(item.createdAt)}" LAST_MODIFIED="${seconds(item.updatedAt)}"`;
-    if (item.kind === "folder") {
-      lines.push(`${indent}<DT><H3 ${dates}>${text3(item.title)}</H3>`);
-      list(children.get(item.id) ?? [], depth);
-      return;
-    }
     const icon = icons.get(item.id);
     lines.push(
-      `${indent}<DT><A HREF="${escapeHtml(item.url)}" ${dates}${icon ? ` ICON="${icon}"` : ""}>${text3(item.title)}</A>`
+      `${indent}<DT><A HREF="${escapeHtml(item.url)}" ${dates(item)}${icon ? ` ICON="${icon}"` : ""}>${text3(item.title)}</A>`
     );
     if (item.description.trim()) lines.push(`${indent}<DD>${text3(item.description)}`);
   };
-  const root = rootId === null ? void 0 : all.find((bookmark) => bookmark.id === rootId);
-  list(root ? [root] : children.get(null) ?? [], 0);
+  list({ bookmarks: [], folders }, 0);
   return `${lines.join("\n")}
 `;
 }
@@ -58647,9 +58646,9 @@ var SearchIndex = class {
         term.length > word.length ? editDistance(word, term.slice(0, word.length), max) : max + 1
       );
       if (distance > max) continue;
-      const count = docs.get(term) ?? 0;
-      if (!best || distance < best.distance || distance === best.distance && count > best.docs) {
-        best = { term, distance, docs: count };
+      const count2 = docs.get(term) ?? 0;
+      if (!best || distance < best.distance || distance === best.distance && count2 > best.docs) {
+        best = { term, distance, docs: count2 };
       }
     }
     return best?.term ?? null;
@@ -58778,86 +58777,69 @@ var BookmarkStore = class {
     this.db = db;
     this.now = now;
   }
-  /** Every bookmark and folder, in order within each folder. */
+  /** Every bookmark, the latest first. */
   async list() {
-    const records = await this.db.select().from(bookmarks).orderBy(asc(bookmarks.position));
-    return records.map(toBookmark);
+    const [records, uses] = await Promise.all([
+      this.db.select().from(bookmarks).orderBy(desc(bookmarks.createdAt)),
+      this.uses()
+    ]);
+    return records.map((record2) => toBookmark(record2, uses.get(record2.id) ?? 0));
   }
   async get(id) {
-    return toBookmark(await this.record(id));
+    return this.toBookmark(await this.record(id));
+  }
+  /** These bookmarks, by id (those that exist). */
+  async getMany(ids) {
+    if (!ids.length) return /* @__PURE__ */ new Map();
+    const [records, uses] = await Promise.all([
+      this.db.select().from(bookmarks).where(inArray(bookmarks.id, ids)),
+      this.uses(ids)
+    ]);
+    return new Map(records.map((r) => [r.id, toBookmark(r, uses.get(r.id) ?? 0)]));
   }
   /** The bookmark of this page (same `urlKey`), if there is one. */
   async findByUrl(url2) {
     const valid = webUrl(url2);
     if (!valid) return null;
     const record2 = await this.db.select().from(bookmarks).where(eq(bookmarks.urlKey, urlKey(valid))).get();
-    return record2 ? toBookmark(record2) : null;
+    return record2 ? this.toBookmark(record2) : null;
   }
-  /** A new bookmark or folder. Duplicates are the vault's to refuse (findByUrl). */
+  /** A new bookmark. Duplicates are the vault's to look for first (findByUrl). */
   async create(input2) {
-    const kind = input2.kind ?? "bookmark";
-    const parentId = input2.folder !== void 0 ? await this.folder(input2.folder) : input2.parentId ?? null;
-    await this.checkParent(parentId);
-    let url2 = "";
-    if (kind === "bookmark") {
-      url2 = webUrl(input2.url ?? "") ?? "";
-      if (!url2) throw new ValidationError("A bookmark needs a web address (http or https)");
-    }
-    const title = clip2(input2.title ?? "", BOOKMARK_TITLE_MAX) || (kind === "folder" ? "" : siteOf(url2));
-    if (!title) throw new ValidationError("A folder needs a name");
+    const url2 = webUrl(input2.url ?? "") ?? "";
+    if (!url2) throw new ValidationError("A bookmark needs a web address (http or https)");
     const id = newId2();
     const now = this.now();
     await this.db.insert(bookmarks).values({
       id,
-      kind,
-      parentId,
-      title,
+      title: clip2(input2.title ?? "", BOOKMARK_TITLE_MAX) || siteOf(url2),
       url: url2,
-      urlKey: url2 ? urlKey(url2) : "",
-      description: kind === "folder" ? "" : clip2(input2.description ?? "", BOOKMARK_DESCRIPTION_MAX),
-      position: 0,
+      urlKey: urlKey(url2),
+      description: clip2(input2.description ?? "", BOOKMARK_DESCRIPTION_MAX),
       createdAt: now,
       updatedAt: now
     });
-    await this.place(id, parentId, input2.index);
     return this.get(id);
   }
   async update(id, patch) {
-    const record2 = await this.record(id);
+    await this.record(id);
     const changes = { updatedAt: this.now() };
     if (patch.title !== void 0) {
       const title = clip2(patch.title, BOOKMARK_TITLE_MAX);
       if (!title) throw new ValidationError("The name can\u2019t be empty");
       changes.title = title;
     }
-    if (patch.url !== void 0 && record2.kind === "bookmark") {
+    if (patch.url !== void 0) {
       const url2 = webUrl(patch.url);
       if (!url2) throw new ValidationError("A bookmark needs a web address (http or https)");
       changes.url = url2;
       changes.urlKey = urlKey(url2);
     }
-    if (patch.description !== void 0 && record2.kind === "bookmark") {
+    if (patch.description !== void 0) {
       changes.description = clip2(patch.description, BOOKMARK_DESCRIPTION_MAX);
     }
     await this.db.update(bookmarks).set(changes).where(eq(bookmarks.id, id));
-    if (patch.folder !== void 0 || patch.parentId !== void 0 || patch.index !== void 0) {
-      const parentId = patch.folder !== void 0 ? await this.folder(patch.folder) : patch.parentId === void 0 ? record2.parentId : patch.parentId;
-      await this.checkParent(parentId, id);
-      await this.db.update(bookmarks).set({ parentId }).where(eq(bookmarks.id, id));
-      await this.place(id, parentId, patch.index);
-    }
     return this.get(id);
-  }
-  /** The bookmark or folder and everything inside it, by id. */
-  async subtree(id) {
-    const all = await this.list();
-    const root = all.find((bookmark) => bookmark.id === id);
-    if (!root) throw new NotFoundError("No such bookmark");
-    const result = [root];
-    for (let i = 0; i < result.length; i++) {
-      result.push(...all.filter((bookmark) => bookmark.parentId === result[i].id));
-    }
-    return result;
   }
   async deleteMany(ids) {
     if (ids.length) await this.db.delete(bookmarks).where(inArray(bookmarks.id, ids));
@@ -58885,37 +58867,30 @@ var BookmarkStore = class {
     const records = await this.db.select({ id: bookmarks.id, icon: bookmarks.icon }).from(bookmarks).where(like(bookmarks.icon, "image:%"));
     return new Map(records.map((record2) => [record2.id, record2.icon.slice(6)]));
   }
-  /** Bookmarks matching a query, best first; with no words, the most recently changed. */
+  /** Bookmarks matching a query, best first; with no words, the latest. */
   async search(query, limit = 20) {
-    const all = await this.list();
-    const byId = new Map(all.map((bookmark) => [bookmark.id, bookmark]));
-    const folders = (bookmark) => {
-      const names = [];
-      let parent = bookmark.parentId ? byId.get(bookmark.parentId) : void 0;
-      while (parent) {
-        names.unshift(parent.title);
-        parent = parent.parentId ? byId.get(parent.parentId) : void 0;
-      }
-      return names;
-    };
     const parsed = parseQuery(query);
     if (parsed.tags.length) return [];
-    const candidates = all.filter((bookmark) => bookmark.kind === "bookmark").map((bookmark) => ({ bookmark, folders: folders(bookmark), fields: fieldsOf(bookmark) })).filter(
-      ({ folders: names }) => parsed.folders.every((folder) => {
+    const all = await this.list();
+    const paths = parsed.folders.length ? await this.pathsShowing() : /* @__PURE__ */ new Map();
+    const candidates = all.map((bookmark) => ({ bookmark, fields: fieldsOf(bookmark) })).filter(
+      ({ bookmark }) => parsed.folders.every((folder) => {
         const prefix = foldText(folder);
-        const path = foldText(names.join("/"));
-        return path === prefix || path.startsWith(`${prefix}/`) || path.includes(`/${prefix}`);
+        return (paths.get(bookmark.id) ?? []).some((path) => {
+          const folded = foldText(path.replace(/\.md$/, ""));
+          return folded === prefix || folded.startsWith(`${prefix}/`) || folded.includes(`/${prefix}`);
+        });
       })
     );
     if (!parsed.words.length && !parsed.phrases.length) {
-      return candidates.filter(({ fields }) => !parsed.excluded.some((word) => matchIn(fields, word))).toSorted((a, b) => b.bookmark.updatedAt - a.bookmark.updatedAt).slice(0, limit).map(({ bookmark, folders: names }) => toResult(bookmark, names, []));
+      return candidates.filter(({ fields }) => !parsed.excluded.some((word) => matchIn(fields, word))).slice(0, limit).map(({ bookmark }) => toResult(bookmark, []));
     }
     const vocabulary = new Set(candidates.flatMap(({ fields }) => fields.flatMap((f) => f.words)));
     const words = parsed.words.map(
       (word) => [...vocabulary].some((known) => known.startsWith(word)) ? word : closest(word, vocabulary) ?? word
     );
     const scored = [];
-    for (const { bookmark, folders: names, fields } of candidates) {
+    for (const { bookmark, fields } of candidates) {
       if (parsed.excluded.some((word) => matchIn(fields, word))) continue;
       if (!parsed.phrases.every((phrase) => fields.some((field) => field.text.includes(phrase))))
         continue;
@@ -58929,155 +58904,43 @@ var BookmarkStore = class {
         }
         score += best;
       }
-      if (matched) scored.push({ score, bookmark, folders: names });
+      if (matched) scored.push({ score, bookmark });
     }
-    return scored.toSorted((a, b) => b.score - a.score || b.bookmark.updatedAt - a.bookmark.updatedAt).slice(0, limit).map(({ bookmark, folders: names }) => toResult(bookmark, names, words));
-  }
-  /** A folder by id, or by path of names (any case), its missing folders made; '' is the top. */
-  async folder(ref) {
-    const all = await this.list();
-    const byId = all.find((bookmark) => bookmark.id === ref && bookmark.kind === "folder");
-    if (byId) return byId.id;
-    let parentId = null;
-    for (const name of ref.split("/").map((part) => part.trim()).filter(Boolean)) {
-      const existing = all.find(
-        (bookmark) => bookmark.kind === "folder" && bookmark.parentId === parentId && bookmark.title.toLowerCase() === name.toLowerCase()
-      );
-      parentId = existing ? existing.id : (await this.create({ kind: "folder", title: name, parentId })).id;
-    }
-    return parentId;
-  }
-  /**
-   * Imports a browser's tree into the folder `into` at the top (made if missing). Folders merge
-   * with those of the same name (any case) where they go, so that importing again only adds
-   * what is new; pages already bookmarked, and what isn't a web address, are left out. In one
-   * go (the folder's rows read once, positions given), however many there are. Returns what was
-   * made, each bookmark with its `extra`.
-   */
-  async importTree(into, nodes2) {
-    const all = await this.list();
-    const known = new Set(all.filter((b) => b.kind === "bookmark").map((b) => urlKey(b.url)));
-    const children = /* @__PURE__ */ new Map();
-    for (const bookmark of all) {
-      const list = children.get(bookmark.parentId) ?? [];
-      list.push(bookmark);
-      children.set(bookmark.parentId, list);
-    }
-    const next = (parentId) => {
-      const list = children.get(parentId) ?? [];
-      return list.reduce((max, b) => Math.max(max, b.position), 0) + 1;
-    };
-    const result = { folderId: "", folders: 0, bookmarks: 0, duplicates: 0, skipped: 0 };
-    const created = [];
-    const now = this.now();
-    const insert = async (row) => {
-      await this.db.insert(bookmarks).values({
-        ...row,
-        urlKey: row.url ? urlKey(row.url) : "",
-        createdAt: now,
-        updatedAt: now
-      });
-      const list = children.get(row.parentId) ?? [];
-      list.push({ ...row, icon: null, emoji: null, createdAt: now, updatedAt: now });
-      children.set(row.parentId, list);
-    };
-    const folder = async (parentId, name) => {
-      const title = clip2(name, BOOKMARK_TITLE_MAX) || "Untitled folder";
-      const existing = children.get(parentId)?.find((b) => b.kind === "folder" && b.title.toLowerCase() === title.toLowerCase());
-      if (existing) return existing.id;
-      const id = newId2();
-      await insert({
-        id,
-        kind: "folder",
-        parentId,
-        title,
-        url: "",
-        description: "",
-        position: next(parentId)
-      });
-      result.folders++;
-      return id;
-    };
-    const walk = async (parentId, list) => {
-      for (const node2 of list) {
-        if (node2.children) {
-          await walk(await folder(parentId, node2.title), node2.children);
-          continue;
-        }
-        const url2 = webUrl(node2.url ?? "");
-        if (!url2) {
-          result.skipped++;
-          continue;
-        }
-        if (known.has(urlKey(url2))) {
-          result.duplicates++;
-          continue;
-        }
-        known.add(urlKey(url2));
-        const id = newId2();
-        const title = clip2(node2.title, BOOKMARK_TITLE_MAX) || siteOf(url2);
-        await insert({
-          id,
-          kind: "bookmark",
-          parentId,
-          title,
-          url: url2,
-          description: "",
-          position: next(parentId)
-        });
-        result.bookmarks++;
-        if (node2.extra !== void 0) created.push({ id, extra: node2.extra });
-      }
-    };
-    result.folderId = await folder(null, into);
-    await walk(result.folderId, nodes2);
-    return { result, created };
+    return scored.toSorted((a, b) => b.score - a.score || b.bookmark.createdAt - a.bookmark.createdAt).slice(0, limit).map(({ bookmark }) => toResult(bookmark, words));
   }
   async record(id) {
     const record2 = await this.db.select().from(bookmarks).where(eq(bookmarks.id, id)).get();
     if (!record2) throw new NotFoundError("No such bookmark");
     return record2;
   }
-  /** A folder (or the top), never inside the bookmark being moved (`moving`). */
-  async checkParent(parentId, moving) {
-    if (!parentId) return;
-    const parent = await this.db.select().from(bookmarks).where(eq(bookmarks.id, parentId)).get();
-    if (!parent) throw new NotFoundError("No such folder");
-    if (parent.kind !== "folder") throw new ValidationError("Bookmarks go in folders only");
-    if (moving && (await this.subtree(moving)).some((bookmark) => bookmark.id === parentId)) {
-      throw new ValidationError("A folder can\u2019t go inside itself");
-    }
+  async toBookmark(record2) {
+    return toBookmark(record2, (await this.uses([record2.id])).get(record2.id) ?? 0);
   }
-  /** Puts a bookmark at `index` among its folder's (default: last), renumbering them. */
-  async place(id, parentId, index2) {
-    const siblings = (await this.list()).filter(
-      (bookmark) => bookmark.parentId === parentId && bookmark.id !== id
-    );
-    const at = Math.max(0, Math.min(index2 ?? siblings.length, siblings.length));
-    const ordered = [
-      ...siblings.slice(0, at).map((b) => b.id),
-      id,
-      ...siblings.slice(at).map((b) => b.id)
-    ];
-    for (const [position, sibling] of ordered.entries()) {
-      await this.db.update(bookmarks).set({ position: position + 1 }).where(eq(bookmarks.id, sibling));
-    }
+  /** How many pages show each bookmark (of `ids`, or all). */
+  async uses(ids) {
+    const rows = await this.db.select({ id: bookmarkRefs.bookmarkId, uses: count() }).from(bookmarkRefs).where(ids ? inArray(bookmarkRefs.bookmarkId, ids) : void 0).groupBy(bookmarkRefs.bookmarkId);
+    return new Map(rows.map((row) => [row.id, row.uses]));
+  }
+  /** The paths of the pages showing each bookmark. */
+  async pathsShowing() {
+    const rows = await this.db.select({ id: bookmarkRefs.bookmarkId, path: nodes.path }).from(bookmarkRefs).innerJoin(nodes, eq(nodes.id, bookmarkRefs.nodeId));
+    const map2 = /* @__PURE__ */ new Map();
+    for (const row of rows) map2.set(row.id, [...map2.get(row.id) ?? [], row.path]);
+    return map2;
   }
 };
-function toResult(bookmark, folders, words) {
-  return { bookmark, titleHtml: markWords(bookmark.title, words), folders: folders.join(" / ") };
+function toResult(bookmark, words) {
+  return { bookmark, titleHtml: markWords(bookmark.title, words) };
 }
-function toBookmark(record2) {
+function toBookmark(record2, uses) {
   return {
     id: record2.id,
-    kind: record2.kind,
-    parentId: record2.parentId,
     title: record2.title,
     url: record2.url,
     description: record2.description,
     icon: record2.icon?.startsWith("image:") ? `/api/bookmarks/${record2.id}/icon?v=${encodeURIComponent(record2.icon.slice(6))}` : null,
     emoji: record2.icon?.startsWith("emoji:") ? record2.icon.slice(6) : null,
-    position: record2.position,
+    uses,
     createdAt: record2.createdAt,
     updatedAt: record2.updatedAt
   };
@@ -59629,6 +59492,16 @@ function isBlank(content) {
   return content.trim() === "";
 }
 var DAY = 864e5;
+function cardsMarkdown(sections) {
+  return sections.filter((section) => section.ids.length).map((section) => {
+    const cards = section.ids.map(bookmarkBlock).join("\n\n");
+    if (!section.folders.length) return cards;
+    const heading = section.folders.map((name) => name.replace(/\s+/g, " ").trim()).join(" / ");
+    return `## ${heading.replace(/^#+/, "")}
+
+${cards}`;
+  }).join("\n\n");
+}
 var Vault = class {
   events = new EventEmitter();
   dataDir;
@@ -59644,6 +59517,7 @@ var Vault = class {
   bookmarks;
   agenda;
   fetcher;
+  sqlite;
   constructor(options) {
     this.dataDir = options.dataDir;
     this.metaDir = join7(options.dataDir, ".tandem");
@@ -59655,6 +59529,7 @@ var Vault = class {
     this.bookmarks = new BookmarkStore(this.db, this.now);
     this.agenda = new AgendaStore(this.db, this.now);
     this.fetcher = options.fetch ?? null;
+    this.sqlite = options.database.sqlite;
   }
   // --- Reading -------------------------------------------------------------------------------
   async tree() {
@@ -59748,7 +59623,7 @@ var Vault = class {
     const rows = await this.db.select({ tag: tags.tag }).from(tags);
     const counts = /* @__PURE__ */ new Map();
     for (const { tag } of rows) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-    return [...counts].map(([tag, count]) => ({ tag, count })).toSorted((a, b) => a.tag.localeCompare(b.tag));
+    return [...counts].map(([tag, count2]) => ({ tag, count: count2 })).toSorted((a, b) => a.tag.localeCompare(b.tag));
   }
   async searchNotes(query, limit = 30) {
     const rows = await this.allRows();
@@ -59838,6 +59713,69 @@ var Vault = class {
       },
       content
     };
+  }
+  /**
+   * A page (or folder) and everything under it, in the tree's order, with what the side
+   * panel's tabs list for each: wiki links, bookmark cards, links to websites, attachments,
+   * databases. At most `SUBTREE_MAX_PAGES` (`truncated` says when there were more).
+   */
+  async subtreeItems(id) {
+    const root = await this.requireRow(id);
+    const rows = (await this.subtreeOf(root)).toSorted((a, b) => a.position - b.position);
+    const byDir = /* @__PURE__ */ new Map();
+    for (const row of rows) {
+      const dir = dirnameOf(row.path);
+      byDir.set(dir, [...byDir.get(dir) ?? [], row]);
+    }
+    const ordered = [];
+    const walk = (row, depth) => {
+      ordered.push({ row, depth });
+      const inside = row.kind === "page" ? childrenDirOf(row.path) : row.path;
+      for (const child of byDir.get(inside) ?? []) walk(child, depth + 1);
+    };
+    walk(root, 0);
+    const shown = ordered.slice(0, SUBTREE_MAX_PAGES);
+    const pageIds = shown.filter(({ row }) => row.kind === "page").map(({ row }) => row.id);
+    const contents = new Map(
+      (pageIds.length ? await this.db.select({ id: nodes.id, content: nodes.content }).from(nodes).where(inArray(nodes.id, pageIds)) : []).map((row) => [row.id, row.content ?? ""])
+    );
+    const resolved = /* @__PURE__ */ new Map();
+    const pages = [];
+    for (const { row, depth } of shown) {
+      const content = contents.get(row.id) ?? "";
+      const wikiLinks = [];
+      const seen = /* @__PURE__ */ new Set();
+      for (const link of parseWikiLinks(content)) {
+        const key = linkKey(link.target);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        if (!resolved.has(key)) resolved.set(key, await this.resolveLink(link.target));
+        const node2 = resolved.get(key);
+        wikiLinks.push({
+          target: link.target,
+          id: node2?.id ?? null,
+          title: node2?.title ?? link.target
+        });
+      }
+      const summaries = new Map(
+        (await this.databases.listForNode(row.id)).map((summary) => [summary.id, summary])
+      );
+      pages.push({
+        id: row.id,
+        title: titleFromPath(row.path),
+        path: row.path,
+        kind: row.kind,
+        depth,
+        wikiLinks,
+        bookmarkIds: [...new Set(bookmarkIdsIn(content))],
+        links: externalLinksIn(content),
+        attachments: row.kind === "page" ? await this.listAttachments(row) : [],
+        databases: [...new Set(databaseIdsIn(content))].flatMap(
+          (dbId) => summaries.get(dbId) ?? []
+        )
+      });
+    }
+    return { pages, truncated: ordered.length > shown.length };
   }
   async attachments(id) {
     const row = await this.requireRow(id);
@@ -59987,17 +59925,7 @@ var Vault = class {
   /** Appends Markdown at the end of a page, as a new block. */
   async appendContent(id, text4, author) {
     return this.lock.run(async () => {
-      const row = await this.writablePage(id, author);
-      const current = row.content ?? "";
-      const separator = current === "" ? "" : current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
-      const next = await this.saveInternal(
-        row,
-        `${current}${separator}${text4.replace(/\n*$/, "\n")}`,
-        author,
-        {
-          write: true
-        }
-      );
+      const next = await this.appendInternal(await this.writablePage(id, author), text4, author);
       return { hash: next.hash };
     });
   }
@@ -60007,11 +59935,11 @@ var Vault = class {
       if (!find) throw new ValidationError("The text to find is empty");
       const row = (await this.requireRow(id)).kind === "folder" ? null : await this.freshPage(id);
       const current = row?.content ?? "";
-      const count = current.split(find).length - 1;
-      if (count === 0) throw new ValidationError("The text to find was not found in the note");
-      if (count > 1 && !options.all) {
+      const count2 = current.split(find).length - 1;
+      if (count2 === 0) throw new ValidationError("The text to find was not found in the note");
+      if (count2 > 1 && !options.all) {
         throw new ValidationError(
-          `The text to find occurs ${count} times; add context to make it unique, or replace all`
+          `The text to find occurs ${count2} times; add context to make it unique, or replace all`
         );
       }
       const next = await this.saveOrFold(
@@ -60019,7 +59947,7 @@ var Vault = class {
         current.split(find).join(replacement),
         options.author
       );
-      return { hash: next.hash ?? hashContent(""), count };
+      return { hash: next.hash ?? hashContent(""), count: count2 };
     });
   }
   async rename(id, title, author) {
@@ -60199,10 +60127,18 @@ var Vault = class {
   async searchBookmarks(query, limit = 20) {
     return this.bookmarks.search(query, limit);
   }
-  /** The pages showing a bookmark, or any bookmark in a folder, by title. */
+  /** The pages showing a bookmark, by title. */
   async bookmarkRefs(id) {
-    const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id);
-    return this.refsTo(ids);
+    await this.bookmarks.get(id);
+    return this.refsTo([id]);
+  }
+  /** The inbox note and the bookmarks it shows, in order: those still to sort ("Unsorted"). */
+  async unsortedBookmarks() {
+    const row = await this.inboxRow();
+    if (!row) return { noteId: null, bookmarks: [] };
+    const ids = [...new Set(bookmarkIdsIn(row.content ?? ""))];
+    const found = await this.bookmarks.getMany(ids);
+    return { noteId: row.id, bookmarks: ids.flatMap((id) => found.get(id) ?? []) };
   }
   /** A web page's title and description, for a bookmark being made (empty when unreadable). */
   async previewPage(url2) {
@@ -60210,39 +60146,37 @@ var Vault = class {
     return previewPage(this.fetcher, url2);
   }
   /**
-   * A new bookmark or folder. A page already bookmarked is refused (with its bookmark). What
-   * isn't given is read from its page: its favicon (the extension sends the browser's), its
-   * title and description.
+   * A new bookmark, its card put in the inbox note (at its start) or at the end of a note when
+   * asked (`place`; otherwise the editor puts it where it is typed). A page already bookmarked
+   * isn't made again: its bookmark is used (`created` false), its card put there all the same
+   * unless that note shows it. What isn't given is read from its page: its favicon (the
+   * extension sends the browser's), its title and description.
    */
-  async createBookmark(input2, icon) {
-    const kind = input2.kind ?? "bookmark";
+  async createBookmark(input2, icon, place = {}) {
     let favicon = icon ?? null;
     const missing = icon === void 0 || !input2.title?.trim() || input2.description === void 0;
     const url2 = webUrl(input2.url ?? "");
-    if (kind === "bookmark" && missing && this.fetcher && url2) {
-      const existing = await this.bookmarks.findByUrl(url2);
-      if (!existing) {
-        const site = await readSite(this.fetcher, url2, { favicon: icon === void 0 });
-        if (icon === void 0) favicon = site.favicon;
-        input2 = {
-          ...input2,
-          title: input2.title?.trim() ? input2.title : site.preview.title,
-          description: input2.description ?? site.preview.description
-        };
-      }
+    if (missing && this.fetcher && url2 && !await this.bookmarks.findByUrl(url2)) {
+      const site = await readSite(this.fetcher, url2, { favicon: icon === void 0 });
+      if (icon === void 0) favicon = site.favicon;
+      input2 = {
+        ...input2,
+        title: input2.title?.trim() ? input2.title : site.preview.title,
+        description: input2.description ?? site.preview.description
+      };
     }
     return this.lock.run(async () => {
-      if (kind === "bookmark" && input2.url) {
-        const existing = await this.bookmarks.findByUrl(input2.url);
-        if (existing) throw new DuplicateBookmarkError(existing);
+      const existing = input2.url ? await this.bookmarks.findByUrl(input2.url) : null;
+      const bookmark = existing ?? await this.bookmarks.create(input2);
+      if (!existing && favicon) {
+        await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension);
       }
-      const bookmark = await this.bookmarks.create(input2);
-      if (favicon) await this.writeBookmarkIcon(bookmark.id, favicon.data, favicon.extension);
-      this.changed({ type: "bookmarks" });
-      return this.bookmarks.get(bookmark.id);
+      const placed = await this.placeCard(bookmark.id, place, place.author ?? OWNER);
+      if (!placed && !existing) this.changed({ type: "bookmarks" });
+      return { bookmark: await this.bookmarks.get(bookmark.id), created: !existing };
     });
   }
-  /** Changes a bookmark (another page already bookmarked is refused), or moves it. */
+  /** Changes a bookmark (another page already bookmarked is refused). */
   async updateBookmark(id, patch) {
     return this.lock.run(async () => {
       if (patch.url !== void 0) {
@@ -60255,17 +60189,27 @@ var Vault = class {
     });
   }
   /**
-   * Deletes a bookmark, or a folder with everything in it, for good (bookmarks have no trash).
-   * Their cards are removed from the pages showing them, as `author`: each page's history keeps
-   * the version with them.
+   * Takes a bookmark's cards out of a note (it was moved into another one; the bookmark stays).
+   * Unchanged when the note doesn't show it.
+   */
+  async removeBookmarkCards(noteId, bookmarkId, author) {
+    return this.lock.run(async () => {
+      const row = await this.freshPage(noteId);
+      const content = removeBookmarkBlocks(row.content ?? "", [bookmarkId]);
+      if (content !== row.content) await this.saveOrFold(row, content, author);
+    });
+  }
+  /**
+   * Deletes a bookmark for good (bookmarks have no trash). Its cards are removed from the pages
+   * showing them, as `author`: each page's history keeps the version with them.
    */
   async deleteBookmark(id, author) {
     return this.lock.run(async () => {
-      const ids = (await this.bookmarks.subtree(id)).map((bookmark) => bookmark.id);
-      const pages = await this.refsTo(ids);
+      await this.bookmarks.get(id);
+      const pages = await this.refsTo([id]);
       for (const page of pages) {
         let row = await this.freshPage(page.id);
-        const content = removeBookmarkBlocks(row.content ?? "", ids);
+        const content = removeBookmarkBlocks(row.content ?? "", [id]);
         if (content === row.content) continue;
         if (row.pendingSnapshot) {
           await this.snapshot(row);
@@ -60273,26 +60217,54 @@ var Vault = class {
         }
         await this.saveOrFold(row, content, author);
       }
-      for (const removed of ids) await this.removeBookmarkIconFiles(removed);
-      await this.bookmarks.deleteMany(ids);
-      await this.db.delete(bookmarkRefs).where(inArray(bookmarkRefs.bookmarkId, ids));
+      await this.removeBookmarkIconFiles(id);
+      await this.bookmarks.deleteMany([id]);
+      await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.bookmarkId, id));
       this.changed({ type: "bookmarks" });
-      return { deleted: ids.length, pages };
+      return { pages };
     });
   }
   /**
-   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the folder `into` at
-   * the top, with their favicons: see `BookmarkStore.importTree`. One change, announced once.
+   * Imports a browser's bookmarks (the extension sends Chrome's tree) into the inbox note, with
+   * their favicons: at its end, those at the top first, then each folder's under a heading
+   * naming its folders (`Bookmarks bar / Work`). Pages already bookmarked are left as they are,
+   * and so is what isn't a web address. One change, announced once.
    */
-  async importBookmarks(into, tree) {
+  async importBookmarks(tree, author) {
     return this.lock.run(async () => {
-      const { result, created } = await this.bookmarks.importTree(into, tree);
-      for (const { id, extra } of created) {
-        if (extra.data.byteLength <= ICON_MAX_BYTES) {
-          await this.writeBookmarkIcon(id, extra.data, extra.extension);
+      const known = new Set((await this.bookmarks.list()).map((bookmark) => urlKey(bookmark.url)));
+      const result = { noteId: "", bookmarks: 0, duplicates: 0, skipped: 0 };
+      const sections = [];
+      const walk = async (folders, list) => {
+        const section = { folders, ids: [] };
+        sections.push(section);
+        for (const node2 of list.filter((item) => !item.children)) {
+          const url2 = webUrl(node2.url ?? "");
+          if (!url2) {
+            result.skipped++;
+            continue;
+          }
+          if (known.has(urlKey(url2))) {
+            result.duplicates++;
+            continue;
+          }
+          known.add(urlKey(url2));
+          const { id } = await this.bookmarks.create({ title: node2.title, url: url2 });
+          if (node2.extra && node2.extra.data.byteLength <= ICON_MAX_BYTES) {
+            await this.writeBookmarkIcon(id, node2.extra.data, node2.extra.extension);
+          }
+          section.ids.push(id);
+          result.bookmarks++;
         }
-      }
-      this.changed({ type: "bookmarks" });
+        for (const node2 of list.filter((item) => item.children)) {
+          await walk([...folders, node2.title.trim() || "Untitled folder"], node2.children);
+        }
+      };
+      await walk([], tree);
+      const inbox = await this.inboxRowOrNew(author);
+      result.noteId = inbox.id;
+      const markdown = cardsMarkdown(sections);
+      if (markdown) await this.appendInternal(inbox, markdown, author);
       return result;
     });
   }
@@ -60311,7 +60283,7 @@ var Vault = class {
       return this.bookmarks.get(id);
     });
   }
-  /** Sets an emoji as a bookmark's (or folder's) icon, or none (null: its default). */
+  /** Sets an emoji as a bookmark's icon, or none (null: its favicon). */
   async setBookmarkEmoji(id, emoji3) {
     const value = emoji3?.trim() ?? "";
     if (emoji3 !== null && (!value || [...value].length > 8))
@@ -60329,27 +60301,97 @@ var Vault = class {
     return join7(this.metaDir, "icons", await this.bookmarks.iconFile(id));
   }
   /**
-   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): all of them, or a folder
-   * with its content. Favicons go in it, those over 256 KB (none a browser keeps) left out.
+   * The bookmarks as a browser's bookmarks file (bookmark-export.ts): the pages are its folders,
+   * each with its cards (in order) then its child pages; pages without any card in them are left
+   * out. All of them, or a page (or folder) with what is under it. Favicons go in it, those over
+   * 256 KB (none a browser keeps) left out.
    */
-  async exportBookmarks(id) {
-    const all = id ? await this.bookmarks.subtree(id) : await this.bookmarks.list();
+  async exportBookmarks(nodeId) {
+    const rows = (await this.allRows()).toSorted((a, b) => a.position - b.position);
+    const root = nodeId ? rows.find((row) => row.id === nodeId) : void 0;
+    if (nodeId && !root) throw new NotFoundError("No such page");
+    const shown = await this.db.selectDistinct({ id: bookmarkRefs.nodeId }).from(bookmarkRefs).then((list) => list.map((row) => row.id));
+    const contents = shown.length ? await this.db.select({ id: nodes.id, content: nodes.content }).from(nodes).where(inArray(nodes.id, shown)) : [];
+    const cards = new Map(contents.map((row) => [row.id, bookmarkIdsIn(row.content ?? "")]));
+    const all = await this.bookmarks.getMany([...new Set([...cards.values()].flat())]);
+    const byDir = /* @__PURE__ */ new Map();
+    for (const row of rows) {
+      const dir = dirnameOf(row.path);
+      byDir.set(dir, [...byDir.get(dir) ?? [], row]);
+    }
+    const folderOf = (row) => {
+      const inside = row.kind === "page" ? childrenDirOf(row.path) : row.path;
+      const folders2 = (byDir.get(inside) ?? []).flatMap((child) => folderOf(child) ?? []);
+      const bookmarks2 = [...new Set(cards.get(row.id) ?? [])].flatMap((id) => all.get(id) ?? []);
+      if (!folders2.length && !bookmarks2.length) return null;
+      const { createdAt, updatedAt } = row;
+      return { title: titleFromPath(row.path), createdAt, updatedAt, bookmarks: bookmarks2, folders: folders2 };
+    };
+    const top = root ? [root] : byDir.get("") ?? [];
+    const folders = top.flatMap((row) => folderOf(row) ?? []);
     const files = await this.bookmarks.iconFiles();
     const types = {
       ...Object.fromEntries(Object.entries(ICON_TYPES).map(([type, ext]) => [ext, type])),
       ico: "image/x-icon"
     };
     const icons = /* @__PURE__ */ new Map();
-    for (const bookmark of all) {
-      const file2 = files.get(bookmark.id);
+    for (const id of all.keys()) {
+      const file2 = files.get(id);
       if (!file2) continue;
       const data = await readFile3(join7(this.metaDir, "icons", file2)).catch(() => null);
       if (!data || data.byteLength > EXPORT_ICON_MAX_BYTES) continue;
       const png = data.subarray(0, 4).equals(Buffer.from([137, 80, 78, 71]));
       const type = png ? "image/png" : types[file2.split(".").pop() ?? ""];
-      if (type) icons.set(bookmark.id, `data:${type};base64,${data.toString("base64")}`);
+      if (type) icons.set(id, `data:${type};base64,${data.toString("base64")}`);
     }
-    return bookmarksHtml(all, id ?? null, icons);
+    return bookmarksHtml(folders, icons);
+  }
+  /**
+   * Bookmarks had folders of their own until migration 0007, which kept their tree in
+   * `bookmark_tree_legacy`. Once, at start-up: each folder becomes a page folder where it was
+   * (a page or folder of that name there is used instead), with its icon; the bookmarks no note
+   * shows go into the inbox note, under a heading naming their folders; then the table goes.
+   * Null when there was nothing to convert.
+   */
+  async convertLegacyBookmarks() {
+    const table = this.sqlite.prepare("select 1 from sqlite_master where type = 'table' and name = 'bookmark_tree_legacy'").get();
+    if (!table) return null;
+    return this.lock.run(async () => {
+      const rows = this.sqlite.prepare(
+        "select id, kind, parent_id as parentId, title, icon from bookmark_tree_legacy order by position"
+      ).all();
+      const shown = new Set(
+        (await this.db.selectDistinct({ id: bookmarkRefs.bookmarkId }).from(bookmarkRefs)).map(
+          (row) => row.id
+        )
+      );
+      const existing = new Set((await this.bookmarks.list()).map((bookmark) => bookmark.id));
+      const author = "tandem";
+      const result = { folders: 0, bookmarks: 0 };
+      const sections = [];
+      const walk = async (parentId, nodeId, folders) => {
+        const children = rows.filter((row) => row.parentId === parentId);
+        sections.push({
+          folders,
+          ids: children.filter((row) => row.kind === "bookmark" && existing.has(row.id) && !shown.has(row.id)).map((row) => row.id)
+        });
+        for (const folder of children.filter((row) => row.kind === "folder")) {
+          const node2 = await this.legacyFolderNode(folder, nodeId);
+          result.folders++;
+          await walk(folder.id, node2.id, [...folders, folder.title]);
+        }
+      };
+      await walk(null, null, []);
+      const markdown = cardsMarkdown(sections);
+      if (markdown) {
+        const inbox = await this.inboxRowOrNew(author);
+        await this.appendInternal(inbox, markdown, author);
+        result.bookmarks = sections.reduce((sum, section) => sum + section.ids.length, 0);
+      }
+      this.sqlite.exec("drop table bookmark_tree_legacy");
+      this.changed({ type: "tree" });
+      return result;
+    });
   }
   // --- Agenda (agenda.ts) ------------------------------------------------------------------
   /** The events of the days from `from` to `to` (Tandem's and feeds'), by day and time. */
@@ -60423,6 +60465,83 @@ var Vault = class {
   agendaChanged(value) {
     this.changed({ type: "agenda" });
     return value;
+  }
+  /** The inbox note (`bookmarkInbox`), when it is still a page (not deleted). */
+  async inboxRow() {
+    const { bookmarkInbox } = await this.getSettings();
+    if (!bookmarkInbox) return null;
+    const row = await this.db.select().from(nodes).where(eq(nodes.id, bookmarkInbox)).get();
+    return row?.kind === "page" ? this.freshPage(row.id) : null;
+  }
+  /** The inbox note, made at the top (and remembered) when there is none. */
+  async inboxRowOrNew(author) {
+    const found = await this.inboxRow();
+    if (found) return found;
+    const name = uniqueName(BOOKMARK_INBOX_TITLE, "", await this.takenNames(""));
+    const row = await this.insertPage("", name, "", author);
+    const value = JSON.stringify(row.id);
+    await this.db.insert(settings).values({ key: "bookmarkInbox", value }).onConflictDoUpdate({ target: settings.key, set: { value } });
+    this.changed({ type: "tree" });
+    this.changed({ type: "settings" });
+    return row;
+  }
+  /**
+   * Puts a bookmark's card where asked (see `BookmarkPlace`), unless that note shows it; true
+   * when it did.
+   */
+  async placeCard(id, place, author) {
+    if (!place.inbox && !place.noteId) return false;
+    const row = place.inbox ? await this.inboxRowOrNew(author) : await this.writablePage(place.noteId, author);
+    const content = row.content ?? "";
+    if (bookmarkIdsIn(content).includes(id)) return false;
+    const block = bookmarkBlock(id);
+    if (place.inbox) {
+      const rest2 = content.replace(/^\n+/, "");
+      await this.saveInternal(row, rest2 ? `${block}
+
+${rest2}` : `${block}
+`, author, {
+        write: true
+      });
+    } else {
+      await this.appendInternal(row, block, author);
+    }
+    return true;
+  }
+  /** A bookmark folder of before migration 0007 as a page folder under `parentId` (see above). */
+  async legacyFolderNode(folder, parentId) {
+    const dir = await this.dirOfParent(parentId);
+    const name = sanitizeTitle(folder.title) || "Untitled folder";
+    let row = await this.rowByPath(joinPath(dir, name)) ?? await this.rowByPath(joinPath(dir, `${name}.md`));
+    if (!row) {
+      const path = joinPath(dir, name);
+      await mkdir3(this.abs(path), { recursive: true });
+      row = await this.insertFolder(path, this.now());
+    }
+    const icon = folder.icon;
+    const old = icon?.startsWith("image:") ? join7(this.metaDir, "icons", icon.slice(6)) : null;
+    if (icon && !row.icon) {
+      let value = icon.startsWith("emoji:") ? icon : null;
+      if (old && existsSync7(old)) {
+        const file2 = `${row.id}-${this.now()}.${old.split(".").pop()}`;
+        await atomicWrite(join7(this.metaDir, "icons", file2), await readFile3(old));
+        value = `image:${file2}`;
+      }
+      if (value) {
+        await this.db.update(nodes).set({ icon: value }).where(eq(nodes.id, row.id));
+        row = { ...row, icon: value };
+      }
+    }
+    if (old) await rm2(old, { force: true });
+    return row;
+  }
+  /** Appends Markdown at the end of a page, as a new block (under the lock). */
+  async appendInternal(row, text4, author) {
+    const current = row.content ?? "";
+    const separator = current === "" ? "" : current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
+    return this.saveInternal(row, `${current}${separator}${text4.replace(/\n*$/, "\n")}`, author, {
+      write: true
+    });
   }
   async writeBookmarkIcon(id, data, extension) {
     await this.removeBookmarkIconFiles(id);
@@ -60591,14 +60710,14 @@ var Vault = class {
     return this.lock.run(async () => {
       const limit = this.now() - this.sessionIdleMs;
       const pending = await this.db.select().from(nodes).where(eq(nodes.pendingSnapshot, true));
-      let count = 0;
+      let count2 = 0;
       for (const row of pending) {
         if ((row.lastSaveAt ?? 0) <= limit) {
           await this.snapshot(row);
-          count++;
+          count2++;
         }
       }
-      return count;
+      return count2;
     });
   }
   /**
@@ -60896,9 +61015,14 @@ var Vault = class {
     if (targets.length)
       await this.db.insert(links).values(targets.map((target) => ({ sourceId: row.id, target })));
     const shown = [...new Set(bookmarkIdsIn(content))];
+    const before = await this.db.select({ id: bookmarkRefs.bookmarkId }).from(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id));
     await this.db.delete(bookmarkRefs).where(eq(bookmarkRefs.nodeId, row.id));
     if (shown.length) {
       await this.db.insert(bookmarkRefs).values(shown.map((bookmarkId) => ({ nodeId: row.id, bookmarkId })));
+    }
+    const was = new Set(before.map((ref) => ref.id));
+    if (was.size !== shown.length || shown.some((id) => !was.has(id))) {
+      this.changed({ type: "bookmarks" });
     }
   }
   async listAttachments(row) {
@@ -62722,12 +62846,12 @@ var FSWatcher = class extends EventEmitter2 {
     let timeoutObject;
     const clear = () => {
       const item = action.get(path);
-      const count = item ? item.count : 0;
+      const count2 = item ? item.count : 0;
       action.delete(path);
       clearTimeout(timeoutObject);
       if (item)
         clearTimeout(item.timeoutObject);
-      return count;
+      return count2;
     };
     timeoutObject = setTimeout(clear, timeout);
     const thr = { timeoutObject, clear, count: 0 };
@@ -63088,6 +63212,12 @@ async function startServer(options) {
   console.log(`Data folder: ${dataDir}`);
   await vault.reconcile();
   await vault.reindexAll();
+  const converted = await vault.convertLegacyBookmarks();
+  if (converted) {
+    console.log(
+      `Bookmarks: ${converted.folders} folders now page folders, ${converted.bookmarks} bookmarks in the inbox note`
+    );
+  }
   if (options.welcome) await welcome(vault, dataDir, port);
   const watcher = watchVault(vault, { polling: options.watchPolling ?? false });
   function backup() {
