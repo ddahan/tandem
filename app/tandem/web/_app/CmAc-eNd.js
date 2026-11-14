@@ -1,0 +1,1 @@
+import{j as e}from"./CypcBDzw.js";import{a as t}from"./BQqBLwZQ.js";import{n}from"./CdkeCaxx.js";function r(){let r=t(`(display-mode: standalone)`);return e(()=>r.value||navigator.standalone===!0?n()?`safariApp`:`app`:`tab`)}function i(){let t=r();return e(()=>t.value===`app`)}export{r as n,i as t};
