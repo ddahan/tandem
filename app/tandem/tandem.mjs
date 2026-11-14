@@ -60349,9 +60349,10 @@ var Vault = class {
   /**
    * Bookmarks had folders of their own until migration 0007, which kept their tree in
    * `bookmark_tree_legacy`. Once, at start-up: each folder becomes a page folder where it was
-   * (a page or folder of that name there is used instead), with its icon; the bookmarks no note
-   * shows go into the inbox note, under a heading naming their folders; then the table goes.
-   * Null when there was nothing to convert.
+   * (a page or folder of that name there is used instead), with its icon, and the bookmarks it
+   * held that no note shows go into a new `Bookmarks` page inside it, in their order; those at
+   * the top (in no folder) go into the inbox note, still to sort. Then the table goes. Null when
+   * there was nothing to convert.
    */
   async convertLegacyBookmarks() {
     const table = this.sqlite.prepare("select 1 from sqlite_master where type = 'table' and name = 'bookmark_tree_legacy'").get();
@@ -60367,27 +60368,30 @@ var Vault = class {
       );
       const existing = new Set((await this.bookmarks.list()).map((bookmark) => bookmark.id));
       const author = "tandem";
-      const result = { folders: 0, bookmarks: 0 };
-      const sections = [];
-      const walk = async (parentId, nodeId, folders) => {
+      const result = { folders: 0, pages: 0, unsorted: 0 };
+      const walk = async (parentId, nodeId) => {
         const children = rows.filter((row) => row.parentId === parentId);
-        sections.push({
-          folders,
-          ids: children.filter((row) => row.kind === "bookmark" && existing.has(row.id) && !shown.has(row.id)).map((row) => row.id)
-        });
+        const ids = children.filter((row) => row.kind === "bookmark" && existing.has(row.id) && !shown.has(row.id)).map((row) => row.id);
+        if (ids.length) {
+          const markdown = `${ids.map(bookmarkBlock).join("\n\n")}
+`;
+          if (nodeId) {
+            const dir = await this.dirOfParent(nodeId);
+            const name = uniqueName(BOOKMARK_INBOX_TITLE, "", await this.takenNames(dir));
+            await this.insertPage(dir, name, markdown, author);
+            result.pages++;
+          } else {
+            await this.appendInternal(await this.inboxRowOrNew(author), markdown, author);
+            result.unsorted = ids.length;
+          }
+        }
         for (const folder of children.filter((row) => row.kind === "folder")) {
           const node2 = await this.legacyFolderNode(folder, nodeId);
           result.folders++;
-          await walk(folder.id, node2.id, [...folders, folder.title]);
+          await walk(folder.id, node2.id);
         }
       };
-      await walk(null, null, []);
-      const markdown = cardsMarkdown(sections);
-      if (markdown) {
-        const inbox = await this.inboxRowOrNew(author);
-        await this.appendInternal(inbox, markdown, author);
-        result.bookmarks = sections.reduce((sum, section) => sum + section.ids.length, 0);
-      }
+      await walk(null, null);
       this.sqlite.exec("drop table bookmark_tree_legacy");
       this.changed({ type: "tree" });
       return result;
@@ -63215,7 +63219,7 @@ async function startServer(options) {
   const converted = await vault.convertLegacyBookmarks();
   if (converted) {
     console.log(
-      `Bookmarks: ${converted.folders} folders now page folders, ${converted.bookmarks} bookmarks in the inbox note`
+      `Bookmarks: ${converted.folders} folders now page folders, ${converted.pages} Bookmarks pages in them, ${converted.unsorted} unsorted`
     );
   }
   if (options.welcome) await welcome(vault, dataDir, port);
