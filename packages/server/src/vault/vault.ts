@@ -29,6 +29,9 @@ import {
   OWNER,
   bookmarkBlock,
   bookmarkIdsIn,
+  databaseIdsIn,
+  externalLinksIn,
+  SUBTREE_MAX_PAGES,
   removeBookmarkBlocks,
   urlKey,
   webUrl,
@@ -38,6 +41,8 @@ import {
   type BookmarkRef,
   type BookmarkSearchResult,
   type UnsortedBookmarks,
+  type SubtreeItems,
+  type SubtreePage,
   type PagePreview,
   type Backlink,
   type BlameRange,
@@ -447,6 +452,77 @@ export class Vault {
       },
       content,
     }
+  }
+
+  /**
+   * A page (or folder) and everything under it, in the tree's order, with what the side
+   * panel's tabs list for each: wiki links, bookmark cards, links to websites, attachments,
+   * databases. At most `SUBTREE_MAX_PAGES` (`truncated` says when there were more).
+   */
+  async subtreeItems(id: string): Promise<SubtreeItems> {
+    const root = await this.requireRow(id)
+    const rows = (await this.subtreeOf(root)).toSorted((a, b) => a.position - b.position)
+    const byDir = new Map<string, NodeMeta[]>()
+    for (const row of rows) {
+      const dir = dirnameOf(row.path)
+      byDir.set(dir, [...(byDir.get(dir) ?? []), row])
+    }
+    const ordered: { row: NodeMeta; depth: number }[] = []
+    const walk = (row: NodeMeta, depth: number) => {
+      ordered.push({ row, depth })
+      const inside = row.kind === 'page' ? childrenDirOf(row.path) : row.path
+      for (const child of byDir.get(inside) ?? []) walk(child, depth + 1)
+    }
+    walk(root, 0)
+    const shown = ordered.slice(0, SUBTREE_MAX_PAGES)
+    const pageIds = shown.filter(({ row }) => row.kind === 'page').map(({ row }) => row.id)
+    const contents = new Map(
+      (pageIds.length
+        ? await this.db
+            .select({ id: nodes.id, content: nodes.content })
+            .from(nodes)
+            .where(inArray(nodes.id, pageIds))
+        : []
+      ).map((row) => [row.id, row.content ?? '']),
+    )
+    // Wiki links resolved once per target, as the editor does.
+    const resolved = new Map<string, TreeNode | null>()
+    const pages: SubtreePage[] = []
+    for (const { row, depth } of shown) {
+      const content = contents.get(row.id) ?? ''
+      const wikiLinks: SubtreePage['wikiLinks'] = []
+      const seen = new Set<string>()
+      for (const link of parseWikiLinks(content)) {
+        const key = linkKey(link.target)
+        if (seen.has(key)) continue
+        seen.add(key)
+        if (!resolved.has(key)) resolved.set(key, await this.resolveLink(link.target))
+        const node = resolved.get(key)
+        wikiLinks.push({
+          target: link.target,
+          id: node?.id ?? null,
+          title: node?.title ?? link.target,
+        })
+      }
+      const summaries = new Map(
+        (await this.databases.listForNode(row.id)).map((summary) => [summary.id, summary]),
+      )
+      pages.push({
+        id: row.id,
+        title: titleFromPath(row.path),
+        path: row.path,
+        kind: row.kind,
+        depth,
+        wikiLinks,
+        bookmarkIds: [...new Set(bookmarkIdsIn(content))],
+        links: externalLinksIn(content),
+        attachments: row.kind === 'page' ? await this.listAttachments(row as NodeRow) : [],
+        databases: [...new Set(databaseIdsIn(content))].flatMap(
+          (dbId) => summaries.get(dbId) ?? [],
+        ),
+      })
+    }
+    return { pages, truncated: ordered.length > shown.length }
   }
 
   async attachments(id: string): Promise<Attachment[]> {

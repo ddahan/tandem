@@ -1,4 +1,6 @@
 // Shapes of the data the API returns. Dates are epoch milliseconds.
+import type { ExternalLink } from './bookmarks.ts'
+import type { DatabaseSummary } from './databases.ts'
 import type { Todo } from './todos.ts'
 
 export type NodeKind = 'page' | 'folder'
@@ -35,6 +37,37 @@ export interface Attachment {
   size: number
   isImage: boolean
 }
+
+/**
+ * A page shown with its sub-pages in the side panel (or one of them), with what the panel's
+ * Links, Bookmarks, Files and Databases tabs list for it. `depth`: 0 for the page shown.
+ */
+export interface SubtreePage {
+  id: string
+  title: string
+  path: string
+  kind: NodeKind
+  depth: number
+  /** Its wiki links, each target once, with the page each leads to (null: none). */
+  wikiLinks: { target: string; id: string | null; title: string }[]
+  /** The bookmarks its cards show, in order. */
+  bookmarkIds: string[]
+  /** Its links to websites (`externalLinksIn`). */
+  links: ExternalLink[]
+  attachments: Attachment[]
+  /** The databases its blocks show, in order. */
+  databases: DatabaseSummary[]
+}
+
+/** A page and its sub-pages, in the tree's order (at most `SUBTREE_MAX_PAGES`). */
+export interface SubtreeItems {
+  pages: SubtreePage[]
+  /** More pages than that are under it: the rest are left out. */
+  truncated: boolean
+}
+
+/** The most pages the side panel reads under the page shown. */
+export const SUBTREE_MAX_PAGES = 500
 
 export interface NoteDetail {
   node: TreeNode

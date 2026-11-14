@@ -435,6 +435,11 @@ export function createApi(vault: Vault, options: ApiOptions = {}) {
       zValidator('json', z.object({ tags: z.array(z.string().max(60)).max(50) })),
       async (c) => c.json(await vault.setTags(c.req.valid('param').id, c.req.valid('json').tags)),
     )
+    // The page and its sub-pages, with what the side panel lists for each (only asked while
+    // the panel shows a tab that has them).
+    .get('/notes/:id/subtree', zValidator('param', idParam), async (c) =>
+      c.json(await vault.subtreeItems(c.req.valid('param').id)),
+    )
     .get('/notes/:id/backlinks', zValidator('param', idParam), async (c) =>
       c.json(await vault.backlinks(c.req.valid('param').id)),
     )

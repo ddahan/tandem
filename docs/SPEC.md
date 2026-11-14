@@ -528,6 +528,18 @@ inside OneDrive so that it is backed up and synced.
   The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
   Keyboard shortcuts throughout.
+- **Sub-pages in the side panel**: on a page (or folder) with pages under it, the Links, Bookmarks,
+  Files and Databases tabs list theirs too, shown two ways from a switch at the top of the tab
+  (remembered). **Tree**: the page's own, as usual, then each sub-page holding any under its
+  title (indented as in the pages' tree; a click opens it); with none of its own, Bookmarks and
+  Databases say so in one line instead of their empty state. **Flat**: all of them in one list,
+  each naming its page, sorted by page (the tree's order), name, or what the kind has: size
+  (largest first) and type for files, site for bookmarks, rows for databases (remembered per
+  tab). A click opens an item: a link's or database's page, a bookmark's page (a double click
+  its website), a file, a website. Links lists the pages they link to ("Linked from" stays the
+  page's own, in Tree). Read only while the panel shows one of those tabs, and again when
+  pages change; at most 500 pages under it (it says so beyond). A page without sub-pages shows
+  its tab alone, without the switch.
 - **Tabs**, as VS Code's editors, in the page's bar, left of its actions (a note's side panel
   has its own header on the same row). Notes open in tabs, and so do Settings, Docs (one tab,
   which remembers its section), TODOs and the trash; Home has none, and shows its title when no

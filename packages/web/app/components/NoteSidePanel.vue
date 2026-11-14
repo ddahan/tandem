@@ -2,8 +2,8 @@
 // The note's side panel: headings, links, bookmarks (when on), history, files and databases, and
 // the calendar when daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
 // it in a narrower one (`over`), where Esc or a click outside closes it.
-import type { Attachment } from '@tandem/shared'
-import { onClickOutside, onKeyStroke, useLocalStorage } from '@vueuse/core'
+import type { Attachment, SubtreeItems } from '@tandem/shared'
+import { onClickOutside, onKeyStroke, useDebounceFn, useLocalStorage } from '@vueuse/core'
 import type { Heading } from '~/components/NoteEditor.vue'
 
 const props = defineProps<{
@@ -45,6 +45,42 @@ const tab = computed({
     saved.value = value
   },
 })
+
+// --- Sub-pages ---------------------------------------------------------------------------------
+// On a page with sub-pages, the Links, Bookmarks, Files and Databases tabs show theirs too
+// (SideSubtree). Read only while one of those tabs shows (the panel is open), again on changes.
+const SUBTREE_TABS = ['links', 'bookmarks', 'files', 'databases'] as const
+type SubtreeTab = (typeof SUBTREE_TABS)[number]
+const tree = useTree()
+const api = useApi()
+const hasChildren = computed(() => !!tree.childrenOf.value.get(props.noteId)?.length)
+const wanted = computed(() => hasChildren.value && SUBTREE_TABS.includes(tab.value as SubtreeTab))
+const subtree = ref<SubtreeItems | null>(null)
+let loading = 0
+async function loadSubtree() {
+  if (!wanted.value) return
+  const request = ++loading
+  const items = await unwrap(api.notes[':id'].subtree.$get({ param: { id: props.noteId } })).catch(
+    () => null,
+  )
+  if (request === loading) subtree.value = items
+}
+watch(
+  () => [props.noteId, wanted.value] as const,
+  ([, on], previous) => {
+    if (previous && previous[0] !== props.noteId) subtree.value = null
+    if (on) void loadSubtree()
+  },
+  { immediate: true },
+)
+const reloadSubtree = useDebounceFn(loadSubtree, 500)
+useServerEvents((event) => {
+  if (['note', 'tree', 'database', 'bookmarks', 'resync'].includes(event.type)) {
+    void reloadSubtree()
+  }
+})
+/** What SideSubtree shows: null without sub-pages (the tab alone). */
+const subtreeShown = computed(() => (hasChildren.value ? subtree.value : null))
 
 // --- Width -----------------------------------------------------------------------------------
 // Resizable from its left edge, as the sidebar is from its right one. Nuxt UI's resizable panel
@@ -183,8 +219,12 @@ const tabs = computed(() => [
         :active="activeHeading"
         @go="(pos) => emit('goToHeading', pos)"
       />
-      <SideBacklinks v-else-if="tab === 'links'" :note-id="noteId" :content="content" />
-      <SideBookmarks v-else-if="tab === 'bookmarks'" :content="content" />
+      <SideSubtree v-else-if="tab === 'links'" kind="links" :items="subtreeShown">
+        <SideBacklinks :note-id="noteId" :content="content" />
+      </SideSubtree>
+      <SideSubtree v-else-if="tab === 'bookmarks'" kind="bookmarks" :items="subtreeShown">
+        <SideBookmarks :content="content" />
+      </SideSubtree>
       <SideHistory
         v-else-if="tab === 'history'"
         :note-id="noteId"
@@ -192,19 +232,21 @@ const tabs = computed(() => [
         :content="content"
         @restored="(c) => emit('restored', c)"
       />
-      <SideDatabases
-        v-else-if="tab === 'databases'"
-        :note-id="noteId"
-        :content="content"
-        @go="(id) => emit('goToDatabase', id)"
-      />
-      <SideAttachments
-        v-else
-        :note-id="noteId"
-        :note-path="notePath"
-        @insert="(md) => emit('attach', md)"
-        @deleted="(attachment) => emit('deleted', attachment)"
-      />
+      <SideSubtree v-else-if="tab === 'databases'" kind="databases" :items="subtreeShown">
+        <SideDatabases
+          :note-id="noteId"
+          :content="content"
+          @go="(id) => emit('goToDatabase', id)"
+        />
+      </SideSubtree>
+      <SideSubtree v-else kind="files" :items="subtreeShown">
+        <SideAttachments
+          :note-id="noteId"
+          :note-path="notePath"
+          @insert="(md) => emit('attach', md)"
+          @deleted="(attachment) => emit('deleted', attachment)"
+        />
+      </SideSubtree>
     </template>
   </UDashboardPanel>
 </template>

@@ -367,6 +367,13 @@ inbox note under a heading per folder path, and drops the table: it runs once.
   `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. `SideBookmarks`
   reads the note's Markdown (`bookmarkIdsIn`, shared `externalLinksIn`) only while its tab
   shows.
+- Sub-pages in the side panel: `GET /notes/:id/subtree` (`Vault.subtreeItems`: the page and
+  what is under it, in the tree's order, at most `SUBTREE_MAX_PAGES`, with each one's wiki links
+  resolved, bookmark ids, web links, attachments and database summaries, read from the stored
+  contents) is asked by `NoteSidePanel` only on a page with children whose panel shows Links,
+  Bookmarks, Files or Databases, and again (debounced) on changes. `SideSubtree` wraps those
+  tabs: the tab alone without children; otherwise Tree (the tab, then a group per sub-page) or
+  Flat (`SideSubtreeRow`s sorted by `utils/subtree-items.ts`).
 - Undo: one history for the app (`useUndo`, logic in `utils/undo-history.ts`): steps with
   `undo`/`redo` functions, run one at a time, recorded by the code that changes things
   (`useDatabase`, `useTree`, `useBookmarks`, tags, `IconPicker`); nothing is recorded while a
