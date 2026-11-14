@@ -88,67 +88,70 @@ const time = (ms: number) =>
     description="A version is kept when an editing session ends (30 seconds without saves) or another author writes."
     variant="naked"
   />
-  <div v-else class="flex flex-col gap-6 md:flex-row" data-testid="note-history">
-    <nav aria-label="Versions" class="shrink-0 md:w-60">
-      <div v-for="[day, list] in days" :key="day" class="mb-4">
-        <h3 class="mb-1 px-2 text-xs font-medium text-dimmed">{{ day }}</h3>
-        <button
-          v-for="version in list"
-          :key="version.id"
-          type="button"
-          class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start"
-          :class="selected?.id === version.id ? 'bg-elevated' : 'hover:bg-elevated/60'"
-          :aria-current="selected?.id === version.id || undefined"
-          data-testid="history-version"
-          @click="open(version)"
-        >
-          <span
-            class="size-2 shrink-0 rounded-full"
-            :style="{ background: authorColor(version.author) }"
-          />
-          <span class="text-sm text-default tabular-nums">{{ time(version.createdAt) }}</span>
-          <span class="min-w-0 flex-1 truncate text-sm text-muted">{{
-            label(version.author)
-          }}</span>
-          <span class="text-xs text-dimmed">{{ formatSize(version.size) }}</span>
-        </button>
-      </div>
-      <p class="px-2 text-xs text-dimmed">
-        A version is kept when an editing session ends or another author writes.
-      </p>
-    </nav>
-
-    <section class="min-w-0 flex-1" aria-label="The version picked">
-      <p v-if="!selected" class="py-8 text-center text-sm text-muted">
-        Pick a version to see it, compare it with the current one, or restore it.
-      </p>
-      <template v-else>
-        <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-default pb-3">
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-highlighted">
-              {{ formatDate(selected.createdAt) }} {{ time(selected.createdAt) }}
-            </p>
-            <p class="text-xs text-muted">By {{ label(selected.author) }}</p>
-          </div>
-          <UButton
-            label="Compare with current"
-            icon="i-lucide-columns-2"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            @click="comparing = true"
-          />
-          <UButton
-            label="Restore this version"
-            icon="i-lucide-rotate-ccw"
-            size="sm"
-            @click="restore"
-          />
+  <!-- Side by side only when the note's column has room (the side panel takes some). -->
+  <div v-else class="@container" data-testid="note-history">
+    <div class="flex flex-col gap-6 @2xl:flex-row">
+      <nav aria-label="Versions" class="shrink-0 @2xl:w-60">
+        <div v-for="[day, list] in days" :key="day" class="mb-4">
+          <h3 class="mb-1 px-2 text-xs font-medium text-dimmed">{{ day }}</h3>
+          <button
+            v-for="version in list"
+            :key="version.id"
+            type="button"
+            class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start"
+            :class="selected?.id === version.id ? 'bg-elevated' : 'hover:bg-elevated/60'"
+            :aria-current="selected?.id === version.id || undefined"
+            data-testid="history-version"
+            @click="open(version)"
+          >
+            <span
+              class="size-2 shrink-0 rounded-full"
+              :style="{ background: authorColor(version.author) }"
+            />
+            <span class="text-sm text-default tabular-nums">{{ time(version.createdAt) }}</span>
+            <span class="min-w-0 flex-1 truncate text-sm text-muted">{{
+              label(version.author)
+            }}</span>
+            <span class="text-xs text-dimmed">{{ formatSize(version.size) }}</span>
+          </button>
         </div>
-        <!-- eslint-disable-next-line vue/no-v-html -- sanitized by renderMarkdown -->
-        <div class="rendered-markdown" v-html="renderMarkdown(selectedContent, notePath)" />
-      </template>
-    </section>
+        <p class="px-2 text-xs text-dimmed">
+          A version is kept when an editing session ends or another author writes.
+        </p>
+      </nav>
+
+      <section class="min-w-0 flex-1" aria-label="The version picked">
+        <p v-if="!selected" class="py-8 text-center text-sm text-muted">
+          Pick a version to see it, compare it with the current one, or restore it.
+        </p>
+        <template v-else>
+          <div class="mb-4 flex flex-wrap items-center gap-2 border-b border-default pb-3">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-highlighted">
+                {{ formatDate(selected.createdAt) }} {{ time(selected.createdAt) }}
+              </p>
+              <p class="text-xs text-muted">By {{ label(selected.author) }}</p>
+            </div>
+            <UButton
+              label="Compare with current"
+              icon="i-lucide-columns-2"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="comparing = true"
+            />
+            <UButton
+              label="Restore this version"
+              icon="i-lucide-rotate-ccw"
+              size="sm"
+              @click="restore"
+            />
+          </div>
+          <!-- eslint-disable-next-line vue/no-v-html -- sanitized by renderMarkdown -->
+          <div class="rendered-markdown" v-html="renderMarkdown(selectedContent, notePath)" />
+        </template>
+      </section>
+    </div>
 
     <DiffModal
       v-model:open="comparing"
