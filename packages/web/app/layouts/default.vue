@@ -74,9 +74,6 @@ watch(
   },
 )
 
-// The open note's save status, next to the version.
-const openNoteSave = useOpenNoteSave()
-
 const createNextToOpen = () => tree.createPageNextTo(noteIdOf(tabs.activeKey.value ?? ''))
 
 // The sidebar: collapsed or not from lg up, a drawer (open or not) below.
@@ -275,12 +272,7 @@ defineShortcuts({
               :title="`Tandem ${version}`"
               >v{{ version }}</span
             >
-            <SaveStatus
-              v-if="openNoteSave"
-              :status="openNoteSave.status"
-              :saved-at="openNoteSave.savedAt"
-              :compact="collapsed"
-            />
+            <SaveStatus :compact="collapsed" />
           </div>
           <UDashboardSidebarCollapse />
         </div>
@@ -288,6 +280,9 @@ defineShortcuts({
     </UDashboardSidebar>
 
     <NoteSearch />
+
+    <!-- The one tab bar: it shows itself in the bar of the page open (useTabBarHost). -->
+    <TabBar />
 
     <slot />
   </UDashboardGroup>

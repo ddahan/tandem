@@ -7,63 +7,23 @@
 // tab and on hover; a middle click too), a double click keeps a preview open, tabs are dragged
 // to reorder, a right-click opens their menu, and hovering one shows its page's path. A double
 // click on the empty space makes a new page.
+//
+// One bar for the whole app: the layout makes it once and shows it in the bar of the page open
+// (useTabBarHost), so that going from page to page builds no tab again. Its chips are TabChip;
+// they share one menu (the tab right-clicked), as the tree's rows do.
 import type { ContextMenuItem, DropdownMenuItem } from '@nuxt/ui'
-import { useMediaQuery, useResizeObserver } from '@vueuse/core'
+import { useResizeObserver } from '@vueuse/core'
 import type { Tab } from '~/composables/useTabs'
-import { calendarDateOf, dayLabel } from '@tandem/shared'
-import { bookmarkIdOf, noteIdOf } from '~/utils/tabs'
 
 const tabs = useTabs()
+// The place the page open gives it (PageNavbar), read here: a new place moves the bar without
+// redrawing the layout.
+const host = useTabBarHost()
 const tree = useTree()
-const bookmarks = useBookmarks()
 const toast = useToast()
 // ⌘W closes a tab only in the installed app (in a browser tab, it closes the browser's).
 const appWindow = useAppWindow()
-
-/** The app's own pages, with their sidebar titles and icons. */
-const PAGES: Record<string, { title: string; icon: string }> = {
-  docs: { title: 'Docs', icon: 'i-lucide-book-open' },
-  settings: { title: 'Settings', icon: 'i-lucide-settings' },
-  todos: { title: 'TODOs', icon: 'i-lucide-list-todo' },
-  trash: { title: 'Trash', icon: 'i-lucide-trash-2' },
-}
-
-function nodeOf(tab: Tab) {
-  const id = noteIdOf(tab.key)
-  return id ? tree.byId.value.get(id) : undefined
-}
-function bookmarkOf(tab: Tab) {
-  const id = bookmarkIdOf(tab.key)
-  return id ? bookmarks.byId.value.get(id) : undefined
-}
-const { settings } = useSettings()
-/** A daily note's day (daily notes on): its tab reads "Today", "Wed 14 Oct"… */
-function dayOf(tab: Tab) {
-  const node = nodeOf(tab)
-  return node && settings.value.daily ? calendarDateOf(node.path) : null
-}
-function titleOf(tab: Tab) {
-  const day = dayOf(tab)
-  if (day) return dayLabel(day).short
-  if (noteIdOf(tab.key)) return nodeOf(tab)?.title ?? '…'
-  if (bookmarkIdOf(tab.key)) return bookmarkOf(tab)?.title ?? '…'
-  return PAGES[tab.key]?.title ?? tab.key
-}
-function iconOf(tab: Tab) {
-  if (dayOf(tab)) return 'i-lucide-calendar-days'
-  return PAGES[tab.key]?.icon ?? (noteIdOf(tab.key) ? 'i-lucide-file-text' : 'i-lucide-file')
-}
-/** A day's tooltip is its whole date (it is in no page). */
-function tooltipOf(tab: Tab) {
-  const day = dayOf(tab)
-  return day ? dayLabel(day).title : titleOf(tab)
-}
-/** A note's pages, from the top: the tooltip's path. */
-function pathOf(tab: Tab) {
-  if (dayOf(tab)) return []
-  const id = noteIdOf(tab.key)
-  return id ? tree.ancestors(id) : []
-}
+const { nodeOf, titleOf, iconOf } = useTabInfo()
 const isActive = (tab: Tab) => tab.key === tabs.activeKey.value
 
 function menu(tab: Tab): ContextMenuItem[][] {
@@ -108,23 +68,27 @@ function menu(tab: Tab): ContextMenuItem[][] {
   ].filter((group) => group.length)
 }
 
+// A right-click opens the menu of the tab under the pointer; elsewhere in the bar, the
+// browser's own. One menu for the bar, not one per tab.
+const contextTab = ref<Tab | null>(null)
+const contextItems = computed(() => (contextTab.value ? menu(contextTab.value) : []))
+function onContextMenu(event: MouseEvent) {
+  const key = (event.target as HTMLElement).closest<HTMLElement>('[data-tab-chip]')?.dataset.tabKey
+  contextTab.value = tabs.tabs.value.find((tab) => tab.key === key) ?? null
+  // Before the menu's own handler (inside).
+  if (!contextTab.value) event.stopPropagation()
+}
+
 async function copyPath(path: string) {
   await navigator.clipboard.writeText(path)
   toast.add({ title: 'Path copied', description: path, icon: 'i-lucide-check' })
-}
-
-// A middle click closes, as in browsers and VS Code (auxclick: click isn't sent for it).
-function onAuxClick(event: MouseEvent, tab: Tab) {
-  if (event.button !== 1) return
-  event.preventDefault()
-  void tabs.closeTab(tab.key)
 }
 
 // --- Two rows, and the rest in "+N" ------------------------------------------------------------
 
 const bar = useTemplateRef<HTMLElement>('bar')
 /** Two rows from `sm` up; below, one row that scrolls. */
-const wide = useMediaQuery('(min-width: 640px)')
+const wide = useWindowQuery('(min-width: 640px)')
 /** How many tabs are shown (the rest are in the "+N" menu). */
 const shown = ref(Number.POSITIVE_INFINITY)
 /** The tabs shown, in order: the active one in the last place when it would be hidden. */
@@ -192,16 +156,21 @@ const layoutKey = computed(
     `${tabs.activeKey.value}:` +
     tabs.tabs.value.map((tab) => `${tab.key}${titleOf(tab)}${tab.preview ? '/' : ''}`).join('|'),
 )
-watch([layoutKey, wide], () => void fit(), { flush: 'post' })
-onMounted(() => void fit())
+// Measured at the next frame, never right away: reading the tabs' places makes the browser lay
+// the whole page out on the spot, and when a page was just swapped in (the usual reason the tabs
+// change), it would do so again once the page has finished mounting.
 let frame = 0
-useResizeObserver(bar, () => {
+function fitSoon() {
   cancelAnimationFrame(frame)
   frame = requestAnimationFrame(() => {
     void fit()
     revealActive()
   })
-})
+}
+watch([layoutKey, wide], fitSoon, { flush: 'post' })
+onMounted(fitSoon)
+onBeforeUnmount(() => cancelAnimationFrame(frame))
+useResizeObserver(bar, fitSoon)
 
 // One row, on a phone: the active tab scrolled into view, when it changes and once the bar is
 // laid out (the resize observer above).
@@ -211,14 +180,6 @@ function revealActive() {
     ?.querySelector('[aria-selected="true"]')
     ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
 }
-watch(
-  [layoutKey, wide],
-  async () => {
-    await nextTick()
-    revealActive()
-  },
-  { flush: 'post' },
-)
 
 // --- Reordering --------------------------------------------------------------------------------
 
@@ -256,121 +217,63 @@ function onDragEnd() {
   dragged.value = null
   dropBefore.value = null
 }
+/** The drop mark a chip shows: before it, or after it for the last one shown. */
+function dropMarkOf(index: number) {
+  if (!dragged.value) return null
+  if (dropBefore.value === index) return 'before'
+  return dropBefore.value === index + 1 && index === visible.value.length - 1 ? 'after' : null
+}
 </script>
 
 <template>
-  <div
-    ref="bar"
-    class="tab-bar flex h-full min-w-0 items-center gap-y-1"
-    :class="
-      wide
-        ? 'flex-wrap content-center overflow-hidden py-0.5'
-        : 'flex-nowrap overflow-x-auto overflow-y-hidden'
-    "
-    role="tablist"
-    aria-label="Open pages"
-    data-testid="tab-bar"
-    @dblclick.self="tree.createPage()"
-    @dragover.prevent
-    @drop="onDrop"
-  >
-    <template v-for="(tab, index) in visible" :key="tab.key">
-      <UContextMenu :items="menu(tab)">
-        <UTooltip
-          :disabled="!!dragged"
-          :content="{ side: 'bottom', align: 'start' }"
-          :ui="{ content: 'h-auto max-w-md py-1' }"
-        >
-          <div
-            role="tab"
-            :aria-label="titleOf(tab)"
-            :aria-selected="isActive(tab)"
-            draggable="true"
-            data-tab-chip
-            class="tab-chip group relative flex h-7 max-w-48 min-w-0 shrink-0 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm select-none"
-            :class="[
-              isActive(tab) ? 'text-highlighted' : 'text-muted hover:text-default',
-              dragged === tab.key && 'opacity-50',
-            ]"
-            :data-testid="`tab-${titleOf(tab)}`"
-            @click="tabs.activate(tab.key)"
-            @dblclick="tabs.keepOpen(tab.key)"
-            @auxclick="onAuxClick($event, tab)"
-            @mousedown.middle.prevent
+  <Teleport v-if="tabs.tabs.value.length && host" :to="host">
+    <div
+      ref="bar"
+      class="tab-bar flex h-full min-w-0 flex-1 items-center gap-y-1"
+      :class="
+        wide
+          ? 'flex-wrap content-center overflow-hidden py-0.5'
+          : 'flex-nowrap overflow-x-auto overflow-y-hidden'
+      "
+      role="tablist"
+      aria-label="Open pages"
+      data-testid="tab-bar"
+      @dblclick.self="tree.createPage()"
+      @dragover.prevent
+      @drop="onDrop"
+      @contextmenu.capture="onContextMenu"
+    >
+      <UContextMenu :items="contextItems">
+        <!-- No box of its own: the chips are laid out by the bar. -->
+        <div class="tab-chips contents">
+          <TabChip
+            v-for="(tab, index) in visible"
+            :key="tab.key"
+            :tab="tab"
+            :active="isActive(tab)"
+            :dragging="dragged === tab.key"
+            :drag-active="!!dragged"
+            :drop-mark="dropMarkOf(index)"
             @dragstart="onDragStart($event, tab)"
             @dragover="onDragOver($event, index)"
             @dragend="onDragEnd"
-          >
-            <!-- Where a dragged tab goes. -->
-            <span
-              v-if="dragged && dropBefore === index"
-              class="absolute inset-y-0.5 -start-[3px] w-0.5 rounded-full bg-primary"
-              aria-hidden="true"
-            />
-            <span
-              v-if="dragged && dropBefore === index + 1 && index === visible.length - 1"
-              class="absolute inset-y-0.5 -end-[3px] w-0.5 rounded-full bg-primary"
-              aria-hidden="true"
-            />
-            <NodeIcon
-              v-if="nodeOf(tab) && !dayOf(tab)"
-              :icon="nodeOf(tab)!.icon"
-              :kind="tree.kindOf(nodeOf(tab)!)"
-            />
-            <BookmarkIcon v-else-if="bookmarkOf(tab)" :bookmark="bookmarkOf(tab)!" />
-            <UIcon v-else :name="iconOf(tab)" class="size-4 shrink-0" />
-            <span class="min-w-0 truncate" :class="tab.preview && 'italic'">{{
-              titleOf(tab)
-            }}</span>
-            <!-- Over the end of the title, on hover (or focus): it takes no room otherwise. -->
-            <button
-              type="button"
-              class="tab-close absolute inset-y-0 end-0 flex w-9 items-center justify-end rounded-e-md pe-1 text-muted opacity-0 group-hover:opacity-100 hover:text-highlighted focus-visible:opacity-100 [&:hover>span]:bg-accented"
-              aria-label="Close tab"
-              @click.stop="tabs.closeTab(tab.key)"
-              @dblclick.stop
-            >
-              <span class="grid size-5 place-items-center rounded">
-                <UIcon name="i-lucide-x" class="size-3.5" />
-              </span>
-            </button>
-          </div>
-
-          <!-- The page's path, from the top. -->
-          <template #content>
-            <span
-              v-if="pathOf(tab).length"
-              class="flex flex-wrap items-center gap-1 text-xs"
-              data-testid="tab-path"
-            >
-              <template v-for="(page, depth) in pathOf(tab)" :key="page.id">
-                <UIcon v-if="depth" name="i-lucide-chevron-right" class="size-3 text-dimmed" />
-                <span class="flex items-center gap-1">
-                  <NodeIcon :icon="page.icon" :kind="tree.kindOf(page)" />
-                  <span :class="depth === pathOf(tab).length - 1 && 'font-medium text-highlighted'">
-                    {{ page.title }}
-                  </span>
-                </span>
-              </template>
-            </span>
-            <span v-else class="text-xs">{{ tooltipOf(tab) }}</span>
-          </template>
-        </UTooltip>
+          />
+        </div>
       </UContextMenu>
-    </template>
 
-    <UDropdownMenu v-if="hidden.length" :items="hiddenItems" :content="{ align: 'end' }">
-      <UButton
-        data-tab-more
-        :label="`+${hidden.length}`"
-        color="neutral"
-        variant="ghost"
-        size="xs"
-        class="h-7 shrink-0"
-        :aria-label="`${hidden.length} more tabs`"
-      />
-    </UDropdownMenu>
-  </div>
+      <UDropdownMenu v-if="hidden.length" :items="hiddenItems" :content="{ align: 'end' }">
+        <UButton
+          data-tab-more
+          :label="`+${hidden.length}`"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          class="h-7 shrink-0"
+          :aria-label="`${hidden.length} more tabs`"
+        />
+      </UDropdownMenu>
+    </div>
+  </Teleport>
 </template>
 
 <style>
@@ -400,7 +303,7 @@ function onDragEnd() {
   transition: opacity 0.15s;
 }
 /* None after the last tab, with nothing to its right ("+N" keeps it). */
-.tab-chip:last-child::after,
+.tab-chips:last-child > .tab-chip:last-child::after,
 .tab-chip:hover::after,
 .tab-chip[aria-selected='true']::after,
 .tab-chip:has(+ .tab-chip:hover)::after,

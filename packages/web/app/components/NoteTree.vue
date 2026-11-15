@@ -2,11 +2,12 @@
 // The sidebar tree of pages (a page without content but with child pages shows as a folder),
 // with drag and drop (before, after or inside a node), several selected with ⌘- and ⇧-click
 // (utils/tree-selection.ts), inline renaming and a menu on each row (its ⋯ button, or a
-// right-click).
+// right-click). Its rows are NoteTreeRow.
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useLocalStorage } from '@vueuse/core'
 import { DELETE_FOREVER, DELETE_MANY_FOREVER, type TreeItem } from '~/composables/useTree'
-import { actedOn, clickRow, emptySelection, isSelected, shownIds } from '~/utils/tree-selection'
+import { TREE_ROW, type DropZone } from '~/utils/tree-row'
+import { actedOn, clickRow, emptySelection, shownIds } from '~/utils/tree-selection'
 import { BOOKMARK_DRAG_TYPE, BOOKMARK_FROM_TYPE } from '~/editor/bookmark'
 
 const tree = useTree()
@@ -367,7 +368,6 @@ function findItem(items: TreeItem[], id: string): TreeItem | undefined {
 
 // --- Drag and drop ---------------------------------------------------------------------------
 
-type DropZone = 'before' | 'inside' | 'after'
 /** What is dragged: a row, or the selection it's in. */
 const dragged = ref<string[]>([])
 const dropTarget = ref<{ id: string | null; zone: DropZone } | null>(null)
@@ -447,20 +447,27 @@ function reset() {
   dropTarget.value = null
 }
 
-function rowClass(item: TreeItem) {
-  const target = dropTarget.value?.id === item.id ? dropTarget.value.zone : null
-  return [
-    isSelected(selection.value, item.id)
-      ? 'bg-primary/20 text-highlighted'
-      : currentId.value === item.id
-        ? 'bg-elevated text-highlighted font-medium'
-        : 'text-default hover:bg-elevated/60',
-    dragged.value.includes(item.id) && 'opacity-50',
-    target === 'inside' && 'ring-2 ring-primary ring-inset',
-    target === 'before' && 'shadow-[inset_0_2px_0_0_var(--ui-primary)]',
-    target === 'after' && 'shadow-[inset_0_-2px_0_0_var(--ui-primary)]',
-  ]
-}
+// Each row reads what concerns it (NoteTreeRow): this component's own template names none of
+// it, so opening a page redraws two rows, not the tree.
+provide(TREE_ROW, {
+  currentId,
+  selection,
+  dragged,
+  dropTarget,
+  renamingId,
+  renameValue,
+  menu,
+  toggle,
+  click: onRowClick,
+  openForGood,
+  keydown: onRowKeydown,
+  createInside,
+  commitRename,
+  dragStart: onDragStart,
+  dragOver: onDragOver,
+  drop: onDrop,
+  dragEnd: reset,
+})
 </script>
 
 <template>
@@ -502,82 +509,7 @@ function rowClass(item: TreeItem) {
             size="sm"
           >
             <template #item-wrapper="{ item, expanded: isExpanded }">
-              <div
-                class="tree-row group relative flex h-7 cursor-pointer items-center gap-1 rounded-md ps-1 pe-1 text-sm transition-colors select-none"
-                :class="rowClass(item)"
-                :data-current="currentId === item.id || undefined"
-                draggable="true"
-                :data-node-id="item.id"
-                @keydown.capture="onRowKeydown($event, item)"
-                :data-testid="`tree-${item.label}`"
-                :data-selected="isSelected(selection, item.id) || undefined"
-                @click="onRowClick($event, item)"
-                @dblclick="openForGood(item)"
-                @dragstart="onDragStart($event, item)"
-                @dragover.stop="onDragOver($event, item)"
-                @dragleave="dropTarget = null"
-                @drop.stop="onDrop($event, item)"
-                @dragend="reset"
-              >
-                <button
-                  v-if="item.children?.length"
-                  type="button"
-                  class="grid size-5 shrink-0 place-items-center rounded text-dimmed hover:text-default"
-                  :aria-label="isExpanded ? 'Collapse' : 'Expand'"
-                  @click.stop="toggle(item.id)"
-                >
-                  <UIcon
-                    name="i-lucide-chevron-right"
-                    class="size-3.5 transition-transform"
-                    :class="isExpanded && 'rotate-90'"
-                  />
-                </button>
-                <span v-else class="size-5 shrink-0" />
-                <NodeIcon :icon="item.node.icon" :kind="tree.kindOf(item.node)" />
-
-                <UInput
-                  v-if="renamingId === item.id"
-                  v-model="renameValue"
-                  size="xs"
-                  autofocus
-                  aria-label="New title"
-                  class="min-w-0 flex-1"
-                  @click.stop
-                  @keydown.enter.prevent="commitRename"
-                  @keydown.esc.prevent="renamingId = null"
-                  @blur="commitRename"
-                />
-                <span v-else class="min-w-0 flex-1 truncate">{{ item.label }}</span>
-
-                <!-- Over the end of the title, on hover (or focus), as a tab's ×: the title takes
-                     the whole width otherwise. -->
-                <div
-                  v-if="renamingId !== item.id"
-                  class="tree-row-actions absolute inset-y-0 end-0 flex items-center rounded-e-md ps-6 pe-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100"
-                  @click.stop
-                >
-                  <UDropdownMenu
-                    :items="menu(item)"
-                    :content="{ align: 'start', ...keepMovedFocus }"
-                  >
-                    <UButton
-                      icon="i-lucide-ellipsis"
-                      size="xs"
-                      color="neutral"
-                      variant="ghost"
-                      aria-label="Actions"
-                    />
-                  </UDropdownMenu>
-                  <UButton
-                    icon="i-lucide-plus"
-                    size="xs"
-                    color="neutral"
-                    variant="ghost"
-                    aria-label="New page inside"
-                    @click="createInside(item)"
-                  />
-                </div>
-              </div>
+              <NoteTreeRow :item="item" :expanded="isExpanded" />
             </template>
           </UTree>
 

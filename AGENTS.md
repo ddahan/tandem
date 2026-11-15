@@ -41,6 +41,7 @@ There is **no Node on the Mac**: Node and pnpm run in Docker, through `./td`.
 | End-to-end tests                  | `./td e2e` (builds the web app, runs Playwright against the real server)                   |
 | Unit tests of one package         | `./td test server` (`shared`, `server`, `cli`, `web`, `standalone`, `extension`)           |
 | Server benchmark                  | `./td pnpm --filter @tandem/server bench [pages]` (large generated vault, API timings)     |
+| Page switch benchmark             | `./td pnpm --filter @tandem/web bench [tabs]` (after a web build: click to note shown)     |
 | Format / lint                     | `./td format` · `./td lint`                                                                |
 | Any pnpm command                  | `./td pnpm <args>`, e.g. `./td pnpm --filter @tandem/web add <dep>`                        |
 | The real app (the owner's)        | `./td start` · `./td stop` · `./td logs` (http://localhost:3864)                           |
@@ -66,6 +67,11 @@ different data folders. **Never point the dev servers or tests at the owner's da
   (`i-lucide-name`): icons are bundled at build time from what the source mentions.
   Everything clickable shows a pointer: a base rule in `main.css` covers buttons, links and
   ARIA roles; give a custom clickable element one of those (or `cursor-pointer`).
+- **Page switches** must stay short: what a page shows only on hover or when needed (menus,
+  toolbars, a row's buttons) is made then, not with the page; what doesn't change with the
+  page isn't made again; nothing measures the layout while a page mounts. The rules are in
+  [architecture › Page switches](docs/architecture.md#web-app-packagesweb); check a change to
+  the layout, the tree, the tab bar, the note page or the editor with the page switch benchmark.
 - **Comments** explain why (rules, trade-offs, limitations); each module starts with what it
   is responsible for.
 - **French formats** for dates and numbers (`formatDate`, `formatDateTime`, `formatNumber`,

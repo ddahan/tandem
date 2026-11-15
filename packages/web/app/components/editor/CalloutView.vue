@@ -1,4 +1,7 @@
 <script setup lang="ts">
+// A callout: its type (icon and name) above its text; a click on it picks another type. The
+// menu is made when the pointer first reaches the type, not with the callout: a note with many
+// callouts would otherwise open slowly.
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { CALLOUT_TYPES, type CalloutType } from '~/editor/callout'
@@ -24,12 +27,26 @@ const items = computed<DropdownMenuItem[]>(() =>
     onSelect: () => props.updateAttributes({ type: value }),
   })),
 )
+
+/** The pointer came over the type (or it was clicked, by a key): its menu exists from then on. */
+const reached = ref(false)
+const menuOpen = ref(false)
+function openMenu() {
+  if (!props.editor.isEditable) return
+  reached.value = true
+  menuOpen.value = true
+}
 </script>
 
 <template>
   <NodeViewWrapper class="callout" :data-callout="type">
     <div contenteditable="false" class="mb-1 flex items-center">
-      <UDropdownMenu :items="items" :disabled="!editor.isEditable" :content="{ align: 'start' }">
+      <UDropdownMenu
+        v-if="reached && editor.isEditable"
+        v-model:open="menuOpen"
+        :items="items"
+        :content="{ align: 'start' }"
+      >
         <button
           type="button"
           class="flex items-center gap-1.5 rounded text-sm font-semibold text-(--callout) hover:opacity-80"
@@ -38,6 +55,16 @@ const items = computed<DropdownMenuItem[]>(() =>
           {{ META[type].label }}
         </button>
       </UDropdownMenu>
+      <button
+        v-else
+        type="button"
+        class="flex items-center gap-1.5 rounded text-sm font-semibold text-(--callout) hover:opacity-80"
+        @pointerenter="reached = true"
+        @click="openMenu"
+      >
+        <UIcon :name="META[type].icon" class="size-4" />
+        {{ META[type].label }}
+      </button>
     </div>
     <NodeViewContent class="[&>*+*]:mt-3" />
   </NodeViewWrapper>

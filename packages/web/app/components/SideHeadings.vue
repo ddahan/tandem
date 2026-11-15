@@ -2,23 +2,24 @@
 // The note's headings. The one the reader is in is highlighted, with an indicator sliding along
 // the line on the left (as in Nuxt UI's ContentToc, which needs Nuxt Content and anchors).
 import { useResizeObserver } from '@vueuse/core'
-import type { Heading } from '~/components/NoteEditor.vue'
+import type { Outline } from '~/components/NoteEditor.vue'
 import { scrollParent } from '~/utils/current-heading'
 
-const props = defineProps<{
-  headings: Heading[]
-  /** Index of the heading the reader is in (-1: none). */
-  active: number
-}>()
+// `outline` changes in place (the page hands the same object): read here, so that the note
+// page isn't redrawn when the editor reports its headings or the reader scrolls.
+const props = defineProps<{ outline: Outline }>()
+const headings = computed(() => props.outline.headings)
+/** Index of the heading the reader is in (-1: none). */
+const active = computed(() => props.outline.active)
 defineEmits<{ go: [pos: number] }>()
 
-const minLevel = computed(() => Math.min(...props.headings.map((h) => h.level), 6))
+const minLevel = computed(() => Math.min(...headings.value.map((h) => h.level), 6))
 
 const list = useTemplateRef<HTMLElement>('list')
 const indicator = ref<{ top: number; height: number } | null>(null)
 
 function activeItem() {
-  return props.active < 0 ? null : (list.value?.querySelectorAll('button')[props.active] ?? null)
+  return active.value < 0 ? null : (list.value?.querySelectorAll('button')[active.value] ?? null)
 }
 
 function placeIndicator() {
@@ -27,7 +28,7 @@ function placeIndicator() {
 }
 
 watch(
-  () => [props.active, props.headings],
+  () => [active.value, headings.value],
   () => nextTick(placeIndicator),
   { immediate: true },
 )
@@ -35,18 +36,16 @@ useResizeObserver(list, placeIndicator)
 
 // Keeps the highlighted heading in sight in a long list of headings. By hand: a smooth scrollIntoView
 // would stop the note's own smooth scroll (Chromium runs one at a time).
-watch(
-  () => props.active,
-  () =>
-    nextTick(() => {
-      const item = activeItem()
-      const panel = item && scrollParent(item)
-      if (!item || !panel) return
-      const box = panel.getBoundingClientRect()
-      const rect = item.getBoundingClientRect()
-      if (rect.top < box.top) panel.scrollTop -= box.top - rect.top
-      else if (rect.bottom > box.bottom) panel.scrollTop += rect.bottom - box.bottom
-    }),
+watch(active, () =>
+  nextTick(() => {
+    const item = activeItem()
+    const panel = item && scrollParent(item)
+    if (!item || !panel) return
+    const box = panel.getBoundingClientRect()
+    const rect = item.getBoundingClientRect()
+    if (rect.top < box.top) panel.scrollTop -= box.top - rect.top
+    else if (rect.bottom > box.bottom) panel.scrollTop += rect.bottom - box.bottom
+  }),
 )
 </script>
 

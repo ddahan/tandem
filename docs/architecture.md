@@ -344,7 +344,7 @@ table: it runs once.
 
 - Nuxt 4 with `ssr: false`, built with `nuxt generate`, served by the server. In development,
   Nitro's dev proxy forwards `/api`, `/files` and `/mcp` to the dev server.
-- Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree`, navigation, color mode),
+- Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree` and its `NoteTreeRow`s, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
   history, files): beside the note from lg up (`panelOpen`, remembered), over it below
@@ -389,7 +389,7 @@ table: it runs once.
   so a reload never flashes the default theme: plugin `remembered-settings.client.ts`, and a
   head script for the background tone), `useServerEvents` (one EventSource; `resync` after reconnections),
   `useNoteDocument` (one open note: debounced background saves, never two at once, conflicts,
-  external changes, a keepalive save when the page closes).
+  external changes, a keepalive save when the page closes; `prefetchNote`, see Page switches).
 - Editor (`NoteEditor.vue`): `UEditor` in Markdown mode plus our extensions
   (`app/editor/`): wiki links, callouts, details, resizable images, file chips, file drops,
   tables, task lists, code blocks with lowlight (colored by the code theme: CSS variables per
@@ -493,14 +493,48 @@ table: it runs once.
   (an edit, not the load), and when its title changes. Closing picks the most recently used
   tab (`recent`). The list and `recent` are one `useState` value, written to localStorage on
   each change; the layout closes the tabs of notes missing from the tree once it is loaded.
-  Every page's bar is `PageNavbar` (Nuxt UI's navbar): `TabBar` in its left slot, the page's
-  actions in its right one, the title when no tab is open. `TabBar` fits the tabs on two rows:
+  Every page's bar is `PageNavbar` (Nuxt UI's navbar): the tab bar's place in its left slot,
+  the page's actions in its right one, the title when no tab is open. There is one `TabBar` for
+  the app, made by the layout: it teleports itself into the place of the page open
+  (`useTabBarHost`, set by each `PageNavbar` as it mounts), so pages come and go without a tab
+  being made again. Its chips are `TabChip`s, told only what concerns them (active, dragged, a
+  drop mark); they share one menu (the tab right-clicked, as the tree's rows). A press with the
+  mouse shows a tab's page (`pointerdown`, as a browser's tabs; a finger's press may start a
+  scroll, so its click does). `TabBar` fits the tabs on two rows:
   it renders them all, counts the rows (distinct tops: rows are centered, so they move as tabs
   come and go, and are never compared with an earlier layout), then shows fewer until they and
   "+N" take two rows; again when the titles, order, active tab or the bar's width change
-  (a resize observer). The active tab replaces the last one shown when hidden, for display
-  only: drag positions are among the tabs shown, and the move (`moveBefore`) is in the full
-  order.
+  (a resize observer), at the next frame (see Page switches). The active tab replaces the last
+  one shown when hidden, for display only: drag positions are among the tabs shown, and the
+  move (`moveBefore`) is in the full order.
+- Page switches. Going from one page to another makes a new page component (the note page is
+  keyed by the note's id: its state is one note's), and nearly all of its time is the browser's
+  main thread, not the server (a note is read in a few milliseconds). Rules that keep it short,
+  measured by `./td pnpm --filter @tandem/web bench [tabs]` (after a build: the real server on
+  a temporary folder, notes of several sizes, the time from a click in the tree to the frame
+  showing the note):
+  - What doesn't change with the page isn't made again: the tab bar (above), the sidebar. A
+    row of the tree (`NoteTreeRow`) and a tab read from shared state only what concerns them
+    (`utils/tree-row.ts`: computed per row), so a switch redraws the two rows and two tabs it
+    changes. State that only one small component shows is read there, not in the layout or the
+    page: the save status (`SaveStatus` reads `useOpenNoteSave`), the headings and the one
+    being read (one `Outline` object, changed in place, read by `SideHeadings`).
+  - What shows only on hover, or when needed, is made then, not with the page: a tree row's ⋯
+    menu and + button (pointer or focus on the row), a code block's language picker and
+    buttons and a callout's menu (the pointer reaching them: `reached`, kept from then on), the
+    editor's two toolbars (the first selection; the cursor first in a table: `followToolbars`).
+    A late toolbar shows at once (the bubble menu checks as it starts).
+  - Nothing reads the layout (`getBoundingClientRect`, `offsetTop`…) while a page mounts: the
+    browser would lay the whole new page out on the spot, then again once the mount ends (the
+    editor draws its node views a tick later). Measures wait for the next frame (`TabBar`'s
+    `fitSoon`).
+  - A window's width is known at the first render (`useWindowQuery`; VueUse's `useMediaQuery`
+    says false until mounted, and the page was drawn twice, its side panel made late).
+  - The note is asked for at the press on its row (`prefetchNote`, `useNoteDocument`): the
+    click that follows finds it there. Kept two seconds, and dropped if a `note` event says it
+    changed.
+  - The editor writes its Markdown once per document as it opens (`markdownOf`: what it
+    reports, and the note page's check of what it can't show).
 - App shortcuts (`layouts/default.vue`): ⌘W, ⌘N, ⌘T and ⌘⇧T only reach the page in an installed
   app's window (browsers reserve no keys there); ⌘W is a plain keydown listener, not
   `defineShortcuts` (which always prevents the default): with an active tab it prevents the

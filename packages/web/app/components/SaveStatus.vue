@@ -1,25 +1,28 @@
 <script setup lang="ts">
 // Whether the open note is saved ("Saving…", "Saved just now"), at the bottom of the sidebar,
-// next to the version: the note page shares its document's status (useOpenNoteSave). Compact
-// (the sidebar collapsed): the icon alone, the text in its tooltip.
+// next to the version: the note page shares its document's status (useOpenNoteSave), read here
+// so that a change of it redraws this alone, not the sidebar. Nothing when no note is open.
+// Compact (the sidebar collapsed): the icon alone, the text in its tooltip.
 import { formatRelative } from '@tandem/shared'
 import { useIntervalFn } from '@vueuse/core'
-import type { SaveStatus } from '~/composables/useNoteDocument'
 
-const props = defineProps<{ status: SaveStatus; savedAt: number | null; compact?: boolean }>()
+defineProps<{ compact?: boolean }>()
+const open = useOpenNoteSave()
 // Refreshes "Saved 2 min ago".
 const now = ref(Date.now())
 useIntervalFn(() => (now.value = Date.now()), 30_000)
 
 const display = computed(() => {
-  switch (props.status) {
+  switch (open.value?.status) {
     case 'pending':
     case 'saving':
       return { icon: 'i-lucide-loader-circle', text: 'Saving…', class: 'text-muted', spin: true }
     case 'saved':
       return {
         icon: 'i-lucide-cloud-check',
-        text: props.savedAt ? `Saved ${formatRelative(props.savedAt, now.value)}` : 'Saved',
+        text: open.value?.savedAt
+          ? `Saved ${formatRelative(open.value.savedAt, now.value)}`
+          : 'Saved',
         class: 'text-dimmed',
         spin: false,
       }

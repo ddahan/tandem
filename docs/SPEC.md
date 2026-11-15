@@ -558,7 +558,8 @@ inside OneDrive so that it is backed up and synced.
     don't fit are in a "+N" menu at the end; the active tab is always shown, in the last place
     shown when its own place is hidden (the tabs' order doesn't change). On a phone, one row
     that scrolls sideways, keeping the active tab in view. Hovering a tab shows its page's
-    path (the pages it is in, with their icons).
+    path (the pages it is in, with their icons). A tab's page shows as the mouse button goes
+    down on it, as a browser's tabs, not once it comes back up.
   - A click in the tree opens a note in the **preview tab**: in italics, one at most, replaced
     by the next preview (in its place), and closed once another page shows (another tab,
     Home…; a tab opened then takes its place). Unlike VS Code, where it stays. It becomes a tab of its own with a double click in the
@@ -682,7 +683,9 @@ inside OneDrive so that it is backed up and synced.
   offers to install, or says it's installed. Hidden in the installed app and in browsers that
   can't install.
 - English interface; French formats for dates, times and numbers (`17/10/2026 14:32`).
-- Must feel instant: local-first interactions, optimistic updates, no full-page loads.
+- Must feel instant: local-first interactions, optimistic updates, no full-page loads. Going
+  from one page to another is part of it (a click in the tree, a tab): the rules that keep it
+  short are in architecture › Page switches.
 
 ## Out of scope (for now)
 

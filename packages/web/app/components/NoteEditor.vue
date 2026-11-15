@@ -60,6 +60,12 @@ export interface Heading {
   pos: number
 }
 
+/** The note's headings and the one the reader is in (an index, -1 before the first one). */
+export interface Outline {
+  headings: Heading[]
+  active: number
+}
+
 const api = useApi()
 const tree = useTree()
 const toast = useToast()
@@ -835,6 +841,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   stopFollowing?.()
   stopFollowingFiles?.()
+  stopFollowingToolbars?.()
   scroller?.removeEventListener('scroll', onScroll)
   resizes?.disconnect()
   cancelAnimationFrame(frame)
@@ -851,6 +858,19 @@ onBeforeUnmount(() => {
  * change; blank lines don't count (they are tidied on save anyway).
  */
 let reported: string | null = null
+
+/**
+ * The document as Markdown, written once per document: opening a note asks for it twice (what
+ * was `reported`, and the note page's check of what the editor can't show), and writing a long
+ * note takes a while.
+ */
+let written: { doc: unknown; markdown: string } | null = null
+function markdownOf(editor: Editor) {
+  if (written?.doc !== editor.state.doc) {
+    written = { doc: editor.state.doc, markdown: editor.getMarkdown() }
+  }
+  return written.markdown
+}
 
 function onUpdate(value: unknown) {
   const markdown = String(value)
@@ -928,12 +948,42 @@ onMounted(() => {
   void import('@tiptap/extension-emoji').then((module) => (emojis.value = module.gitHubEmojis))
 })
 
+// The two toolbars (a selection's, a table's) are made when first needed, not with the note:
+// each builds its buttons, tooltips and menus, hidden until then, which a page switch would pay
+// for on every note. One made late shows at once when its conditions hold (the bubble menu
+// checks as it starts). Text can't be selected, nor the cursor enter a table, while the `/` or
+// `[[` menu is open: registering a toolbar's plugin (which restarts the editor's plugin views)
+// never closes one.
+const selectionToolbar = ref(false)
+const tableToolbar = ref(false)
+function followToolbars(editor: Editor) {
+  const check = () => {
+    const { selection } = editor.state
+    if (!selection.empty) selectionToolbar.value = true
+    if (!tableToolbar.value && editor.isFocused) {
+      for (let depth = selection.$from.depth; depth > 0; depth--) {
+        if (selection.$from.node(depth).type.name === 'table') tableToolbar.value = true
+      }
+    }
+    if (selectionToolbar.value && tableToolbar.value) stop()
+  }
+  const stop = () => {
+    editor.off('selectionUpdate', check)
+    editor.off('focus', check)
+  }
+  editor.on('selectionUpdate', check)
+  editor.on('focus', check)
+  return stop
+}
+let stopFollowingToolbars: (() => void) | undefined
+
 onMounted(() => {
   const editor = editorRef.value?.editor
   if (!editor) return
-  reported = normalizeMarkdown(editor.getMarkdown())
+  reported = normalizeMarkdown(markdownOf(editor))
   collectHeadings(editor)
   followHistory(editor)
+  stopFollowingToolbars = followToolbars(editor)
   stopFollowingFiles = followRemovedFiles(editor)
   // A daily note drops the blocks of the earlier agenda, which lived in its text (editor/agenda).
   const tr = editor.state.tr
@@ -996,13 +1046,18 @@ defineExpose({
   },
   /** The TipTap editor (for the find bar). */
   editor: computed(() => editorRef.value?.editor),
+  /** The note as the editor writes it, in editor form. */
+  markdown() {
+    const editor = editorRef.value?.editor
+    return editor ? markdownOf(editor) : ''
+  },
   /** Replaces the content (an external change), keeping the cursor where it can. */
   setContent(markdown: string) {
     const editor = editorRef.value?.editor
     if (!editor) return
     const { from } = editor.state.selection
     editor.commands.setContent(markdown, { contentType: 'markdown', emitUpdate: false })
-    reported = normalizeMarkdown(editor.getMarkdown())
+    reported = normalizeMarkdown(markdownOf(editor))
     editor.commands.setTextSelection(Math.min(from, editor.state.doc.content.size))
     collectHeadings(editor)
   },
@@ -1054,6 +1109,7 @@ defineExpose({
       @update:model-value="onUpdate"
     >
       <UEditorToolbar
+        v-if="selectionToolbar"
         :editor="editor"
         :items="toolbarItems"
         layout="bubble"
@@ -1112,6 +1168,7 @@ defineExpose({
       </UEditorToolbar>
 
       <UEditorToolbar
+        v-if="tableToolbar"
         :editor="editor"
         :items="tableItems"
         layout="bubble"

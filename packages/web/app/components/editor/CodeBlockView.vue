@@ -2,6 +2,9 @@
 // Code blocks: syntax highlighting (lowlight decorations), a language picker, a copy button.
 // `mermaid` blocks are diagrams: read mode shows the diagram only; edit mode shows the code with
 // the live diagram below. A toggle switches between them (or double-click the diagram).
+// The picker and the buttons show on hover: they are made when the pointer first reaches the
+// block (`reached`), not with it. A note with many blocks would otherwise open slowly, each
+// one building a menu of languages nobody sees.
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 
 const props = defineProps(nodeViewProps)
@@ -78,6 +81,9 @@ function toggleEditing() {
   }
 }
 
+/** The pointer came over the block: its controls exist from then on. */
+const reached = ref(false)
+
 const copied = ref(false)
 async function copy() {
   await navigator.clipboard.writeText(props.node.textContent)
@@ -87,8 +93,9 @@ async function copy() {
 </script>
 
 <template>
-  <NodeViewWrapper class="group/code relative">
+  <NodeViewWrapper class="group/code relative" @pointerenter="reached = true">
     <div
+      v-if="reached"
       contenteditable="false"
       class="absolute end-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity group-hover/code:opacity-100 focus-within:opacity-100"
     >

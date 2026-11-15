@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import type { Editor } from '@tiptap/core'
 
 /** Calls the API like an agent would (or as the owner). */
 export async function api<T = unknown>(
@@ -53,6 +54,26 @@ export async function openNote(page: Page, id: string) {
 export async function focusEnd(page: Page) {
   await page.locator('.ProseMirror').click()
   await page.keyboard.press('ControlOrMeta+End')
+  await caretRead(page)
+}
+
+/**
+ * Waits until the editor knows where the caret is. After a click or a key that moves the caret
+ * (End, an arrow), the editor reads its place when the browser reports it, a few milliseconds
+ * later: a key it handles itself (Enter, Tab…) pressed sooner, as only a test can, would act
+ * where the caret was before.
+ */
+export async function caretRead(page: Page) {
+  await page.waitForFunction(() => {
+    const dom = document.querySelector('.ProseMirror') as unknown as { editor?: Editor } | null
+    const selection = getSelection()
+    const editor = dom?.editor
+    if (!editor || !selection?.anchorNode || !editor.view.dom.contains(selection.anchorNode)) {
+      return false
+    }
+    const anchor = editor.view.posAtDOM(selection.anchorNode, selection.anchorOffset)
+    return anchor === editor.state.selection.anchor
+  })
 }
 
 export async function waitSaved(page: Page) {

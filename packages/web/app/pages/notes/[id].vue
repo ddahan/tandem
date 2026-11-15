@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BreadcrumbItem, DropdownMenuItem } from '@nuxt/ui'
-import { useLocalStorage, useMediaQuery, watchDebounced } from '@vueuse/core'
+import { useLocalStorage, watchDebounced } from '@vueuse/core'
 import type { Editor as TiptapEditor } from '@tiptap/vue-3'
 import {
   OWNER,
@@ -12,7 +12,7 @@ import {
   isoDate,
 } from '@tandem/shared'
 import DayAgenda from '~/components/agenda/DayAgenda.vue'
-import type { Heading } from '~/components/NoteEditor.vue'
+import type { Outline } from '~/components/NoteEditor.vue'
 import { editorWidthPixels } from '~/composables/useSettings'
 import { DELETE_FOREVER } from '~/composables/useTree'
 import { BLOCK_WIDTHS } from '~/utils/block-widths'
@@ -81,6 +81,7 @@ const editorContent = ref(toEditorMarkdown(content.value, notePath.value))
 const editorKey = ref(0)
 const editor = useTemplateRef<{
   editor: TiptapEditor | undefined
+  markdown(): string
   setContent(markdown: string): void
   scrollTo(pos: number): void
   focus(position?: 'start' | 'end'): void
@@ -127,9 +128,10 @@ function closeFind() {
   findReplacing.value = false
 }
 watch(mode, closeFind)
-const headings = ref<Heading[]>([])
-/** The heading the reader is in (an index in `headings`), highlighted in the Headings panel. */
-const activeHeading = ref(-1)
+// The note's headings and the one the reader is in (highlighted in the Headings panel). One
+// object handed to the panel, which reads it: the editor reports both as it opens and on each
+// scroll, and this page (its bar, its buttons) has nothing to redraw then.
+const outline = shallowReactive<Outline>({ headings: [], active: -1 })
 
 function resetEditor(markdown: string) {
   content.value = markdown
@@ -175,14 +177,15 @@ function checkLosses() {
   losses.value = markdownLosses(content.value, notePath.value)
 }
 // On opening, the editor's own first reading of the note tells, as soon as it exists (before
-// any typing): a second, hidden editor would parse the note twice (200 ms on a long note).
+// any typing): a second, hidden editor would parse the note twice (200 ms on a long note). Its
+// Markdown is the one the editor wrote for itself as it opened (`markdown()`), not written again.
 let checkedOnOpen = false
 watch(
   () => editor.value?.editor,
   (tiptap) => {
     if (!tiptap || checkedOnOpen) return
     checkedOnOpen = true
-    const read = normalizeMarkdown(fromEditorMarkdown(tiptap.getMarkdown(), notePath.value))
+    const read = normalizeMarkdown(fromEditorMarkdown(editor.value!.markdown(), notePath.value))
     losses.value = lostLines(content.value, read)
   },
   { immediate: true },
@@ -439,7 +442,7 @@ const wide = computed(() => fullWidth.value || widthNeeded.value)
 // opens over it only when asked (its button, ⌘\), closing with Esc (in the note: one it didn't
 // use) or a click on the note.
 const panelOpen = useLocalStorage('tandem-side-panel', true)
-const largeWindow = useMediaQuery('(min-width: 1024px)')
+const largeWindow = useWindowQuery('(min-width: 1024px)')
 const panelOver = ref(false)
 watch(largeWindow, () => (panelOver.value = false))
 const panelShown = computed(() => (largeWindow.value ? panelOpen.value : panelOver.value))
@@ -803,8 +806,8 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
           :note-id="id"
           :note-path="notePath"
           @change="onEditorChange"
-          @headings="headings = $event"
-          @active-heading="activeHeading = $event"
+          @headings="outline.headings = $event"
+          @active-heading="outline.active = $event"
           @escape="panelOver = false"
         />
 
@@ -899,8 +902,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
     :note-id="id"
     :calendar-date="calendarDate"
     :note-path="notePath"
-    :headings="headings"
-    :active-heading="activeHeading"
+    :outline="outline"
     :content="content"
     @go-to-heading="(pos) => editor?.scrollTo(pos)"
     @go-to-database="goToDatabase"

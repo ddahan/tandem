@@ -1,5 +1,6 @@
-// One open note: loading, background autosave (debounced, never two saves at once), and
-// conflicts with changes made elsewhere (agents, files edited by hand).
+// One open note: loading (its text may have been asked for a moment before: `prefetchNote`),
+// background autosave (debounced, never two saves at once), and conflicts with changes made
+// elsewhere (agents, files edited by hand).
 //
 // Every save sends the hash of the content the editor started from (`baseHash`); the server
 // refuses it if the note changed since, and returns the current content (a conflict).
@@ -14,6 +15,38 @@ export interface Conflict {
 }
 
 const SAVE_DELAY = 500
+
+// --- A note read just before it opens ----------------------------------------------------------
+// The press on a page's row comes a moment before the click that opens it: the note is asked
+// for at the press (`prefetchNote`), and `load` takes that answer instead of asking again, so
+// the page starts with its note in hand. Kept for that moment only, and dropped if the note
+// changes meanwhile (an agent, a file edited): what opens is never an older version.
+const PREFETCH_MS = 2000
+let prefetched: { id: string; at: number; detail: Promise<NoteDetail> } | null = null
+let followingChanges = false
+
+export function prefetchNote(id: string) {
+  if (prefetched?.id === id && Date.now() - prefetched.at < PREFETCH_MS) return
+  if (!followingChanges) {
+    followingChanges = true
+    // Outside any component: for as long as the app runs.
+    useServerEvents((event) => {
+      if (event.type === 'resync' || (event.type === 'note' && event.id === prefetched?.id)) {
+        prefetched = null
+      }
+    })
+  }
+  const detail = unwrap(useApi().notes[':id'].$get({ param: { id } }))
+  // `load` reports a failure, by asking again.
+  detail.catch(() => {})
+  prefetched = { id, at: Date.now(), detail }
+}
+
+function takePrefetched(id: string): Promise<NoteDetail> | null {
+  const taken = prefetched
+  prefetched = null
+  return taken && taken.id === id && Date.now() - taken.at < PREFETCH_MS ? taken.detail : null
+}
 
 export function useNoteDocument(id: Ref<string>) {
   const api = useApi()
@@ -32,7 +65,9 @@ export function useNoteDocument(id: Ref<string>) {
   async function load() {
     loadError.value = null
     try {
-      const detail = await unwrap(api.notes[':id'].$get({ param: { id: id.value } }))
+      const read = () => unwrap(api.notes[':id'].$get({ param: { id: id.value } }))
+      const early = takePrefetched(id.value)
+      const detail = await (early ? early.catch(read) : read())
       note.value = detail
       baseHash = detail.hash
       pending = null

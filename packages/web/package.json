@@ -11,6 +11,7 @@
     "typecheck": "nuxt prepare && vue-tsc --build && tsc -p tsconfig.tests.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "bench": "node scripts/switch-bench.ts",
     "icons": "node scripts/icons.ts",
     "screenshot": "node scripts/screenshot.ts",
     "file-icons": "node scripts/file-icons.ts"

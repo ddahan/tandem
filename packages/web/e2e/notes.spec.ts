@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import type { Editor } from '@tiptap/core'
 import {
   api,
+  caretRead,
   chooseTheme,
   createNote,
   focusEnd,
@@ -1798,6 +1799,7 @@ test('keeps an empty line as one empty line, save after save', async ({ page, re
   await openNote(page, note.id)
   await page.locator('.ProseMirror p', { hasText: 'One' }).click()
   await page.keyboard.press('End')
+  await caretRead(page)
   await page.keyboard.press('Enter')
   await expect.poll(() => noteContent(request, note.id)).toBe('One\n\n&nbsp;\n\nTwo\n')
   await page.reload()

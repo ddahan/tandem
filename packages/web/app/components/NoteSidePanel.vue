@@ -4,16 +4,15 @@
 // it in a narrower one (`over`), where Esc or a click outside closes it.
 import type { Attachment, SubtreeItems } from '@tandem/shared'
 import { onClickOutside, onKeyStroke, useDebounceFn, useLocalStorage } from '@vueuse/core'
-import type { Heading } from '~/components/NoteEditor.vue'
+import type { Outline } from '~/components/NoteEditor.vue'
 
 const props = defineProps<{
   noteId: string
   /** The day of a daily note (null for any other note). */
   calendarDate: string | null
   notePath: string
-  headings: Heading[]
-  /** Index in `headings` of the heading the reader is in (-1: none). */
-  activeHeading: number
+  /** The note's headings and the one the reader is in: read by the Headings tab alone. */
+  outline: Outline
   content: string
   /** Over the note (a narrow window), not beside it. */
   over?: boolean
@@ -215,8 +214,7 @@ const tabs = computed(() => [
       <SideCalendar v-if="tab === 'calendar'" :date="calendarDate" />
       <SideHeadings
         v-else-if="tab === 'headings'"
-        :headings="headings"
-        :active="activeHeading"
+        :outline="outline"
         @go="(pos) => emit('goToHeading', pos)"
       />
       <SideSubtree v-else-if="tab === 'links'" kind="links" :items="subtreeShown">
