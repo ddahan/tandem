@@ -408,6 +408,12 @@ table: it runs once.
   `code` out of the extension manager's `splittableMarks` (Enter doesn't carry it), moves past
   the end of a line on → before the mark's `exitable` handler (which typed a space), and leaves
   it on a backtick typed at its end. `FileLink` is not exitable either.
+- The cursor before a key (`editor/dom-selection.ts`): ProseMirror reads a click's new cursor
+  on `selectionchange`, a task of its own that a busy page can run after the next keys
+  (Chromium gives input priority); they then acted on the old cursor, and the editor drew it
+  back there. `DomSelection` (first of all key handlers) runs ProseMirror's own
+  `selectionchange` handler on keydown when the browser's selection differs from the one it
+  last saw (internal API: `domObserver`, `domSelectionRange`).
 - Empty lines (`editor/paragraph.ts`): `NoteParagraph` replaces the starter kit's paragraph and
   writes every empty paragraph at the note's top level as `&nbsp;` (TipTap writes the first of
   a row as a blank line, which `normalizeMarkdown` collapsed); TipTap reads `&nbsp;` back as an

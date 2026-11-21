@@ -17,6 +17,7 @@ import { Bookmark } from './bookmark'
 import { Callout } from './callout'
 import { Database } from './database'
 import { Details, DetailsContent, DetailsSummary } from './details'
+import { DomSelection } from './dom-selection'
 import { DeletedFiles, FileChips, FileLink } from './file-chips'
 import { Find } from './find'
 import { InlineCodeEnds } from './inline-code'
@@ -92,6 +93,7 @@ function escapeOut(onEscape: () => void) {
 
 export function createExtensions(options: ExtensionOptions = {}): AnyExtension[] {
   return [
+    DomSelection,
     NoteParagraph,
     InlineCodeEnds,
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: null }),

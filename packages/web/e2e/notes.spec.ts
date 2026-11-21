@@ -1847,6 +1847,29 @@ test('inline code and links end where they end: Enter, → at a line’s end, a 
   await expect.poll(() => noteContent(request, note.id)).toContain('Code `here` after\n')
 })
 
+test('a key acts where the cursor was just put, before the browser says it moved', async ({
+  page,
+  request,
+}) => {
+  const note = await createNote(request, 'Moved cursor', 'One\n\nTwo\n')
+  await openNote(page, note.id)
+  await page.locator('.ProseMirror p', { hasText: 'One' }).click()
+  await page.keyboard.press('End')
+  // The cursor put at the end of "Two" and Enter pressed in one go: `selectionchange` (a task
+  // of its own) hasn't run yet, as when a busy page runs a click's next keys first.
+  await page.evaluate(() => {
+    const text = [...document.querySelectorAll('.ProseMirror p')].find(
+      (p) => p.textContent === 'Two',
+    )!.firstChild!
+    getSelection()!.collapse(text, 3)
+    document
+      .querySelector('.ProseMirror')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  })
+  await page.keyboard.type('Three')
+  await expect.poll(() => noteContent(request, note.id)).toBe('One\n\nTwo\n\nThree\n')
+})
+
 test('moves every cursor with the arrows after ⌘D, until Esc', async ({ page, request }) => {
   const note = await createNote(request, 'Cursors', 'cat one\n\ncat two\n\ncat three\n')
   await openNote(page, note.id)
