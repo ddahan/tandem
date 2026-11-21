@@ -147,6 +147,13 @@ describe('API', () => {
       await client.settings.$patch({ json: { tags: true, trash: false, todos: true } })
     ).json()
     expect(features).toMatchObject({ tags: true, trash: false, todos: true })
+    // Favorites: off, none, until changed; their ids are a list of strings.
+    expect(settings).toMatchObject({ favorites: false, favoriteIds: [] })
+    const favorites = await (
+      await client.settings.$patch({ json: { favorites: true, favoriteIds: [a.id] } })
+    ).json()
+    expect(favorites).toMatchObject({ favorites: true, favoriteIds: [a.id] })
+    expect((await client.settings.$patch({ json: { favoriteIds: [''] } })).status).toBe(400)
   })
 
   it('sets, serves and clears icons', async () => {

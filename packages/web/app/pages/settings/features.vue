@@ -7,7 +7,7 @@ const set = useSettingsSave()
 useHead({ title: 'Features' })
 
 const features: {
-  key: 'tags' | 'trash' | 'todos' | 'bookmarks' | 'daily' | 'spellcheck'
+  key: 'tags' | 'trash' | 'todos' | 'bookmarks' | 'daily' | 'favorites' | 'spellcheck'
   label: string
   description: string
 }[] = [
@@ -38,6 +38,12 @@ const features: {
     label: 'Daily notes',
     description:
       'A note for each day, opened from Today in the sidebar (⌘T in the installed app) or the calendar, with its agenda (/event). Off, they show in the tree, in Calendar.',
+  },
+  {
+    key: 'favorites',
+    label: 'Favorites',
+    description:
+      'Shortcuts to the pages you use most, above the pages: drag a page or folder there, or pick Add to favorites in its menu; drag them to reorder. Off, they are kept for when it is back on.',
   },
   {
     key: 'spellcheck',

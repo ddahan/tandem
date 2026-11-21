@@ -37,8 +37,10 @@ MCP server or a CLI, and every line remembers who wrote it.
   by `⌘⇧F`. Saved from Chrome with Tandem's extension (see below), they land in **Unsorted**,
   right after the pages, to drag into notes; the extension also finds them from the address
   bar (`tb`, then Tab).
-- **Optional features**, in Settings › Features: tags, TODOs, bookmarks, daily notes and spell
-  check are off by default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
+- **Favorites** (optional): shortcuts to the pages you use most, above the tree; drag a page
+  there (it stays in the tree) and drag them to reorder.
+- **Optional features**, in Settings › Features: tags, TODOs, bookmarks, daily notes, favorites
+  and spell check are off by default, the trash on (off, deleting asks, then deletes forever). Off only hides a feature:
   its data stays.
 - **For agents**: an MCP server and a CLI with the same operations.
 - Light, dark or system theme; background tone (white, paper, sepia, cool); accent color, gray tone, corner radius, editor font, width and text size.

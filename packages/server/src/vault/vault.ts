@@ -2219,8 +2219,22 @@ export class Vault {
       await this.db.delete(versions).where(eq(versions.nodeId, row.id))
     }
     await this.databases.deleteForNodes(payload.rows.map((row) => row.id))
+    await this.forgetFavorites(payload.rows.map((row) => row.id))
     await this.db.delete(trash).where(eq(trash.id, trashId))
     this.changed({ type: 'trash' })
+  }
+
+  /** Pages deleted for good leave the favorites (in the trash, they stay: restored, they're back). */
+  private async forgetFavorites(ids: string[]): Promise<void> {
+    const { favoriteIds } = await this.getSettings()
+    const gone = new Set(ids)
+    if (!favoriteIds.some((id) => gone.has(id))) return
+    const value = JSON.stringify(favoriteIds.filter((id) => !gone.has(id)))
+    await this.db
+      .insert(settings)
+      .values({ key: 'favoriteIds', value })
+      .onConflictDoUpdate({ target: settings.key, set: { value } })
+    this.changed({ type: 'settings' })
   }
 
   private async reconcileInternal(): Promise<void> {

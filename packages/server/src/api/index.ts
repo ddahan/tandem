@@ -91,6 +91,8 @@ const settingsPatch = z
     bookmarks: z.boolean(),
     bookmarkInbox: z.string().max(64).nullable(),
     daily: z.boolean(),
+    favorites: z.boolean(),
+    favoriteIds: z.array(z.string().min(1).max(64)).max(1000),
     homeRecent: z.boolean(),
     shortcutHints: z.boolean(),
   })

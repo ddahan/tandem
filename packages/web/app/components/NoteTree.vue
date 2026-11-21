@@ -9,6 +9,7 @@ import { DELETE_FOREVER, DELETE_MANY_FOREVER, type TreeItem } from '~/composable
 import { TREE_ROW, type DropZone } from '~/utils/tree-row'
 import { actedOn, clickRow, emptySelection, shownIds } from '~/utils/tree-selection'
 import { BOOKMARK_DRAG_TYPE, BOOKMARK_FROM_TYPE } from '~/editor/bookmark'
+import { NODES_DRAG_TYPE } from '~/composables/useFavorites'
 
 const tree = useTree()
 const bookmarks = useBookmarks()
@@ -16,6 +17,7 @@ const route = useRoute()
 const showError = useApiErrorToast()
 const { settings } = useSettings()
 const confirm = useConfirm()
+const favorites = useFavorites()
 // ⌘N in the installed app, ⌥⌘N in a browser tab (where ⌘N is the browser's).
 const appWindow = useAppWindow()
 const newPageKeys = computed(() => (appWindow.value ? ['meta', 'n'] : ['meta', 'alt', 'n']))
@@ -227,6 +229,7 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
         icon: 'i-lucide-file-plus',
         onSelect: () => void createInside(item),
       },
+      ...favoriteItems([item.id]),
     ],
     [
       { label: 'Rename', icon: 'i-lucide-pencil', kbds: ['F2'], onSelect: () => startRename(item) },
@@ -276,6 +279,32 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
   ]
 }
 
+/** With favorites on: adds the pages to them, or removes one already there. */
+function favoriteItems(ids: string[]): DropdownMenuItem[] {
+  if (!favorites.enabled.value) return []
+  const [first] = ids
+  if (ids.length === 1 && first && favorites.isFavorite(first))
+    return [
+      {
+        label: 'Remove from favorites',
+        icon: 'i-lucide-star-off',
+        onSelect: () => void favorites.remove(first),
+      },
+    ]
+  const added = ids.filter((id) => !favorites.isFavorite(id))
+  if (!added.length) return []
+  return [
+    {
+      label: ids.length > 1 ? `Add ${added.length} to favorites` : 'Add to favorites',
+      icon: 'i-lucide-star',
+      onSelect: () => {
+        clearSelection()
+        void favorites.place(added)
+      },
+    },
+  ]
+}
+
 /** Downloads a bookmarks file of the page and what is under it (the server writes it). */
 function exportBookmarks(id: string) {
   const link = document.createElement('a')
@@ -297,6 +326,7 @@ function selectionMenu(ids: string[]): DropdownMenuItem[][] {
         },
       },
       { label: 'Move to', icon: 'i-lucide-folder-input', children: moveTargets(ids) },
+      ...favoriteItems(ids),
     ],
     [
       {
@@ -380,7 +410,9 @@ const dropTarget = ref<{ id: string | null; zone: DropZone } | null>(null)
 function onDragStart(event: DragEvent, item: TreeItem) {
   dragged.value = actedOnFrom(item)
   event.dataTransfer?.setData('application/x-tandem-node', item.id)
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  // All of them, for the Favorites section (a drop there adds them, leaving them here).
+  event.dataTransfer?.setData(NODES_DRAG_TYPE, dragged.value.join('\n'))
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'linkMove'
 }
 
 function zoneOf(event: DragEvent): DropZone {

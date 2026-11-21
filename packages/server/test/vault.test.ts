@@ -263,6 +263,22 @@ describe('trash', () => {
     expect(existsSync(join(dataDir, '.tandem/history', page.id))).toBe(false)
     expect(await vault.trashList()).toEqual([])
   })
+  it('keeps favorites through the trash, and forgets those deleted for good', async () => {
+    const { vault } = await createTestVault()
+    const folder = await vault.createPage({ title: 'F', author: OWNER })
+    const kid = await vault.createPage({ parentId: folder.id, title: 'Kid', author: OWNER })
+    const other = await vault.createPage({ title: 'Other', author: OWNER })
+    await vault.updateSettings({ favoriteIds: [kid.id, other.id, folder.id] })
+
+    const { trashId } = await vault.remove(folder.id)
+    expect((await vault.getSettings()).favoriteIds).toEqual([kid.id, other.id, folder.id])
+    await vault.restoreFromTrash(trashId)
+    expect((await vault.getSettings()).favoriteIds).toEqual([kid.id, other.id, folder.id])
+
+    await vault.remove(folder.id)
+    await vault.emptyTrash()
+    expect((await vault.getSettings()).favoriteIds).toEqual([other.id])
+  })
 })
 
 describe('history', () => {

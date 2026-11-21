@@ -224,6 +224,13 @@ export interface Settings {
   bookmarkInbox: string | null
   /** Daily notes: a note per day, reached from a calendar (shared/calendar.ts). */
   daily: boolean
+  /** Favorites: a section above the pages, of shortcuts to some of them. */
+  favorites: boolean
+  /**
+   * The favorites, in order: ids of pages or folders (shortcuts: the pages stay where they are).
+   * One in the trash isn't shown, and is back once restored; deleted for good, it is removed.
+   */
+  favoriteIds: string[]
   /** Home lists the recently updated pages. */
   homeRecent: boolean
   /** Shortcuts' keys shown in the app (buttons, menus, tooltips); off, they still work. */
@@ -248,6 +255,8 @@ export const DEFAULT_SETTINGS: Settings = {
   bookmarks: false,
   bookmarkInbox: null,
   daily: false,
+  favorites: false,
+  favoriteIds: [],
   homeRecent: true,
   shortcutHints: true,
 }

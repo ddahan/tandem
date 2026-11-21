@@ -74,6 +74,13 @@ const GROUPS: Group[] = [
         text: 'Every page has an icon, an emoji or an image of yours (click it, left of the title), shown in the tree, the tabs, the breadcrumb and the search.',
       },
       {
+        id: 'favorites',
+        icon: 'i-lucide-star',
+        title: 'Favorites',
+        text: 'Shortcuts to the pages you use most, above the tree: drag a page or folder there, or pick Add to favorites in its menu, and drag them to reorder. The pages stay where they are.',
+        optional: true,
+      },
+      {
         id: 'tags',
         icon: 'i-lucide-tags',
         title: 'Tags',
@@ -280,13 +287,6 @@ const GROUPS: Group[] = [
     title: 'Not yet',
     description: 'What Tandem doesn’t do yet, planned or left out for now.',
     concepts: [
-      {
-        id: 'favorites',
-        icon: 'i-lucide-star',
-        title: 'Favorites',
-        text: 'Pinning pages to find them quickly.',
-        later: true,
-      },
       {
         id: 'templates',
         icon: 'i-lucide-layout-template',

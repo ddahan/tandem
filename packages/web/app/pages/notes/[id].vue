@@ -511,7 +511,25 @@ async function remove() {
   else await tree.deleteForever(id.value)
 }
 
+const favorites = useFavorites()
 const moreItems = computed<DropdownMenuItem[][]>(() => [
+  ...(favorites.enabled.value
+    ? [
+        [
+          favorites.isFavorite(id.value)
+            ? {
+                label: 'Remove from favorites',
+                icon: 'i-lucide-star-off',
+                onSelect: () => void favorites.remove(id.value),
+              }
+            : {
+                label: 'Add to favorites',
+                icon: 'i-lucide-star',
+                onSelect: () => void favorites.place([id.value]),
+              },
+        ],
+      ]
+    : []),
   ...(noteWindow
     ? []
     : [

@@ -228,12 +228,21 @@ side calendar asks for the events of the weeks it shows; Settings › Features l
 Shortcuts' keys hide with one rule in `main.css` (`html[data-shortcut-hints='off'] kbd`, but not
 under `[data-keys-shown]`: Docs), set by `useSettings`, so no component needs to know.
 
-`tags`, `trash`, `todos`, `bookmarks`, `daily` and `spellcheck` are settings like the others
+`tags`, `trash`, `todos`, `bookmarks`, `daily`, `favorites` and `spellcheck` are settings like the others
 (`Settings`, shared): the web app shows or hides what each one governs, and never changes the
 data (tags stay in SQLite, TODO lines in the Markdown). The server and agents ignore them, with
 one exception: bookmarks off, the server answers the browser extension's bookmark requests
 (its `Origin`) with a 409 and the code `bookmarks_off`, so that the extension can say so
 (`GET /api/bookmarks/status` tells it first).
+
+Favorites are a setting too: `favoriteIds`, the ids of the pages and folders in their order,
+nothing in `nodes` (they are shortcuts). The web app shows those still in the tree, so one in
+the trash hides and comes back restored (its id kept); the vault forgets those deleted for good
+(`deleteTrashItem`, which every "delete forever" goes through). In the web app,
+`useFavorites` changes the list (pure order rules in `utils/favorites.ts`) and `FavoritesList`
+shows it; rows dragged from the tree carry their ids as `application/x-tandem-nodes` (one per
+line), favorites being reordered `application/x-tandem-favorite`. Like other settings, these
+changes aren't undo steps.
 
 ### Databases (`databases.ts`)
 
@@ -344,7 +353,7 @@ table: it runs once.
 
 - Nuxt 4 with `ssr: false`, built with `nuxt generate`, served by the server. In development,
   Nitro's dev proxy forwards `/api`, `/files` and `/mcp` to the dev server.
-- Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree` and its `NoteTreeRow`s, navigation, color mode),
+- Layout: `UDashboardGroup` with a sidebar (search button, `FavoritesList` when favorites are on, `NoteTree` and its `NoteTreeRow`s, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
   and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (calendar, headings,
   items; its body made a frame and a task after it mounts, so the note is drawn first): beside the note from lg up (`panelOpen`, remembered), over it below

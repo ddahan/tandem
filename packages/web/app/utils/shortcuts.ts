@@ -201,6 +201,33 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    id: 'favorites',
+    title: 'Favorites',
+    description:
+      'On a favorite focused in the sidebar (with favorites on, in Settings › Features).',
+    icon: 'i-lucide-star',
+    shortcuts: [
+      { keys: [['arrowup'], ['arrowdown']], label: 'Previous or next favorite' },
+      {
+        keys: [['enter']],
+        label: 'Open in its own tab',
+        description: 'As a double click. A click previews it, as in the tree.',
+      },
+      {
+        keys: [
+          ['alt', 'arrowup'],
+          ['alt', 'arrowdown'],
+        ],
+        label: 'Move up or down',
+      },
+      {
+        keys: [['meta', 'backspace'], ['delete']],
+        label: 'Remove from favorites',
+        description: 'The page itself stays where it is.',
+      },
+    ],
+  },
+  {
     id: 'bookmarks',
     title: 'Bookmarks',
     description:

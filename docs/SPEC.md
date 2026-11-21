@@ -270,7 +270,19 @@ inside OneDrive so that it is backed up and synced.
   Shown in the tree, the
   breadcrumb, the note page, search results and Home. Stored in SQLite (images in
   `<data>/.tandem/icons/`), never in the Markdown.
-- Nothing else (no favorites or templates for now).
+- **Favorites** (Settings › Features; off by default): a section above the pages, of shortcuts
+  to pages and folders (each with its icon; no child pages under them): the pages stay where
+  they are in the tree. A page or folder (or several selected) is added by dragging it onto the
+  section, where it is dropped (before or after a favorite, or at the end), or with "Add to
+  favorites" in its menu (the tree's, the note's ⋯); "Remove from favorites" there takes it out.
+  Favorites are dragged to reorder them, as pages. A click opens one in the preview tab, a
+  double click (or ↵) in a tab of its own, as in the tree; its menu (⋯, or a right-click) opens
+  it in a tab or window, moves it up or down (⌥↑ ⌥↓) and removes it (⌘⌫: the page stays). The
+  section folds (remembered); empty, it says how to add one. A favorite in the trash isn't
+  shown, and is back in its place once restored; deleted for good, it is gone. Turned off, the
+  favorites are kept for when it is back on. Changing them isn't a step of the undo history (a
+  setting).
+- Nothing else (no templates for now).
 
 ## Search
 
@@ -520,7 +532,7 @@ inside OneDrive so that it is backed up and synced.
 
 ## Interface
 
-- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Unsorted when bookmarks are on; TODOs and Trash when on, Settings and Docs at the
+- Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, Favorites when on, tree, Unsorted when bookmarks are on; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes (Edit, Markdown, Authorship, History), side panel
   and ⋯), editor,
   collapsible right panel (Calendar when daily notes are on, Headings, Items: icon tabs named
@@ -687,7 +699,7 @@ inside OneDrive so that it is backed up and synced.
     Tomorrow Night Eighties, both as VS Code's "Tomorrow and Tomorrow Night Operator Mono"
     theme).
   - **Features**: optional parts of the app, each a switch: tags (off by default), the trash
-    (on), TODOs (off), daily notes (off) and spell check (the browser's, while typing in notes,
+    (on), TODOs (off), bookmarks (off), daily notes (off), favorites (off) and spell check (the browser's, while typing in notes,
     titles and fields; off; never in the Markdown source). Turning one off only hides it: tags
     stay on their notes, TODO lines in theirs, and turned back on they show as before; agents
     (MCP, CLI) keep every feature.
@@ -708,7 +720,7 @@ inside OneDrive so that it is backed up and synced.
 
 ## Out of scope (for now)
 
-Templates, export (PDF/HTML), favorites, search inside attachments, multiple
+Templates, export (PDF/HTML), search inside attachments, multiple
 computers on one data folder, syncing with Apple or Google calendars, reminders, authentication (bound to 127.0.0.1 only). For databases:
 relations, formulas, other views (board, calendar), per-database history, converting a table
 into a database. For bookmarks: Safari.
