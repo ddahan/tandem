@@ -111,9 +111,15 @@ test('bookmarks the page from its popup, and says when Tandem can’t take it', 
     )
     .toMatchObject({ title })
   const bookmark = (await api<Saved[]>(request, 'GET', '/bookmarks')).find((b) => b.url === PAGE)
-  // In the inbox note: Unsorted.
-  const unsorted = await api<{ bookmarks: Saved[] }>(request, 'GET', '/bookmarks/unsorted')
-  expect(unsorted.bookmarks.map((b) => b.id)).toContain(bookmark!.id)
+  // In the inbox note: Unsorted. Polled: reads don't wait for the vault's lock, so the bookmark
+  // can show before its card is written into the inbox note.
+  await expect
+    .poll(async () =>
+      (await api<{ bookmarks: Saved[] }>(request, 'GET', '/bookmarks/unsorted')).bookmarks.map(
+        (b) => b.id,
+      ),
+    )
+    .toContain(bookmark!.id)
 
   // The toolbar button shows it's saved; the popup now edits it.
   await expect
