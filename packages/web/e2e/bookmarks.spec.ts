@@ -226,6 +226,12 @@ test('a card in a note edits its bookmark in place, from its menu', async ({ pag
   await openNote(page, note.id)
   const card = page.getByTestId('bookmark-card')
   await card.getByText('Example docs').click()
+  // Its menu: the website, editing, removing it (no other bookmark put in its place).
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Open website',
+    'Edit bookmark',
+    /Remove from the note/,
+  ])
   await page.getByRole('menuitem', { name: 'Edit bookmark' }).click()
   // The card is its fields now, the name focused: what's typed goes there, not in the note.
   const fields = card.getByTestId('bookmark-fields')

@@ -2,7 +2,7 @@
 // A bookmark block: the bookmark's card (favicon, name, site, description; "Used 3 times" when
 // other notes show it too), as it is now: the data is in Tandem (useBookmarks), the note only
 // names it. A click selects it, as any block (framed), and opens its menu (the website, editing
-// the bookmark, another bookmark, removing it); the focus stays in the editor, so ⌫ deletes it
+// the bookmark, removing it); the focus stays in the editor, so ⌫ deletes it
 // and ⌘Z brings it back, as any content. A double click opens the website. Edited, the card
 // becomes the bookmark's fields (BookmarkFields), in place: bookmarks have no page.
 import type { DropdownMenuItem } from '@nuxt/ui'
@@ -13,7 +13,6 @@ import { openWebsite, usesLabel } from '~/composables/useBookmarks'
 const props = defineProps(nodeViewProps)
 
 const bookmarks = useBookmarks()
-const actions = useBookmarkActions()
 const id = computed(() => String(props.node.attrs.id ?? ''))
 const bookmark = computed(() => bookmarks.byId.value.get(id.value) ?? null)
 const missing = computed(() => bookmarks.loaded.value && !bookmark.value)
@@ -50,11 +49,6 @@ function remove() {
   props.editor.chain().focus().setNodeSelection(pos).deleteSelection().run()
 }
 
-async function change() {
-  const picked = await actions.pick()
-  if (picked) props.updateAttributes({ id: picked })
-}
-
 /** Done editing: back to the card, selected (keys go to the note again). */
 function doneEditing() {
   editingFields.value = false
@@ -87,11 +81,6 @@ const menu = computed<DropdownMenuItem[][]>(() => [
   ...(editable.value
     ? [
         [
-          {
-            label: 'Change bookmark…',
-            icon: 'i-lucide-replace',
-            onSelect: () => void change(),
-          },
           {
             label: 'Remove from the note',
             icon: 'i-lucide-x',

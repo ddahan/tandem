@@ -491,7 +491,7 @@ inside OneDrive so that it is backed up and synced.
   isn't saved yet: its card shows once saved). A card shows the bookmark as it is now
   (favicon, name, site, "Used 3 times", two lines of description). A click selects it (framed,
   as any block) and opens its menu, also on its ⋯ button: open the website, edit the bookmark
-  (in the card), put another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes
+  (in the card), remove the card; the focus stays in the note, so ⌫ deletes
   the selected card and ⌘Z brings it back, as any content. A double click opens the website.
   The note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is
   gone says so.

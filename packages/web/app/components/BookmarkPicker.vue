@@ -1,7 +1,6 @@
 <script setup lang="ts">
-// Picks a bookmark to show in a note (`/bookmark`, a card's "Change bookmark"): a search over
-// their names, addresses and descriptions (the server's, as the palette's), the latest first
-// before typing. A new one can be made from here (New bookmark…, or an address pasted), its card
+// Picks a bookmark to show in a note (`/bookmark`): a search over their names, addresses and
+// descriptions (the server's, as the palette's), the latest first before typing. A new one can be made from here (New bookmark…, or an address pasted), its card
 // shown once saved.
 import type { CommandPaletteGroup, CommandPaletteItem } from '@nuxt/ui'
 import { refDebounced } from '@vueuse/core'
