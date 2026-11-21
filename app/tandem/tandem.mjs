@@ -59046,9 +59046,22 @@ var DatabaseStore = class {
     const rows = await this.db.select().from(databaseRows).where(eq(databaseRows.databaseId, id)).orderBy(asc(databaseRows.position));
     return toDatabase(record2, rows);
   }
-  /** The databases of a page, oldest first. */
+  /** The databases of a page (its owner, not necessarily the page showing it), oldest first. */
   async listForNode(nodeId) {
     const records = await this.db.select().from(databases).where(eq(databases.nodeId, nodeId)).orderBy(asc(databases.createdAt));
+    return this.summarize(records);
+  }
+  /**
+   * These databases, whatever page owns them (a block moved or pasted into another note still
+   * shows its database), in the order given; those that don't exist are left out.
+   */
+  async summaries(ids) {
+    if (!ids.length) return [];
+    const records = await this.db.select().from(databases).where(inArray(databases.id, ids));
+    const byId = new Map(records.map((record2) => [record2.id, record2]));
+    return this.summarize(ids.flatMap((id) => byId.get(id) ?? []));
+  }
+  async summarize(records) {
     const result = [];
     for (const record2 of records) {
       const rows = await this.db.select({ id: databaseRows.id }).from(databaseRows).where(eq(databaseRows.databaseId, record2.id));
@@ -59757,9 +59770,6 @@ var Vault = class {
           title: node2?.title ?? link.target
         });
       }
-      const summaries = new Map(
-        (await this.databases.listForNode(row.id)).map((summary) => [summary.id, summary])
-      );
       pages.push({
         id: row.id,
         title: titleFromPath(row.path),
@@ -59770,9 +59780,8 @@ var Vault = class {
         bookmarkIds: [...new Set(bookmarkIdsIn(content))],
         links: externalLinksIn(content),
         attachments: row.kind === "page" ? await this.listAttachments(row) : [],
-        databases: [...new Set(databaseIdsIn(content))].flatMap(
-          (dbId) => summaries.get(dbId) ?? []
-        )
+        // Whatever page owns them: a block moved or pasted from another note shows its database.
+        databases: await this.databases.summaries([...new Set(databaseIdsIn(content))])
       });
     }
     return { pages, truncated: ordered.length > shown.length };
@@ -60074,10 +60083,16 @@ var Vault = class {
   async getDatabase(id) {
     return this.databases.get(id);
   }
-  /** The databases of a page (those its blocks show, and any it no longer shows). */
+  /**
+   * The databases of a page: those its blocks show, in order, whatever page owns them (a block
+   * moved or pasted from another note), then any it owns and no longer shows.
+   */
   async listDatabases(nodeId) {
-    await this.requireRow(nodeId);
-    return this.databases.listForNode(nodeId);
+    const row = await this.requireRow(nodeId);
+    const shown = await this.databases.summaries([...new Set(databaseIdsIn(row.content ?? ""))]);
+    const ids = new Set(shown.map((summary) => summary.id));
+    const owned = await this.databases.listForNode(nodeId);
+    return [...shown, ...owned.filter((summary) => !ids.has(summary.id))];
   }
   /** A new database for a page; the caller adds its block to the page. */
   async createDatabase(nodeId, input2 = {}) {
