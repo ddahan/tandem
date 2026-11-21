@@ -1,7 +1,7 @@
 // Bookmarks: part of the notes. Unsorted in the sidebar (the inbox note's, right after the pages),
-// a click shows one's page, cards in notes (/bookmark, or dragged from Unsorted: moved), "Used
-// N times", the side panel's Bookmarks tab, found by ⌘⇧F, exported for Chrome, and deleted once
-// confirmed, their cards with them.
+// a click shows one's page, cards in notes (/bookmark, a pasted address, or dragged from
+// Unsorted: moved), "Used N times", the side panel's Bookmarks tab, found by ⌘⇧F, exported for
+// Chrome, and deleted once confirmed, their cards with them.
 import { readFile } from 'node:fs/promises'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { api, createNote, noteContent, openNote, waitSaved, focusEnd } from './helpers'
@@ -233,6 +233,72 @@ test('makes a new bookmark from /bookmark’s picker, and shows its card', async
   expect(await noteContent(request, note.id)).toContain(block(made.id))
   // Not in Unsorted: its card is in this note.
   await expect(page.getByTestId('unsorted-Fresh one')).toHaveCount(0)
+})
+
+/** A paste in the note, after the keys that made it: ⌘V, or ⌘⇧V (as plain text, a link). */
+async function paste(page: Page, text: string, shift = false) {
+  await page.evaluate(
+    (input) => {
+      const editor = document.querySelector<HTMLElement>('.ProseMirror')!
+      const keys = {
+        key: input.shift ? 'V' : 'v',
+        metaKey: true,
+        shiftKey: input.shift,
+        bubbles: true,
+      }
+      editor.dispatchEvent(new KeyboardEvent('keydown', keys))
+      const clipboardData = new DataTransfer()
+      clipboardData.setData('text/plain', input.text)
+      editor.dispatchEvent(
+        new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }),
+      )
+    },
+    { text, shift },
+  )
+}
+
+test('a pasted address shows its bookmark’s card (⌘V), or a link (⌘⇧V)', async ({
+  page,
+  request,
+}) => {
+  const saved = await addBookmark(request, { url: 'https://saved.example.com', title: 'Saved' })
+  const note = await createNote(request, 'Pasted links', 'Links:')
+  await openNote(page, note.id)
+  await focusEnd(page)
+  // Already a bookmark: its card, no new one.
+  await paste(page, 'https://saved.example.com/')
+  const cards = page.getByTestId('bookmark-card')
+  await expect(cards).toHaveCount(1)
+  await expect(cards.first()).toContainText('Saved')
+  // Not saved yet: made (no web in the tests: named after its site), then its card.
+  await paste(page, 'https://fresh.example.com/page')
+  await expect(cards).toHaveCount(2)
+  // ⌘⇧V: a link in the text.
+  await paste(page, 'https://plain.example.com/', true)
+  await expect(page.locator('.ProseMirror a[href="https://plain.example.com/"]')).toBeVisible()
+  await expect(cards).toHaveCount(2)
+  await waitSaved(page)
+  const all = await api<Bookmark[]>(request, 'GET', '/bookmarks')
+  expect(all.map((b) => b.url).toSorted()).toEqual([
+    'https://fresh.example.com/page',
+    'https://saved.example.com/',
+  ])
+  const fresh = all.find((b) => b.url === 'https://fresh.example.com/page')!
+  const content = await noteContent(request, note.id)
+  expect(content).toContain(block(saved.id))
+  expect(content).toContain(block(fresh.id))
+  expect(content).toContain('https://plain.example.com/')
+})
+
+test('with bookmarks off, ⌘V pastes an address as a link', async ({ page, request }) => {
+  await api(request, 'PATCH', '/settings', { bookmarks: false })
+  const note = await createNote(request, 'Pasted link', 'Link:')
+  await openNote(page, note.id)
+  await focusEnd(page)
+  await paste(page, 'https://off.example.com/')
+  await expect(page.locator('.ProseMirror a[href="https://off.example.com/"]')).toBeVisible()
+  await expect(page.getByTestId('bookmark-card')).toHaveCount(0)
+  expect(await api<Bookmark[]>(request, 'GET', '/bookmarks')).toEqual([])
 })
 
 test('shows a bookmark’s card in a note, from /, used several times, found by ⌘⇧F', async ({

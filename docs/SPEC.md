@@ -494,6 +494,10 @@ inside OneDrive so that it is backed up and synced.
   the selected card and ⌘Z brings it back, as any content. A double click opens the website.
   The note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is
   gone says so.
+- **Pasting an address** (http or https, alone, with nothing selected, outside code) with ⌘V
+  shows its bookmark's card there, made first when the page isn't saved yet (its name and
+  description read from it, as in the dialog; the card shows once saved, where the paste was).
+  ⌘⇧V pastes it as a link, as does ⌘V when bookmarks are off.
 - **Chrome extension** (`packages/extension`, shipped in the installed app's folder and loaded
   unpacked: Docs › Browser Extension). Its button (or ⌥⇧D) opens a popup with the page's name (its
   title), address and description (its meta tags; the field grows with the text), Cancel and

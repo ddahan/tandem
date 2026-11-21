@@ -171,6 +171,7 @@ const extensions = createExtensions({
   assetsPrefix: () => ownAssetsPrefix(),
   onOpenImage: openImage,
   onEscape: () => emit('escape'),
+  onPasteUrl: pasteBookmark,
 }).map((extension) => {
   if (extension.name === CodeBlockLowlight.name) {
     return (extension as typeof CodeBlockLowlight).extend({
@@ -344,6 +345,52 @@ async function insertBookmark(editor: CoreEditor) {
     ])
     .focus()
     .run()
+}
+
+/**
+ * A web address pasted alone (⌘V; ⌘⇧V pastes a link): its bookmark's card there, made first
+ * when the page isn't saved yet (its name and description read from it, as in the dialog).
+ * Bookmarks off: a link, as before.
+ */
+function pasteBookmark(editor: CoreEditor, url: string, pos: number): boolean {
+  if (!settings.value.bookmarks) return false
+  void insertPastedBookmark(editor, url, pos)
+  return true
+}
+async function insertPastedBookmark(editor: CoreEditor, url: string, pos: number) {
+  // Its page is read meanwhile (a few seconds at most): the card goes where the paste was,
+  // whatever is typed before it.
+  let at = pos
+  const follow = ({ transaction }: { transaction: Transaction }) => {
+    at = transaction.mapping.map(at)
+  }
+  editor.on('transaction', follow)
+  try {
+    const found = await unwrap(api.bookmarks.lookup.$get({ query: { url } }))
+    let id = found.bookmark?.id
+    if (!id) {
+      const preview = await unwrap(api.bookmarks.preview.$post({ json: { url } })).catch(() => null)
+      const { bookmark } = await bookmarkStore.create({
+        url,
+        title: preview?.title ?? '',
+        description: preview?.description ?? '',
+      })
+      id = bookmark.id
+    }
+    if (editor.isDestroyed) return
+    editor
+      .chain()
+      .insertContentAt(Math.min(at, editor.state.doc.content.size), [
+        { type: 'bookmark', attrs: { id } },
+        { type: 'paragraph' },
+      ])
+      .focus()
+      .run()
+  } catch (error) {
+    showError(error, 'Could not bookmark the address')
+  } finally {
+    editor.off('transaction', follow)
+  }
 }
 
 /** `/event` (daily notes): the add line of the day's agenda, above the note (DayAgenda). */

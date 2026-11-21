@@ -374,7 +374,12 @@ table: it runs once.
   page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks` closes the
   tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for
   bookmarks dragged from Unsorted: `application/x-tandem-bookmark`, with
-  `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. `SideBookmarks`
+  `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. A web address
+  pasted alone goes to `editor/paste-url.ts` first (before the link extension's paste handler):
+  `handlePaste` doesn't say whether Shift was held, so the plugin watches the ⌘V key; without
+  Shift it hands the address to `NoteEditor`, which looks it up, makes it (preview, then create)
+  when new and inserts its card at the paste position, mapped through the edits meanwhile.
+  `SideBookmarks`
   reads the note's Markdown (`bookmarkIdsIn`, shared `externalLinksIn`) only while Items
   shows.
 - The side panel's Items tab (`SideItems`): four `SideSubtree` sections (header, fold in

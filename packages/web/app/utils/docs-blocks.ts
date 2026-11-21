@@ -64,7 +64,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'Links',
         icon: 'i-lucide-link',
         description:
-          'A pasted address becomes a link. ⌘-click opens one; a plain click puts the cursor in it, to edit it.',
+          'A pasted address becomes a link (⌘⇧V; ⌘V makes its bookmark’s card when bookmarks are on). ⌘-click opens one; a plain click puts the cursor in it, to edit it.',
         markdown: 'Read [the release notes](https://example.com/releases) before the demo.',
       },
       {
@@ -220,7 +220,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'Bookmark',
         icon: 'i-lucide-bookmark',
         description:
-          'A website’s card (its favicon, name, site and description), from your bookmarks (Settings › Features). A click selects it and opens its menu (the website, the bookmark, another one, removing it), a double click opens the website; ⌫ deletes it, as any block. One bookmark per page: shown in several notes, its card says “Used 3 times”, and changing it changes every card. Dragged from Unsorted into a note, it moves there. Its data is in Tandem: the note only has a block naming it.',
+          'A website’s card (its favicon, name, site and description), from your bookmarks (Settings › Features). A click selects it and opens its menu (the website, the bookmark, another one, removing it), a double click opens the website; ⌫ deletes it, as any block. One bookmark per page: shown in several notes, its card says “Used 3 times”, and changing it changes every card. Dragged from Unsorted into a note, it moves there. A web address pasted with ⌘V shows its card (bookmarking the page first), ⌘⇧V pastes a link. Its data is in Tandem: the note only has a block naming it.',
         slash: 'Bookmark',
         markdown: '```bookmark\nid: Kx3fq9P2mZ0a\n```',
         preview: null,

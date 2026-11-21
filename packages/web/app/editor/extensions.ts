@@ -26,6 +26,7 @@ import { ListKeys } from './list-keys'
 import { NestedOrderedList } from './ordered-list'
 import { ListMarkers } from './list-markers'
 import { NoteParagraph } from './paragraph'
+import { PasteUrl } from './paste-url'
 import { Todos } from './todos'
 import { Occurrences } from './occurrences'
 import { ResizableImage, type OpenedImage } from './image'
@@ -58,6 +59,8 @@ export interface ExtensionOptions {
   onOpenImage?: (image: OpenedImage) => void
   /** Esc in the note that nothing in it used (extra cursors, a menu): the page's to use. */
   onEscape?: () => void
+  /** A web address pasted alone (⌘V): returns whether the note took it (PasteUrl). */
+  onPasteUrl?: (editor: Editor, url: string, pos: number) => boolean
 }
 
 /**
@@ -134,6 +137,7 @@ export function createExtensions(options: ExtensionOptions = {}): AnyExtension[]
       },
     }),
     ...(options.onEscape ? [escapeOut(options.onEscape)] : []),
+    ...(options.onPasteUrl ? [PasteUrl.configure({ onPasteUrl: options.onPasteUrl })] : []),
   ]
 }
 

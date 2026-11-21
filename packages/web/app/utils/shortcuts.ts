@@ -418,6 +418,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: [['meta', 'shift', 'b']], label: 'Quote' },
       { keys: [['meta', 'alt', 'c']], label: 'Code block' },
       {
+        keys: [['meta', 'shift', 'v']],
+        label: 'Paste an address as a link',
+        description: 'With bookmarks on, ⌘V shows its bookmark’s card instead.',
+      },
+      {
         keys: [
           ['meta', 'z'],
           ['meta', 'shift', 'z'],
