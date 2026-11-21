@@ -217,3 +217,28 @@ test('Safari’s Add to Dock app shows the keys of a browser tab (Safari keeps t
   await expect(page.getByTestId('calendar-keys')).toContainText('⌃')
   await expect(page.getByTestId('calendar-keys')).not.toContainText('⌘')
 })
+
+test('lists the features in Settings › Specs, filtered by status', async ({ page }) => {
+  await page.goto('/settings/general')
+  await page
+    .getByRole('navigation', { name: 'Settings' })
+    .getByRole('link', { name: 'Specs' })
+    .click()
+  await expect(page).toHaveURL(/\/settings\/specs$/)
+  const specs = page.getByTestId('specs')
+  const items = specs.getByTestId('spec')
+  const all = await items.count()
+  expect(all).toBeGreaterThan(20)
+  await expect(specs.getByRole('heading', { name: 'Databases' })).toBeVisible()
+
+  await specs.getByRole('tab', { name: /^Not yet/ }).click()
+  await expect(items.first()).toContainText('Not yet')
+  await expect(specs.getByText('Templates', { exact: true })).toBeVisible()
+  await expect(specs.getByText('Autosave', { exact: true })).toHaveCount(0)
+
+  await specs.getByRole('tab', { name: /^Available/ }).click()
+  await expect(specs.getByText('Autosave', { exact: true })).toBeVisible()
+  await expect(specs.getByText('Templates', { exact: true })).toHaveCount(0)
+  await specs.getByRole('tab', { name: /^All/ }).click()
+  await expect(items).toHaveCount(all)
+})

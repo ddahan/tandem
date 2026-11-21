@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Settings, in tabs (as the Docs): General, Appearance, Editor, Features. One page per tab
+// Settings, in tabs (as the Docs): General, Appearance, Editor, Features, Specs. One page per tab
 // (settings/*), so each has its address.
 import type { NavigationMenuItem } from '@nuxt/ui'
 
@@ -8,6 +8,7 @@ const tabs: NavigationMenuItem[] = [
   { label: 'Appearance', icon: 'i-lucide-palette', to: '/settings/appearance' },
   { label: 'Editor', icon: 'i-lucide-type', to: '/settings/editor' },
   { label: 'Features', icon: 'i-lucide-toggle-right', to: '/settings/features' },
+  { label: 'Specs', icon: 'i-lucide-list-checks', to: '/settings/specs' },
 ]
 </script>
 

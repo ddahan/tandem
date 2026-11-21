@@ -672,6 +672,12 @@ inside OneDrive so that it is backed up and synced.
     titles and fields; off; never in the Markdown source). Turning one off only hides it: tags
     stay on their notes, TODO lines in theirs, and turned back on they show as before; agents
     (MCP, CLI) keep every feature.
+  - **Specs**: every feature of the app in a few words, grouped (pages, tabs, writing, links
+    and files, databases, search, daily notes, TODOs, bookmarks, history, agents, the app),
+    each marked "Optional" when it is a switch in Features, and what doesn't exist yet marked
+    "Not yet" (this document's Out of scope, among others); a filter shows all, the available
+    ones or those not there yet. Functional, not technical: this document has the details.
+    A feature added or ruled out is added there too.
 - The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
   in your color and the agent's amber, the agent's amber page behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
   got at install.
