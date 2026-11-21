@@ -34,6 +34,28 @@ describe('databases', () => {
     ])
   })
 
+  it('lists the databases a page shows, whatever page owns them, then those it only owns', async () => {
+    const { vault, page } = await setup()
+    // Made on Books, its block then moved to Shopping (cut and pasted): still Books'.
+    const moved = await vault.createDatabase(page.id, { title: 'Products' })
+    const kept = await vault.createDatabase(page.id, { title: 'Kept' })
+    const shopping = await vault.createPage({
+      parentId: page.id,
+      title: 'Shopping',
+      content: `\`\`\`database\nid: ${moved.id}\n\`\`\`\n\n\`\`\`database\nid: gone\n\`\`\``,
+      author: OWNER,
+    })
+    expect(await vault.listDatabases(shopping.id)).toEqual([
+      { id: moved.id, title: 'Products', rowCount: 1 },
+    ])
+    // Books shows none of them now: it still lists those it owns.
+    expect((await vault.listDatabases(page.id)).map((d) => d.title)).toEqual(['Products', 'Kept'])
+    expect(kept.id).toBeTruthy()
+    // The side panel's sub-pages too.
+    const { pages } = await vault.subtreeItems(page.id)
+    expect(pages[1]!.databases).toEqual([{ id: moved.id, title: 'Products', rowCount: 1 }])
+  })
+
   it('checks values against their column, and announces each change', async () => {
     const { vault, page } = await setup()
     const events: ServerEvent[] = []

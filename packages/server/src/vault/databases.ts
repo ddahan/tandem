@@ -116,13 +116,28 @@ export class DatabaseStore {
     return toDatabase(record, rows)
   }
 
-  /** The databases of a page, oldest first. */
+  /** The databases of a page (its owner, not necessarily the page showing it), oldest first. */
   async listForNode(nodeId: string): Promise<DatabaseSummary[]> {
     const records = await this.db
       .select()
       .from(databases)
       .where(eq(databases.nodeId, nodeId))
       .orderBy(asc(databases.createdAt))
+    return this.summarize(records)
+  }
+
+  /**
+   * These databases, whatever page owns them (a block moved or pasted into another note still
+   * shows its database), in the order given; those that don't exist are left out.
+   */
+  async summaries(ids: string[]): Promise<DatabaseSummary[]> {
+    if (!ids.length) return []
+    const records = await this.db.select().from(databases).where(inArray(databases.id, ids))
+    const byId = new Map(records.map((record) => [record.id, record]))
+    return this.summarize(ids.flatMap((id) => byId.get(id) ?? []))
+  }
+
+  private async summarize(records: DatabaseRecord[]): Promise<DatabaseSummary[]> {
     const result: DatabaseSummary[] = []
     for (const record of records) {
       const rows = await this.db

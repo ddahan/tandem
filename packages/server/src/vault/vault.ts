@@ -504,9 +504,6 @@ export class Vault {
           title: node?.title ?? link.target,
         })
       }
-      const summaries = new Map(
-        (await this.databases.listForNode(row.id)).map((summary) => [summary.id, summary]),
-      )
       pages.push({
         id: row.id,
         title: titleFromPath(row.path),
@@ -517,9 +514,8 @@ export class Vault {
         bookmarkIds: [...new Set(bookmarkIdsIn(content))],
         links: externalLinksIn(content),
         attachments: row.kind === 'page' ? await this.listAttachments(row as NodeRow) : [],
-        databases: [...new Set(databaseIdsIn(content))].flatMap(
-          (dbId) => summaries.get(dbId) ?? [],
-        ),
+        // Whatever page owns them: a block moved or pasted from another note shows its database.
+        databases: await this.databases.summaries([...new Set(databaseIdsIn(content))]),
       })
     }
     return { pages, truncated: ordered.length > shown.length }
@@ -889,10 +885,16 @@ export class Vault {
     return this.databases.get(id)
   }
 
-  /** The databases of a page (those its blocks show, and any it no longer shows). */
+  /**
+   * The databases of a page: those its blocks show, in order, whatever page owns them (a block
+   * moved or pasted from another note), then any it owns and no longer shows.
+   */
   async listDatabases(nodeId: string): Promise<DatabaseSummary[]> {
-    await this.requireRow(nodeId)
-    return this.databases.listForNode(nodeId)
+    const row = await this.requireRow(nodeId)
+    const shown = await this.databases.summaries([...new Set(databaseIdsIn(row.content ?? ''))])
+    const ids = new Set(shown.map((summary) => summary.id))
+    const owned = await this.databases.listForNode(nodeId)
+    return [...shown, ...owned.filter((summary) => !ids.has(summary.id))]
   }
 
   /** A new database for a page; the caller adds its block to the page. */
