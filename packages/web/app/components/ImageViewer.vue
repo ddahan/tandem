@@ -1,13 +1,13 @@
 <script setup lang="ts">
 // An image shown full screen, as large as the window lets it be without cropping or stretching
-// it: from a double click on an image in a note, or a click in the Files panel. Esc, the close
+// it: from a double click on an image in a note, or a click in the side panel's Files. Esc, the close
 // button or a click around the image closes it; another button opens it in a new tab.
 const props = defineProps<{
   /** Its address (`/files/…`, or any image's). Null: nothing shown. */
   src: string | null
   /** Its name, the viewer's title. */
   name: string
-  /** Under the name (its size, from the Files panel). */
+  /** Under the name (its size, from the side panel's Files). */
   description?: string
 }>()
 const open = defineModel<boolean>('open', { required: true })

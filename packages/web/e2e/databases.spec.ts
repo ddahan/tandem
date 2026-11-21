@@ -100,7 +100,7 @@ test('inserts a database, edits it in place, and saves only its block in the not
   await expect(page.getByTestId('database').getByTestId('database-row')).toHaveCount(1)
 
   // Listed in the side panel.
-  await page.getByRole('tab', { name: 'Databases' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.getByRole('button', { name: /Reading list\s*2 rows/ })).toBeVisible()
 })
 

@@ -74,7 +74,7 @@ test('links notes with [[ and follows the link', async ({ page, request }) => {
   )
   expect(page.context().pages()).toHaveLength(1)
   // The backlink is listed in the side panel.
-  await page.getByRole('tab', { name: 'Links' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.getByRole('link', { name: /Link source/ })).toBeVisible()
 })
 
@@ -189,14 +189,16 @@ test('keeps history and restores a version', async ({ page, request }) => {
 test('attaches files from the side panel', async ({ page, request }) => {
   const note = await createNote(request, 'Attachments note', 'Files below.')
   await openNote(page, note.id)
-  await page.getByRole('tab', { name: 'Files' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   const png = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
     'base64',
   )
-  // The panel's empty state says how; "click here" opens the file picker.
+  // The Files section's empty line says how; "click here" opens the file picker.
   const panel = page.locator('#tandem-panels-panel-note-side')
-  await expect(panel).toContainText('Upload a file by dragging it on the note, or click here.')
+  await expect(panel.getByTestId('side-empty-files')).toHaveText(
+    'Drop files on the note, or click here.',
+  )
   const chooser = page.waitForEvent('filechooser')
   await panel.getByRole('button', { name: 'click here' }).click()
   await (await chooser).setFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: png })
@@ -226,7 +228,7 @@ test('shows an image of the Files panel full screen, other files in a new tab', 
     expect(response.ok()).toBe(true)
   }
   await openNote(page, note.id)
-  await page.getByRole('tab', { name: 'Files' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   const image = page
     .locator('#tandem-panels-panel-note-side')
     .getByRole('link', { name: 'wide.svg' })
@@ -511,7 +513,7 @@ test('drops a file into a note, shown as a file chip', async ({ page, request })
   ])
   expect(fileRequest.frame().page()).toBe(opened)
   await opened.close()
-  await page.getByRole('tab', { name: 'Files' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   await expect(page.getByTestId('file-icon').locator('svg')).toHaveCount(1)
   // Hovering the file doesn't move its name, nor underline it (as the chips).
   const name = page
@@ -572,7 +574,7 @@ test('removing a file’s last link asks whether to delete the file too', async 
   // From the Files panel: a file kept (in no link), and one the note shows, its chip going too.
   await dropFiles(page, [{ name: 'linked.txt', type: 'text/plain', text: 'L' }])
   await expect(chips).toHaveText(['linked.txt'])
-  await page.getByRole('tab', { name: 'Files' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   for (const name of ['keep.txt', 'linked.txt']) {
     const row = page.getByRole('listitem').filter({ hasText: name })
     await row.hover()
@@ -656,7 +658,7 @@ test('a file deleted for good never comes back: undo, redo, the Files panel, a r
   await page.keyboard.press('Backspace')
   await dialog.getByRole('button', { name: 'Keep it' }).click()
   await expect(chips).toHaveCount(0)
-  await page.getByRole('tab', { name: 'Files', exact: true }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
   const deleteFromPanel = async (name: string) => {
     const row = page.getByRole('listitem').filter({ hasText: name })
     await row.hover()
@@ -1556,26 +1558,35 @@ test('names the side panel tabs by tooltips, icons only', async ({ page, request
   const panel = page.locator('#tandem-panels-panel-note-side')
   if (!(await panel.isVisible()))
     await page.getByRole('button', { name: 'Toggle side panel' }).click()
-  const files = panel.getByRole('tab', { name: 'Files' })
-  await expect(files).toHaveText('')
-  await files.hover()
-  await expect(page.getByRole('tooltip')).toHaveText('Files')
-  await files.click()
-  await expect(files).toHaveAttribute('aria-selected', 'true')
+  const items = panel.getByRole('tab', { name: 'Items' })
+  await expect(items).toHaveText('')
+  await items.hover()
+  await expect(page.getByRole('tooltip')).toHaveText('Items')
+  await items.click()
+  await expect(items).toHaveAttribute('aria-selected', 'true')
   await expect(panel.getByRole('tab', { name: 'Headings' })).toHaveAttribute(
     'aria-selected',
     'false',
   )
+  // The four kinds that were tabs are its sections, in this order, each empty in one line.
+  await expect(panel.getByTestId('side-section-toggle')).toHaveText([
+    /Files\s*0/,
+    /Databases\s*0/,
+    /Page links\s*0/,
+  ])
+  await expect(panel.getByTestId('side-empty-databases')).toHaveText(
+    'Type /database in the note to add one.',
+  )
+  // A section folds (remembered).
+  await panel.getByRole('button', { name: 'Fold Databases' }).click()
+  await expect(panel.getByTestId('side-empty-databases')).toBeHidden()
+  await page.reload()
+  await expect(panel.getByRole('button', { name: 'Unfold Databases' })).toBeVisible()
+  await panel.getByRole('button', { name: 'Unfold Databases' }).click()
+  await expect(panel.getByTestId('side-empty-databases')).toBeVisible()
 
-  // Empty tabs say so the same way.
-  for (const [tab, title] of [
-    ['Headings', 'No headings'],
-    ['Links', 'No links'],
-    ['Databases', 'No databases'],
-  ]) {
-    await panel.getByRole('tab', { name: tab }).click()
-    await expect(panel.locator('[data-slot="title"]', { hasText: title })).toBeVisible()
-  }
+  await panel.getByRole('tab', { name: 'Headings' }).click()
+  await expect(panel.locator('[data-slot="title"]', { hasText: 'No headings' })).toBeVisible()
 })
 
 test('resizes the side panel from its left edge, remembered', async ({ page, request }) => {

@@ -255,7 +255,7 @@ export const DOCS_BLOCK_GROUPS: DocsBlockGroup[] = [
         title: 'File',
         icon: 'i-lucide-paperclip',
         description:
-          'Any other file, shown as a chip with its type’s icon: a click opens it. The Files panel lists them all.',
+          'Any other file, shown as a chip with its type’s icon: a click opens it. The side panel’s Items lists them all.',
         slash: 'Image or file',
         markdown:
           '[report.pdf](Roadmap.assets/report.pdf) and [budget.xlsx](Roadmap.assets/budget.xlsx)',

@@ -156,11 +156,11 @@ inside OneDrive so that it is backed up and synced.
 - **Images** display inline and can be resized (saved as `<img src="…" width="…">`); a
   selected one is framed (the image only, its resize dots on the frame). Resizing keeps its
   proportions, and so does a column narrower than its width (it shrinks, its height with it).
-  A double click shows it full screen (as the Files panel does).
+  A double click shows it full screen (as the side panel's Files does).
 - **Files**: drop or paste a file anywhere in a note: it is copied into the note's `.assets/`
   folder and inserted at the drop point, as an image or as a file chip (a link, with the
   icon of its file type, or a generic one). A chip is a button: clicking it opens the file
-  in a new tab, as in the Files panel (the browser shows PDFs, images, videos and text, and
+  in a new tab, as in the side panel's Files (the browser shows PDFs, images, videos and text, and
   downloads other files). Files over
   10 MB ask for confirmation first. No maximum size.
 - **Databases**: next to tables (GFM, in the note), `/database` inserts a database: a table
@@ -204,11 +204,11 @@ inside OneDrive so that it is backed up and synced.
   doesn't show it selected (framed) when opened: only a click, the keyboard or the block
   handle select it (bookmark cards alike). A database shown again (its note
   reopened) appears at once as it was last seen, then updates if it changed meanwhile.
-- **Databases panel** (side panel): the databases the note shows, in order, with their row
-  counts; a click scrolls to one.
-- **Files panel** (side panel): the note's attachments, with their size. No drop zone: files
-  are dropped on the note; the panel's "click here" opens the file picker, and picked files are
-  attached and added at the end of the note (empty, the panel says so like the other tabs). Clicking an image shows it
+- **Databases** (the side panel's Items): the databases the note shows, in order, with their
+  row counts; a click scrolls to one.
+- **Files** (the side panel's Items): the note's attachments, with their size. No drop zone:
+  files are dropped on the note; the section's + (and "click here" in its empty line) opens the
+  file picker, and picked files are attached and added at the end of the note. Clicking an image shows it
   full screen (as a double click on one in the note), as large as the window lets it be without
   cropping or stretching it (a small one at its own size), with its name and size; Esc, a click
   around it or its close button close it, and its new-tab button (next to the close button,
@@ -217,7 +217,7 @@ inside OneDrive so that it is backed up and synced.
   undo…; not a cut, pasted back elsewhere) asks whether to delete the file too: "Delete the
   file" deletes it for good (undo doesn't bring it back), "Keep it" leaves it in the Files
   panel. A file linked again meanwhile stays. Only the note's own attachments.
-- **Deleting a file from the Files panel**: a trash button on hover (or focus), in place of its
+- **Deleting a file from the side panel's Files**: a trash button on hover (or focus), in place of its
   size, for any file, linked from the note or not (a file kept when its last link went), asks
   first, then deletes it for good, and its links and images leave the note at once, leaving no
   empty line. That isn't an undo step: ⌘Z goes on with what was typed before it.
@@ -429,7 +429,7 @@ inside OneDrive so that it is backed up and synced.
 ## Bookmarks
 
 - Links to websites, kept in Tandem instead of the browser: optional (Settings › Features, off
-  by default). Off, Unsorted, the side panel's Bookmarks tab and `/bookmark` go, and the
+  by default). Off, Unsorted, the side panel's Bookmarks section and `/bookmark` go, and the
   extension says so; cards already in notes still show, and agents still use them.
 - **Part of the notes**: bookmarks have no folders of their own. A theme's note holds its
   websites as cards, with its text, files and databases: the notes showing them (and their
@@ -454,12 +454,12 @@ inside OneDrive so that it is backed up and synced.
   tree, at that page's end; either way it leaves the inbox note (sorted). A right click on the
   section: New bookmark, Open the inbox note, Export all for Chrome. Empty, it says where
   bookmarks come from.
-- **Bookmarks panel** (side panel, a tab between Links and History): the note's bookmark cards,
-  in order (favicon, name, site, "Used 3 times"; a button to the bookmark's page), then its
+- **Bookmarks** (the side panel's Items, between Files and Databases): the note's bookmark
+  cards, in order (favicon, name, site, "Used 3 times"; a button to the bookmark's page), then its
   links to websites in the text (`[text](https://…)`, `<https://…>`, bare addresses; each
   address once; not in code, nor images), with the favicon of their bookmark when the page is
   saved. A click scrolls to one in the note, a double click or ↵ opens its website. Read from
-  the note's Markdown, only while the tab shows. Empty, it says how to add one.
+  the note's Markdown, only while the Items tab shows.
 - **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): everything
   **edited in place**, saved when a field is left (↵ in one-line fields, Esc puts a field
   back): its icon, name, address (an address already saved is refused, with a link to its
@@ -523,29 +523,34 @@ inside OneDrive so that it is backed up and synced.
 - Nuxt UI Dashboard layout: sidebar (search, Today when daily notes are on, tree, Unsorted when bookmarks are on; TODOs and Trash when on, Settings and Docs at the
   bottom, then the app's version, the open note's save status ("Saving…", "Saved just now"; its icon alone, the text in a tooltip, when the sidebar is collapsed) and collapse; the logo leads Home), one bar above the page (the tabs, and the page's actions: for a note its modes (Edit, Markdown, Authorship, History), side panel
   and ⋯), editor,
-  collapsible right panel (Headings, Links, Bookmarks when on, Files, Databases: icon tabs
-  named by tooltips; below 1024px there's no room beside the note: the note stays, the panel
+  collapsible right panel (Calendar when daily notes are on, Headings, Items: icon tabs named
+  by tooltips; what it shows is made once the note is drawn, the note first; below 1024px there's no room beside the note: the note stays, the panel
   hides, and its button or ⌘\ opens it over the note, closed by Esc, a click on the note or
   its ×; back above 1024px it is as it was left there), resizable from its left
   edge like the sidebar from its right one (remembered; a double-click on the edge resets it). Full-width toggle.
   The Headings panel highlights the heading being read; one picked in it stays highlighted until the
   note is scrolled.
   Keyboard shortcuts throughout.
-- **Sub-pages in the side panel**: on a page (or folder) with pages under it, the Links, Bookmarks,
-  Files and Databases tabs list theirs too, shown two ways from a switch at the top of the tab
-  (remembered). **Tree**: the page's own, as usual, then its sub-pages nested as in the sidebar's
-  tree (icon, title, guide lines; a click on a title opens it), each with its items and how many it
-  and its pages hold, foldable with its chevron (remembered); a page holding none, nor any of its
-  pages, is left out; with none of its own, Bookmarks and
-  Databases say so in one line instead of their empty state. **Flat**: all of them in one list,
-  each naming its page, sorted by page (the tree's order), name, or what the kind has: size
-  (largest first) and type for files, site for bookmarks, rows for databases (remembered per
-  tab). A click opens an item: a link's or database's page, a bookmark's page (a double click
-  its website), a file, a website. Links lists the pages they link to ("Linked from" stays the
-  page's own, in Tree). Read only while the panel shows one of those tabs, and again when
-  pages change; at most 500 pages under it (it says so beyond). A page without sub-pages shows
-  its tab alone, without the switch, and so does a tab with nothing in the page nor under it
-  (its empty state).
+- **Items** (a side panel tab): what the page holds, in four sections, in this order: **Files**,
+  **Bookmarks** (when on), **Databases** and **Page links** (notes linking to it, "Linked from",
+  and notes it links to, "Links to"). Each section has a header (its name and how many it holds,
+  with its sub-pages'; a click folds it, remembered) and one line per item, all of the same
+  height (name, then its detail: size, site, rows, missing). Empty, a section says how to add
+  one in one line.
+- **Sub-pages in the side panel**: on a page (or folder) with pages under it, each section of
+  Items lists theirs too, shown two ways from one switch at the top of the tab (remembered;
+  there only when a sub-page holds something). **Tree**: the page's own, as usual, then its
+  sub-pages nested as in the sidebar's tree (icon, title, guide lines; a click on a title opens
+  it), each with its items and how many it and its pages hold, foldable with its chevron
+  (remembered); a page holding none, nor any of its pages, is left out. **Flat**: all of them in
+  one list per section, each naming its page, sorted by page (the tree's order), name, or what
+  the kind has: size (largest first) and type for files, site for bookmarks, rows for databases
+  (from the section's header, remembered per section); a section with nothing under the page
+  keeps its own list. A click opens an item: a link's or database's page, a bookmark's page (a
+  double click its website), a file, a website. Page links lists the pages they link to
+  ("Linked from" stays the page's own, in Tree). Read only while the panel shows Items, and
+  again when pages change; at most 500 pages under it (it says so beyond). Counts and empty
+  lines wait for the sub-pages' items.
 - **Tabs**, as VS Code's editors, in the page's bar, left of its actions (a note's side panel
   has its own header on the same row). Notes open in tabs, and so do Settings, Docs (one tab,
   which remembers its section), TODOs and the trash; Home has none, and shows its title when no

@@ -1034,7 +1034,7 @@ function followHistory(editor: Editor) {
 
 defineExpose({
   /**
-   * A file deleted for good (from the Files panel): its images and chips leave the note, by a
+   * A file deleted for good (from the side panel's Files): its images and chips leave the note, by a
    * change out of the undo history (earlier steps stay), and can't come back (undo, redo, a
    * paste: DeletedFiles). No question asked: the file is already gone.
    */

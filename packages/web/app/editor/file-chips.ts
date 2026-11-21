@@ -12,7 +12,7 @@ export function isAttachmentHref(href: string): boolean {
   return /\.assets\/[^/]+$/.test(href)
 }
 
-/** Opens a file in a new tab, as the Files panel does: the browser shows what it can (PDF,
+/** Opens a file in a new tab, as the side panel's Files does: the browser shows what it can (PDF,
  * image, video, text) and downloads the rest. */
 export function openFile(href: string): void {
   window.open(href, '_blank', 'noopener')
@@ -69,7 +69,7 @@ export function removeFiles(
 }
 
 /**
- * A file deleted for good from outside the text (the Files panel): its images and chips leave
+ * A file deleted for good from outside the text (the side panel's Files): its images and chips leave
  * the document by a change out of the undo history (the steps before it stay, mapped through
  * it: typing is still undone), and the file is marked deleted, so that nothing (undo, redo, a
  * paste) brings them back (DeletedFiles). A file the note doesn't link to is only marked.

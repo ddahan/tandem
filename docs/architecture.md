@@ -346,8 +346,8 @@ table: it runs once.
   Nitro's dev proxy forwards `/api`, `/files` and `/mcp` to the dev server.
 - Layout: `UDashboardGroup` with a sidebar (search button, `NoteTree` and its `NoteTreeRow`s, navigation, color mode),
   the search palette (`NoteSearch`, the only search; `useSearchPalette` opens it with a query),
-  and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (headings, links,
-  history, files): beside the note from lg up (`panelOpen`, remembered), over it below
+  and pages made of `UDashboardPanel`s. The note page adds `NoteSidePanel` (calendar, headings,
+  items; its body made a frame and a task after it mounts, so the note is drawn first): beside the note from lg up (`panelOpen`, remembered), over it below
   (`panelOver`, not remembered: `NoteSidePanel`'s `over`, fixed on the right, closed by a
   click outside, VueUse's `onClickOutside`, and Esc: outside the editor a plain key listener;
   in it, `NoteEditor`'s `escape`, since ProseMirror prevents every Esc's default: the
@@ -366,15 +366,19 @@ table: it runs once.
   tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for
   bookmarks dragged from Unsorted: `application/x-tandem-bookmark`, with
   `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. `SideBookmarks`
-  reads the note's Markdown (`bookmarkIdsIn`, shared `externalLinksIn`) only while its tab
+  reads the note's Markdown (`bookmarkIdsIn`, shared `externalLinksIn`) only while Items
   shows.
-- Sub-pages in the side panel: `GET /notes/:id/subtree` (`Vault.subtreeItems`: the page and
-  what is under it, in the tree's order, at most `SUBTREE_MAX_PAGES`, with each one's wiki links
-  resolved, bookmark ids, web links, attachments and database summaries, read from the stored
-  contents) is asked by `NoteSidePanel` only on a page with children whose panel shows Links,
-  Bookmarks, Files or Databases, and again (debounced) on changes. `SideSubtree` wraps those
-  tabs: the tab alone without children; otherwise Tree (the tab, then the sub-pages nested from each one's depth, recursive `SideSubtreeBranch`es, folds in `tandem-side-folded`) or
-  Flat (`SideSubtreeRow`s sorted by `utils/subtree-items.ts`).
+- The side panel's Items tab (`SideItems`): four `SideSubtree` sections (header, fold in
+  `tandem-side-sections-folded`, count, sort; `actions` and `empty` slots), each wrapping the
+  page's own list (`SideAttachments`, `SideBookmarks`, `SideDatabases`, `SideBacklinks`, which
+  report how many with `count`). Sub-pages: `GET /notes/:id/subtree` (`Vault.subtreeItems`: the
+  page and what is under it, in the tree's order, at most `SUBTREE_MAX_PAGES`, with each one's
+  wiki links resolved, bookmark ids, web links, attachments and database summaries, read from
+  the stored contents) is asked by `NoteSidePanel` only on a page with children whose panel
+  shows Items, and again (debounced) on changes. A section shows the page's own list, then
+  Tree (the sub-pages nested from each one's depth, recursive `SideSubtreeBranch`es, folds in
+  `tandem-side-folded`) or Flat (`SideSubtreeRow`s sorted by `utils/subtree-items.ts`; the own
+  list stays mounted, hidden, so it isn't read again).
 - Undo: one history for the app (`useUndo`, logic in `utils/undo-history.ts`): steps with
   `undo`/`redo` functions, run one at a time, recorded by the code that changes things
   (`useDatabase`, `useTree`, `useBookmarks`, tags, `IconPicker`); nothing is recorded while a
@@ -402,7 +406,7 @@ table: it runs once.
   can't stretch it). The node view sets its width only when created and while dragging: its
   `update` is wrapped to follow the node's width (the one saved, after a resize or a change
   from outside). A double click calls the `onOpenImage` option: `NoteEditor` shows it in
-  `ImageViewer.vue` (a full-screen UModal), which the Files panel uses too.
+  `ImageViewer.vue` (a full-screen UModal), which the side panel's Files uses too.
 - Inline code (`editor/inline-code.ts`): the mark is UEditor's own (TipTap's, `excludes:
   'code'`), whose options can't be set from here, so `InlineCodeEnds` adjusts it: it takes
   `code` out of the extension manager's `splittableMarks` (Enter doesn't carry it), moves past
@@ -584,7 +588,7 @@ table: it runs once.
   `setContent`), the note's own attachment names linked before and after are compared; for
   those gone, a confirmation, then `DELETE /notes/:id/attachments/:name` (`vault.deleteAttachment`:
   the file, and the `.assets/` folder once empty; a `note` event with the unchanged hash
-  refreshes the Files panel). The Files panel's own delete deletes the file first, then the
+  refreshes the side panel's Files). The Files section's own delete deletes the file first, then the
   note page takes its links out: in the editor by `fileDeletedChange` (one change, out of the
   undo history, the file marked deleted: the editor and its history stay, where resetting it
   lost every undo step), elsewhere (Markdown view, a read-only editor) from the Markdown
@@ -628,7 +632,7 @@ table: it runs once.
   proposal for a future Tandem, not what the app does, so its claims are sketches. Classes
   prefixed `tree-` and `onetree-`; it repeats the `v-reveal` rules, since it can be the first
   page opened.
-- File-type icons (attachment chips, Files panel) come from the VS Code icon set:
+- File-type icons (attachment chips, the side panel's Files) come from the VS Code icon set:
   `utils/file-icon-map.ts` maps extensions to icons, and `scripts/file-icons.ts` extracts their
   SVG into `utils/file-icons.generated.ts` (committed; regenerate after changing the map with
   `./td pnpm --filter @tandem/web file-icons`). Unknown types get a generic file icon.

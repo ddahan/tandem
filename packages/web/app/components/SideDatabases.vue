@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// The databases the note shows (its `database` blocks, in order), with their row counts: a
-// click scrolls to one. Inserted with the slash menu (/database).
+// The databases the note shows (its `database` blocks, in order), with their row counts, in the
+// Items tab's Databases: a click scrolls to one. Inserted with the slash menu (/database).
+// Reports how many.
 import { databaseIdsIn, type DatabaseSummary } from '@tandem/shared'
 
 const props = defineProps<{ noteId: string; content: string }>()
-defineEmits<{ go: [id: string] }>()
+const emit = defineEmits<{ go: [id: string]; count: [count: number] }>()
 const api = useApi()
 
 const summaries = ref<DatabaseSummary[]>([])
@@ -30,34 +31,29 @@ const shown = computed(() =>
     return { id, title: summary?.title, rowCount: summary?.rowCount }
   }),
 )
+watch(
+  () => shown.value.length,
+  (count) => emit('count', count),
+  { immediate: true },
+)
 </script>
 
 <template>
-  <UEmpty
-    v-if="!shown.length"
-    icon="i-lucide-database"
-    title="No databases"
-    description="Databases of the note appear here. Type /database in the note to add one."
-    size="sm"
-    variant="naked"
-  />
-  <div v-else>
-    <ul class="space-y-0.5">
-      <li v-for="(database, index) in shown" :key="`${database.id}-${index}`">
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start transition-colors duration-[120ms] hover:bg-accented"
-          @click="$emit('go', database.id)"
-        >
-          <UIcon name="i-lucide-database" class="size-4 shrink-0 text-dimmed" />
-          <span class="min-w-0 flex-1 truncate text-sm text-default">
-            {{ database.title || 'Untitled database' }}
-          </span>
-          <span v-if="database.rowCount !== undefined" class="shrink-0 text-xs text-dimmed">
-            {{ database.rowCount }} row{{ database.rowCount === 1 ? '' : 's' }}
-          </span>
-        </button>
-      </li>
-    </ul>
-  </div>
+  <ul v-if="shown.length" class="space-y-0.5">
+    <li v-for="(database, index) in shown" :key="`${database.id}-${index}`">
+      <button
+        type="button"
+        class="flex h-7 w-full items-center gap-2 rounded-md px-2 text-start transition-colors duration-[120ms] hover:bg-accented"
+        @click="emit('go', database.id)"
+      >
+        <UIcon name="i-lucide-database" class="size-4 shrink-0 text-dimmed" />
+        <span class="min-w-0 flex-1 truncate text-sm text-default">
+          {{ database.title || 'Untitled database' }}
+        </span>
+        <span v-if="database.rowCount !== undefined" class="shrink-0 text-xs text-dimmed">
+          {{ database.rowCount }} row{{ database.rowCount === 1 ? '' : 's' }}
+        </span>
+      </button>
+    </li>
+  </ul>
 </template>

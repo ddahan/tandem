@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// The note's side panel: headings, links, bookmarks (when on), files and databases, and
-// the calendar when daily notes are on (shown by itself on a day's note). Beside the note in a large window; over
-// it in a narrower one (`over`), where Esc or a click outside closes it.
+// The note's side panel: its headings, its items (files, bookmarks when on, databases and page
+// links, with its sub-pages': SideItems), and the calendar when daily notes are on (shown by
+// itself on a day's note). Beside the note in a large window; over it in a narrower one
+// (`over`), where Esc or a click outside closes it. What it shows is made once the note is
+// drawn: the note comes first.
 import type { Attachment, SubtreeItems } from '@tandem/shared'
 import { onClickOutside, onKeyStroke, useDebounceFn, useLocalStorage } from '@vueuse/core'
 import type { Outline } from '~/components/NoteEditor.vue'
@@ -30,6 +32,8 @@ const saved = useLocalStorage('tandem-side-tab', 'headings')
 if (saved.value === 'outline') saved.value = 'headings'
 // History is a view of the note now (next to Authorship), not a tab.
 if (saved.value === 'history') saved.value = 'headings'
+// Links, Bookmarks, Files and Databases are the Items tab's sections now.
+if (['links', 'bookmarks', 'files', 'databases'].includes(saved.value)) saved.value = 'items'
 const { settings } = useSettings()
 // On a day's note the calendar shows, without changing the tab other notes open on; a tab
 // picked here is remembered as usual. (The panel is shown again for each note.)
@@ -37,7 +41,6 @@ const picked = ref(false)
 const tab = computed({
   get: () => {
     if (!settings.value.daily && saved.value === 'calendar') return 'headings'
-    if (!settings.value.bookmarks && saved.value === 'bookmarks') return 'headings'
     return props.calendarDate && settings.value.daily && !picked.value ? 'calendar' : saved.value
   },
   set: (value: string) => {
@@ -46,15 +49,19 @@ const tab = computed({
   },
 })
 
+// --- The note first ---------------------------------------------------------------------------
+// The panel is made with the note page, on every switch: its contents (and what they read from
+// the server) wait for the frame that shows the note, then the next task.
+const ready = ref(false)
+onMounted(() => requestAnimationFrame(() => setTimeout(() => (ready.value = true))))
+
 // --- Sub-pages ---------------------------------------------------------------------------------
-// On a page with sub-pages, the Links, Bookmarks, Files and Databases tabs show theirs too
-// (SideSubtree). Read only while one of those tabs shows (the panel is open), again on changes.
-const SUBTREE_TABS = ['links', 'bookmarks', 'files', 'databases'] as const
-type SubtreeTab = (typeof SUBTREE_TABS)[number]
+// On a page with sub-pages, the Items tab shows theirs too (SideSubtree). Read only while it
+// shows (the panel is open), again on changes.
 const tree = useTree()
 const api = useApi()
 const hasChildren = computed(() => !!tree.childrenOf.value.get(props.noteId)?.length)
-const wanted = computed(() => hasChildren.value && SUBTREE_TABS.includes(tab.value as SubtreeTab))
+const wanted = computed(() => ready.value && hasChildren.value && tab.value === 'items')
 const subtree = ref<SubtreeItems | null>(null)
 let loading = 0
 async function loadSubtree() {
@@ -79,8 +86,10 @@ useServerEvents((event) => {
     void reloadSubtree()
   }
 })
-/** What SideSubtree shows: null without sub-pages (the tab alone). */
+/** What SideItems shows: null without sub-pages (the page's own alone). */
 const subtreeShown = computed(() => (hasChildren.value ? subtree.value : null))
+/** Sub-pages whose items aren't read yet: no counts nor empty lines until they are. */
+const subtreePending = computed(() => hasChildren.value && !subtree.value)
 
 // --- Width -----------------------------------------------------------------------------------
 // Resizable from its left edge, as the sidebar is from its right one. Nuxt UI's resizable panel
@@ -141,12 +150,7 @@ const tabs = computed(() => [
     ? [{ label: 'Calendar', value: 'calendar', icon: 'i-lucide-calendar-days' }]
     : []),
   { label: 'Headings', value: 'headings', icon: 'i-lucide-list-tree' },
-  { label: 'Links', value: 'links', icon: 'i-lucide-link-2' },
-  ...(settings.value.bookmarks
-    ? [{ label: 'Bookmarks', value: 'bookmarks', icon: 'i-lucide-bookmark' }]
-    : []),
-  { label: 'Files', value: 'files', icon: 'i-lucide-paperclip' },
-  { label: 'Databases', value: 'databases', icon: 'i-lucide-database' },
+  { label: 'Items', value: 'items', icon: 'i-lucide-layers' },
 ])
 </script>
 
@@ -211,33 +215,25 @@ const tabs = computed(() => [
     </template>
 
     <template #body>
-      <SideCalendar v-if="tab === 'calendar'" :date="calendarDate" />
-      <SideHeadings
-        v-else-if="tab === 'headings'"
-        :outline="outline"
-        @go="(pos) => emit('goToHeading', pos)"
-      />
-      <SideSubtree v-else-if="tab === 'links'" kind="links" :items="subtreeShown">
-        <SideBacklinks :note-id="noteId" :content="content" />
-      </SideSubtree>
-      <SideSubtree v-else-if="tab === 'bookmarks'" kind="bookmarks" :items="subtreeShown">
-        <SideBookmarks :content="content" />
-      </SideSubtree>
-      <SideSubtree v-else-if="tab === 'databases'" kind="databases" :items="subtreeShown">
-        <SideDatabases
-          :note-id="noteId"
-          :content="content"
-          @go="(id) => emit('goToDatabase', id)"
+      <template v-if="ready">
+        <SideCalendar v-if="tab === 'calendar'" :date="calendarDate" />
+        <SideHeadings
+          v-else-if="tab === 'headings'"
+          :outline="outline"
+          @go="(pos) => emit('goToHeading', pos)"
         />
-      </SideSubtree>
-      <SideSubtree v-else kind="files" :items="subtreeShown">
-        <SideAttachments
+        <SideItems
+          v-else
           :note-id="noteId"
           :note-path="notePath"
-          @insert="(md) => emit('attach', md)"
+          :content="content"
+          :items="subtreeShown"
+          :pending="subtreePending"
+          @go-to-database="(id) => emit('goToDatabase', id)"
+          @attach="(md) => emit('attach', md)"
           @deleted="(attachment) => emit('deleted', attachment)"
         />
-      </SideSubtree>
+      </template>
     </template>
   </UDashboardPanel>
 </template>

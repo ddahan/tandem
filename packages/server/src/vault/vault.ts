@@ -1558,7 +1558,7 @@ export class Vault {
       if (!(await readdir(this.abs(dir))).length) await rm(this.abs(dir), { recursive: true })
       await this.indexPage(row)
       this.dirty = true
-      // The note is unchanged (its hash too: an editor reads nothing again); its Files panel
+      // The note is unchanged (its hash too: an editor reads nothing again); its side panel's Files
       // follows.
       this.changed({
         type: 'note',

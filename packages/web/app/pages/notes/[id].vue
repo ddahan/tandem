@@ -240,7 +240,7 @@ function appendMarkdown(markdown: string) {
 }
 
 /**
- * A file deleted from the Files panel: its links and images leave the note. In the editor, by a
+ * A file deleted from the side panel's Files: its links and images leave the note. In the editor, by a
  * change of its own, out of the undo history (the steps before it stay: typing is still undone),
  * the file marked deleted so that no undo, redo or paste brings them back. In the other views
  * (and a read-only editor, which can't write all of the note), from the Markdown.

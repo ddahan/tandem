@@ -1,13 +1,14 @@
 <script setup lang="ts">
-// A side panel tab (Links, Bookmarks, Files, Databases) on a page with sub-pages: what they hold
-// too, shown two ways (remembered). Tree: this page's tab as usual (the slot), then its sub-pages
-// as in the sidebar's tree, nested and foldable (remembered), those holding none, nor any of
-// their pages, left out. Flat: everything in
-// one list, each item naming its page, sorted by name, page, or what the kind has (size and
-// type for files, site for bookmarks, rows for databases). Without sub-pages (`items` null), or
-// with nothing of this kind in the page or under it (no choice to make),
-// only the slot. The items come from `GET /notes/:id/subtree`, read by NoteSidePanel only while
-// such a tab shows.
+// A section of the side panel's Items tab (Files, Bookmarks, Databases, Page links): a header
+// (fold it, remembered; how many it holds, the page's and its sub-pages'; the flat display's
+// sort; the kind's own buttons, `actions`), then its items. The page's own come from the
+// default slot (SideAttachments…, which report how many with `own`); on a page with sub-pages
+// (`items` from `GET /notes/:id/subtree`, read by NoteSidePanel), theirs follow, shown as
+// SideItems' switch says. Tree: the page's own, then its sub-pages as in the sidebar's tree,
+// nested and foldable (remembered), those holding none, nor any of their pages, left out.
+// Flat: everything in one list, each item naming its page, sorted by name, page, or what the
+// kind has (size and type for files, site for bookmarks, rows for databases). Empty, the
+// `empty` slot: one line on how to add one.
 import { formatSize, siteOf, type SubtreeItems, type SubtreePage } from '@tandem/shared'
 import { useLocalStorage } from '@vueuse/core'
 import { openWebsite, usesLabel } from '~/composables/useBookmarks'
@@ -17,12 +18,36 @@ import type { SubtreeBranch } from './SideSubtreeBranch.vue'
 
 export type SubtreeKind = 'links' | 'bookmarks' | 'files' | 'databases'
 
-const props = defineProps<{ kind: SubtreeKind; items: SubtreeItems | null }>()
+const props = defineProps<{
+  kind: SubtreeKind
+  items: SubtreeItems | null
+  display: 'tree' | 'flat'
+  /**
+   * How many the page itself holds: undefined until known, and while its sub-pages' are read
+   * (no count, no empty line yet).
+   */
+  own: number | undefined
+}>()
 
 const bookmarks = useBookmarks()
 const tabs = useTabs()
 
-const display = useLocalStorage<'tree' | 'flat'>('tandem-side-display', 'tree')
+const SECTIONS: Record<SubtreeKind, { title: string; icon: string }> = {
+  files: { title: 'Files', icon: 'i-lucide-paperclip' },
+  bookmarks: { title: 'Bookmarks', icon: 'i-lucide-bookmark' },
+  databases: { title: 'Databases', icon: 'i-lucide-database' },
+  links: { title: 'Page links', icon: 'i-lucide-link-2' },
+}
+const section = computed(() => SECTIONS[props.kind])
+
+/** The sections folded, for every page. */
+const foldedSections = useLocalStorage<string[]>('tandem-side-sections-folded', [])
+const open = computed(() => !foldedSections.value.includes(props.kind))
+function toggleSection() {
+  foldedSections.value = open.value
+    ? [...foldedSections.value, props.kind]
+    : foldedSections.value.filter((kind) => kind !== props.kind)
+}
 
 type Sort = SubtreeSort
 const SORTS: Record<SubtreeKind, { value: Sort; label: string }[]> = {
@@ -119,13 +144,17 @@ function itemsOf(page: SubtreePage, index: number): SubtreeItem[] {
 }
 
 const all = computed(() => (props.items?.pages ?? []).flatMap((page, i) => itemsOf(page, i)))
+/** Its sub-pages' items alone (the page's own come from the slot). */
+const below = computed(() => all.value.filter((item) => item.page.depth > 0).length)
+const count = computed(() => (props.own === undefined ? undefined : props.own + below.value))
+const flatShown = computed(() => props.display === 'flat' && below.value > 0)
 
 /** The branches holding items, themselves or in their pages, each with its count. */
 function prune(list: SubtreeBranch[]): SubtreeBranch[] {
   return list.flatMap((branch) => {
     const children = prune(branch.children)
-    const count = branch.items.length + children.reduce((sum, child) => sum + child.count, 0)
-    return count ? [{ ...branch, children, count }] : []
+    const total = branch.items.length + children.reduce((sum, child) => sum + child.count, 0)
+    return total ? [{ ...branch, children, count: total }] : []
   })
 }
 
@@ -151,7 +180,7 @@ const branches = computed(() => {
   return prune(roots)
 })
 
-/** The sub-pages folded in Tree, for every page and tab. */
+/** The sub-pages folded in Tree, for every page and section. */
 const folded = useLocalStorage<string[]>('tandem-side-folded', [])
 function toggle(id: string) {
   folded.value = folded.value.includes(id)
@@ -159,86 +188,77 @@ function toggle(id: string) {
     : [...folded.value, id]
 }
 
-/**
- * In Tree, the page itself holding none of a kind whose tab has nothing else to offer
- * (bookmarks, databases): one line instead of its empty state, so the sub-pages come first.
- */
-const ownEmpty = computed(
-  () =>
-    (props.kind === 'bookmarks' || props.kind === 'databases') &&
-    !!props.items &&
-    !all.value.some((item) => item.page.depth === 0),
-)
-
 const flat = computed(() => sortSubtreeItems(all.value, sort.value))
-
-const displays = [
-  { value: 'tree', label: 'Tree', icon: 'i-lucide-list-tree' },
-  { value: 'flat', label: 'Flat', icon: 'i-lucide-list' },
-] as const
 </script>
 
 <template>
-  <slot v-if="!items || !all.length" />
-  <div v-else class="flex flex-col gap-3" data-testid="side-subtree">
-    <div class="flex items-center gap-2">
-      <div role="radiogroup" aria-label="Display" class="flex gap-0.5" data-testid="side-display">
-        <UButton
-          v-for="option in displays"
-          :key="option.value"
-          role="radio"
-          :aria-checked="display === option.value"
-          :label="option.label"
-          :icon="option.icon"
-          size="xs"
-          color="neutral"
-          :variant="display === option.value ? 'soft' : 'ghost'"
-          @click="display = option.value"
+  <section :data-testid="`side-section-${kind}`">
+    <div class="flex h-7 items-center gap-1 ps-1 pe-0.5">
+      <button
+        type="button"
+        class="flex min-w-0 flex-1 items-center gap-1.5 rounded-md py-1 text-start text-xs font-medium text-muted hover:text-default"
+        :aria-expanded="open"
+        :aria-label="`${open ? 'Fold' : 'Unfold'} ${section.title}`"
+        data-testid="side-section-toggle"
+        @click="toggleSection"
+      >
+        <UIcon
+          name="i-lucide-chevron-right"
+          class="size-3.5 shrink-0 text-dimmed transition-transform"
+          :class="open && 'rotate-90'"
         />
-      </div>
+        <UIcon :name="section.icon" class="size-3.5 shrink-0" />
+        <span class="truncate">{{ section.title }}</span>
+        <span
+          v-if="count !== undefined"
+          class="text-dimmed tabular-nums"
+          data-testid="side-section-count"
+          >{{ count }}</span
+        >
+      </button>
       <USelect
-        v-if="display === 'flat'"
+        v-if="open && flatShown"
         v-model="sort"
         :items="sortItems"
         value-key="value"
         size="xs"
         variant="ghost"
-        aria-label="Sort by"
-        class="ms-auto"
+        :aria-label="`Sort ${section.title} by`"
         data-testid="side-sort"
       >
         <template #leading
           ><UIcon name="i-lucide-arrow-down-wide-narrow" class="size-3.5"
         /></template>
       </USelect>
+      <slot name="actions" />
     </div>
 
-    <template v-if="display === 'tree'">
-      <p v-if="ownEmpty" class="px-2 text-sm text-dimmed" data-testid="side-own-empty">
-        None in this page itself.
-      </p>
-      <slot v-else />
-      <div v-if="branches.length" class="space-y-0.5">
-        <SideSubtreeBranch
-          v-for="branch in branches"
-          :key="branch.page.id"
-          :branch="branch"
-          :folded="folded"
-          @toggle="toggle"
-        />
+    <div v-show="open">
+      <!-- Kept in Flat (hidden): the page's own lists load once, and keep their count. -->
+      <div v-show="!flatShown">
+        <slot />
+        <div v-if="branches.length && !flatShown" class="space-y-0.5">
+          <SideSubtreeBranch
+            v-for="branch in branches"
+            :key="branch.page.id"
+            :branch="branch"
+            :folded="folded"
+            @toggle="toggle"
+          />
+        </div>
       </div>
-    </template>
-
-    <template v-else>
-      <ul class="space-y-0.5" data-testid="side-flat">
+      <ul v-if="flatShown" class="space-y-0.5" data-testid="side-flat">
         <li v-for="item in flat" :key="item.key">
           <SideSubtreeRow :item="item" show-page />
         </li>
       </ul>
-    </template>
-
-    <p v-if="items.truncated" class="px-2 text-xs text-dimmed">
-      Only the first 500 pages under this one are read.
-    </p>
-  </div>
+      <p
+        v-if="count === 0"
+        class="px-2 py-1 text-xs text-dimmed"
+        :data-testid="`side-empty-${kind}`"
+      >
+        <slot name="empty" />
+      </p>
+    </div>
+  </section>
 </template>

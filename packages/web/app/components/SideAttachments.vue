@@ -1,7 +1,8 @@
 <script setup lang="ts">
-// Files attached to the note (its `.assets` folder): open them, view images, add more (from
-// the computer's file picker; dropping them on the note works too), delete one, linked or not
-// (for good, its links and images leaving the note: the note page takes them out, on `deleted`).
+// Files attached to the note (its `.assets` folder), in the Items tab's Files: open them, view
+// images, add more (`pick`: the computer's file picker, from the section's + and empty line;
+// dropping them on the note works too), delete one, linked or not (for good, its links and
+// images leaving the note: the note page takes them out, on `deleted`). Reports how many.
 import { formatSize, type Attachment } from '@tandem/shared'
 import { fileIconSvg } from '~/utils/file-icons'
 
@@ -10,6 +11,7 @@ const emit = defineEmits<{
   insert: [markdown: string]
   /** Deleted for good: its links leave the note, and undo can't bring them back. */
   deleted: [attachment: Attachment]
+  count: [count: number]
 }>()
 const api = useApi()
 const showError = useApiErrorToast()
@@ -20,6 +22,7 @@ const load = async () => {
   attachments.value = await unwrap(
     api.notes[':id'].attachments.$get({ param: { id: props.noteId } }),
   ).catch(() => [])
+  emit('count', attachments.value.length)
 }
 onMounted(load)
 useServerEvents((event) => {
@@ -47,7 +50,8 @@ function view(event: MouseEvent, attachment: Attachment) {
 
 // "Click here": the computer's file picker (dropping files on the note is the other way).
 const picker = useTemplateRef<HTMLInputElement>('picker')
-function pick(event: Event) {
+defineExpose({ pick: () => picker.value?.click() })
+function picked(event: Event) {
   const input = event.target as HTMLInputElement
   const selected = [...(input.files ?? [])]
   input.value = ''
@@ -106,34 +110,20 @@ async function upload(selected: File[] | null | undefined) {
 </script>
 
 <template>
-  <div class="space-y-3">
+  <div>
     <input
       ref="picker"
       type="file"
       multiple
       class="hidden"
       data-testid="attach-input"
-      @change="pick"
+      @change="picked"
     />
-    <UEmpty
-      v-if="!attachments.length"
-      icon="i-lucide-paperclip"
-      title="No files"
-      size="sm"
-      variant="naked"
-    >
-      <template #description>
-        Upload a file by dragging it on the note, or
-        <button type="button" class="text-primary hover:underline" @click="picker?.click()">
-          click here</button
-        >.
-      </template>
-    </UEmpty>
     <ul v-if="attachments.length" class="space-y-0.5">
       <li
         v-for="attachment in attachments"
         :key="attachment.path"
-        class="group relative flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-[120ms] hover:bg-accented"
+        class="group relative flex h-7 items-center gap-2 rounded-md px-2 transition-colors duration-[120ms] hover:bg-accented"
       >
         <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->
         <span
@@ -167,12 +157,6 @@ async function upload(selected: File[] | null | undefined) {
         </UTooltip>
       </li>
     </ul>
-    <p v-if="attachments.length" class="px-2 text-xs text-dimmed">
-      Upload a file by dragging it on the note, or
-      <button type="button" class="text-primary hover:underline" @click="picker?.click()">
-        click here</button
-      >.
-    </p>
 
     <ImageViewer
       v-model:open="viewing"

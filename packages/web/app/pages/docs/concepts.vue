@@ -141,7 +141,7 @@ const GROUPS: Group[] = [
         id: 'files',
         icon: 'i-lucide-paperclip',
         title: 'Files',
-        text: 'Drop or paste a file anywhere in a note: it is copied into the note’s .assets folder and shown in place, images inline (resizable, full screen on a double click), other files as chips that open them. Removing a file’s last link asks whether to delete the file too. The side panel’s Files lists a note’s attachments with their size, to open, add or delete.',
+        text: 'Drop or paste a file anywhere in a note: it is copied into the note’s .assets folder and shown in place, images inline (resizable, full screen on a double click), other files as chips that open them. Removing a file’s last link asks whether to delete the file too. The side panel’s Items lists a note’s attachments with their size, to open, add or delete.',
       },
       {
         id: 'databases',
@@ -167,7 +167,7 @@ const GROUPS: Group[] = [
         id: 'side-panel',
         icon: 'i-lucide-panel-right',
         title: 'Side panel',
-        text: 'Beside the note: its headings, the notes linking to it, its files, databases (with their row counts), bookmark cards and links to websites, and those of its sub-pages, plus the calendar when daily notes are on.',
+        text: 'Beside the note: its headings, and its items in one tab, in sections: files, bookmarks (cards and links to websites), databases (with their row counts) and page links (the notes linking to it and those it links to), with its sub-pages’ as a tree or a flat list. Plus the calendar when daily notes are on.',
       },
     ],
   },

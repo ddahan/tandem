@@ -340,7 +340,7 @@ test('the side panel lists the note’s bookmarks and links to websites', async 
     `Read [the guide](https://guide.example.com) and https://bare.example.com today.\n\n${block(docs.id)}\n`,
   )
   await openNote(page, note.id)
-  const panel = await openSidePanel(page, 'Bookmarks')
+  const panel = await openSidePanel(page, 'Items')
   await expect(panel.getByTestId('side-bookmark-Example docs')).toContainText('docs.example.com')
   await expect(panel.getByTestId('side-link-the guide')).toContainText('guide.example.com')
   await expect(panel.getByTestId('side-link-bare.example.com')).toBeVisible()

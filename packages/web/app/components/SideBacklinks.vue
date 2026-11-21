@@ -1,13 +1,15 @@
 <script setup lang="ts">
-// Notes linking to this one, and notes this one links to.
+// The Items tab's Page links: notes linking to this one, and notes this one links to, one line
+// each (a note's path in its tooltip). Reports how many, once the backlinks are read.
 import { useDebounceFn } from '@vueuse/core'
 import { linkKey, parseWikiLinks, type Backlink } from '@tandem/shared'
 
 const props = defineProps<{ noteId: string; content: string }>()
+const emit = defineEmits<{ count: [count: number] }>()
 const api = useApi()
 const tree = useTree()
 
-const backlinks = ref<Backlink[]>([])
+const backlinks = ref<Backlink[] | null>(null)
 const load = async () => {
   backlinks.value = await unwrap(
     api.notes[':id'].backlinks.$get({ param: { id: props.noteId } }),
@@ -39,52 +41,49 @@ const outgoing = computed(() => {
       return true
     })
 })
+watch(
+  () => backlinks.value && backlinks.value.length + outgoing.value.length,
+  (count) => count !== null && emit('count', count),
+  { immediate: true },
+)
+
+const row =
+  'flex h-7 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-[120ms] hover:bg-accented'
 </script>
 
 <template>
-  <UEmpty
-    v-if="!backlinks.length && !outgoing.length"
-    icon="i-lucide-link-2"
-    title="No links"
-    description="Notes linking here and notes linked from this one appear here. Type [[ to link one."
-    size="sm"
-    variant="naked"
-  />
-  <div v-else class="space-y-5">
-    <section>
-      <h3 class="mb-1.5 px-2 text-xs font-medium tracking-wide text-dimmed uppercase">
-        Linked from
-      </h3>
+  <div v-if="backlinks?.length || outgoing.length" class="space-y-1">
+    <section v-if="backlinks?.length">
+      <h3 class="px-2 text-xs text-dimmed">Linked from</h3>
       <ULink
         v-for="link in backlinks"
         :key="link.id"
         :to="`/notes/${link.id}`"
-        class="flex flex-col rounded-md px-2 py-1.5 hover:bg-elevated"
+        :title="link.path.replace(/\.md$/, '')"
+        :class="row"
       >
-        <span class="text-sm font-medium text-default">{{ link.title }}</span>
-        <span class="truncate text-xs text-dimmed">{{ link.path.replace(/\.md$/, '') }}</span>
+        <UIcon name="i-lucide-file-text" class="size-4 shrink-0 text-dimmed" />
+        <span class="truncate text-default">{{ link.title }}</span>
       </ULink>
-      <p v-if="!backlinks.length" class="px-2 text-sm text-dimmed">No note links here yet.</p>
     </section>
-    <section>
-      <h3 class="mb-1.5 px-2 text-xs font-medium tracking-wide text-dimmed uppercase">Links to</h3>
+    <section v-if="outgoing.length">
+      <h3 class="px-2 text-xs text-dimmed">Links to</h3>
       <template v-for="link in outgoing" :key="link.target">
         <ULink
           v-if="link.node"
           :to="`/notes/${link.node.id}`"
-          class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-elevated"
+          :title="link.node.path.replace(/\.md$/, '')"
+          :class="row"
         >
-          <UIcon name="i-lucide-file-text" class="size-4 text-dimmed" />
-          {{ link.node.title }}
+          <UIcon name="i-lucide-file-text" class="size-4 shrink-0 text-dimmed" />
+          <span class="truncate text-default">{{ link.node.title }}</span>
         </ULink>
-        <span v-else class="flex items-center gap-2 px-2 py-1.5 text-sm text-dimmed">
-          <UIcon name="i-lucide-file-question" class="size-4" />
-          {{ link.target }} <UBadge label="missing" size="sm" variant="subtle" color="neutral" />
+        <span v-else class="flex h-7 items-center gap-2 px-2 text-sm text-dimmed">
+          <UIcon name="i-lucide-file-question" class="size-4 shrink-0" />
+          <span class="min-w-0 flex-1 truncate">{{ link.target }}</span>
+          <span class="shrink-0 text-xs">missing</span>
         </span>
       </template>
-      <p v-if="!outgoing.length" class="px-2 text-sm text-dimmed">
-        Type <span data-keys-shown><UKbd>[[</UKbd></span> in the note to link another one.
-      </p>
     </section>
   </div>
 </template>

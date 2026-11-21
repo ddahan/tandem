@@ -1,5 +1,5 @@
-// The side panel on a page with sub-pages: their files (and links, bookmarks, databases) too,
-// nested and foldable as in the sidebar's tree, or in one flat list, sorted.
+// The side panel's Items on a page with sub-pages: their files (and links, bookmarks,
+// databases) too, nested and foldable as in the sidebar's tree, or in one flat list, sorted.
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { api, createNote, openNote } from './helpers'
 
@@ -25,7 +25,10 @@ test('a page’s side panel shows its sub-pages’ files, as a tree or a flat li
   if (!(await panel.isVisible())) {
     await page.getByRole('button', { name: 'Toggle side panel' }).click()
   }
-  await page.getByRole('tab', { name: 'Files' }).click()
+  await page.getByRole('tab', { name: 'Items' }).click()
+  const files = panel.getByTestId('side-section-files')
+  // Counted with the sub-pages'.
+  await expect(files.getByTestId('side-section-count')).toHaveText('3')
 
   // Tree: this page's files as usual, then the sub-pages nested as in the sidebar: the page
   // between, holding none, shows to reach the one under it; folding it hides that one.
@@ -44,16 +47,18 @@ test('a page’s side panel shows its sub-pages’ files, as a tree or a flat li
 
   // Flat: all of them, each naming its page; sorted by size, the largest first.
   await panel.getByRole('radio', { name: 'Flat' }).click()
-  const flat = panel.getByTestId('side-flat')
+  const flat = files.getByTestId('side-flat')
   await expect(flat.getByTestId('side-item-z-big.txt')).toContainText('Subtree child')
-  await panel.getByTestId('side-sort').click()
+  // Sections with nothing under the page keep their own list, without a sort.
+  await expect(panel.getByTestId('side-section-databases').getByTestId('side-sort')).toHaveCount(0)
+  await files.getByTestId('side-sort').click()
   await page.getByRole('option', { name: 'Size' }).click()
   await expect(flat.locator('[role=button][data-testid^="side-item-"]')).toHaveText([
     /z-big\.txt/,
     /m-deep\.txt/,
     /a-small\.txt/,
   ])
-  await panel.getByTestId('side-sort').click()
+  await files.getByTestId('side-sort').click()
   await page.getByRole('option', { name: 'Name' }).click()
   await expect(flat.locator('[role=button][data-testid^="side-item-"]')).toHaveText([
     /a-small\.txt/,
@@ -61,11 +66,8 @@ test('a page’s side panel shows its sub-pages’ files, as a tree or a flat li
     /z-big\.txt/,
   ])
 
-  // A tab with nothing, in the page or under it: no choice to make, its empty state alone.
-  await page.getByRole('tab', { name: 'Databases' }).click()
-  await expect(panel.getByText('No databases')).toBeVisible()
-  await expect(panel.getByTestId('side-display')).toHaveCount(0)
-  await page.getByRole('tab', { name: 'Files' }).click()
+  // A section with nothing, in the page or under it: its empty line.
+  await expect(panel.getByTestId('side-empty-databases')).toBeVisible()
 
   // A click on a sub-page's title opens it (back to Tree); a page without sub-pages has no choice.
   await panel.getByRole('radio', { name: 'Tree' }).click()
