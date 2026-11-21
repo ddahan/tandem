@@ -35,6 +35,11 @@ test('opens the Docs from the sidebar, a tab per address', async ({ page }) => {
   await expect(page).toHaveURL(/#concepts-plan$/)
   await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeInViewport()
 
+  // What doesn't exist yet has its own group, each card badged.
+  const later = page.getByRole('region', { name: 'Not yet', exact: true }).getByTestId('concept')
+  await expect(later.filter({ hasText: 'Templates' }).getByText('Not yet')).toBeVisible()
+  await expect(later.filter({ hasText: 'Autosave' })).toHaveCount(0)
+
   await tabs.getByRole('link', { name: 'Security' }).click()
   await expect(page).toHaveURL(/\/docs\/security$/)
   await expect(page.getByTestId('security-risk')).toHaveCount(4)

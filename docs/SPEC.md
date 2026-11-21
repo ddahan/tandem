@@ -632,9 +632,11 @@ inside OneDrive so that it is backed up and synced.
     updating Tandem: the one-command install, with a copy button (or a newer download's
     installer), and how to uninstall.
   - **Concepts**: a tour of every feature, a card each (icon, title, a few sentences; an
-    "Optional" badge for those switched in Settings › Features), in six groups reached from
-    buttons at the top: Organize, Write, Link and attach, Plan, Keep track, Agents and the app.
-    Settings › Specs lists the same features tersely, with what doesn't exist yet.
+    "Optional" badge for those switched in Settings › Features), in groups reached from
+    buttons at the top: Organize, Write, Link and attach, Plan, Keep track, Agents and the app,
+    and Not yet: what doesn't exist yet (this document's Out of scope, among others), muted
+    and badged "Not yet". Functional, not technical: this document has the details. A feature
+    added, changed or ruled out is added there too.
   - **Security**: who could read the notes, and what to turn on against each: someone with the
     computer or its disk (FileVault, an encrypted Time Machine disk), the cloud the notes
     folder syncs with (iCloud's Advanced Data Protection; other drives aren't end-to-end
@@ -682,12 +684,6 @@ inside OneDrive so that it is backed up and synced.
     titles and fields; off; never in the Markdown source). Turning one off only hides it: tags
     stay on their notes, TODO lines in theirs, and turned back on they show as before; agents
     (MCP, CLI) keep every feature.
-  - **Specs**: every feature of the app in a few words, grouped (pages, tabs, writing, links
-    and files, databases, search, daily notes, TODOs, bookmarks, history, agents, the app),
-    each marked "Optional" when it is a switch in Features, and what doesn't exist yet marked
-    "Not yet" (this document's Out of scope, among others); a filter shows all, the available
-    ones or those not there yet. Functional, not technical: this document has the details.
-    A feature added or ruled out is added there too.
 - The logo (sidebar and browser tab) is drawn in the accent color: your page in front, its lines
   in your color and the agent's amber, the agent's amber page behind. The installed app's Dock icon is the default (amber) logo: macOS keeps the image it
   got at install.
