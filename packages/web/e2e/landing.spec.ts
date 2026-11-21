@@ -60,3 +60,35 @@ test('shows every demo in its final state with reduced motion', async ({ page })
   await expect(page.getByText('Budget and hiring in')).toBeVisible()
   await expect(page.getByText('Showing results for')).toBeVisible()
 })
+
+test('shows the one-tree preview at a hidden address, its lenses narrowing the tree', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  const response = await page.goto('/one-tree')
+  expect(response?.status()).toBe(200)
+  await expect(page).toHaveTitle('Tandem — one tree for everything')
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow')
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Everything in it.')
+
+  // Through the Files lens: the files, and the branches they live in.
+  const demo = page.getByTestId('one-tree-demo')
+  const tree = demo.getByRole('list', { name: 'Tree' })
+  await demo.getByRole('tab', { name: /Files/ }).click()
+  await expect(tree.getByRole('button', { name: 'budget.xlsx' })).toBeVisible()
+  await expect(tree.getByRole('button', { name: '🚀 Launch', exact: true })).toBeVisible()
+  await expect(tree.getByRole('button', { name: 'Kickoff meeting' })).toHaveCount(0)
+  await expect(tree.getByRole('button', { name: 'Launch checklist' })).toHaveCount(0)
+  await expect(demo.getByText('Files, wherever they live')).toBeVisible()
+
+  // Everything again: a page shows what it holds.
+  await demo.getByRole('tab', { name: /Everything/ }).click()
+  await tree.getByRole('button', { name: '🚀 Launch', exact: true }).click()
+  await expect(demo.getByTestId('one-tree-pane')).toContainText('Kickoff meeting')
+
+  // Linked from nowhere: the current landing page doesn't lead to it.
+  await page.goto('/')
+  await expect(page.locator('a[href*="one-tree"]')).toHaveCount(0)
+  expect(errors).toEqual([])
+})

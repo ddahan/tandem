@@ -613,8 +613,10 @@ inside OneDrive so that it is backed up and synced.
   Undo; asked once with the trash off, saying how many), dragging moves them together, and
   their menu offers Open N in tabs, Move to (the top, or any page holding pages), and Delete.
 - **The website**, <https://tandem.w3lt.org>, is the landing page, not part of the app (which
-  has none): it presents Tandem and leads to installing it and to GitHub, never to an app.
-  Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install
+  has none). It also holds, at `/one-tree`, a preview of a possible future Tandem: one tree
+  holding notes, events, tasks, files and bookmarks, with lenses to see one kind; linked from
+  nowhere and marked `noindex`, it leads back to `/`. The landing page presents Tandem and
+  leads to installing it and to GitHub, never to an app. Header: the GitHub icon and "Install" (to the hero's command). Hero: the one-line install
   first, then "See what's inside" and "View on GitHub" (with the icon); the page ends with the
   command again, and the footer links to it, the releases and GitHub (with the icon). The
   one-line install is a dark terminal line in both modes, with a

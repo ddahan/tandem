@@ -2,7 +2,9 @@
 
 [tandem.w3lt.org](https://tandem.w3lt.org): the landing page of `packages/web`
 (`app/pages/landing.vue`), built alone with `TANDEM_SITE=1` and served by Caddy. The app itself
-has no landing page.
+has no landing page. A preview of a possible future Tandem (one tree for everything,
+`app/pages/landing-tree.vue`) is at [/one-tree](https://tandem.w3lt.org/one-tree), linked from
+nowhere and not indexed.
 
 - Preview: `./td dev`, then <http://localhost:3012> (it reloads as you edit).
 - Build: `./td pnpm --filter @tandem/web build:site` (into `packages/web/.output-site/public`).

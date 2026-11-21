@@ -602,8 +602,9 @@ table: it runs once.
   update restarts the server), and reloads when they differ, once per build (sessionStorage)
   and after open notes are saved (`useNoteDocument` holds it while changes are pending).
 - The website (`site/`, tandem.w3lt.org): the same Nuxt app built with `TANDEM_SITE=1`
-  (`build:site`, `dev:site` on :3012), where a `pages:extend` hook keeps only the landing page,
-  at `/` (the app's build drops it), `runtimeConfig.public.site` skips everything that talks to
+  (`build:site`, `dev:site` on :3012), where a `pages:extend` hook keeps only the landing pages,
+  `landing` at `/` and `landing-tree` at `/one-tree` (prerendered, so Caddy serves it as a file;
+  the app's build drops both), `runtimeConfig.public.site` skips everything that talks to
   the server (`app.vue`'s loading and events, the update check), and there is no web app
   manifest. Its own build folder and output (`.output-site`), so it builds while the dev server
   runs. `site/Dockerfile` builds it from the repository's root and serves it with Caddy
@@ -623,6 +624,10 @@ table: it runs once.
   and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,
   which shows the final state). Its claims are real: commands and tool names from the CLI and
   MCP server, timings from `bench`.
+- One-tree preview (`pages/landing-tree.vue`, demo in `components/landing/OneTreeDemo.vue`): a
+  proposal for a future Tandem, not what the app does, so its claims are sketches. Classes
+  prefixed `tree-` and `onetree-`; it repeats the `v-reveal` rules, since it can be the first
+  page opened.
 - File-type icons (attachment chips, Files panel) come from the VS Code icon set:
   `utils/file-icon-map.ts` maps extensions to icons, and `scripts/file-icons.ts` extracts their
   SVG into `utils/file-icons.generated.ts` (committed; regenerate after changing the map with

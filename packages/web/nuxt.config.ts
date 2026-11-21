@@ -29,11 +29,15 @@ export default defineNuxtConfig({
     : {}),
 
   hooks: {
+    // The landing pages are the website's alone: the current one at `/`, and a proposal for a
+    // future Tandem (one tree for everything) at /one-tree, linked from nowhere.
     'pages:extend'(pages: NuxtPage[]) {
-      const landing = pages.findIndex((page) => page.name === 'landing')
-      if (landing < 0) return
-      const [page] = pages.splice(landing, 1)
-      if (site && page) pages.splice(0, pages.length, { ...page, path: '/' })
+      const paths: Record<string, string> = { landing: '/', 'landing-tree': '/one-tree' }
+      const landings = pages.filter((page) => page.name && page.name in paths)
+      const kept = site
+        ? landings.map((page) => ({ ...page, path: paths[page.name ?? ''] ?? page.path }))
+        : pages.filter((page) => !landings.includes(page))
+      pages.splice(0, pages.length, ...kept)
     },
   },
   css: ['~/assets/css/main.css'],
@@ -101,7 +105,8 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    ...(site ? { output: { dir: '.output-site' } } : {}),
+    // /one-tree gets its own page, served as a file (Caddy has no fallback but 404.html).
+    ...(site ? { output: { dir: '.output-site' }, prerender: { routes: ['/one-tree'] } } : {}),
     devProxy: {
       '/api': { target: `${apiUrl}/api`, changeOrigin: true },
       '/files': { target: `${apiUrl}/files`, changeOrigin: true },
