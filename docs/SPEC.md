@@ -631,10 +631,10 @@ inside OneDrive so that it is backed up and synced.
     "Installed" in the app), removing it, where Tandem runs (this address, local only), and
     updating Tandem: the one-command install, with a copy button (or a newer download's
     installer), and how to uninstall.
-  - **Concepts**: in three groups. Organize: pages and folders, tabs, icons and tags, search.
-    Write: Markdown on disk, autosave and conflicts, links, files, databases, bookmarks, daily
-    notes, TODOs. Keep track:
-    authorship, history, trash. Agents have their own tab.
+  - **Concepts**: a tour of every feature, a card each (icon, title, a few sentences; an
+    "Optional" badge for those switched in Settings › Features), in six groups reached from
+    buttons at the top: Organize, Write, Link and attach, Plan, Keep track, Agents and the app.
+    Settings › Specs lists the same features tersely, with what doesn't exist yet.
   - **Security**: who could read the notes, and what to turn on against each: someone with the
     computer or its disk (FileVault, an encrypted Time Machine disk), the cloud the notes
     folder syncs with (iCloud's Advanced Data Protection; other drives aren't end-to-end

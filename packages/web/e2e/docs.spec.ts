@@ -13,9 +13,27 @@ test('opens the Docs from the sidebar, a tab per address', async ({ page }) => {
   await expect(page.getByTestId('concept').first()).toBeVisible()
   await expect(page).toHaveTitle(/^Concepts/)
 
-  // Grouped, and without Agents (their own tab).
+  // Every feature, grouped; the optional ones say so; the buttons on top lead to each group.
   await expect(page.getByRole('heading', { name: 'Keep track' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Agents' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
+  await expect(
+    page
+      .getByTestId('concept')
+      .filter({ has: page.getByRole('heading', { name: 'Daily notes', exact: true }) })
+      .getByText('Optional'),
+  ).toBeVisible()
+  await expect(
+    page
+      .getByTestId('concept')
+      .filter({ has: page.getByRole('heading', { name: 'History', exact: true }) })
+      .getByText('Optional'),
+  ).toHaveCount(0)
+  await page
+    .getByRole('navigation', { name: 'Concepts' })
+    .getByRole('link', { name: 'Plan' })
+    .click()
+  await expect(page).toHaveURL(/#concepts-plan$/)
+  await expect(page.getByRole('heading', { name: 'Plan', exact: true })).toBeInViewport()
 
   await tabs.getByRole('link', { name: 'Security' }).click()
   await expect(page).toHaveURL(/\/docs\/security$/)
