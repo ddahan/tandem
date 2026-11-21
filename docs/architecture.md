@@ -367,12 +367,15 @@ table: it runs once.
   an action acts on, the rows shown); the tree acts on them with `useTree.moveMany` /
   `moveManyToTrash`, each one undo step.
 - Bookmarks: `useBookmarks` (all of them and the inbox note's, `unsorted`, shared by the
-  sidebar's `UnsortedBookmarks`, the cards, the side panel's `SideBookmarks`, the palette and the
-  tab bar; loaded even when off, for cards already in notes, and again on `bookmarks` and `tree`
+  sidebar's `UnsortedBookmarks`, the cards, the side panel's `SideBookmarks` and the palette;
+  loaded even when off, for cards already in notes, and again on `bookmarks` and `tree`
   events), `useBookmarkActions` (dialogs, made when first opened: `BookmarkDialog` for a new
-  one, `BookmarkPicker`, `BookmarkDeleteDialog`), and `pages/bookmarks/[id].vue`, a bookmark's
-  page, edited in place (tab key `bookmark:<id>`, `utils/tabs.ts`; `forgetBookmarks` closes the
-  tabs of deleted ones). The block is `editor/bookmark.ts` (Markdown, and a drop handler for
+  one, `BookmarkPicker`, `BookmarkDeleteDialog`). Bookmarks have no page: `BookmarkFields` edits
+  one where it shows, in its card (`BookmarkView` swaps the card for it; a focus leaving it ends
+  the edit, unless to one of its dialogs) or in `BookmarkEditPopover`, one Nuxt UI popover in the
+  layout placed against the row it was opened from (`useBookmarkEditor`: the bookmark and the
+  row, as the popover's `reference`). Tabs kept from when bookmarks had pages (`bookmark:<id>`)
+  are dropped when the tabs are read (`useTabs`). The block is `editor/bookmark.ts` (Markdown, and a drop handler for
   bookmarks dragged from Unsorted: `application/x-tandem-bookmark`, with
   `application/x-tandem-bookmark-from` for a move) with `BookmarkView.vue`. A web address
   pasted alone goes to `editor/paste-url.ts` first (before the link extension's paste handler):

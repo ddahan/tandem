@@ -31,6 +31,7 @@ const props = defineProps<{
 
 const bookmarks = useBookmarks()
 const tabs = useTabs()
+const editor = useBookmarkEditor()
 
 const SECTIONS: Record<SubtreeKind, { title: string; icon: string }> = {
   files: { title: 'Files', icon: 'i-lucide-paperclip' },
@@ -102,7 +103,7 @@ function itemsOf(page: SubtreePage, index: number): SubtreeItem[] {
           : '',
         bookmark,
         site: bookmark ? siteOf(bookmark.url) : '',
-        open: () => void tabs.open(`/bookmarks/${id}`),
+        open: (row) => editor.edit(id, row),
         activate: () => bookmark && openWebsite(bookmark.url),
       }
     })

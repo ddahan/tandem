@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // A bookmark block: the bookmark's card (favicon, name, site, description; "Used 3 times" when
 // other notes show it too), as it is now: the data is in Tandem (useBookmarks), the note only
-// names it. A click selects it, as any block
-// (framed), and opens its menu (the website, the bookmark's page, another bookmark, removing
-// it); the focus stays in the editor, so ⌫ deletes it and ⌘Z brings it back, as any content. A
-// double click opens the website.
+// names it. A click selects it, as any block (framed), and opens its menu (the website, editing
+// the bookmark, another bookmark, removing it); the focus stays in the editor, so ⌫ deletes it
+// and ⌘Z brings it back, as any content. A double click opens the website. Edited, the card
+// becomes the bookmark's fields (BookmarkFields), in place: bookmarks have no page.
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3'
 import { siteOf } from '@tandem/shared'
@@ -18,9 +18,10 @@ const id = computed(() => String(props.node.attrs.id ?? ''))
 const bookmark = computed(() => bookmarks.byId.value.get(id.value) ?? null)
 const missing = computed(() => bookmarks.loaded.value && !bookmark.value)
 const editable = computed(() => props.editor.isEditable)
-const tabs = useTabs()
 
 const menuOpen = ref(false)
+/** The card shows the bookmark's fields, to edit it. */
+const editingFields = ref(false)
 // Not merely because the note starts with it (useBlockSelected).
 const selected = useBlockSelected(props.editor, () => props.selected)
 
@@ -54,13 +55,33 @@ async function change() {
   if (picked) props.updateAttributes({ id: picked })
 }
 
+/** Done editing: back to the card, selected (keys go to the note again). */
+function doneEditing() {
+  editingFields.value = false
+  selectNode()
+}
+
+/**
+ * The focus out of the fields (a click elsewhere): back to the card. Not while one of its
+ * dialogs is open (the icon picker, deleting), which take the focus for a while.
+ */
+function onFocusOut(event: FocusEvent) {
+  const fields = event.currentTarget as HTMLElement
+  setTimeout(() => {
+    if (document.querySelector('[role="dialog"]')) return
+    if (!fields.contains(document.activeElement)) editingFields.value = false
+  })
+}
+
 const menu = computed<DropdownMenuItem[][]>(() => [
   [
     { label: 'Open website', icon: 'i-lucide-external-link', onSelect: open },
     {
-      label: 'Show the bookmark',
-      icon: 'i-lucide-bookmark',
-      onSelect: () => void tabs.open(`/bookmarks/${id.value}`),
+      label: 'Edit bookmark',
+      icon: 'i-lucide-pencil',
+      onSelect: () => {
+        editingFields.value = true
+      },
     },
   ],
   ...(editable.value
@@ -107,6 +128,14 @@ const menu = computed<DropdownMenuItem[][]>(() => [
         class="ms-auto"
         @click.stop="remove"
       />
+    </div>
+    <div
+      v-else-if="editingFields"
+      class="rounded-md border border-accented bg-default px-3 py-2.5"
+      data-testid="bookmark-card-fields"
+      @focusout="onFocusOut"
+    >
+      <BookmarkFields :id="id" @done="doneEditing" />
     </div>
     <div
       v-else

@@ -2,14 +2,14 @@
 // The websites the note points to, in the Items tab's Bookmarks: its bookmark cards (in order;
 // "Used 3 times" when other notes show one too), then the links to websites in its text
 // (`[text](https://…)`, bare addresses), one line each. A click scrolls to one in the note, a
-// double click opens its website. Read from the note's Markdown; reports how many.
+// double click opens its website; a card's pencil (on hover) edits its bookmark in a popover. Read from the note's Markdown; reports how many.
 import { bookmarkIdsIn, externalLinksIn, siteOf, urlKey } from '@tandem/shared'
 import { openWebsite, usesLabel } from '~/composables/useBookmarks'
 
 const props = defineProps<{ content: string }>()
 const emit = defineEmits<{ count: [count: number] }>()
 const bookmarks = useBookmarks()
-const tabs = useTabs()
+const editor = useBookmarkEditor()
 
 const cards = computed(() =>
   [...new Set(bookmarkIdsIn(props.content))].map((id) => ({
@@ -18,7 +18,7 @@ const cards = computed(() =>
   })),
 )
 
-// A link's bookmark, when the page is bookmarked: its favicon, and a way to its page.
+// A link's bookmark, when the page is bookmarked: its favicon.
 const byKey = computed(
   () => new Map(bookmarks.list.value.map((bookmark) => [urlKey(bookmark.url), bookmark])),
 )
@@ -41,6 +41,10 @@ function scrollTo(selector: string) {
     ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 }
 const toCard = (id: string) => scrollTo(`[data-bookmark-id="${CSS.escape(id)}"]`)
+function editRow(id: string, event: Event) {
+  const row = (event.currentTarget as HTMLElement).closest<HTMLElement>('[role="button"]')
+  if (row) editor.edit(id, row)
+}
 const toLink = (url: string) => scrollTo(`a[href="${CSS.escape(url)}"]`)
 </script>
 
@@ -68,15 +72,15 @@ const toLink = (url: string) => scrollTo(`a[href="${CSS.escape(url)}"]`)
           {{ [siteOf(card.bookmark.url), usesLabel(card.bookmark)].filter(Boolean).join(' · ') }}
         </span>
         <!-- On hover (or focus), in the site's place. -->
-        <UTooltip v-if="card.bookmark" text="Show the bookmark">
+        <UTooltip v-if="card.bookmark" text="Edit bookmark">
           <UButton
-            icon="i-lucide-arrow-up-right"
+            icon="i-lucide-pencil"
             size="xs"
             color="neutral"
             variant="ghost"
-            aria-label="Show the bookmark"
+            aria-label="Edit bookmark"
             class="absolute end-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-            @click.stop="tabs.open(`/bookmarks/${card.id}`)"
+            @click.stop="editRow(card.id, $event)"
           />
         </UTooltip>
       </div>

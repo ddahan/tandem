@@ -237,7 +237,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       {
         keys: [['enter']],
         label: 'Open the website',
-        description: 'In a new browser tab, as a double click. A click opens its page.',
+        description: 'In a new browser tab, as a double click. A click edits it next to its row.',
       },
       {
         keys: [['meta', 'backspace'], ['delete']],

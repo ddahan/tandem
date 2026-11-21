@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Making a bookmark, opened by useBookmarkActions (editing one is done in place, on its page).
+// Making a bookmark, opened by useBookmarkActions (editing one is done where it shows: BookmarkFields).
 // Its name and description are read from its page once its address is typed (the server
 // fetches it), unless already filled. A page already bookmarked says so: its bookmark is used
 // (one per page), its card shown where this one was asked for. `inbox`: its card goes at the

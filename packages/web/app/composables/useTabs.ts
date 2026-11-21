@@ -1,12 +1,12 @@
-// Open pages as tabs, as VS Code opens files in editors. A note, a bookmark, and the app's own
-// pages (Docs, Settings, TODOs, Trash), each have one tab; the
-// route is the active tab. A single click in the tree opens a note in the preview tab (one at most, in italics, replaced by the next
-// preview, and closed once another page shows); a double click, editing the note, or any other
-// way of opening it gives it a tab of its own (a bookmark's: the same, from Unsorted). Days of daily notes follow each other in one tab
+// Open pages as tabs, as VS Code opens files in editors. A note and the app's own pages (Docs,
+// Settings, TODOs, Trash) each have one tab; the route is the active tab. A single click in the
+// tree opens a note in the preview tab (one at most, in italics, replaced by the next preview,
+// and closed once another page shows); a double click, editing the note, or any other way of
+// opening it gives it a tab of its own. Days of daily notes follow each other in one tab
 // (`replace`). Closing the active tab shows the one used before it, or Home with none left. The
 // tabs, their order and the recently used ones are kept in localStorage.
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
-import { bookmarkIdOf, noteIdOf, tabKeyOf } from '~/utils/tabs'
+import { noteIdOf, tabKeyOf } from '~/utils/tabs'
 
 export interface Tab {
   key: string
@@ -34,10 +34,18 @@ export function forgetTabs() {
   }
 }
 
+/** A bookmark's tab: they had pages (0.11 and before), now edited where they show. */
+const oldBookmarkTab = (key: string) => key.startsWith('bookmark:')
+
 function load(): Saved {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as Saved | null
-    if (saved && Array.isArray(saved.tabs) && Array.isArray(saved.recent)) return saved
+    if (saved && Array.isArray(saved.tabs) && Array.isArray(saved.recent)) {
+      return {
+        tabs: saved.tabs.filter((tab) => !oldBookmarkTab(tab.key)),
+        recent: saved.recent.filter((key) => !oldBookmarkTab(key)),
+      }
+    }
   } catch {
     // Not saved, or not readable: no tabs.
   }
@@ -213,11 +221,6 @@ export function useTabs() {
     return forget(noteIdOf, exists)
   }
 
-  /** Closes the tabs of bookmarks that are gone (deleted here or elsewhere). */
-  function forgetBookmarks(exists: (id: string) => boolean) {
-    return forget(bookmarkIdOf, exists)
-  }
-
   function forget(idOf: (key: string) => string | null, exists: (id: string) => boolean) {
     const gone = saved.value.tabs
       .filter((tab) => {
@@ -247,6 +250,5 @@ export function useTabs() {
     at,
     moveBefore,
     forgetNotes,
-    forgetBookmarks,
   }
 }

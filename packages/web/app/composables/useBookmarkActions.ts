@@ -1,6 +1,6 @@
 // What can be done with a bookmark from anywhere (Unsorted, a card, its page): make one in a
 // dialog, pick one for a note, delete one once confirmed (naming the pages that show it).
-// Editing one is done on its page (pages/bookmarks/[id].vue).
+// Editing one is done where it shows (BookmarkFields: its card, or a popover next to its row).
 import type { Bookmark } from '@tandem/shared'
 import BookmarkDeleteDialog from '~/components/BookmarkDeleteDialog.vue'
 import BookmarkDialog from '~/components/BookmarkDialog.vue'

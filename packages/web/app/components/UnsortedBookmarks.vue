@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // The sidebar's Unsorted section, right after the pages: the bookmarks the inbox note shows
-// (saved from Chrome, imported, or made with its "+"), still to sort into notes. A click opens a
-// bookmark's page in the preview tab; a double click its website. Dragged into a note (or onto
+// (saved from Chrome, imported, or made with its "+"), still to sort into notes. A click edits a
+// bookmark in a popover next to its row (useBookmarkEditor); a double click opens its website. Dragged into a note (or onto
 // a page in the tree), its card goes there and leaves the inbox note. Its title opens the inbox
 // note itself; a right click on the section also exports all bookmarks for Chrome.
 import type { DropdownMenuItem } from '@nuxt/ui'
@@ -14,15 +14,17 @@ import { keepMovedFocus } from '~/utils/menu-focus'
 const bookmarks = useBookmarks()
 const actions = useBookmarkActions()
 const tabs = useTabs()
-const route = useRoute()
+const editor = useBookmarkEditor()
 
 const open = useLocalStorage('tandem-unsorted-open', true)
 const list = computed(() => bookmarks.unsorted.value.bookmarks)
 const inboxId = computed(() => bookmarks.unsorted.value.noteId)
-const currentId = computed(() => (route.name === 'bookmarks-id' ? String(route.params.id) : null))
+// The one being edited, next to its row.
+const currentId = computed(() => editor.editing.value?.id ?? null)
 
-function show(bookmark: Bookmark) {
-  void tabs.preview(`/bookmarks/${bookmark.id}`)
+function edit(bookmark: Bookmark, event: Event) {
+  const row = (event.target as HTMLElement).closest<HTMLElement>('[data-unsorted-id]')
+  if (row) editor.edit(bookmark.id, row)
 }
 
 function openInbox() {
@@ -47,9 +49,15 @@ function menu(bookmark: Bookmark): DropdownMenuItem[][] {
         onSelect: () => openWebsite(bookmark.url),
       },
       {
-        label: 'Open in a tab',
-        icon: 'i-lucide-panel-top',
-        onSelect: () => void tabs.open(`/bookmarks/${bookmark.id}`),
+        label: 'Edit',
+        icon: 'i-lucide-pencil',
+        onSelect: () => {
+          // Next to its row (the menu may be the section's right-click one).
+          const anchor = document.querySelector<HTMLElement>(
+            `[data-unsorted-id="${CSS.escape(bookmark.id)}"]`,
+          )
+          if (anchor) editor.edit(bookmark.id, anchor)
+        },
       },
       {
         label: 'Copy address',
@@ -196,7 +204,7 @@ function onRowKeydown(event: KeyboardEvent, bookmark: Bookmark) {
               :data-testid="`unsorted-${bookmark.title}`"
               :title="bookmark.url"
               draggable="true"
-              @click="show(bookmark)"
+              @click="edit(bookmark, $event)"
               @dblclick="openWebsite(bookmark.url)"
               @keydown="onRowKeydown($event, bookmark)"
               @dragstart="onDragStart($event, bookmark)"

@@ -1,7 +1,7 @@
 // What a tab shows of its page (TabBar, TabChip): its title, icon, and the path in its tooltip.
 import { calendarDateOf, dayLabel } from '@tandem/shared'
 import type { Tab } from '~/composables/useTabs'
-import { bookmarkIdOf, noteIdOf } from '~/utils/tabs'
+import { noteIdOf } from '~/utils/tabs'
 
 /** The app's own pages, with their sidebar titles and icons. */
 const PAGES: Record<string, { title: string; icon: string }> = {
@@ -13,16 +13,11 @@ const PAGES: Record<string, { title: string; icon: string }> = {
 
 export function useTabInfo() {
   const tree = useTree()
-  const bookmarks = useBookmarks()
   const { settings } = useSettings()
 
   function nodeOf(tab: Tab) {
     const id = noteIdOf(tab.key)
     return id ? tree.byId.value.get(id) : undefined
-  }
-  function bookmarkOf(tab: Tab) {
-    const id = bookmarkIdOf(tab.key)
-    return id ? bookmarks.byId.value.get(id) : undefined
   }
   /** A daily note's day (daily notes on): its tab reads "Today", "Wed 14 Oct"… */
   function dayOf(tab: Tab) {
@@ -33,7 +28,6 @@ export function useTabInfo() {
     const day = dayOf(tab)
     if (day) return dayLabel(day).short
     if (noteIdOf(tab.key)) return nodeOf(tab)?.title ?? '…'
-    if (bookmarkIdOf(tab.key)) return bookmarkOf(tab)?.title ?? '…'
     return PAGES[tab.key]?.title ?? tab.key
   }
   function iconOf(tab: Tab) {
@@ -52,5 +46,5 @@ export function useTabInfo() {
     return id ? tree.ancestors(id) : []
   }
 
-  return { nodeOf, bookmarkOf, dayOf, titleOf, iconOf, tooltipOf, pathOf }
+  return { nodeOf, dayOf, titleOf, iconOf, tooltipOf, pathOf }
 }

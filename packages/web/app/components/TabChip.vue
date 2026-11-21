@@ -25,7 +25,6 @@ const tree = useTree()
 const info = useTabInfo()
 
 const node = computed(() => (info.dayOf(props.tab) ? undefined : info.nodeOf(props.tab)))
-const bookmark = computed(() => info.bookmarkOf(props.tab))
 const title = computed(() => info.titleOf(props.tab))
 const path = computed(() => info.pathOf(props.tab))
 
@@ -86,7 +85,6 @@ function onAuxClick(event: MouseEvent) {
         aria-hidden="true"
       />
       <NodeIcon v-if="node" :icon="node.icon" :kind="tree.kindOf(node)" />
-      <BookmarkIcon v-else-if="bookmark" :bookmark="bookmark" />
       <UIcon v-else :name="info.iconOf(tab)" class="size-4 shrink-0" />
       <span class="min-w-0 truncate" :class="tab.preview && 'italic'">{{ title }}</span>
       <!-- Over the end of the title, on hover (or focus): it takes no room otherwise. -->

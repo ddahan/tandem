@@ -67,12 +67,6 @@ watch(
     if (tree.loaded.value) void tabs.forgetNotes((id) => byId.has(id))
   },
 )
-watch(
-  () => bookmarks.byId.value,
-  (byId) => {
-    if (bookmarks.loaded.value) void tabs.forgetBookmarks((id) => byId.has(id))
-  },
-)
 
 const createNextToOpen = () => tree.createPageNextTo(noteIdOf(tabs.activeKey.value ?? ''))
 
@@ -281,6 +275,9 @@ defineShortcuts({
     </UDashboardSidebar>
 
     <NoteSearch />
+
+    <!-- A bookmark edited next to its row (Unsorted, the side panel). -->
+    <BookmarkEditPopover />
 
     <!-- The one tab bar: it shows itself in the bar of the page open (useTabBarHost). -->
     <TabBar />

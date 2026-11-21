@@ -18,7 +18,8 @@ export interface SubtreeItem {
   site?: string
   rows?: number
   missing?: boolean
-  open: () => void
+  /** A click or ↵ (the row: what it shows next to it, a bookmark's editor). */
+  open: (row: HTMLElement) => void
   /** A double click (a bookmark's website). */
   activate?: () => void
 }

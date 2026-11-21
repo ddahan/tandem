@@ -448,8 +448,8 @@ inside OneDrive so that it is backed up and synced.
   pages' tree) are what organizes them. A bookmark is not a page and holds nothing; it is stored
   in SQLite (and its backup), never in the notes' Markdown. It has a name, a web address (http
   or https only), an optional description, and its site's favicon (`.tandem/icons/`; a globe
-  without one), or an icon of its own: an emoji or an image ("Change icon" on its page), or
-  back to the favicon.
+  without one), or an icon of its own: an emoji or an image ("Change icon" where it is edited),
+  or back to the favicon.
 - **One bookmark per page**: an address already saved (give or take `www.`, `http`/`https`, a
   `#fragment` or a final `/`) isn't saved again: its bookmark is used, its card shown where
   the new one was asked for. Shown in several notes, a card says "Used 3 times" (nothing for
@@ -459,25 +459,26 @@ inside OneDrive so that it is backed up and synced.
   their count. Bookmarks saved from Chrome, imported, or made with Unsorted's "+" go at the
   start of the inbox note (`Bookmarks` at the top, made when one is first needed, and again
   if it was deleted; it is a note as any other, which can be renamed or moved). Its title
-  opens the inbox note. A click on a bookmark opens its **page** in the preview tab, a double
-  click or ↵ its website in a new browser tab (from the installed app, in the default
-  browser); its menu (⋯ or a right click): open the website, open in a tab, copy the address,
+  opens the inbox note. A click on a bookmark **edits** it in a popover next to its row, a
+  double click or ↵ opens its website in a new browser tab (from the installed app, in the
+  default browser); its menu (⋯ or a right click): open the website, edit, copy the address,
   delete. Dragged into a note, its card goes where it's dropped; dragged onto a page of the
   tree, at that page's end; either way it leaves the inbox note (sorted). A right click on the
   section: New bookmark, Open the inbox note, Export all for Chrome. Empty, it says where
   bookmarks come from.
 - **Bookmarks** (the side panel's Items, between Files and Databases): the note's bookmark
-  cards, in order (favicon, name, site, "Used 3 times"; a button to the bookmark's page), then its
+  cards, in order (favicon, name, site, "Used 3 times"; a pencil, on hover, edits it), then its
   links to websites in the text (`[text](https://…)`, `<https://…>`, bare addresses; each
   address once; not in code, nor images), with the favicon of their bookmark when the page is
   saved. A click scrolls to one in the note, a double click or ↵ opens its website. Read from
   the note's Markdown, only while the Items tab shows.
-- **A bookmark's page** (`/bookmarks/<id>`, a tab with its favicon and name): everything
-  **edited in place**, saved when a field is left (↵ in one-line fields, Esc puts a field
-  back): its icon, name, address (an address already saved is refused, with a link to its
-  bookmark) and description; its site and dates; Open website and Delete under them (not in
-  the header); the pages showing its card, as links. Editing keeps a preview tab open. A
-  deleted bookmark's tab closes.
+- **Edited where it shows**, never on a page of its own (no tab, no address in the app): its
+  card in a note becomes its fields ("Edit bookmark" in its menu), and a row (Unsorted, the side
+  panel's Items) opens them in a popover next to it. The fields: its icon, name (focused),
+  address (an address already saved is refused, naming its bookmark) and description, each
+  saved when left; its site and dates; the pages showing its card, as links; Open website,
+  Delete and Done. ↵ in a one-line field saves and closes, Esc puts the field back and closes,
+  and so does a click elsewhere (saving), except into the icon picker or the delete dialog.
 - **New**: a dialog with the address, name and description. Its name and description are read
   from its page by the server (best effort, a few seconds at most), as its favicon; a page
   already saved says so ("Use it" instead of Create).
@@ -489,8 +490,8 @@ inside OneDrive so that it is backed up and synced.
   until words are typed, makes one there in the usual dialog, as does a pasted address that
   isn't saved yet: its card shows once saved). A card shows the bookmark as it is now
   (favicon, name, site, "Used 3 times", two lines of description). A click selects it (framed,
-  as any block) and opens its menu, also on its ⋯ button: open the website, the bookmark's
-  page, put another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes
+  as any block) and opens its menu, also on its ⋯ button: open the website, edit the bookmark
+  (in the card), put another bookmark there, remove the card; the focus stays in the note, so ⌫ deletes
   the selected card and ⌘Z brings it back, as any content. A double click opens the website.
   The note only has a block naming it (` ```bookmark ` with `id: …`); a card whose bookmark is
   gone says so.
@@ -562,8 +563,8 @@ inside OneDrive so that it is backed up and synced.
   one list per section, each naming its page, sorted by page (the tree's order), name, or what
   the kind has: size (largest first) and type for files, site for bookmarks, rows for databases
   (from the section's header, remembered per section); a section with nothing under the page
-  keeps its own list. A click opens an item: a link's or database's page, a bookmark's page (a
-  double click its website), a file, a website. Page links lists the pages they link to
+  keeps its own list. A click opens an item: a link's or database's page, a bookmark's fields
+  in a popover (a double click its website), a file, a website. Page links lists the pages they link to
   ("Linked from" stays the page's own, in Tree). Read only while the panel shows Items, and
   again when pages change; at most 500 pages under it (it says so beyond). Counts and empty
   lines wait for the sub-pages' items.

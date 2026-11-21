@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // A row of SideSubtree: an item of a page under the one shown (or of it), its icon, name and
 // detail on one line (every row of the Items tab has the same height); with `showPage`, the
-// page it is in (the flat display). A click opens it (the page, the bookmark's page, the file,
-// the website), a double click a bookmark's website.
+// page it is in (the flat display). A click opens it (the page, the file, the website; a
+// bookmark: edited in a popover next to the row), a double click a bookmark's website.
 import type { SubtreeItem } from '~/utils/subtree-items'
 
 defineProps<{ item: SubtreeItem; showPage?: boolean }>()
@@ -15,8 +15,8 @@ defineProps<{ item: SubtreeItem; showPage?: boolean }>()
     class="flex h-7 w-full items-center gap-2 rounded-md px-2 text-start transition-colors duration-[120ms] hover:bg-accented"
     :class="item.missing && 'text-dimmed'"
     :data-testid="`side-item-${item.label}`"
-    @click="item.open()"
-    @keydown.enter="item.open()"
+    @click="item.open($event.currentTarget as HTMLElement)"
+    @keydown.enter="item.open($event.currentTarget as HTMLElement)"
     @dblclick="item.activate?.()"
   >
     <!-- eslint-disable-next-line vue/no-v-html -- bundled icon SVG (file-icons.generated.ts) -->

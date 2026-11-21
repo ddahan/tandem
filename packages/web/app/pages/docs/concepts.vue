@@ -160,7 +160,7 @@ const GROUPS: Group[] = [
         id: 'bookmarks',
         icon: 'i-lucide-bookmark',
         title: 'Bookmarks',
-        text: 'Keep websites in your notes, as cards (/bookmark): a theme’s note holds its websites with the rest. Saved from Chrome with Tandem’s extension (Browser Extension tab), they land in Unsorted in the sidebar, to drag into notes or onto pages. A click opens one as a page (name, address, description and icon, edited in place), a double click its website.',
+        text: 'Keep websites in your notes, as cards (/bookmark): a theme’s note holds its websites with the rest. Saved from Chrome with Tandem’s extension (Browser Extension tab), they land in Unsorted in the sidebar, to drag into notes or onto pages. A click edits one where it shows (name, address, description and icon: in its card, or next to its row), a double click opens its website.',
         optional: true,
       },
       {

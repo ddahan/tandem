@@ -45,7 +45,7 @@ test.afterEach(async ({ request }) => {
   await api(request, 'PATCH', '/settings', { bookmarks: false })
 })
 
-test('Unsorted lists the inbox note’s bookmarks right after the pages, and opens one as a page', async ({
+test('Unsorted lists the inbox note’s bookmarks right after the pages, and edits one in place', async ({
   page,
   request,
 }) => {
@@ -66,34 +66,44 @@ test('Unsorted lists the inbox note’s bookmarks right after the pages, and ope
   await expect(section.getByTestId('unsorted-count')).toHaveText('2')
   await expect(section.locator('[data-unsorted-id]')).toHaveText(['Later', 'An article'])
 
-  // A bookmark opens as a page, its fields edited in place.
+  // A click edits it next to its row (no page of its own): its name, focused, saved with ↵.
   await section.getByTestId('unsorted-An article').click()
-  await expect(page).toHaveURL(`/bookmarks/${article.id}`)
-  const view = page.getByTestId('bookmark-page')
-  await expect(view.getByTestId('bookmark-page-url')).toHaveValue('https://example.com/article')
-  await expect(view.getByTestId('bookmark-pages')).toContainText('Bookmarks')
-  await view.getByTestId('bookmark-page-title').fill('An article, renamed')
-  await view.getByTestId('bookmark-page-title').press('Enter')
-  await view.getByTestId('bookmark-page-description').fill('Read it twice')
-  await view.getByTestId('bookmark-page-description').blur()
+  const fields = page.getByTestId('bookmark-fields')
+  await expect(fields.getByTestId('bookmark-url-field')).toHaveValue('https://example.com/article')
+  await expect(fields.getByTestId('bookmark-pages')).toContainText('Bookmarks')
+  await expect(fields.getByTestId('bookmark-title-field')).toBeFocused()
+  await fields.getByTestId('bookmark-title-field').fill('An article, renamed')
+  await fields.getByTestId('bookmark-title-field').press('Enter')
+  await expect(fields).toHaveCount(0)
+  await expect(page).toHaveURL('/')
+  await section.getByTestId('unsorted-An article, renamed').click()
+  await fields.getByTestId('bookmark-description-field').fill('Read it twice')
+  await fields.getByTestId('bookmark-done').click()
   await expect
     .poll(async () =>
       api<Bookmark & { description: string }>(request, 'GET', `/bookmarks/${article.id}`),
     )
     .toMatchObject({ title: 'An article, renamed', description: 'Read it twice' })
-  await expect(page.getByTestId('tab-An article, renamed')).toBeVisible()
+  await expect(section.getByTestId('unsorted-An article, renamed')).toBeVisible()
+
+  // Esc puts a field back as it was.
+  await section.getByTestId('unsorted-An article, renamed').click()
+  await fields.getByTestId('bookmark-title-field').fill('Not this')
+  await fields.getByTestId('bookmark-title-field').press('Escape')
+  await expect(fields).toHaveCount(0)
   await expect(section.getByTestId('unsorted-An article, renamed')).toBeVisible()
 
   // Another bookmark's address is refused, and the field goes back.
-  await view.getByTestId('bookmark-page-url').fill('https://example.com/later')
-  await view.getByTestId('bookmark-page-url').press('Enter')
+  await section.getByTestId('unsorted-An article, renamed').click()
+  await fields.getByTestId('bookmark-url-field').fill('https://example.com/later')
+  await fields.getByTestId('bookmark-url-field').press('Tab')
   await expect(page.getByText('Already bookmarked as “Later”', { exact: true })).toBeVisible()
-  await expect(view.getByTestId('bookmark-page-url')).toHaveValue('https://example.com/article')
+  await expect(fields.getByTestId('bookmark-url-field')).toHaveValue('https://example.com/article')
 
-  // Deleted from its page: its tab goes, and so does its row.
-  await page.getByRole('button', { name: 'Delete bookmark' }).click()
+  // Deleted from there, once confirmed: its row goes.
+  await fields.getByRole('button', { name: 'Delete' }).click()
   await page.getByTestId('bookmark-delete-confirm').click()
-  await expect(page.getByTestId('tab-An article, renamed')).toHaveCount(0)
+  await expect(fields).toHaveCount(0)
   await expect(section.locator('[data-unsorted-id]')).toHaveText(['Later'])
 
   // Its title opens the inbox note; folded, it stays so; off, it goes.
@@ -177,7 +187,7 @@ test('right-clicking Unsorted exports for Chrome, the pages as folders; a page e
   await expect(page.getByRole('menuitem', { name: 'Export all for Chrome' })).toBeVisible()
 })
 
-test('a bookmark takes an icon from its page, and back to its favicon', async ({
+test('a bookmark takes an icon where it is edited, and back to its favicon', async ({
   page,
   request,
 }) => {
@@ -186,22 +196,56 @@ test('a bookmark takes an icon from its page, and back to its favicon', async ({
     title: 'Reading',
     inbox: true,
   })
-  await page.goto(`/bookmarks/${bookmark.id}`)
-  await page.getByRole('button', { name: 'Change icon' }).click()
+  await page.goto('/')
+  const row = page.getByTestId('unsorted-Reading')
+  await row.click()
+  const fields = page.getByTestId('bookmark-fields')
+  await fields.getByRole('button', { name: 'Change icon' }).click()
   const picker = page.getByTestId('icon-picker')
   await picker.getByLabel('Search emojis').fill('books')
   await picker.getByRole('button', { name: 'books', exact: true }).click()
-  const row = page.getByTestId('unsorted-Reading')
   await expect(row.getByTestId('bookmark-icon')).toHaveText('📚')
   expect(await api<Bookmark>(request, 'GET', `/bookmarks/${bookmark.id}`)).toMatchObject({
     emoji: '📚',
   })
-  await page.getByRole('button', { name: 'Change icon' }).click()
+  // The editor stayed open behind the picker.
+  await fields.getByRole('button', { name: 'Change icon' }).click()
   await picker.getByRole('button', { name: 'Use the default icon' }).click()
   await expect(row.getByTestId('bookmark-icon')).not.toHaveText('📚')
   expect(await api<Bookmark>(request, 'GET', `/bookmarks/${bookmark.id}`)).toMatchObject({
     emoji: null,
   })
+})
+
+test('a card in a note edits its bookmark in place, from its menu', async ({ page, request }) => {
+  const docs = await addBookmark(request, {
+    url: 'https://docs.example.com',
+    title: 'Example docs',
+  })
+  const note = await createNote(request, 'Card to edit', `Read:\n\n${block(docs.id)}\n`)
+  await openNote(page, note.id)
+  const card = page.getByTestId('bookmark-card')
+  await card.getByText('Example docs').click()
+  await page.getByRole('menuitem', { name: 'Edit bookmark' }).click()
+  // The card is its fields now, the name focused: what's typed goes there, not in the note.
+  const fields = card.getByTestId('bookmark-fields')
+  await expect(fields.getByTestId('bookmark-title-field')).toBeFocused()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' (new)')
+  await fields.getByTestId('bookmark-description-field').fill('The reference')
+  // A click elsewhere: saved, and the card is back.
+  await page.getByText('Read:').click()
+  await expect(fields).toHaveCount(0)
+  await expect(card).toContainText('Example docs (new)')
+  await expect(card).toContainText('The reference')
+  await expect(page).toHaveURL(`/notes/${note.id}`)
+  expect(await api<Bookmark>(request, 'GET', `/bookmarks/${docs.id}`)).toMatchObject({
+    title: 'Example docs (new)',
+  })
+  // The note itself didn't change.
+  const content = await noteContent(request, note.id)
+  expect(content).toContain(block(docs.id))
+  expect(content).not.toContain('(new)')
 })
 
 test('makes a new bookmark from /bookmark’s picker, and shows its card', async ({
@@ -410,10 +454,14 @@ test('the side panel lists the note’s bookmarks and links to websites', async 
   await expect(panel.getByTestId('side-bookmark-Example docs')).toContainText('docs.example.com')
   await expect(panel.getByTestId('side-link-the guide')).toContainText('guide.example.com')
   await expect(panel.getByTestId('side-link-bare.example.com')).toBeVisible()
-  // Its page, from its button.
+  // Edited next to its row, from its button.
   await panel.getByTestId('side-bookmark-Example docs').hover()
-  await panel.getByRole('button', { name: 'Show the bookmark', exact: true }).click()
-  await expect(page).toHaveURL(`/bookmarks/${docs.id}`)
+  await panel.getByRole('button', { name: 'Edit bookmark', exact: true }).click()
+  const fields = page.getByTestId('bookmark-fields')
+  await fields.getByTestId('bookmark-title-field').fill('Example docs, renamed')
+  await fields.getByTestId('bookmark-title-field').press('Enter')
+  await expect(panel.getByTestId('side-bookmark-Example docs, renamed')).toBeVisible()
+  await expect(page).toHaveURL(`/notes/${note.id}`)
 })
 
 test('deletes a bookmark once confirmed, naming the pages that show it, and its cards go', async ({
