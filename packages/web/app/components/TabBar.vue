@@ -58,6 +58,11 @@ function menu(tab: Tab): ContextMenuItem[][] {
       ...(node
         ? [
             {
+              label: 'Open in new window',
+              icon: 'i-lucide-app-window',
+              onSelect: () => openNoteWindow(node.id),
+            },
+            {
               label: 'Copy path',
               icon: 'i-lucide-copy',
               onSelect: () => void copyPath(node.path),

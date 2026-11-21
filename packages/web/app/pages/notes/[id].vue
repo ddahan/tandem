@@ -441,12 +441,17 @@ const wide = computed(() => fullWidth.value || widthNeeded.value)
 // (remembered). In a narrower one there is no room beside it: the note stays, and the panel
 // opens over it only when asked (its button, ⌘\), closing with Esc (in the note: one it didn't
 // use) or a click on the note.
+// In a note's own window (useNoteWindow), only the note: no side panel.
+const noteWindow = isNoteWindow()
 const panelOpen = useLocalStorage('tandem-side-panel', true)
 const largeWindow = useWindowQuery('(min-width: 1024px)')
 const panelOver = ref(false)
 watch(largeWindow, () => (panelOver.value = false))
-const panelShown = computed(() => (largeWindow.value ? panelOpen.value : panelOver.value))
+const panelShown = computed(
+  () => !noteWindow && (largeWindow.value ? panelOpen.value : panelOver.value),
+)
 function togglePanel() {
+  if (noteWindow) return
   if (largeWindow.value) panelOpen.value = !panelOpen.value
   else panelOver.value = !panelOver.value
 }
@@ -500,12 +505,24 @@ async function askToRemove() {
 async function remove() {
   deleting.value = false
   await doc.flush()
-  // Its tab closes by itself (default.vue): the one used before shows.
+  // Its tab closes by itself (default.vue): the one used before shows. Its own window closes
+  // (layouts/note-window.vue).
   if (settings.value.trash) await tree.remove(id.value)
   else await tree.deleteForever(id.value)
 }
 
 const moreItems = computed<DropdownMenuItem[][]>(() => [
+  ...(noteWindow
+    ? []
+    : [
+        [
+          {
+            label: 'Open in new window',
+            icon: 'i-lucide-app-window',
+            onSelect: () => openNoteWindow(id.value),
+          },
+        ],
+      ]),
   [
     {
       label: 'Copy link to this note',
@@ -581,7 +598,7 @@ const created = computed(() => (node.value ? formatDateTime(node.value.createdAt
               />
             </UTooltip>
           </UFieldGroup>
-          <UTooltip text="Side panel" :kbds="['meta', '\\']">
+          <UTooltip v-if="!noteWindow" text="Side panel" :kbds="['meta', '\\']">
             <UButton
               icon="i-lucide-panel-right"
               color="neutral"

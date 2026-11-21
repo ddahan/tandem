@@ -603,6 +603,15 @@ table: it runs once.
   runs. `site/Dockerfile` builds it from the repository's root and serves it with Caddy
   (`site/Caddyfile`, :8080); DokWalt deploys it (`site/README.md`). The end-to-end tests serve
   the build as Caddy does (`scripts/serve-site.ts`).
+- A note's own window (`composables/useNoteWindow.ts`): `openNoteWindow` opens
+  `/notes/<id>?window` with `window.open` (a popup, named after the note, so it opens once).
+  The window knows what it is from its first address (`isNoteWindow`, for its whole life); a
+  global route middleware (`middleware/note-window.global.ts`) gives every page there the
+  `note-window` layout (the page alone, in a `UDashboardGroup`) and puts `?window` back on any
+  address that lacks it, so a reload keeps it. There, `PageNavbar` shows the title and
+  `SaveStatus` instead of the tabs, the note page has no side panel, and `useTabs` writes
+  nothing: localStorage is shared by every window, and this window's copy of the tabs would
+  overwrite the main window's. The layout closes the window when its note leaves the tree.
 - Landing page (`pages/landing.vue`, `layout: false`, demos in `components/landing/`): CSS
   animations (classes prefixed `landing-`), `v-reveal` (`utils/reveal.ts`) for scroll reveals,
   and `useDemoLoop` for the scripted demos (cancelled on unmount; skipped with reduced motion,

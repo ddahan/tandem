@@ -578,6 +578,16 @@ inside OneDrive so that it is backed up and synced.
     its tab follows (title, icon). The tabs, their order and the recently used ones are kept in
     the browser: opening Tandem on Home shows the tab that was active. Switching notes folders
     closes them all.
+- **A note in its own window**, to put two notes side by side: "Open in new window" in a page's
+  menu in the tree, in a note tab's menu, and in the note's ⋯ menu opens it in a window of its
+  own, as tall as the screen and at most 900px wide. That window shows the note alone: no
+  sidebar, no tab bar, no side panel; the bar keeps the note's title, its actions and whether it
+  is saved. Opening the same note again brings its window to the front. Links followed there
+  (wiki links, the path above the title, sub-pages) open in that window, which stays a note
+  window, through reloads too. It leaves the main window's tabs as they are, and has none of
+  the app's shortcuts for tabs, the sidebar or search. The note's changes show in every window
+  where it is open, as an agent's do. A note trashed or deleted (in any window, or by an agent)
+  closes its window.
 - VS Code editing shortcuts: move blocks and list items (⌥↑/⌥↓), duplicate them (⇧⌥↑/⇧⌥↓),
   delete them (⌘⇧K), insert a line below or above (⌘↵ / ⌘⇧↵), and select occurrences of a
   word (⌘D, ⌘⇧L) to type, erase or delete in all of them at once. The arrows then move every

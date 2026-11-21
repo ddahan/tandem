@@ -58,6 +58,8 @@ export function useTabs() {
   const activeKey = computed(() => tabKeyOf(route.path))
 
   function persist() {
+    // A note's own window has no tabs: it would write over the main window's.
+    if (isNoteWindow()) return
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saved.value))
     } catch {

@@ -218,6 +218,11 @@ function menu(item: TreeItem): DropdownMenuItem[][] {
   return [
     [
       {
+        label: 'Open in new window',
+        icon: 'i-lucide-app-window',
+        onSelect: () => openNoteWindow(item.id),
+      },
+      {
         label: 'New page inside',
         icon: 'i-lucide-file-plus',
         onSelect: () => void createInside(item),
